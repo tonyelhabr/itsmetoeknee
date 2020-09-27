@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/>
+  <meta name="generator" content="distill" />
+
+  <style type="text/css">
+  /* Hide doc at startup (prevent jankiness while JS renders/transforms) */
+  body {
+    visibility: hidden;
+  }
+  </style>
+
+ <!--radix_placeholder_import_source-->
+ <!--/radix_placeholder_import_source-->
+
+  <!--radix_placeholder_meta_tags-->
+  <title>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</title>
+
+  <meta property="description" itemprop="description" content="S3 Classes and {vctrs} to Create a Soccer Pitch Control Model"/>
+
+
+  <!--  https://schema.org/Article -->
+  <meta property="article:published" itemprop="datePublished" content="2020-09-23"/>
+  <meta property="article:created" itemprop="dateCreated" content="2020-09-23"/>
+  <meta name="article:author" content="Tony ElHabr"/>
+
+  <!--  https://developers.facebook.com/docs/sharing/webmasters#markup -->
+  <meta property="og:title" content="S3 Classes and {vctrs} to Create a Soccer Pitch Control Model"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:description" content="S3 Classes and {vctrs} to Create a Soccer Pitch Control Model"/>
+  <meta property="og:locale" content="en_US"/>
+
+  <!--  https://dev.twitter.com/cards/types/summary -->
+  <meta property="twitter:card" content="summary"/>
+  <meta property="twitter:title" content="S3 Classes and {vctrs} to Create a Soccer Pitch Control Model"/>
+  <meta property="twitter:description" content="S3 Classes and {vctrs} to Create a Soccer Pitch Control Model"/>
+
+  <!--/radix_placeholder_meta_tags-->
+  <!--radix_placeholder_rmarkdown_metadata-->
+
+  <script type="text/json" id="radix-rmarkdown-metadata">
+  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","description","author","date","output"]}},"value":[{"type":"character","attributes":{},"value":["S3 Classes and {vctrs} to Create a Soccer Pitch Control Model"]},{"type":"character","attributes":{},"value":["S3 Classes and {vctrs} to Create a Soccer Pitch Control Model\n"]},{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","url"]}},"value":[{"type":"character","attributes":{},"value":["Tony ElHabr"]},{"type":"character","attributes":{},"value":["https://example.com/norajones"]}]}]},{"type":"character","attributes":{},"value":["09-23-2020"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["distill::distill_article"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["self_contained"]}},"value":[{"type":"logical","attributes":{},"value":[false]}]}]}]}
+  </script>
+  <!--/radix_placeholder_rmarkdown_metadata-->
+  
+  <script type="text/json" id="radix-resource-manifest">
+  {"type":"character","attributes":{},"value":["epv_822_python.png","epv_823_r.png","pc_822_python.png","pc_823_r.png","soccer-pitch-control-r_files/bowser-1.9.3/bowser.min.js","soccer-pitch-control-r_files/distill-2.2.21/template.v2.js","soccer-pitch-control-r_files/header-attrs-2.3/header-attrs.js","soccer-pitch-control-r_files/jquery-1.11.3/jquery.min.js","soccer-pitch-control-r_files/webcomponents-2.0.0/webcomponents.js","viz_epv_823_combined.png","viz_p_intercept_ex_1.png","viz_p_intercept_ex_2.png","viz_pc_823_combined.png","viz_tti_ex.png"]}
+  </script>
+  <!--radix_placeholder_navigation_in_header-->
+  <!--/radix_placeholder_navigation_in_header-->
+  <!--radix_placeholder_distill-->
+
+  <style type="text/css">
+
+  body {
+    background-color: white;
+  }
+
+  .pandoc-table {
+    width: 100%;
+  }
+
+  .pandoc-table>caption {
+    margin-bottom: 10px;
+  }
+
+  .pandoc-table th:not([align]) {
+    text-align: left;
+  }
+
+  .pagedtable-footer {
+    font-size: 15px;
+  }
+
+  .html-widget {
+    margin-bottom: 2.0em;
+  }
+
+  .l-screen-inset {
+    padding-right: 16px;
+  }
+
+  .l-screen .caption {
+    margin-left: 10px;
+  }
+
+  .shaded {
+    background: rgb(247, 247, 247);
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .shaded .html-widget {
+    margin-bottom: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .shaded .shaded-content {
+    background: white;
+  }
+
+  .text-output {
+    margin-top: 0;
+    line-height: 1.5em;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  d-article {
+    padding-bottom: 30px;
+  }
+
+  d-appendix {
+    padding-top: 30px;
+  }
+
+  d-article>p>img {
+    width: 100%;
+  }
+
+  d-article iframe {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 2.0em;
+    width: 100%;
+  }
+
+  figure img.external {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+    padding: 18px;
+    box-sizing: border-box;
+  }
+
+  /* CSS for table of contents */
+
+  .d-toc {
+    color: rgba(0,0,0,0.8);
+    font-size: 0.8em;
+    line-height: 1em;
+  }
+
+  .d-toc-header {
+    font-size: 0.6rem;
+    font-weight: 400;
+    color: rgba(0, 0, 0, 0.5);
+    text-transform: uppercase;
+    margin-top: 0;
+    margin-bottom: 1.3em;
+  }
+
+  .d-toc a {
+    border-bottom: none;
+  }
+
+  .d-toc ul {
+    padding-left: 0;
+  }
+
+  .d-toc li>ul {
+    padding-top: 0.8em;
+    padding-left: 16px;
+    margin-bottom: 0.6em;
+  }
+
+  .d-toc ul,
+  .d-toc li {
+    list-style-type: none;
+  }
+
+  .d-toc li {
+    margin-bottom: 0.9em;
+  }
+
+  .d-toc-separator {
+    margin-top: 20px;
+    margin-bottom: 2em;
+  }
+
+  .d-article-with-toc {
+    border-top: none;
+    padding-top: 0;
+  }
+
+
+
+  /* Tweak code blocks (note that this CSS is repeated above in an injection
+     into the d-code shadow dom) */
+
+  d-code {
+    overflow-x: auto !important;
+  }
+
+  pre.d-code code.d-code {
+    padding-left: 10px;
+    font-size: 12px;
+    border-left: 2px solid rgba(0,0,0,0.1);
+  }
+
+  pre.text-output {
+
+    font-size: 12px;
+    color: black;
+    background: none;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+
+    -moz-tab-size: 4;
+    -o-tab-size: 4;
+    tab-size: 4;
+
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+  }
+
+  @media(min-width: 768px) {
+
+  d-code {
+    overflow-x: visible !important;
+  }
+
+  pre.d-code code.d-code  {
+      padding-left: 18px;
+      font-size: 14px;
+  }
+  pre.text-output {
+    font-size: 14px;
+  }
+  }
+
+  /* Figure */
+
+  .figure {
+    position: relative;
+    margin-bottom: 2.5em;
+    margin-top: 1.5em;
+  }
+
+  .figure img {
+    width: 100%;
+  }
+
+  .figure .caption {
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 12px;
+    line-height: 1.5em;
+  }
+
+  .figure img.external {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+    padding: 18px;
+    box-sizing: border-box;
+  }
+
+  .figure .caption a {
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .figure .caption b,
+  .figure .caption strong, {
+    font-weight: 600;
+    color: rgba(0, 0, 0, 1.0);
+  }
+
+
+
+  /* Tweak 1000px media break to show more text */
+
+  @media(min-width: 1000px) {
+    .base-grid,
+    distill-header,
+    d-title,
+    d-abstract,
+    d-article,
+    d-appendix,
+    distill-appendix,
+    d-byline,
+    d-footnote-list,
+    d-citation-list,
+    distill-footer {
+      grid-template-columns: [screen-start] 1fr [page-start kicker-start] 80px [middle-start] 50px [text-start kicker-end] 65px 65px 65px 65px 65px 65px 65px 65px [text-end gutter-start] 65px [middle-end] 65px [page-end gutter-end] 1fr [screen-end];
+      grid-column-gap: 16px;
+    }
+
+    .grid {
+      grid-column-gap: 16px;
+    }
+
+    d-article {
+      font-size: 1.06rem;
+      line-height: 1.7em;
+    }
+    figure .caption, .figure .caption, figure figcaption {
+      font-size: 13px;
+    }
+  }
+
+  @media(min-width: 1180px) {
+    .base-grid,
+    distill-header,
+    d-title,
+    d-abstract,
+    d-article,
+    d-appendix,
+    distill-appendix,
+    d-byline,
+    d-footnote-list,
+    d-citation-list,
+    distill-footer {
+      grid-template-columns: [screen-start] 1fr [page-start kicker-start] 60px [middle-start] 60px [text-start kicker-end] 60px 60px 60px 60px 60px 60px 60px 60px [text-end gutter-start] 60px [middle-end] 60px [page-end gutter-end] 1fr [screen-end];
+      grid-column-gap: 32px;
+    }
+
+    .grid {
+      grid-column-gap: 32px;
+    }
+  }
+
+
+  /* Get the citation styles for the appendix (not auto-injected on render since
+     we do our own rendering of the citation appendix) */
+
+  d-appendix .citation-appendix,
+  .d-appendix .citation-appendix {
+    font-size: 11px;
+    line-height: 15px;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    padding-left: 18px;
+    border: 1px solid rgba(0,0,0,0.1);
+    background: rgba(0, 0, 0, 0.02);
+    padding: 10px 18px;
+    border-radius: 3px;
+    color: rgba(150, 150, 150, 1);
+    overflow: hidden;
+    margin-top: -12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+
+  /* Social footer */
+
+  .social_footer {
+    margin-top: 30px;
+    margin-bottom: 0;
+    color: rgba(0,0,0,0.67);
+  }
+
+  .disqus-comments {
+    margin-right: 30px;
+  }
+
+  .disqus-comment-count {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  #disqus_thread {
+    margin-top: 30px;
+  }
+
+  .article-sharing a {
+    border-bottom: none;
+    margin-right: 8px;
+  }
+
+  .article-sharing a:hover {
+    border-bottom: none;
+  }
+
+  .sidebar-section.subscribe {
+    font-size: 12px;
+    line-height: 1.6em;
+  }
+
+  .subscribe p {
+    margin-bottom: 0.5em;
+  }
+
+
+  .article-footer .subscribe {
+    font-size: 15px;
+    margin-top: 45px;
+  }
+
+
+  .sidebar-section.custom {
+    font-size: 12px;
+    line-height: 1.6em;
+  }
+
+  .custom p {
+    margin-bottom: 0.5em;
+  }
+
+
+  /* Improve display for browsers without grid (IE/Edge <= 15) */
+
+  .downlevel {
+    line-height: 1.6em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+  }
+
+  .downlevel .d-title {
+    padding-top: 6rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .downlevel .d-title h1 {
+    font-size: 50px;
+    font-weight: 700;
+    line-height: 1.1em;
+    margin: 0 0 0.5rem;
+  }
+
+  .downlevel .d-title p {
+    font-weight: 300;
+    font-size: 1.2rem;
+    line-height: 1.55em;
+    margin-top: 0;
+  }
+
+  .downlevel .d-byline {
+    padding-top: 0.8em;
+    padding-bottom: 0.8em;
+    font-size: 0.8rem;
+    line-height: 1.8em;
+  }
+
+  .downlevel .section-separator {
+    border: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .downlevel .d-article {
+    font-size: 1.06rem;
+    line-height: 1.7em;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+  }
+
+
+  .downlevel .d-appendix {
+    padding-left: 0;
+    padding-right: 0;
+    max-width: none;
+    font-size: 0.8em;
+    line-height: 1.7em;
+    margin-bottom: 0;
+    color: rgba(0,0,0,0.5);
+    padding-top: 40px;
+    padding-bottom: 48px;
+  }
+
+  .downlevel .footnotes ol {
+    padding-left: 13px;
+  }
+
+  .downlevel .base-grid,
+  .downlevel .distill-header,
+  .downlevel .d-title,
+  .downlevel .d-abstract,
+  .downlevel .d-article,
+  .downlevel .d-appendix,
+  .downlevel .distill-appendix,
+  .downlevel .d-byline,
+  .downlevel .d-footnote-list,
+  .downlevel .d-citation-list,
+  .downlevel .distill-footer,
+  .downlevel .appendix-bottom,
+  .downlevel .posts-container {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+
+  @media(min-width: 768px) {
+    .downlevel .base-grid,
+    .downlevel .distill-header,
+    .downlevel .d-title,
+    .downlevel .d-abstract,
+    .downlevel .d-article,
+    .downlevel .d-appendix,
+    .downlevel .distill-appendix,
+    .downlevel .d-byline,
+    .downlevel .d-footnote-list,
+    .downlevel .d-citation-list,
+    .downlevel .distill-footer,
+    .downlevel .appendix-bottom,
+    .downlevel .posts-container {
+    padding-left: 150px;
+    padding-right: 150px;
+    max-width: 900px;
+  }
+  }
+
+  .downlevel pre code {
+    display: block;
+    border-left: 2px solid rgba(0, 0, 0, .1);
+    padding: 0 0 0 20px;
+    font-size: 14px;
+  }
+
+  .downlevel code, .downlevel pre {
+    color: black;
+    background: none;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+
+    -moz-tab-size: 4;
+    -o-tab-size: 4;
+    tab-size: 4;
+
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+  }
+
+  </style>
+
+  <script type="application/javascript">
+
+  function is_downlevel_browser() {
+    if (bowser.isUnsupportedBrowser({ msie: "12", msedge: "16"},
+                                   window.navigator.userAgent)) {
+      return true;
+    } else {
+      return window.load_distill_framework === undefined;
+    }
+  }
+
+  // show body when load is complete
+  function on_load_complete() {
+
+    // set body to visible
+    document.body.style.visibility = 'visible';
+
+    // force redraw for leaflet widgets
+    if (window.HTMLWidgets) {
+      var maps = window.HTMLWidgets.findAll(".leaflet");
+      $.each(maps, function(i, el) {
+        var map = this.getMap();
+        map.invalidateSize();
+        map.eachLayer(function(layer) {
+          if (layer instanceof L.TileLayer)
+            layer.redraw();
+        });
+      });
+    }
+
+    // trigger 'shown' so htmlwidgets resize
+    $('d-article').trigger('shown');
+  }
+
+  function init_distill() {
+
+    init_common();
+
+    // create front matter
+    var front_matter = $('<d-front-matter></d-front-matter>');
+    $('#distill-front-matter').wrap(front_matter);
+
+    // create d-title
+    $('.d-title').changeElementType('d-title');
+
+    // create d-byline
+    var byline = $('<d-byline></d-byline>');
+    $('.d-byline').replaceWith(byline);
+
+    // create d-article
+    var article = $('<d-article></d-article>');
+    $('.d-article').wrap(article).children().unwrap();
+
+    // move posts container into article
+    $('.posts-container').appendTo($('d-article'));
+
+    // create d-appendix
+    $('.d-appendix').changeElementType('d-appendix');
+
+    // create d-bibliography
+    var bibliography = $('<d-bibliography></d-bibliography>');
+    $('#distill-bibliography').wrap(bibliography);
+
+    // flag indicating that we have appendix items
+    var appendix = $('.appendix-bottom').children('h3').length > 0;
+
+    // replace citations with <d-cite>
+    $('.citation').each(function(i, val) {
+      appendix = true;
+      var cites = $(this).attr('data-cites').split(" ");
+      var dt_cite = $('<d-cite></d-cite>');
+      dt_cite.attr('key', cites.join());
+      $(this).replaceWith(dt_cite);
+    });
+    // remove refs
+    $('#refs').remove();
+
+    // replace footnotes with <d-footnote>
+    $('.footnote-ref').each(function(i, val) {
+      appendix = true;
+      var href = $(this).attr('href');
+      var id = href.replace('#', '');
+      var fn = $('#' + id);
+      var fn_p = $('#' + id + '>p');
+      fn_p.find('.footnote-back').remove();
+      var text = fn_p.html();
+      var dtfn = $('<d-footnote></d-footnote>');
+      dtfn.html(text);
+      $(this).replaceWith(dtfn);
+    });
+    // remove footnotes
+    $('.footnotes').remove();
+
+    $('h1.appendix, h2.appendix').each(function(i, val) {
+      $(this).changeElementType('h3');
+    });
+    $('h3.appendix').each(function(i, val) {
+      var id = $(this).attr('id');
+      $('.d-toc a[href="#' + id + '"]').parent().remove();
+      appendix = true;
+      $(this).nextUntil($('h1, h2, h3')).addBack().appendTo($('d-appendix'));
+    });
+
+    // show d-appendix if we have appendix content
+    $("d-appendix").css('display', appendix ? 'grid' : 'none');
+
+    // replace code blocks with d-code
+    $('pre>code').each(function(i, val) {
+      var code = $(this);
+      var pre = code.parent();
+      var clz = "";
+      var language = pre.attr('class');
+      if (language) {
+        // map unknown languages to "clike" (without this they just dissapear)
+        if ($.inArray(language, ["bash", "clike", "css", "go", "html",
+                                 "javascript", "js", "julia", "lua", "markdown",
+                                 "markup", "mathml", "python", "svg", "xml"]) == -1)
+          language = "clike";
+        language = ' language="' + language + '"';
+        var dt_code = $('<d-code block' + language + clz + '></d-code>');
+        dt_code.text(code.text());
+        pre.replaceWith(dt_code);
+      } else {
+        code.addClass('text-output').unwrap().changeElementType('pre');
+      }
+    });
+
+    // localize layout chunks to just output
+    $('.layout-chunk').each(function(i, val) {
+
+      // capture layout
+      var layout = $(this).attr('data-layout');
+
+      // apply layout to markdown level block elements
+      var elements = $(this).children().not('d-code, pre.text-output, script');
+      elements.each(function(i, el) {
+        var layout_div = $('<div class="' + layout + '"></div>');
+        if (layout_div.hasClass('shaded')) {
+          var shaded_content = $('<div class="shaded-content"></div>');
+          $(this).wrap(shaded_content);
+          $(this).parent().wrap(layout_div);
+        } else {
+          $(this).wrap(layout_div);
+        }
+      });
+
+
+      // unwrap the layout-chunk div
+      $(this).children().unwrap();
+    });
+
+    // load distill framework
+    load_distill_framework();
+
+    // wait for window.distillRunlevel == 4 to do post processing
+    function distill_post_process() {
+
+      if (!window.distillRunlevel || window.distillRunlevel < 4)
+        return;
+
+      // hide author/affiliations entirely if we have no authors
+      var front_matter = JSON.parse($("#distill-front-matter").html());
+      var have_authors = front_matter.authors && front_matter.authors.length > 0;
+      if (!have_authors)
+        $('d-byline').addClass('hidden');
+
+      // table of contents
+      if (have_authors) // adjust border if we are in authors
+        $('.d-toc').parent().addClass('d-article-with-toc');
+
+      // strip links that point to #
+      $('.authors-affiliations').find('a[href="#"]').removeAttr('href');
+
+      // hide elements of author/affiliations grid that have no value
+      function hide_byline_column(caption) {
+        $('d-byline').find('h3:contains("' + caption + '")').parent().css('visibility', 'hidden');
+      }
+
+      // affiliations
+      var have_affiliations = false;
+      for (var i = 0; i<front_matter.authors.length; ++i) {
+        var author = front_matter.authors[i];
+        if (author.affiliation !== "&nbsp;") {
+          have_affiliations = true;
+          break;
+        }
+      }
+      if (!have_affiliations)
+        $('d-byline').find('h3:contains("Affiliations")').css('visibility', 'hidden');
+
+      // published date
+      if (!front_matter.publishedDate)
+        hide_byline_column("Published");
+
+      // document object identifier
+      var doi = $('d-byline').find('h3:contains("DOI")');
+      var doi_p = doi.next().empty();
+      if (!front_matter.doi) {
+        // if we have a citation and valid citationText then link to that
+        if ($('#citation').length > 0 && front_matter.citationText) {
+          doi.html('Citation');
+          $('<a href="#citation"></a>')
+            .text(front_matter.citationText)
+            .appendTo(doi_p);
+        } else {
+          hide_byline_column("DOI");
+        }
+      } else {
+        $('<a></a>')
+           .attr('href', "https://doi.org/" + front_matter.doi)
+           .html(front_matter.doi)
+           .appendTo(doi_p);
+      }
+
+       // change plural form of authors/affiliations
+      if (front_matter.authors.length === 1) {
+        var grid = $('.authors-affiliations');
+        grid.children('h3:contains("Authors")').text('Author');
+        grid.children('h3:contains("Affiliations")').text('Affiliation');
+      }
+
+      // inject pre code styles (can't do this with a global stylesheet b/c a shadow root is used)
+      $('d-code').each(function(i, val) {
+        var style = document.createElement('style');
+        style.innerHTML = 'pre code { padding-left: 10px; font-size: 12px; border-left: 2px solid rgba(0,0,0,0.1); } ' +
+                          '@media(min-width: 768px) { pre code { padding-left: 18px; font-size: 14px; } }';
+        if (this.shadowRoot)
+          this.shadowRoot.appendChild(style);
+      });
+
+      // move appendix-bottom entries to the bottom
+      $('.appendix-bottom').appendTo('d-appendix').children().unwrap();
+      $('.appendix-bottom').remove();
+
+      // clear polling timer
+      clearInterval(tid);
+
+      // show body now that everything is ready
+      on_load_complete();
+    }
+
+    var tid = setInterval(distill_post_process, 50);
+    distill_post_process();
+
+  }
+
+  function init_downlevel() {
+
+    init_common();
+
+     // insert hr after d-title
+    $('.d-title').after($('<hr class="section-separator"/>'));
+
+    // check if we have authors
+    var front_matter = JSON.parse($("#distill-front-matter").html());
+    var have_authors = front_matter.authors && front_matter.authors.length > 0;
+
+    // manage byline/border
+    if (!have_authors)
+      $('.d-byline').remove();
+    $('.d-byline').after($('<hr class="section-separator"/>'));
+    $('.d-byline a').remove();
+
+    // remove toc
+    $('.d-toc-header').remove();
+    $('.d-toc').remove();
+    $('.d-toc-separator').remove();
+
+    // move appendix elements
+    $('h1.appendix, h2.appendix').each(function(i, val) {
+      $(this).changeElementType('h3');
+    });
+    $('h3.appendix').each(function(i, val) {
+      $(this).nextUntil($('h1, h2, h3')).addBack().appendTo($('.d-appendix'));
+    });
+
+
+    // inject headers into references and footnotes
+    var refs_header = $('<h3></h3>');
+    refs_header.text('References');
+    $('#refs').prepend(refs_header);
+
+    var footnotes_header = $('<h3></h3');
+    footnotes_header.text('Footnotes');
+    $('.footnotes').children('hr').first().replaceWith(footnotes_header);
+
+    // move appendix-bottom entries to the bottom
+    $('.appendix-bottom').appendTo('.d-appendix').children().unwrap();
+    $('.appendix-bottom').remove();
+
+    // remove appendix if it's empty
+    if ($('.d-appendix').children().length === 0)
+      $('.d-appendix').remove();
+
+    // prepend separator above appendix
+    $('.d-appendix').before($('<hr class="section-separator" style="clear: both"/>'));
+
+    // trim code
+    $('pre>code').each(function(i, val) {
+      $(this).html($.trim($(this).html()));
+    });
+
+    // move posts-container right before article
+    $('.posts-container').insertBefore($('.d-article'));
+
+    $('body').addClass('downlevel');
+
+    on_load_complete();
+  }
+
+
+  function init_common() {
+
+    // jquery plugin to change element types
+    (function($) {
+      $.fn.changeElementType = function(newType) {
+        var attrs = {};
+
+        $.each(this[0].attributes, function(idx, attr) {
+          attrs[attr.nodeName] = attr.nodeValue;
+        });
+
+        this.replaceWith(function() {
+          return $("<" + newType + "/>", attrs).append($(this).contents());
+        });
+      };
+    })(jQuery);
+
+    // prevent underline for linked images
+    $('a > img').parent().css({'border-bottom' : 'none'});
+
+    // mark non-body figures created by knitr chunks as 100% width
+    $('.layout-chunk').each(function(i, val) {
+      var figures = $(this).find('img, .html-widget');
+      if ($(this).attr('data-layout') !== "l-body") {
+        figures.css('width', '100%');
+      } else {
+        figures.css('max-width', '100%');
+        figures.filter("[width]").each(function(i, val) {
+          var fig = $(this);
+          fig.css('width', fig.attr('width') + 'px');
+        });
+
+      }
+    });
+
+    // auto-append index.html to post-preview links in file: protocol
+    // and in rstudio ide preview
+    $('.post-preview').each(function(i, val) {
+      if (window.location.protocol === "file:")
+        $(this).attr('href', $(this).attr('href') + "index.html");
+    });
+
+    // get rid of index.html references in header
+    if (window.location.protocol !== "file:") {
+      $('.distill-site-header a[href]').each(function(i,val) {
+        $(this).attr('href', $(this).attr('href').replace("index.html", "./"));
+      });
+    }
+
+    // add class to pandoc style tables
+    $('tr.header').parent('thead').parent('table').addClass('pandoc-table');
+    $('.kable-table').children('table').addClass('pandoc-table');
+
+    // add figcaption style to table captions
+    $('caption').parent('table').addClass("figcaption");
+
+    // initialize posts list
+    if (window.init_posts_list)
+      window.init_posts_list();
+
+    // implmement disqus comment link
+    $('.disqus-comment-count').click(function() {
+      window.headroom_prevent_pin = true;
+      $('#disqus_thread').toggleClass('hidden');
+      if (!$('#disqus_thread').hasClass('hidden')) {
+        var offset = $(this).offset();
+        $(window).resize();
+        $('html, body').animate({
+          scrollTop: offset.top - 35
+        });
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    if (is_downlevel_browser())
+      init_downlevel();
+    else
+      window.addEventListener('WebComponentsReady', init_distill);
+  });
+
+  </script>
+
+  <!--/radix_placeholder_distill-->
+  <script src="soccer-pitch-control-r_files/header-attrs-2.3/header-attrs.js"></script>
+  <script src="soccer-pitch-control-r_files/jquery-1.11.3/jquery.min.js"></script>
+  <script src="soccer-pitch-control-r_files/bowser-1.9.3/bowser.min.js"></script>
+  <script src="soccer-pitch-control-r_files/webcomponents-2.0.0/webcomponents.js"></script>
+  <script src="soccer-pitch-control-r_files/distill-2.2.21/template.v2.js"></script>
+  <!--radix_placeholder_site_in_header-->
+  <!--/radix_placeholder_site_in_header-->
+
+
+</head>
+
+<body>
+
+<!--radix_placeholder_front_matter-->
+
+<script id="distill-front-matter" type="text/json">
+{"title":"S3 Classes and {vctrs} to Create a Soccer Pitch Control Model","description":"S3 Classes and {vctrs} to Create a Soccer Pitch Control Model","authors":[{"author":"Tony ElHabr","authorURL":"https://example.com/norajones","affiliation":"&nbsp;","affiliationURL":"#"}],"publishedDate":"2020-09-23T00:00:00.000-05:00","citationText":"ElHabr, 2020"}
+</script>
+
+<!--/radix_placeholder_front_matter-->
+<!--radix_placeholder_navigation_before_body-->
+<!--/radix_placeholder_navigation_before_body-->
+<!--radix_placeholder_site_before_body-->
+<!--/radix_placeholder_site_before_body-->
+
+<div class="d-title">
+<h1>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</h1>
+<p><p>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</p></p>
+</div>
+
+<div class="d-byline">
+  Tony ElHabr <a href="https://example.com/norajones" class="uri">https://example.com/norajones</a> 
+  
+<br/>09-23-2020
+</div>
+
+<div class="d-article">
+<p><strong><em>Note: This post was update on 2020-09-24 to correct field dimension translations that were previously distorting the pitch control contours. The R analogues now match up much more closely with the python versions after the updates.</em></strong></p>
+<h2 id="intro">Intro</h2>
+<p>There’s never been a better time to be involved in sports analytics. There is a wealth of open-sourced data and code (not to mention well-researched and public analysis) to digest and use. Both people working for teams and people just doing at as a hobby are publishing new and interesting analyses every day.</p>
+<p>In particular, the <a href="https://www.youtube.com/channel/UCUBFJYcag8j2rm_9HkrrA7w">FriendsOfTracking (FOT)</a> group, co-led by Professor and author <a href="ttps://twitter.com/Soccermatics">David Sumpter</a><a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> have put together an awesome series of videos on YouTube discussing modern soccer analytics, along with a collection of repositories on GitHub sharing the code shown in videos.</p>
+<p><a href="https://twitter.com/EightyFivePoint">Laurie Shaw</a> has shared code that implements the <a href="https://www.youtube.com/watch?v=X9PrwPyolyU">pitch control model</a> described in <a href="https://twitter.com/the_spearman">William Spearman</a>’s paper <a href="http://www.sloansportsconference.com/wp-content/uploads/2018/02/2002.pdf">“Beyond Expected Goals”</a> is interesting to me. The model is different than the one that I used <a href="https://twitter.com/TonyElHabr/status/1304766718468857857?s=20">to create some animations on Twitter</a>. Those were based on the pitch control model described by <a href="https://twitter.com/JaviOnData">Javier Fernandez</a> and <a href="https://twitter.com/lukebornn">Luke Bornn</a> in their paper <a href="http://www.sloansportsconference.com/wp-content/uploads/2018/03/1003.pdf">“Wide Open Spaces”</a> (<a href="https://www.robert-hickman.eu/post/fall_back_in_to_space/">code</a> courtesy of <a href="https://twitter.com/robwhickman">Rob Hickman</a>). (Apologies for the onslaught of links!) Now, I am not one for language wars—and, in fact, I use python often—but I thought it would be awesome to be able to plot Spearman’s pitch control model directly with <code>{ggplot2}</code> and friends. Thus, I set out to convert Laurie’s code to R, attempting to give it a “native” R feel while I was at it.</p>
+<p>Most of the process of translating python to R was relatively straightforward (slicing and dicing data frames and arrays/vectors is just part of data cleaning), so I won’t detail them here. However, there was one part that was particularly interesting—the conversion of a python class object. This was actually the key (and most challenging part) of the conversion process.</p>
+<p>There are some great resources for describing how to implement <a href="https://en.wikipedia.org/wiki/Object-oriented_programming">object-orientated programming (OOP)</a> in R, including a couple of chapter’s from <a href="https://twitter.com/hadleywickham">Hadley Wickham</a>’s <a href="https://adv-r.hadley.nz/oo.html">Advanced R book</a> and a <a href="https://blog.earo.me/2019/11/03/practical-guide-to-s3/">very practical write-up</a> from <a href="https://twitter.com/earowang">Earo Wang</a>. Every object-oriented task has its unique aspects, so hopefully my discussion here has something to add to what has already been written on the subject matter.</p>
+<p><strong><em>For demonstration purposes, I’m going to walk through my steps for converting the python class object as if I were doing it for the first time.</em></strong></p>
+<h2 id="contructor">Contructor</h2>
+<p>Below is a stripped down version of Laurie’s code, showing the “essence” of what we need to replicate.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="python"><code>
+class player(object):
+    def __init__(self,player_id,frame):
+        self.id = player_id
+        self.get_position(frame)
+        self.get_velocity(frame)
+        
+    def get_position(self,frame):
+        self.position = np.array(frame[self.player_id + &#39;x&#39;, self.player_id + &#39;y&#39;])
+        
+    def get_velocity(self,frame):
+        self.velocity = np.array(frame[self.player_id + &#39;x_v&#39;, self.player_id + &#39;y_v&#39;])
+    
+    def tti(self,final_position):
+        reaction_time = 0.7 # in s
+        vmax = 5 # in m/s
+        reaction_position = self.position + self.velocity * reaction_time
+        self.tti = reaction_time + np.linalg.norm(final_positon - reaction_position)/vmax
+
+    def p_intercept(self,t):
+        tti_sigma = 0.45
+        den = 1 + np.exp(-np.pi/np.sqrt(3.0)/tti_sigma * (t-self.tti)))
+        return 1 / den</code></pre>
+</div>
+<p>Let’s make some notes and come back to these as we develop our R class.</p>
+<ol type="1">
+<li><p>We need a unique identifier: <code>player_id</code>. This is really just a “best practice” thing for object-oriented programming and makes sense given our context. For a sport like soccer, a unique identifier could just be the player’s name, a combination of the team name and the player jersey number, a league unique identifier, etc.</p></li>
+<li><p>A single-row data frame <code>frame</code> is passed to several of the methods, including the constructor <code>__init__</code>. This single row data frame is sourced from a much larger <code>tracking</code> data frame, with rows for every 0.04 second time interval (25 frames per second, or one frame per 0.04 seconds) in the game.</p></li>
+<li><p>The python code stores both the player’s <code>position</code> and <code>velocity</code> as 2x1 arrays. This works well with the <a href="https://www.w3schools.com/python/gloss_python_assign_value_to_multiple_variables.asp">unpacking</a> that is done in other places in Laurie’s code.</p></li>
+<li><p><code>tti</code>, short for “time to intercept (a target location)”, uses the player’s <code>position</code> and <code>velocity</code> to define the attribute <code>tti</code> (not to be confused with the method itself). This implies that <code>position</code> and <code>velocity</code> should be defined before <code>tti()</code> is ever called, as they are in <code>__init__</code>. <code>tti</code> needs the <code>position_final</code> 2x1 array to calculate <code>tti</code> which is not known upon instantiation; rather, <code>tti</code> can only be properly defined when called to do a specific calculation relating the player’s <code>position</code> and <code>velocity</code> (both defined implicitly in the class, without needing user-specification) with a user-supplied <code>position_final</code> pair of x and y values.</p></li>
+<li><p><code>p_intercept</code>, short for “probability to intercept (a target location)” depends on <code>tti</code> and an additional parameter <code>t</code>, a user-specified value representing how much time is allotted to reach the ball. Like <code>tti</code>, <code>p_intercept</code> is only “properly” defined when actually doing a calculation on the player’s attributes. Unlike <code>tti</code>, there is no attribute in the <code>player</code> instance that stores this probability; it’s value must be saved in a variable external to the player class if the user wants to use it for something other than an ephemeral calculation.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p></li>
+</ol>
+<p>Time to intercept a “target” location (<code>tti</code>) may not be intuitive to comprehend immediately. The plot<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> below annotates the <code>tti</code> of a “target” location on the pitch (which does <strong>not</strong> have to be where the ball actually is). <code>tti</code> assumes that the player continues moving at their current speed (annotated by the arrows) for <code>reaction_time</code> seconds before running at <code>vmax</code> (full speed) to the target position. <code>tti</code> for each player is independent of the <code>tti</code> of all other players, which is a relatively reasonable assumption. <a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
+<p><img src="viz_tti_ex.png" /></p>
+<p>The probability of reaching the “target” location (<code>p_intercept</code>) is directly related to the player’s <code>tti</code>. Uncertainty about how long it will take the player to reach the target location is quantified by the constant <code>tti_sigma</code> in the calculation. (<code>tti</code> is the mean and <code>tti_sigma</code> is the standard deviation of the distribution for a player’s time to arrive at the target location.)</p>
+<p><img src="viz_p_intercept_ex_1.png" /></p>
+<p>Notably, this probability is independent of all other players’ probabilities (which explains how it is possible that both players are shown to have probabilities greater than 50% when <code>t = 6</code> above). When adjusting for all players’ probabilities (by dividing by the sum of all probabilities), the numbers change. This probability adjustment is key when we calculate pitch control.</p>
+<p><img src="viz_p_intercept_ex_2.png" /></p>
+<p>Ok, on to the R code. We’ll be using <a href="https://adv-r.hadley.nz/s3.html">S3</a> and the <a href="https://vctrs.r-lib.org/"><code>{vctrs}</code> package</a> to help create our <code>player</code> class. (As with the python class, I’ve simplified the actual implementation for demonstration purposes.)</p>
+<p>First, we start with the constructor <code>new_player()</code>. Note that there is no direct <code>__init__</code> equivalent in R. Here we will make a function that is prefixed with <code>new_</code> and ends with the name of our class (<code>player</code>).</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+new_player &lt;-
+  function(player_id = integer(),
+           x = double(),
+           y = double(),
+           x_v = double(),
+           y_v = double()) {
+    vctrs::new_rcrd(
+      list(
+        player_id = player_id,
+        x = x,
+        y = y,
+        x_v = x_v,
+        y_v = y_v,
+        tti = -1 # dummy value
+      ),
+      class = &#39;player&#39;
+    )
+  }</code></pre>
+</div>
+<p>Now let’s reflect upon our prior notes.</p>
+<ol type="1">
+<li><p>We have the <code>player_id</code> in this constructor.</p></li>
+<li><p>We don’t pass the data frame <code>tracking</code> here. We’ll do it in our helper function. We might say that our constructor is “low-level”, not intended for the user to call directly.</p></li>
+<li><p>We split the position and velocity vectors into their individual x and y components, resulting in four total variables instead of two. I don’t think a vector (unnamed or named), list, or matrix are particularly compelling data types to use for an x-y pair of values in R. None natively support unpacking (although R vectors do have some form of “broadcasting” with their recycling behavior).</p></li>
+<li><p>We assign a “dummy” value (-1) to <code>tti</code> when initializing the class instance. We will have a method to update <code>tti</code> based on x and y components.</p></li>
+<li><p>Like <code>tti</code>, we will need a separate <code>p_intercept</code> method to be used to calculate the probabililty of intercepting a ball given a player’s position, speed, and the final position of the ball (all fed as inputs to <code>tti</code>), as well as the additional user-specified <code>t</code>, representing how much time is allotted to reach the ball.</p></li>
+</ol>
+<h2 id="validator">Validator</h2>
+<p>Let’s proceed by creating a validator function to, you guessed it, validate fields in the <code>player</code> class. It is good practice to check the values used to construct the class. The python code did not have any validation like this, but I don’t think it was ever expected to be extremely robust to any user input.</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+validate_player &lt;- function(player) {
+  vctrs::vec_assert(vctrs::field(player, &#39;player_id&#39;), integer())
+  vctrs::vec_assert(vctrs::field(player, &#39;x&#39;), double())
+  vctrs::vec_assert(vctrs::field(player, &#39;y&#39;), double())
+  vctrs::vec_assert(vctrs::field(player, &#39;tti&#39;), double())
+  player
+}</code></pre>
+</div>
+<p>Note that we could have simply done this validation in the constructor function, but I think it makes sense to put the validation in its own function so that the constructor is more direct (especially if the validation checks are complex).</p>
+<h2 id="helper">Helper</h2>
+<p>Finally, we’ll create a helper <code>player()</code> function, which is our “user-facing” function that we expect/want users to use to instantiate objects.</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+player &lt;- 
+  function(player_id, frame, tracking) {
+    
+    player_id &lt;- as.integer(player_id)
+    frame &lt;- as.integer(frame)
+
+    assertthat::assert_that(is.data.frame(tracking))
+    nms_req &lt;- c(&#39;player_id&#39;, &#39;frame&#39;, &#39;x&#39;, &#39;y&#39;, &#39;x_v&#39;, &#39;y_v&#39;)
+    assertthat::assert_that(all(nms_req %in% names(tracking)))
+    
+    # `!!` to make sure that we filter using the integer values, not the column itself.
+    tracking_filt &lt;- tracking %&gt;% filter(player_id == !!player_id, frame == !!frame)
+    assertthat::assert_that(nrow(tracking_filt) == 1L)
+    
+    player &lt;-
+      new_player(
+        player_id = player_id,
+        x = tracking_filt[[&#39;x&#39;]],
+        y = tracking_filt[[&#39;y&#39;]],
+        x_v = tracking_filt[[&#39;x_v&#39;]],
+        y_v = tracking_filt[[&#39;y_v&#39;]]
+      )
+    validate_player(player)
+  }</code></pre>
+</div>
+<p>Note the following:</p>
+<ul>
+<li>We coerce <code>player_id</code> and <code>frame</code> to integers instead of doubles (particularly since they are expected to be integers in the constructor). This ensures that the new <code>player</code> is instantiated properly by the constructor and passes our validation.</li>
+<li>We pass in our entire <code>tracking</code> data frame (that has rows for every 0.04 second interval in the game), as well as the <code>frame</code> to slice out of it. (<code>player_id</code> is also used to filter <code>tracking</code>.) This makes it convenient for user to instantiate new <code>player</code> objects when operating on the <code>tracking</code> data frame. There is no need to extract the singular initial position and velocity components “manually”; instead, the helper function does it for the user.</li>
+</ul>
+<h2 id="aside">Aside</h2>
+<p>R’s S3 framework is not a formal OOP framework (not even close really). Note that it does not have a reserved keyword to represent the instance of the class like <code>self</code> in python. Also, it is not actually necessary to much of what is done above (with the constructor, validator, and helper).</p>
+<p>For example, we don’t actually have to create a formal-ish constructor prefixed with <code>new_</code>. We don’t even need a constructor function at all in S3. We could do something like <code>class(var) &lt;- 'player'</code> to create a a <code>player</code> object. Of course, this is prone to errors down the line, so we don’t do that. Likewise with the validator and helper functions. The point of these constructs is to add clarity to our class code. They aren’t strictly necessary.</p>
+<h2 id="printing">Printing</h2>
+<p>Let’s do one more thing for our <code>player</code> class—create a custom print method. (Writing a custom print method is not required whatsoever, but it can be very helpful for debugging.) If we weren’t using <code>{vctrs}</code> and just S3, we would do this by writing a <code>print.player</code> function. However, <code>{vctrs}</code> provides a “pretty” header for us auto-magically (that looks like <code>&lt;player[1]&gt;</code>) if we use it to write our print method.</p>
+<p>To take advantage of the pretty-printing functionality offered by <code>{vctrs}</code>, we write a <code>format.player()</code> method that will be called by a subclass of the generic <code>vctrs::obj_print_data</code> method<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>, which itself is called whenever we print out an object (whether explicitly with <code>print</code> or just by typing the name of the variable representing our <code>player</code> instance). We’ll add the player’s position and velocity components to the print out.</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+format.player &lt;- function(player, ...) {
+  if(vctrs::field(player, &#39;in_frame&#39;)) {
+    suffix &lt;- 
+      sprintf(
+        &#39;with `position = (%.2f, %.2f)` and `velocity = &lt;%.1f, %.1f&gt;`&#39;, 
+        vctrs::field(player, &#39;player_id&#39;), 
+        vctrs::field(player, &#39;y&#39;), 
+        vctrs::field(player, &#39;x_v&#39;),
+        vctrs::field(player, &#39;y_v&#39;)
+      )
+  } else {
+    suffix &lt;- &#39;is not on the pitch&#39;
+  }
+  prefix &lt;- sprintf(&#39;`player_id = %s` &#39;, vctrs::field(player, &#39;player_id&#39;))
+  msg &lt;- sprintf(&#39;%s%s&#39;, prefix, suffix)
+  paste(msg, sep = &#39;\n&#39;)
+}
+
+obj_print_data.player &lt;- function(player) {
+  cat(format(player), sep = &#39;\n&#39;)
+}</code></pre>
+</div>
+<h2 id="basic-usage">Basic Usage</h2>
+<p>Ok, so that is all fine and dandy, but how would we go about instantiating <code>player</code>s in a normal workflow?</p>
+<p>Let’s say that we want to calculate the pitch control for a single <code>frame</code> in the <code>tracking</code> data (called <code>tracking_start</code> below).<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+tracking_start</code></pre>
+</div>
+<pre><code>
+## # A tibble: 26 x 9
+##    frame ball_x ball_y side  player_id     x     y   x_v    y_v
+##    &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;     &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
+##  1 53027  93.71  24.56 home          1 90.72 39.37 5.906 -3.985
+##  2 53027  93.71  24.56 home          2 95.10 27.14 1.5   -2.023
+##  3 53027  93.71  24.56 home          3 96.01 23.32 1.418  2.395
+##  4 53027  93.71  24.56 home          4 92.39 15.64 1.005  3.473
+##  5 53027  93.71  24.56 home          5 83.96 24.69 4.238  1.2  
+##  6 53027  93.71  24.56 home          6 82.19 35.63 3.893 -0.619
+##  7 53027  93.71  24.56 home          7 85.79 17.34 1.703  1.523
+##  8 53027  93.71  24.56 home          8 76.06 50.16 2.018 -0.493
+##  9 53027  93.71  24.56 home          9 61.22 25.35 0.863 -0.77 
+## 10 53027  93.71  24.56 home         10 59.69 35.10 0.9   -0.573
+## # ... with 16 more rows</code></pre>
+<p>Let’s convert players with id’s 10 through 12 (on the home team) to <code>player</code> instances and see how they look when printed out.</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+10L:12L %&gt;% map(~player(player_id = .x, frame = 53027L, tracking = tracking_start))</code></pre>
+</div>
+<pre><code>
+## [[1]]
+## &lt;player[1]&gt;
+## `player_id = 10` with `position = (10.00, 35.09)` and `velocity = &lt;0.9, -0.6&gt;`
+## 
+## [[2]]
+## &lt;player[1]&gt;
+## `player_id = 11` with `position = (11.00, 32.28)` and `velocity = &lt;-0.3, 0.6&gt;`
+## 
+## [[3]]
+## &lt;player[1]&gt;
+## `player_id = 12` is not on the pitch</code></pre>
+<h2 id="pseudo-encapsulation">Pseudo-Encapsulation</h2>
+<p>We still need to implement analogues for the <code>tti</code> and <code>p_intercept</code> methods in the python <code>player</code> class. Starting with <code>tti</code>, let’s use <a href="https://www.w3schools.com/java/java_encapsulation.asp">some pseudo-encapsulation (with getters and setters)</a> for a player’s <code>tti</code> value.</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+# Frobenious norm
+euclidean_norm &lt;- function(x1, x2, y1, y2) {
+  m &lt;- matrix(c(x1, y1)) - matrix(c(x2, y2))
+  sqrt(sum(m^2))
+}
+
+.get_tti.player &lt;- function(player, x2, y2) {
+  ri &lt;- 0.7 # in s
+  vmax &lt;- 5 # in m/s
+  x1 &lt;- vctrs::field(player, &#39;x&#39;) + vctrs::field(player, &#39;x_v&#39;) * ri
+  y1 &lt;- vctrs::field(player, &#39;y&#39;) + vctrs::field(player, &#39;y_v&#39;) * ri
+  ri + euclidean_norm(x1, x2, y1, y2) / vmax
+}
+
+.msg_cls_err &lt;- function(player, f) {
+  cls &lt;- class(player)[1]
+  sprintf(&#39;`%s()` doesn\&#39;t know how to handle class `%s`!&#39;, f, cls) 
+}
+
+.get_tti.default &lt;- function(player, ...) {
+  stop(.msg_cls_err(player, &#39;.get_tti&#39;), call. = FALSE)
+}
+
+.get_tti &lt;- function(player, ...) {
+  UseMethod(&#39;.get_tti&#39;)
+}
+
+`.set_tti&lt;-.player` &lt;- function(player, value) {
+  vctrs::field(player, &#39;tti&#39;) &lt;- value
+  player
+}
+
+`.set_tti&lt;-.default` &lt;- function(player, ...) {
+  stop(.msg_cls_err(player, &#39;.set_tti&#39;), call. = FALSE)
+}
+
+`.set_tti&lt;-` &lt;- function(player, ...) {
+  UseMethod(&#39;.set_tti&lt;-&#39;)
+}</code></pre>
+</div>
+<p>There’s a couple of things going on here:</p>
+<ul>
+<li>The <code>.get_tti</code> and <code>.set_tti</code> functions that call <code>UseMethod</code> are true S3 generics that perform method dispatch, i.e. find the correct method for the object passed to the generic (based on the class of the object). The <code>.get_tti.player</code> and <code>.set_tti.player</code> with the <code>.player</code> “suffix” so that they only work in their defined manners when passed in a <code>player</code> instance. (They won’t be called with an object that is not of the <code>player</code> class.)</li>
+<li>The ellipses (<code>...</code>) in the S3 generic function signatures may be a bit mysterious since they aren’t passed explicitly to <code>UseMethod</code>. Any non-<code>player</code> arguments are captured in these ellipses and passed to whatever method that is called from the generic (e.g. <code>.get_tti.player</code> method called from the <code>.get_tti</code> generic). For <code>.get_tti</code>, the ellipses is intended to capture <code>x2</code> and <code>y2</code>, and for <code>.set_tti</code>, it captures <code>value</code>.</li>
+<li>We must use the “strange” syntax <code>.set_tti&lt;-.player</code> (instead of just <code>.set_tti.player</code>, which may seem more “natural”) in order to update an attribute in an already instantiated class. <a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></li>
+<li>We define the function <code>euclidean_norm()</code> outside of <code>.get_tti.player</code> simply because it is not something that is specific to the time to intercept calculation for a player; it can work with any two pairs of x and y coordinates.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a></li>
+<li><code>ri</code> and <code>vmax</code>, representing a player’s reaction time and a player’s maximum velocity respectively, are constants defined in the Spearman paper. We could change these if we wanted to, or even make them dynamic (i.e. configurable via other function parameters, or even at instantiation time).</li>
+</ul>
+<p>To really complete our getter and setter methods for <code>tti</code>, we should write methods to handle the case when a non-<code>player</code> object is passed to them. The generic <code>.get_tti</code> and <code>.set_tti</code> methods will dispatch to these functions if the object passed to them (the first argument named <code>player</code>) doesn’t actually inherit from the <code>player</code> class.</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+.get_tti.default &lt;- function(player, ...) {
+  stop(.msg_cls_err(player, &#39;.get_tti&#39;), call. = FALSE)
+}
+
+.set_tti.default &lt;- function(player, ...) {
+  stop(.msg_cls_err(player, &#39;.get_tti&#39;), call. = FALSE)
+}</code></pre>
+</div>
+<p>Let’s see how our pseudo-encapsulation looks in action.</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+players &lt;- 8L:10L %&gt;% map(~player(player_id = .x, frame = 53027L, tracking = tracking_start))
+map(players, ~vctrs::field(.x, &#39;tti&#39;))</code></pre>
+</div>
+<pre><code>
+## [[1]]
+## [1] -1
+## 
+## [[2]]
+## [1] -1
+## 
+## [[3]]
+## [1] -1</code></pre>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+target_x &lt;- 94
+target_y &lt;- 63
+for(i in seq_along(players)) {
+  value &lt;- .get_tti(players[[i]], x2 = target_x, y2 = target_y)
+  .set_tti(players[[i]]) &lt;- value
+}
+map(players, ~vctrs::field(.x, &#39;tti&#39;))</code></pre>
+</div>
+<pre><code>
+## [[1]]
+## [1] 4.92839
+## 
+## [[2]]
+## [1] 10.6878
+## 
+## [[3]]
+## [1] 9.49904</code></pre>
+<p>Note how the player <code>tti</code> values changed after we defined them for a specified <code>target_x</code> and <code>target_y</code>.</p>
+<p>Our approach to <code>p_intercept</code> is very similar to that for <code>tti</code>, so I don’t show most of it here. As before, we define getters and setters, as well as generics for the class (the intended target of method dispatch), as well as a default class to handle unexpected inputs. Probably the only interesting part is the calculation itself, as shown below. If you compare it to the <code>p_intercept</code> method in the python object definition, you’ll see it’s basically identical.</p>
+<div class="layout-chunk" data-layout="l-body">
+<pre class="r"><code>
+.get_p_intercept.player &lt;- function(player, t) {
+  tti_sigma &lt;- 0.45
+  den &lt;- 1 + exp((-base::pi / sqrt(3) / tti_sigma) * (t - vctrs::field(player, &#39;tti&#39;)))
+  1 / den
+}</code></pre>
+</div>
+<p>There is certainly more to show, especially for what is needed to calculate pitch control. (We need to integrate probabilities across all players over time, and do it for the entire pitch.) Nonetheless, the <code>player</code> class and the pseudo-encapsulation that we’ve implemented with S3 and <code>{vctrs}</code> is really the key component underlying the whole pitch control calculation.</p>
+<h2 id="advanced-usage">Advanced Usage</h2>
+<p>To really motivate the reader, let’s see what this implementation allows us to do.</p>
+<p>First, let’s emulate the pitch control plot of event 823, which is a pass by the away (blue) team in the home (red) team’s penalty area preceding a successful shot.</p>
+<p><img src="pc_823_r.png" /></p>
+<p>Compare this to the python version.</p>
+<p><img src="pc_822_python.png" /></p>
+<p>It’s not a perfect replication, but I think it’s very close overall.</p>
+<p>Second, let’s replicate the <a href="http://www.sloansportsconference.com/wp-content/uploads/2019/02/Decomposing-the-Immeasurable-Sport.pdf">expected possession value (EPV)</a> plot of the same event, including the EPV added by the pass.</p>
+<p><img src="epv_823_r.png" /></p>
+<p>Again, we can compare this plot to the python equivalent.</p>
+<p><img src="epv_822_python.png" /></p>
+<p>Cool, my R version seems to very close to the python original. We do have a small discrepancy in the EPV added calculation. (This EPV is actually an “expected” EPV calculation that uses pitch control to weight the pre-learned EPV grid). I believe this is probably due to discrepancies in the integration done in the pitch control calculation and not due to a significant a code issue.</p>
+<p>The code to prepare the data for these plots gets more complex, which is why I have excluded it here.<a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a> However, none of it is unreasonably difficult to understand or implement once we have a properly defined <code>player</code> object.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Thus, we see that there is a huge payoff to creating a sound and robust <code>player</code> object—we can calculate pitch control and EPV, and feed them into pretty visualizations that can provide insight. I believe that the code here could be easily adapted to fit whatever one would like to study. For example, the valuation grid used here could be easily swapped out with <a href="https://karun.in/blog/expected-threat.html">expected threat (xT)</a>, which is a more modern and probably a better valuation framework than the one used here.<a href="#fn11" class="footnote-ref" id="fnref11" role="doc-noteref"><sup>11</sup></a> Furthermore, one could calculate EPV across the entire game. The possibilities for analyses really open up.</p>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>author of one of my favorite books <strong>Soccermatics</strong><a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>If you actually browse Laurie’s code, you’ll notice that I’ve changed some of the names of these functions, e.g. <code>tti()</code> here instead of <code>simple_time_to_intercept()</code> there, <code>tracking_df</code> instead of <code>team</code> there. Don’t worry about that. I just wanted to make things as comparable as possible for the diligent reader, and I tried to make variable names that were either (or both) more succinct or more clear.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>One might argue that we should be consistent with <code>tti</code> and <code>p_intercept</code> and store them in the same way—either both as attributes or neither as attributes—given that both are dependent on some user-specified values (<code>final_position</code> for <code>tti</code> and <code>t</code> for <code>p_intercept</code>). I’m just showing how it is done in Laurie’s code. I think it is simple enough as is and there is no compelling functional reason why we should change the implementation.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>Data for this plot and all that follow from post-processed <a href="https://github.com/metrica-sports/sample-data">Metrica Sports sample game 2 data</a>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5" role="doc-endnote"><p>author of one of my favorite books <strong>Soccermatics</strong><a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6" role="doc-endnote"><p><code>vctrs::obj_print_data</code> that can also handle <a href="https://home.unicode.org/">Unicode</a> easily, although we are not using any Unicode characters here. Also, it is able to handle extra <code>NULL</code>s and <code>[1]</code> that may be printed out if we just use <code>cat</code> or <code>print</code> directly.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7" role="doc-endnote"><p>This is the same data used to generate the first handful of plots.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8" role="doc-endnote"><p><a href="https://adv-r.hadley.nz/r6.html">R6</a> is probably a better OOP system to use for this whole use case. The capability to update instance attributes is more native to that framework.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9" role="doc-endnote"><p>It’s best to separate out logic in functions like this where it makes sense to do so. It ultimately makes re-factoring and debugging a lot easier.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn10" role="doc-endnote"><p>Feel free to check out the source the <a href="https://github.com/tonyelhabr/LaurieOnTracking/blob/master/analysis/01-freestyle-blog.R">code</a> used in the full implementation, as well as the code to generate the plots.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn11" role="doc-endnote"><p><a href="https://raw.githubusercontent.com/anenglishgoat/InteractivePitchControl/master/xT.csv">Here</a> is a CSV with the grid for xT.<a href="#fnref11" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+<!--radix_placeholder_article_footer-->
+<!--/radix_placeholder_article_footer-->
+</div>
+
+<div class="d-appendix">
+</div>
+
+
+<!--radix_placeholder_site_after_body-->
+<!--/radix_placeholder_site_after_body-->
+<!--radix_placeholder_appendices-->
+<div class="appendix-bottom"></div>
+<!--/radix_placeholder_appendices-->
+<!--radix_placeholder_navigation_after_body-->
+<!--/radix_placeholder_navigation_after_body-->
+
+</body>
+
+</html>
