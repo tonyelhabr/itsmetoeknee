@@ -1,20 +1,24 @@
 ---
 title: An Analysis of Texas High School Academic Competition Results, Part 1 - Introduction
-# slug: analysis-texas-high-school-academics-intro
-date: "2018-05-20"
+description: 'An Analysis of Texas High School Academic Competition Results, Part 1 - Introduction'
+author:
+  - name: Tony ElHabr
+    url: 'https://twitter.com/TonyElHabr'
+base_url: 'https//tonyelhabr.rbind.io'
+date: 2018-05-20
 categories:
-  - r
-tags:
   - r
   - texas
   - academics
-image:
-  caption: ""
-  focal_point: ""
-  preview_only: false
-header:
-  caption: ""
-  image: "featured.jpg"
+output: 
+  distill::distill_article:
+    toc: true
+    toc_depth: 3
+    self_contained: false
+preview: featured.jpg
+twitter:
+  site: '@TonyElHabr'
+  creator: '@TonyElHabr'
 ---
 
 <style>

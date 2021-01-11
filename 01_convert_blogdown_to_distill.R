@@ -10,96 +10,129 @@ dirs_post <-
   )
 dirs_post
 
+dirs_post_info <- 
+  dirs_post %>% 
+  fs::file_info() %>% 
+  arrange(desc(birth_time)) %>% 
+  select(path, birth_time)
+dirs_post_info
+
 # loop posts ---
-dir_post <- dirs_post[1]
-paths_post <- dir_post %>% fs::dir_ls()
-paths_post
-# TODO: Check for both Rmd and md here.
-path_index <- paths_post %>% str_subset('index.*md$')
-assertthat::assert_that(length(path_index) == 1L)
-
-metadata <- path_index %>% rmarkdown::yaml_front_matter()
-metadata
-date_post <- metadata[['date']]
-date_post
-dir_parent <- path_index %>% dirname() %>% str_remove_all('(^.*\\/)')
-dir_dst <- fs::path(dir_root, 'itsmetony/_posts', sprintf('%s-%s', date_post, dir_parent))
-fs::dir_create(dir_dst)
-
-paths_post_info <-
-  paths_post %>% 
-  tibble(path_src = .) %>% 
-  mutate(
-    path_dst = path_src %>% basename() %>% fs::path(dir_dst, .)
-  ) %>% 
-  mutate(is_index = path_dst %>% str_detect('index.*md$')) %>% 
-  mutate(
-    across(
-      path_dst, 
-      ~if_else(
-        is_index, 
-        str_replace(.x, 'index', path_src %>% dirname() %>% basename()),
-        .x %>% as.character()
+copy_post <- function(dir_post) {
+  # dir_post <- dirs_post_info$path[2]
+  paths_post <- dir_post %>% fs::dir_ls()
+  paths_post
+  
+  # TODO: Check for both Rmd and md here.
+  path_index <- paths_post %>% str_subset('index[.]md$')
+  assertthat::assert_that(length(path_index) == 1L)
+  
+  metadata <- path_index %>% rmarkdown::yaml_front_matter()
+  metadata
+  date_post <- metadata[['date']]
+  date_post
+  dir_parent <- path_index %>% dirname() %>% str_remove_all('(^.*\\/)')
+  dir_dst <- fs::path(dir_root, 'itsmetony/_posts', sprintf('%s-%s', date_post, dir_parent))
+  fs::dir_create(dir_dst)
+  
+  paths_post_info <-
+    paths_post %>% 
+    str_subset('html$', negate = TRUE) %>% 
+    tibble(path_src = .) %>% 
+    mutate(
+      basename = path_src %>% basename(),
+      path_dst = basename %>% fs::path(dir_dst, .)
+    ) %>% 
+    mutate(is_index = path_dst %>% str_detect('index.*md$')) %>% 
+    mutate(
+      across(
+        path_dst, 
+        list(
+          renamed = ~if_else(
+            is_index, 
+            str_replace(.x, 'index', path_src %>% dirname() %>% basename()),
+            .x %>% as.character()
+          )
+        )
       )
     )
-  )
-paths_post_info
-
-paths_post_info %>% 
-  mutate(res = walk2(path_src, path_dst, ~fs::file_copy(..1, ..2, overwrite = T))) %>% 
-  select(-res)
-
-path_index_new <- paths_post_info %>% filter(is_index) %>% pull(path_dst)
-path_index_new
-metadata_new <- path_index_new %>% rmarkdown::yaml_front_matter()
-lines <- 
-  path_index_new %>% 
-  read_lines() %>% 
-  tibble(line = .) %>% 
-  mutate(idx = row_number()) %>% 
-  relocate(idx)
-lines
-header_idx <- 
-  lines %>% 
-  mutate(is_yaml_stop = line %>% str_detect('^---$')) %>% 
-  filter(is_yaml_stop) %>% 
-  # There may be more due to `---` being used for underlining titles.
-  filter(row_number() <= 2L) %>% 
-  pull(idx)
-header_idx
-
-body <-
-  lines %>% 
-  mutate(is_header = if_else(between(idx, header_idx[1], header_idx[2]), TRUE, FALSE)) %>% 
-  filter(!is_header)
-body
-
-new_header <- glue::glue("
+  paths_post_info
+  
+  paths_post_info %>% 
+    mutate(res = pmap(list(path_src, path_dst, path_dst_renamed), ~fs::file_copy(..1, ..2, overwrite = T) %>% file.rename(..3))) %>% 
+    select(-res)
+  
+  path_index_new <- paths_post_info %>% filter(is_index) %>% pull(path_dst_renamed)
+  path_index_new
+  
+  # Tbere could be 2 of these.
+  rewrite_post <- function(path_index_new) {
+    metadata_new <- path_index_new %>% rmarkdown::yaml_front_matter()
+    
+    lines <- 
+      path_index_new %>% 
+      read_lines() %>% 
+      tibble(line = .) %>% 
+      mutate(idx = row_number()) %>% 
+      relocate(idx)
+    lines
+    
+    header_idx <- 
+      lines %>% 
+      mutate(is_yaml_stop = line %>% str_detect('^---$')) %>% 
+      filter(is_yaml_stop) %>% 
+      # There may be more due to `---` being used for underlining titles.
+      filter(row_number() <= 2L) %>% 
+      pull(idx)
+    header_idx
+    
+    body <-
+      lines %>% 
+      mutate(is_header = if_else(between(idx, header_idx[1], header_idx[2]), TRUE, FALSE)) %>% 
+      filter(!is_header) %>% 
+      # select(line) %>% 
+      pull(line)
+    body
+    
+    new_header <- glue::glue("
 ---
 title: {metadata_new$title}
-description: |
-{metadata_new$title}
+description: '{metadata_new$title}'
 author:
   - name: Tony ElHabr
     url: 'https://twitter.com/TonyElHabr'
 base_url: 'https//tonyelhabr.rbind.io'
 date: {metadata_new$date}
 categories:
-{metadata_new$tags %>% paste0('  - ', .)}
+{metadata_new$tags %>% paste0('  - ', ., collapse = '\n')}
 output: 
   distill::distill_article:
     toc: true
     toc_depth: 3
     self_contained: false
-preview: featured.jpg
+preview: {metadata_new$header$image}
 twitter:
   site: '@TonyElHabr'
   creator: '@TonyElHabr'
 ---
 ")
-new_header
-new_header %>% write_lines('temp.txt')
+    new_header
+    write_lines(c(new_header, body), path_index_new)
+  }
+  path_index_new %>% walk(rewrite_post)
+}
 
+copy_post_safely <- safely(copy_post, otherwise = NULL)
+res_post <-
+  dirs_post_info %>% 
+  # slice(c(1:10)) # %>% 
+  # slice(1) %>% 
+  filter(str_detect(path, 'gallery', negate = TRUE)) %>% 
+  slice(c(11:n())) %>% 
+  mutate(res = map(path, copy_post_safely))
+res_post %>% 
+  unnest_wider(res) %>% 
+  select(error)
 
 # projects ---
 dirs_proj <-

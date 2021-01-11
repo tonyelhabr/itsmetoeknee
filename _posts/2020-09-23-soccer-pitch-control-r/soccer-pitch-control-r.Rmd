@@ -1,27 +1,45 @@
 ---
-title:'S3 Classes and {vctrs} to Create a Soccer Pitch Control Model'
-description: |
-  OOP + R = possible
+title: S3 Classes and {vctrs} to Create a Soccer Pitch Control Model
+description: 'S3 Classes and {vctrs} to Create a Soccer Pitch Control Model'
 author:
   - name: Tony ElHabr
-    url: https://twitter.com/TonyElHabr
-date: 09-23-2020
-base_url: https://tonyelhabr@rbind.io
-output:
+    url: 'https://twitter.com/TonyElHabr'
+base_url: 'https//tonyelhabr.rbind.io'
+date: 2020-09-23
+categories:
+  - r
+  - soccer
+output: 
   distill::distill_article:
     toc: true
     toc_depth: 3
     self_contained: false
-categories:
-  - r
-  - soccer
-  - s3
-  - vctrs
 preview: viz_pc_823_combined.png
 twitter:
   site: '@TonyElHabr'
   creator: '@TonyElHabr'
 ---
+
+```{r setup, include=F, echo=F, cache=F}
+# .dir_proj <- here::here('content', 'post', 'variable-importance-compare')
+# .dir_output <- file.path(.dir_proj, 'output')
+# knitr::opts_knit$set(root.dir = here::here())
+# Apply Claus' workflow?
+knitr::opts_chunk$set(
+  include = FALSE,
+  echo = FALSE,
+  cache = FALSE,
+  eval = FALSE,
+  cache.lazy = FALSE,
+  fig.show = 'hide',
+  fig.align = 'center',
+  fig.width = 8,
+  fig.asp = 0.75,
+  fig.retina = 2,
+  warning = FALSE,
+  message = FALSE
+)
+```
 
 ***Note: This post was update on 2020-09-24 to correct field dimension translations that were previously distorting the pitch control contours. The R analogues now match up much more closely with the python versions after the updates.***
 
@@ -33,7 +51,9 @@ In particular, the [FriendsOfTracking (FOT)](https://www.youtube.com/channel/UCU
 
 [^1]: author of one of my favorite books **Soccermatics**
 
-[Laurie Shaw](https://twitter.com/EightyFivePoint) has shared code that implements the [pitch control model](https://www.youtube.com/watch?v=X9PrwPyolyU) described in [William Spearman](https://twitter.com/the_spearman)'s paper ["Beyond Expected Goals"](http://www.sloansportsconference.com/wp-content/uploads/2018/02/2002.pdf) is interesting to me. The model is different than the one that I used [to create some animations on Twitter](https://twitter.com/TonyElHabr/status/1304766718468857857?s=20). Those were based on the pitch control model described by [Javier Fernandez](https://twitter.com/JaviOnData) and [Luke Bornn](https://twitter.com/lukebornn) in their paper ["Wide Open Spaces"](http://www.sloansportsconference.com/wp-content/uploads/2018/03/1003.pdf) ([code](https://www.robert-hickman.eu/post/fall_back_in_to_space/) courtesy of [Rob Hickman](https://twitter.com/robwhickman)). (Apologies for the onslaught of links!) Now, I am not one for language wars---and, in fact, I use python often---but I thought it would be awesome to be able to plot Spearman's pitch control model directly with `{ggplot2}` and friends. Thus, I set out to convert Laurie's code to R, attempting to give it a "native" R feel while I was at it.
+[Laurie Shaw](https://twitter.com/EightyFivePoint) has shared code that implements the [pitch control model](https://www.youtube.com/watch?v=X9PrwPyolyU) described in [William Spearman](https://twitter.com/the_spearman)'s paper ["Beyond Expected Goals"](http://www.sloansportsconference.com/wp-content/uploads/2018/02/2002.pdf) is interesting to me. The model is different than the one that I used [to create some animations on Twitter](https://twitter.com/TonyElHabr/status/1304766718468857857?s=20). Those were based on the pitch control model described by [Javier Fernandez](https://twitter.com/JaviOnData) and [Luke Bornn](https://twitter.com/lukebornn) in their paper ["Wide Open Spaces"](http://www.sloansportsconference.com/wp-content/uploads/2018/03/1003.pdf) ([code](https://www.robert-hickman.eu/post/fall_back_in_to_space/) courtesy of [Rob Hickman](https://twitter.com/robwhickman)). (Apologies for the onslaught of links!)
+
+Now, I am not one for language wars---and, in fact, I use python often---but I thought it would be awesome to be able to plot Spearman's pitch control model directly with `{ggplot2}` and friends. Thus, I set out to convert Laurie's code to R, attempting to give it a "native" R feel while I was at it.
 
 Most of the process of translating python to R was relatively straightforward (slicing and dicing data frames and arrays/vectors is just part of data cleaning), so I won't detail them here. However, there was one part that was particularly interesting---the conversion of a python class object. This was actually the key (and most challenging part) of the conversion process.
 
@@ -242,20 +262,22 @@ Let's say that we want to calculate the pitch control for a single `frame` in th
 tracking_start
 ```
 
-    ## # A tibble: 26 x 9
-    ##    frame ball_x ball_y side  player_id     x     y   x_v    y_v
-    ##    <int>  <dbl>  <dbl> <chr>     <int> <dbl> <dbl> <dbl>  <dbl>
-    ##  1 53027  93.71  24.56 home          1 90.72 39.37 5.906 -3.985
-    ##  2 53027  93.71  24.56 home          2 95.10 27.14 1.5   -2.023
-    ##  3 53027  93.71  24.56 home          3 96.01 23.32 1.418  2.395
-    ##  4 53027  93.71  24.56 home          4 92.39 15.64 1.005  3.473
-    ##  5 53027  93.71  24.56 home          5 83.96 24.69 4.238  1.2  
-    ##  6 53027  93.71  24.56 home          6 82.19 35.63 3.893 -0.619
-    ##  7 53027  93.71  24.56 home          7 85.79 17.34 1.703  1.523
-    ##  8 53027  93.71  24.56 home          8 76.06 50.16 2.018 -0.493
-    ##  9 53027  93.71  24.56 home          9 61.22 25.35 0.863 -0.77 
-    ## 10 53027  93.71  24.56 home         10 59.69 35.10 0.9   -0.573
-    ## # ... with 16 more rows
+```{r eval=F}
+##  # A tibble: 26 x 9
+##     frame ball_x ball_y side  player_id     x     y   x_v    y_v
+##     <int>  <dbl>  <dbl> <chr>     <int> <dbl> <dbl> <dbl>  <dbl>
+##   1 53027  93.71  24.56 home          1 90.72 39.37 5.906 -3.985
+##   2 53027  93.71  24.56 home          2 95.10 27.14 1.5   -2.023
+##   3 53027  93.71  24.56 home          3 96.01 23.32 1.418  2.395
+##   4 53027  93.71  24.56 home          4 92.39 15.64 1.005  3.473
+##   5 53027  93.71  24.56 home          5 83.96 24.69 4.238  1.2  
+##   6 53027  93.71  24.56 home          6 82.19 35.63 3.893 -0.619
+##   7 53027  93.71  24.56 home          7 85.79 17.34 1.703  1.523
+##   8 53027  93.71  24.56 home          8 76.06 50.16 2.018 -0.493
+##   9 53027  93.71  24.56 home          9 61.22 25.35 0.863 -0.77 
+##  10 53027  93.71  24.56 home         10 59.69 35.10 0.9   -0.573
+##  # ... with 16 more rows
+```
 
 Let's convert players with id's 10 through 12 (on the home team) to `player` instances and see how they look when printed out.
 
@@ -263,17 +285,19 @@ Let's convert players with id's 10 through 12 (on the home team) to `player` ins
 10L:12L %>% map(~player(player_id = .x, frame = 53027L, tracking = tracking_start))
 ```
 
-    ## [[1]]
-    ## <player[1]>
-    ## `player_id = 10` with `position = (10.00, 35.09)` and `velocity = <0.9, -0.6>`
-    ## 
-    ## [[2]]
-    ## <player[1]>
-    ## `player_id = 11` with `position = (11.00, 32.28)` and `velocity = <-0.3, 0.6>`
-    ## 
-    ## [[3]]
-    ## <player[1]>
-    ## `player_id = 12` is not on the pitch
+```{r eval=F}
+##  [[1]]
+##  <player[1]>
+##  `player_id = 10` with `position = (10.00, 35.09)` and `velocity = <0.9, -0.6>`
+##  
+##  [[2]]
+##  <player[1]>
+##  `player_id = 11` with `position = (11.00, 32.28)` and `velocity = <-0.3, 0.6>`
+##  
+##  [[3]]
+##  <player[1]>
+##  `player_id = 12` is not on the pitch
+```
 
 ## Pseudo-Encapsulation
 
@@ -352,14 +376,23 @@ players <- 8L:10L %>% map(~player(player_id = .x, frame = 53027L, tracking = tra
 map(players, ~vctrs::field(.x, 'tti'))
 ```
 
-    ## [[1]]
-    ## [1] -1
-    ## 
-    ## [[2]]
-    ## [1] -1
-    ## 
-    ## [[3]]
-    ## [1] -1
+```{r eval=F}
+## [[1]]
+
+## [1] -1
+
+## 
+
+## [[2]]
+
+## [1] -1
+
+## 
+
+## [[3]]
+
+## [1] -1
+```
 
 ```{r tti-demo, include=T, echo=T, eval=F}
 target_x <- 94
@@ -371,14 +404,23 @@ for(i in seq_along(players)) {
 map(players, ~vctrs::field(.x, 'tti'))
 ```
 
-    ## [[1]]
-    ## [1] 4.92839
-    ## 
-    ## [[2]]
-    ## [1] 10.6878
-    ## 
-    ## [[3]]
-    ## [1] 9.49904
+```{r eval=F}
+## [[1]]
+
+## [1] 4.92839
+
+## 
+
+## [[2]]
+
+## [1] 10.6878
+
+## 
+
+## [[3]]
+
+## [1] 9.49904
+```
 
 Note how the player `tti` values changed after we defined them for a specified `target_x` and `target_y`.
 
@@ -422,7 +464,7 @@ The code to prepare the data for these plots gets more complex, which is why I h
 
 [^10]: Feel free to check out the source the [code](https://github.com/tonyelhabr/LaurieOnTracking/blob/master/analysis/01-freestyle-blog.R) used in the full implementation, as well as the code to generate the plots.
 
-## Conclusion
+# Conclusion
 
 Thus, we see that there is a huge payoff to creating a sound and robust `player` object---we can calculate pitch control and EPV, and feed them into pretty visualizations that can provide insight. I believe that the code here could be easily adapted to fit whatever one would like to study. For example, the valuation grid used here could be easily swapped out with [expected threat (xT)](https://karun.in/blog/expected-threat.html), which is a more modern and probably a better valuation framework than the one used here.[^11] Furthermore, one could calculate EPV across the entire game. The possibilities for analyses really open up.
 
