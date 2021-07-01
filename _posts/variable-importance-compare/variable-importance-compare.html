@@ -7,7 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/>
   <meta name="generator" content="distill" />
-  <link rel="alternate" type="application/rss+xml" href="https://itsmetoeknee.netlify.app/index.xml" />
 
   <style type="text/css">
   /* Hide doc at startup (prevent jankiness while JS renders/transforms) */
@@ -87,635 +86,41 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </style>
 
   <!--radix_placeholder_meta_tags-->
-  <title>Tony Types: Posts</title>
+  <title>Comparing Variable Importance Functions (For Modeling)</title>
+
+  <meta property="description" itemprop="description" content="Comparing Variable Importance Functions (For Modeling)"/>
 
 
-
+  <!--  https://schema.org/Article -->
+  <meta property="article:published" itemprop="datePublished" content="2020-07-13"/>
+  <meta property="article:created" itemprop="dateCreated" content="2020-07-13"/>
+  <meta name="article:author" content="Tony ElHabr"/>
 
   <!--  https://developers.facebook.com/docs/sharing/webmasters#markup -->
-  <meta property="og:title" content="Tony Types: Posts"/>
+  <meta property="og:title" content="Comparing Variable Importance Functions (For Modeling)"/>
   <meta property="og:type" content="article"/>
+  <meta property="og:description" content="Comparing Variable Importance Functions (For Modeling)"/>
   <meta property="og:locale" content="en_US"/>
-  <meta property="og:site_name" content="Tony Types"/>
 
   <!--  https://dev.twitter.com/cards/types/summary -->
   <meta property="twitter:card" content="summary"/>
-  <meta property="twitter:title" content="Tony Types: Posts"/>
+  <meta property="twitter:title" content="Comparing Variable Importance Functions (For Modeling)"/>
+  <meta property="twitter:description" content="Comparing Variable Importance Functions (For Modeling)"/>
+  <meta property="twitter:site" content="@TonyElHabr"/>
+  <meta property="twitter:creator" content="@TonyElHabr"/>
 
   <!--/radix_placeholder_meta_tags-->
   <!--radix_placeholder_rmarkdown_metadata-->
 
   <script type="text/json" id="radix-rmarkdown-metadata">
-  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","site","listing"]}},"value":[{"type":"character","attributes":{},"value":["Posts"]},{"type":"character","attributes":{},"value":["distill::distill_website"]},{"type":"character","attributes":{},"value":["posts"]}]}
+  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","description","author","date","categories","output","preview","twitter"]}},"value":[{"type":"character","attributes":{},"value":["Comparing Variable Importance Functions (For Modeling)"]},{"type":"character","attributes":{},"value":["Comparing Variable Importance Functions (For Modeling)"]},{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","url"]}},"value":[{"type":"character","attributes":{},"value":["Tony ElHabr"]},{"type":"character","attributes":{},"value":["https://twitter.com/TonyElHabr"]}]}]},{"type":"character","attributes":{},"value":["2020-07-13"]},{"type":"character","attributes":{},"value":["r"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["distill::distill_article"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["toc","toc_depth","self_contained"]}},"value":[{"type":"logical","attributes":{},"value":[true]},{"type":"integer","attributes":{},"value":[3]},{"type":"logical","attributes":{},"value":[false]}]}]},{"type":"character","attributes":{},"value":["viz_diamonds_c_rnks.png"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["site","creator"]}},"value":[{"type":"character","attributes":{},"value":["@TonyElHabr"]},{"type":"character","attributes":{},"value":["@TonyElHabr"]}]}]}
   </script>
   <!--/radix_placeholder_rmarkdown_metadata-->
+  
+  <script type="text/json" id="radix-resource-manifest">
+  {"type":"character","attributes":{},"value":["variable-importance-compare_files/anchor-4.2.2/anchor.min.js","variable-importance-compare_files/bowser-1.9.3/bowser.min.js","variable-importance-compare_files/distill-2.2.21/template.v2.js","variable-importance-compare_files/header-attrs-2.8/header-attrs.js","variable-importance-compare_files/jquery-1.11.3/jquery.min.js","variable-importance-compare_files/popper-2.6.0/popper.min.js","variable-importance-compare_files/tippy-6.2.7/tippy-bundle.umd.min.js","variable-importance-compare_files/tippy-6.2.7/tippy-light-border.css","variable-importance-compare_files/tippy-6.2.7/tippy.css","variable-importance-compare_files/tippy-6.2.7/tippy.umd.min.js","variable-importance-compare_files/webcomponents-2.0.0/webcomponents.js","viz_cor_by_engine.png","viz_diamonds_c_rnks.png","viz_diamonds_d_rnks.png","viz_mpg_c_rnks.png","viz_mpg_d_rnks.png"]}
+  </script>
   <!--radix_placeholder_navigation_in_header-->
-  <meta name="distill:offset" content=""/>
-
-  <script type="application/javascript">
-
-    window.headroom_prevent_pin = false;
-
-    window.document.addEventListener("DOMContentLoaded", function (event) {
-
-      // initialize headroom for banner
-      var header = $('header').get(0);
-      var headerHeight = header.offsetHeight;
-      var headroom = new Headroom(header, {
-        tolerance: 5,
-        onPin : function() {
-          if (window.headroom_prevent_pin) {
-            window.headroom_prevent_pin = false;
-            headroom.unpin();
-          }
-        }
-      });
-      headroom.init();
-      if(window.location.hash)
-        headroom.unpin();
-      $(header).addClass('headroom--transition');
-
-      // offset scroll location for banner on hash change
-      // (see: https://github.com/WickyNilliams/headroom.js/issues/38)
-      window.addEventListener("hashchange", function(event) {
-        window.scrollTo(0, window.pageYOffset - (headerHeight + 25));
-      });
-
-      // responsive menu
-      $('.distill-site-header').each(function(i, val) {
-        var topnav = $(this);
-        var toggle = topnav.find('.nav-toggle');
-        toggle.on('click', function() {
-          topnav.toggleClass('responsive');
-        });
-      });
-
-      // nav dropdowns
-      $('.nav-dropbtn').click(function(e) {
-        $(this).next('.nav-dropdown-content').toggleClass('nav-dropdown-active');
-        $(this).parent().siblings('.nav-dropdown')
-           .children('.nav-dropdown-content').removeClass('nav-dropdown-active');
-      });
-      $("body").click(function(e){
-        $('.nav-dropdown-content').removeClass('nav-dropdown-active');
-      });
-      $(".nav-dropdown").click(function(e){
-        e.stopPropagation();
-      });
-    });
-  </script>
-
-  <style type="text/css">
-
-  /* Theme (user-documented overrideables for nav appearance) */
-
-  .distill-site-nav {
-    color: rgba(255, 255, 255, 0.8);
-    background-color: #0F2E3D;
-    font-size: 15px;
-    font-weight: 300;
-  }
-
-  .distill-site-nav a {
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .distill-site-nav a:hover {
-    color: white;
-  }
-
-  @media print {
-    .distill-site-nav {
-      display: none;
-    }
-  }
-
-  .distill-site-header {
-
-  }
-
-  .distill-site-footer {
-
-  }
-
-
-  /* Site Header */
-
-  .distill-site-header {
-    width: 100%;
-    box-sizing: border-box;
-    z-index: 3;
-  }
-
-  .distill-site-header .nav-left {
-    display: inline-block;
-    margin-left: 8px;
-  }
-
-  @media screen and (max-width: 768px) {
-    .distill-site-header .nav-left {
-      margin-left: 0;
-    }
-  }
-
-
-  .distill-site-header .nav-right {
-    float: right;
-    margin-right: 8px;
-  }
-
-  .distill-site-header a,
-  .distill-site-header .title {
-    display: inline-block;
-    text-align: center;
-    padding: 14px 10px 14px 10px;
-  }
-
-  .distill-site-header .title {
-    font-size: 18px;
-    min-width: 150px;
-  }
-
-  .distill-site-header .logo {
-    padding: 0;
-  }
-
-  .distill-site-header .logo img {
-    display: none;
-    max-height: 20px;
-    width: auto;
-    margin-bottom: -4px;
-  }
-
-  .distill-site-header .nav-image img {
-    max-height: 18px;
-    width: auto;
-    display: inline-block;
-    margin-bottom: -3px;
-  }
-
-
-
-  @media screen and (min-width: 1000px) {
-    .distill-site-header .logo img {
-      display: inline-block;
-    }
-    .distill-site-header .nav-left {
-      margin-left: 20px;
-    }
-    .distill-site-header .nav-right {
-      margin-right: 20px;
-    }
-    .distill-site-header .title {
-      padding-left: 12px;
-    }
-  }
-
-
-  .distill-site-header .nav-toggle {
-    display: none;
-  }
-
-  .nav-dropdown {
-    display: inline-block;
-    position: relative;
-  }
-
-  .nav-dropdown .nav-dropbtn {
-    border: none;
-    outline: none;
-    color: rgba(255, 255, 255, 0.8);
-    padding: 16px 10px;
-    background-color: transparent;
-    font-family: inherit;
-    font-size: inherit;
-    font-weight: inherit;
-    margin: 0;
-    margin-top: 1px;
-    z-index: 2;
-  }
-
-  .nav-dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: white;
-    min-width: 200px;
-    border: 1px solid rgba(0,0,0,0.15);
-    border-radius: 4px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.1);
-    z-index: 1;
-    margin-top: 2px;
-    white-space: nowrap;
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-
-  .nav-dropdown-content hr {
-    margin-top: 4px;
-    margin-bottom: 4px;
-    border: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  }
-
-  .nav-dropdown-active {
-    display: block;
-  }
-
-  .nav-dropdown-content a, .nav-dropdown-content .nav-dropdown-header {
-    color: black;
-    padding: 6px 24px;
-    text-decoration: none;
-    display: block;
-    text-align: left;
-  }
-
-  .nav-dropdown-content .nav-dropdown-header {
-    display: block;
-    padding: 5px 24px;
-    padding-bottom: 0;
-    text-transform: uppercase;
-    font-size: 14px;
-    color: #999999;
-    white-space: nowrap;
-  }
-
-  .nav-dropdown:hover .nav-dropbtn {
-    color: white;
-  }
-
-  .nav-dropdown-content a:hover {
-    background-color: #ddd;
-    color: black;
-  }
-
-  .nav-right .nav-dropdown-content {
-    margin-left: -45%;
-    right: 0;
-  }
-
-  @media screen and (max-width: 768px) {
-    .distill-site-header a, .distill-site-header .nav-dropdown  {display: none;}
-    .distill-site-header a.nav-toggle {
-      float: right;
-      display: block;
-    }
-    .distill-site-header .title {
-      margin-left: 0;
-    }
-    .distill-site-header .nav-right {
-      margin-right: 0;
-    }
-    .distill-site-header {
-      overflow: hidden;
-    }
-    .nav-right .nav-dropdown-content {
-      margin-left: 0;
-    }
-  }
-
-
-  @media screen and (max-width: 768px) {
-    .distill-site-header.responsive {position: relative; min-height: 500px; }
-    .distill-site-header.responsive a.nav-toggle {
-      position: absolute;
-      right: 0;
-      top: 0;
-    }
-    .distill-site-header.responsive a,
-    .distill-site-header.responsive .nav-dropdown {
-      display: block;
-      text-align: left;
-    }
-    .distill-site-header.responsive .nav-left,
-    .distill-site-header.responsive .nav-right {
-      width: 100%;
-    }
-    .distill-site-header.responsive .nav-dropdown {float: none;}
-    .distill-site-header.responsive .nav-dropdown-content {position: relative;}
-    .distill-site-header.responsive .nav-dropdown .nav-dropbtn {
-      display: block;
-      width: 100%;
-      text-align: left;
-    }
-  }
-
-  /* Site Footer */
-
-  .distill-site-footer {
-    width: 100%;
-    overflow: hidden;
-    box-sizing: border-box;
-    z-index: 3;
-    margin-top: 30px;
-    padding-top: 30px;
-    padding-bottom: 30px;
-    text-align: center;
-  }
-
-  /* Headroom */
-
-  d-title {
-    padding-top: 6rem;
-  }
-
-  @media print {
-    d-title {
-      padding-top: 4rem;
-    }
-  }
-
-  .headroom {
-    z-index: 1000;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-  }
-
-  .headroom--transition {
-    transition: all .4s ease-in-out;
-  }
-
-  .headroom--unpinned {
-    top: -100px;
-  }
-
-  .headroom--pinned {
-    top: 0;
-  }
-
-  /* adjust viewport for navbar height */
-  /* helps vertically center bootstrap (non-distill) content */
-  .min-vh-100 {
-    min-height: calc(100vh - 100px) !important;
-  }
-
-  </style>
-
-  <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
-  <link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet"/>
-  <link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet"/>
-  <script src="site_libs/headroom-0.9.4/headroom.min.js"></script>
-  <script src="site_libs/autocomplete-0.37.1/autocomplete.min.js"></script>
-  <script src="site_libs/fuse-6.4.1/fuse.min.js"></script>
-
-  <script type="application/javascript">
-
-  function getMeta(metaName) {
-    var metas = document.getElementsByTagName('meta');
-    for (let i = 0; i < metas.length; i++) {
-      if (metas[i].getAttribute('name') === metaName) {
-        return metas[i].getAttribute('content');
-      }
-    }
-    return '';
-  }
-
-  function offsetURL(url) {
-    var offset = getMeta('distill:offset');
-    return offset ? offset + '/' + url : url;
-  }
-
-  function createFuseIndex() {
-
-    // create fuse index
-    var options = {
-      keys: [
-        { name: 'title', weight: 20 },
-        { name: 'categories', weight: 15 },
-        { name: 'description', weight: 10 },
-        { name: 'contents', weight: 5 },
-      ],
-      ignoreLocation: true,
-      threshold: 0
-    };
-    var fuse = new window.Fuse([], options);
-
-    // fetch the main search.json
-    return fetch(offsetURL('search.json'))
-      .then(function(response) {
-        if (response.status == 200) {
-          return response.json().then(function(json) {
-            // index main articles
-            json.articles.forEach(function(article) {
-              fuse.add(article);
-            });
-            // download collections and index their articles
-            return Promise.all(json.collections.map(function(collection) {
-              return fetch(offsetURL(collection)).then(function(response) {
-                if (response.status === 200) {
-                  return response.json().then(function(articles) {
-                    articles.forEach(function(article) {
-                      fuse.add(article);
-                    });
-                  })
-                } else {
-                  return Promise.reject(
-                    new Error('Unexpected status from search index request: ' +
-                              response.status)
-                  );
-                }
-              });
-            })).then(function() {
-              return fuse;
-            });
-          });
-
-        } else {
-          return Promise.reject(
-            new Error('Unexpected status from search index request: ' +
-                        response.status)
-          );
-        }
-      });
-  }
-
-  window.document.addEventListener("DOMContentLoaded", function (event) {
-
-    // get search element (bail if we don't have one)
-    var searchEl = window.document.getElementById('distill-search');
-    if (!searchEl)
-      return;
-
-    createFuseIndex()
-      .then(function(fuse) {
-
-        // make search box visible
-        searchEl.classList.remove('hidden');
-
-        // initialize autocomplete
-        var options = {
-          autoselect: true,
-          hint: false,
-          minLength: 2,
-        };
-        window.autocomplete(searchEl, options, [{
-          source: function(query, callback) {
-            const searchOptions = {
-              isCaseSensitive: false,
-              shouldSort: true,
-              minMatchCharLength: 2,
-              limit: 10,
-            };
-            var results = fuse.search(query, searchOptions);
-            callback(results
-              .map(function(result) { return result.item; })
-            );
-          },
-          templates: {
-            suggestion: function(suggestion) {
-              var img = suggestion.preview && Object.keys(suggestion.preview).length > 0
-                ? `<img src="${offsetURL(suggestion.preview)}"</img>`
-                : '';
-              var html = `
-                <div class="search-item">
-                  <h3>${suggestion.title}</h3>
-                  <div class="search-item-description">
-                    ${suggestion.description || ''}
-                  </div>
-                  <div class="search-item-preview">
-                    ${img}
-                  </div>
-                </div>
-              `;
-              return html;
-            }
-          }
-        }]).on('autocomplete:selected', function(event, suggestion) {
-          window.location.href = offsetURL(suggestion.path);
-        });
-        // remove inline display style on autocompleter (we want to
-        // manage responsive display via css)
-        $('.algolia-autocomplete').css("display", "");
-      })
-      .catch(function(error) {
-        console.log(error);
-      });
-
-  });
-
-  </script>
-
-  <style type="text/css">
-
-  .nav-search {
-    font-size: x-small;
-  }
-
-  /* Algolioa Autocomplete */
-
-  .algolia-autocomplete {
-    display: inline-block;
-    margin-left: 10px;
-    vertical-align: sub;
-    background-color: white;
-    color: black;
-    padding: 6px;
-    padding-top: 8px;
-    padding-bottom: 0;
-    border-radius: 6px;
-    border: 1px #0F2E3D solid;
-    width: 180px;
-  }
-
-
-  @media screen and (max-width: 768px) {
-    .distill-site-nav .algolia-autocomplete {
-      display: none;
-      visibility: hidden;
-    }
-    .distill-site-nav.responsive .algolia-autocomplete {
-      display: inline-block;
-      visibility: visible;
-    }
-    .distill-site-nav.responsive .algolia-autocomplete .aa-dropdown-menu {
-      margin-left: 0;
-      width: 400px;
-      max-height: 400px;
-    }
-  }
-
-  .algolia-autocomplete .aa-input, .algolia-autocomplete .aa-hint {
-    width: 90%;
-    outline: none;
-    border: none;
-  }
-
-  .algolia-autocomplete .aa-hint {
-    color: #999;
-  }
-  .algolia-autocomplete .aa-dropdown-menu {
-    width: 550px;
-    max-height: 70vh;
-    overflow-x: visible;
-    overflow-y: scroll;
-    padding: 5px;
-    margin-top: 3px;
-    margin-left: -150px;
-    background-color: #fff;
-    border-radius: 5px;
-    border: 1px solid #999;
-    border-top: none;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion {
-    cursor: pointer;
-    padding: 5px 4px;
-    border-bottom: 1px solid #eee;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion:last-of-type {
-    border-bottom: none;
-    margin-bottom: 2px;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item {
-    overflow: hidden;
-    font-size: 0.8em;
-    line-height: 1.4em;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item h3 {
-    font-size: 1rem;
-    margin-block-start: 0;
-    margin-block-end: 5px;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item-description {
-    display: inline-block;
-    overflow: hidden;
-    height: 2.8em;
-    width: 80%;
-    margin-right: 4%;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item-preview {
-    display: inline-block;
-    width: 15%;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item-preview img {
-    height: 3em;
-    width: auto;
-    display: none;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item-preview img[src] {
-    display: initial;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion.aa-cursor {
-    background-color: #eee;
-  }
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion em {
-    font-weight: bold;
-    font-style: normal;
-  }
-
-  </style>
-
-
   <!--/radix_placeholder_navigation_in_header-->
   <!--radix_placeholder_distill-->
 
@@ -2031,681 +1436,139 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   </script>
 
   <!--/radix_placeholder_distill-->
-  <script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
-  <script src="site_libs/popper-2.6.0/popper.min.js"></script>
-  <link href="site_libs/tippy-6.2.7/tippy.css" rel="stylesheet" />
-  <link href="site_libs/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
-  <script src="site_libs/tippy-6.2.7/tippy.umd.min.js"></script>
-  <script src="site_libs/anchor-4.2.2/anchor.min.js"></script>
-  <script src="site_libs/bowser-1.9.3/bowser.min.js"></script>
-  <script src="site_libs/webcomponents-2.0.0/webcomponents.js"></script>
-  <script src="site_libs/distill-2.2.21/template.v2.js"></script>
+  <script src="variable-importance-compare_files/header-attrs-2.8/header-attrs.js"></script>
+  <script src="variable-importance-compare_files/jquery-1.11.3/jquery.min.js"></script>
+  <script src="variable-importance-compare_files/popper-2.6.0/popper.min.js"></script>
+  <link href="variable-importance-compare_files/tippy-6.2.7/tippy.css" rel="stylesheet" />
+  <link href="variable-importance-compare_files/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
+  <script src="variable-importance-compare_files/tippy-6.2.7/tippy.umd.min.js"></script>
+  <script src="variable-importance-compare_files/anchor-4.2.2/anchor.min.js"></script>
+  <script src="variable-importance-compare_files/bowser-1.9.3/bowser.min.js"></script>
+  <script src="variable-importance-compare_files/webcomponents-2.0.0/webcomponents.js"></script>
+  <script src="variable-importance-compare_files/distill-2.2.21/template.v2.js"></script>
   <!--radix_placeholder_site_in_header-->
-  <style type="text/css">
-  .distill-site-nav {
-    font-family: 'Karla', sans-serif;
-    color: #000;
-    background-color: #fff;
-    font-size: 15px;
-    font-weight: 400;
-  }
-
-  .distill-site-header {
-    font-family: 'Karla', sans-serif;
-    color: #000;
-    background-color: #fff;
-    font-size: 15px;
-    font-weight: 400;
-  }
-
-  @import url('https://fonts.googleapis.com/css2?family=Lato');
-  @import url('https://fonts.googleapis.com/css2?family=Karla');
-  @import url('https://fonts.googleapis.com/css2?family=Fira+Code');
-
-  html,
-  body,
-  p {
-    font-family: 'Lato', sans-serif;
-    font-weight: 200;
-    line-height: 1.3;
-    font-size: 1em;
-    color: #333333;
-    font-style: normal;
-  }
-
-  code {
-    font-family: 'Fira Code', sans-serif;
-    /* color: #383838; */
-    background: #ffffff;
-    /* font-weight: 400; */
-    font-size: 0.9em;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5 {
-    font-family: 'Karla', sans-serif;
-  }
-
-  .distill-site-nav a {
-    font-family: 'Karla', sans-serif;
-    font-weight: 500;
-    font-size: 15px;
-    color: #000;
-    text-decoration: none;
-  }
-
-  .distill-site-nav a:hover {
-    color: #A020F0;
-  }
-
-  .nav-dropdown-content a {
-    font-family: 'Karla', sans-serif;
-    font-weight: 500;
-    color: #ffffff;
-  }
-
-  .distill-site-header {
-    font-family: 'Karla', sans-serif;
-    font-weight: 500;
-    background-color: #ffffff;
-  }
-
-  .distill-site-footer {
-    background-color: #000;
-    color: #ffffff;
-  }
-
-  @media print {
-    .distill-site-nav {
-      display: none;
-    }
-  }
-
-  details {
-    background-color: hsla(60, 7%, 80%, 0.2);
-    cursor: pointer;
-    color: #2d2d2d;
-    margin-bottom: 1vh;
-    padding: 1em;
-    border: none;
-    text-align: left;
-    outline: none;
-  }
-
-  .active,
-  details:hover {
-    transition: max-height 0.2s ease-out;
-    /* background-color: #acc2c2; */
-  }
-
-  details {
-    display: flex;
-    justify-content: space-between;
-    align-content: center;
-    border-radius: 4px;
-  }
-
-  details.active {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
-  summary::-webkit-details-marker {
-    display: none;
-  }
-
-  summary::after {
-    float: right;
-    font-family: 'Font Awesome 5 Free';
-    content: '\f0fe';
-  }
-
-  details[open] summary::after {
-    float: right;
-    font-family: 'Font Awesome 5 Free';
-    content: '\f146';
-  }
-
-  details h4 {
-    margin: 0;
-    color: #2d2d2d !important;
-    line-height: inherit;
-  }
-
-  </style>
   <!--/radix_placeholder_site_in_header-->
 
-  <link rel="stylesheet" href="styles.css" type="text/css"/>
 
 </head>
 
-<body class="layout-listing">
+<body>
 
 <!--radix_placeholder_front_matter-->
 
 <script id="distill-front-matter" type="text/json">
-{"title":"Posts","authors":[]}
+{"title":"Comparing Variable Importance Functions (For Modeling)","description":"Comparing Variable Importance Functions (For Modeling)","authors":[{"author":"Tony ElHabr","authorURL":"https://twitter.com/TonyElHabr","affiliation":"&nbsp;","affiliationURL":"#","orcidID":""}],"publishedDate":"2020-07-13T00:00:00.000-05:00","citationText":"ElHabr, 2020"}
 </script>
 
 <!--/radix_placeholder_front_matter-->
 <!--radix_placeholder_navigation_before_body-->
-<header class="header header--fixed" role="banner">
-<nav class="distill-site-nav distill-site-header">
-<div class="nav-left">
-<a href="index.html" class="title">Tony Types</a>
-<input id="distill-search" class="nav-search hidden" type="text" placeholder="Search..."/>
-</div>
-<div class="nav-right">
-<a href="index.html">Home</a>
-<a href="about.html">About</a>
-<a href="projects.html">Projects</a>
-<a href="javascript:void(0);" class="nav-toggle">&#9776;</a>
-</div>
-</nav>
-</header>
 <!--/radix_placeholder_navigation_before_body-->
 <!--radix_placeholder_site_before_body-->
 <!--/radix_placeholder_site_before_body-->
-<!--radix_placeholder_article_listing-->
-
-
-<script type="application/javascript">
-
-function init_posts_list() {
-
-  function load_image(img) {
-    var src = $(img).attr('data-src');
-    if (src) {
-      $(img).attr('src', src);
-      $(img).load(function() {
-        img.removeAttribute('data-src');
-      });
-    }
-  }
-
-  function set_posts_visible(posts, visible) {
-    if (visible) {
-
-      // show bottom border by default
-      $(posts).removeClass('post-preview-last');
-
-      // apply limits if need be
-      var max_posts = 25;
-      var apply_limits = $('.posts-container').hasClass('posts-apply-limit');
-      if (apply_limits && posts.length > max_posts) {
-        posts = $(posts).slice(0, max_posts);
-      } else {
-        $('.posts-more a').addClass('hidden');
-      }
-
-      // apply last style
-      $(posts.slice(-1)[0]).addClass('post-preview-last');
-
-      $(posts).removeClass('hidden');
-      $(posts).find('img[data-src]').each(function(i, img) {
-        load_image(img);
-      });
-    } else {
-      $(posts).addClass('hidden');
-    }
-  }
-
-  function apply_hash_filter() {
-
-    // clear active state
-    $('.categories .active').removeClass('active');
-
-    // mark all posts invisible to start
-    set_posts_visible($('.posts-list').children('a'), false);
-
-    // if we have a hash filter
-    if (window.location.hash && window.location.hash.startsWith("#category:")) {
-
-      // mark posts that match the category visible
-      var page_category = window.location.hash.replace(/^#category:/, "");
-      var posts = $('.post-metadata').map(function(idx, script) {
-        var metadata = $.parseJSON($(script).html());
-        var post = null;
-        $.each(metadata.categories, function(idx, category) {
-          category = category.replace(/ /g,"_");
-          if ((page_category || '').toLowerCase() === "articles" || category === page_category) {
-            post = $(script).parent().get();
-            return false;
-          }
-        });
-        return post;
-      });
-      set_posts_visible(posts, true);
-
-      // mark the hash active
-      $('.categories li>a[href="' + window.location.hash + '"]').addClass('active');
-
-      // update the list_caption
-      var list_caption = $('.posts-list-caption');
-      var caption = (page_category || '').toLowerCase() === "articles"
-        ? list_caption.attr('data-caption')
-        : ('Category: ' + page_category.replace(/_/g," "));
-      list_caption.text(caption);
-
-    } else {
-
-      // no hash filter, make all posts visible (subject to max display)
-      set_posts_visible($('.posts-list').children(), true);
-
-      // reset list caption
-      var list_caption = $('.posts-list-caption');
-      list_caption.text(list_caption.attr('data-caption'));
-
-
-    }
-  }
-
-  // more articles
-  function apply_post_limits(apply) {
-    if (apply) {
-      $('.posts-container').addClass('posts-apply-limit');
-      $('.posts-more a').removeClass('hidden');
-    } else {
-      $('.posts-container').removeClass('posts-apply-limit');
-      $('.posts-more a').addClass('hidden');
-    }
-  }
-
-  // click handling for tags
-  $('.dt-tag').click(function(ev) {
-    window.location.hash = '#category:' + $(this).text().replace(/ /g, "_");
-    return false;
-  })
-
-  // hash filter handling
-  apply_hash_filter();
-  $(window).on('hashchange',function() {
-    apply_post_limits(true);
-    apply_hash_filter();
-  });
-
-  // more articles link
-  $('.posts-more a').click(function(e) {
-    e.preventDefault();
-    apply_post_limits(false);
-    apply_hash_filter();
-    return false;
-  });
-
-}
-
-</script>
-
-
-
-<div class="posts-container posts-with-sidebar posts-apply-limit l-screen-inset">
-<div class="posts-list">
-<h1 class="posts-list-caption" data-caption="Posts">Posts</h1>
-<a href="posts/dimensionality-reduction-and-clustering/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer"]}</script>
-<div class="metadata">
-<div class="publishedDate">June 30, 2021</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/dimensionality-reduction-and-clustering/featured.png"/>
-</div>
-<div class="description">
-<h2>Tired: PCA + kmeans, Wired: UMAP + GMM</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">soccer</div>
-</div>
-<p>Tired: PCA + kmeans, Wired: UMAP + GMM</p>
-</div>
-</a>
-<a href="posts/soccer-league-strength/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer"]}</script>
-<div class="metadata">
-<div class="publishedDate">June 26, 2021</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/soccer-league-strength/featured.png"/>
-</div>
-<div class="description">
-<h2>Quantifying Relative Soccer League Strength</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">soccer</div>
-</div>
-<p>Quantifying Relative Soccer League Strength</p>
-</div>
-</a>
-<a href="posts/fantasy-football-schedule-problem/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","python","football (american)"]}</script>
-<div class="metadata">
-<div class="publishedDate">Jan. 11, 2021</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/fantasy-football-schedule-problem/viz_standings_tile_2020.png"/>
-</div>
-<div class="description">
-<h2>Fantasy Football and the Classical Scheduling Problem</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">python</div>
-<div class="dt-tag">football (american)</div>
-</div>
-<p>Fantasy Football and the Classical Scheduling Problem</p>
-</div>
-</a>
-<a href="posts/decomposition-smoothing-soccer/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer","reticulate","data.table","spatstat","tidyverse"]}</script>
-<div class="metadata">
-<div class="publishedDate">Oct. 14, 2020</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_smooth.png"/>
-</div>
-<div class="description">
-<h2>Decomposition and Smoothing with data.table, reticulate, and spatstat</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">soccer</div>
-<div class="dt-tag">reticulate</div>
-<div class="dt-tag">data.table</div>
-<div class="dt-tag">spatstat</div>
-<div class="dt-tag">tidyverse</div>
-</div>
-<p>Decomposition and Smoothing with data.table, reticulate, and spatstat</p>
-</div>
-</a>
-<a href="posts/soccer-pitch-control-r/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","python","soccer"]}</script>
-<div class="metadata">
-<div class="publishedDate">Sept. 23, 2020</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/soccer-pitch-control-r/viz_pc_823_combined.png"/>
-</div>
-<div class="description">
-<h2>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">python</div>
-<div class="dt-tag">soccer</div>
-</div>
-<p>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</p>
-</div>
-</a>
-<a href="posts/variable-importance-compare/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">July 13, 2020</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/variable-importance-compare/viz_diamonds_c_rnks.png"/>
-</div>
-<div class="description">
-<h2>Comparing Variable Importance Functions (For Modeling)</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Comparing Variable Importance Functions (For Modeling)</p>
-</div>
-</a>
-<a href="posts/bayesian-statistics-english-premier-league/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer"]}</script>
-<div class="metadata">
-<div class="publishedDate">Dec. 13, 2019</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/bayesian-statistics-english-premier-league/viz_summ_1_z_adj.png"/>
-</div>
-<div class="description">
-<h2>A Bayesian Approach to Ranking English Premier League Teams (using R)</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">soccer</div>
-</div>
-<p>A Bayesian Approach to Ranking English Premier League Teams (using R)</p>
-</div>
-</a>
-<a href="posts/cheat-sheet-rmarkdown/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","latex"]}</script>
-<div class="metadata">
-<div class="publishedDate">July 7, 2019</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/cheat-sheet-rmarkdown/cheat-sheet-example.png"/>
-</div>
-<div class="description">
-<h2>Making a Cheat Sheet with Rmarkdown</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">latex</div>
-</div>
-<p>Making a Cheat Sheet with Rmarkdown</p>
-</div>
-</a>
-<a href="posts/text-parsing-analysis-periodic-report/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">June 29, 2019</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/text-parsing-analysis-periodic-report/viz_words_section_tfidf.PNG"/>
-</div>
-<div class="description">
-<h2>Text Parsing and Text Analysis of a Periodic Report (with R)</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Text Parsing and Text Analysis of a Periodic Report (with R)</p>
-</div>
-</a>
-<a href="posts/rstudio-conf-2019-summary/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">Jan. 27, 2019</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/rstudio-conf-2019-summary/headliner.jpg"/>
-</div>
-<div class="description">
-<h2>Summarizing rstudio::conf 2019 Summaries with Tidy Text Techniques</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Summarizing rstudio::conf 2019 Summaries with Tidy Text Techniques</p>
-</div>
-</a>
-<a href="posts/nested-json-to-tidy-data-frame-r/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">Oct. 20, 2018</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/nested-json-to-tidy-data-frame-r/featured.jpg"/>
-</div>
-<div class="description">
-<h2>Converting nested JSON to a tidy data frame with R</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Converting nested JSON to a tidy data frame with R</p>
-</div>
-</a>
-<a href="posts/using-flexdashboard/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">April 30, 2018</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/using-flexdashboard/featured.jpg"/>
-</div>
-<div class="description">
-<h2>Thoughts on Using Flexdashboard</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Thoughts on Using Flexdashboard</p>
-</div>
-</a>
-<a href="posts/tidy-text-analysis-rweekly/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">March 5, 2018</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/tidy-text-analysis-rweekly/featured.jpg"/>
-</div>
-<div class="description">
-<h2>A Tidy Text Analysis of R Weekly Posts</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>A Tidy Text Analysis of R Weekly Posts</p>
-</div>
-</a>
-<a href="posts/interval-data-nycflights13/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">Feb. 17, 2018</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/interval-data-nycflights13/featured.jpg"/>
-</div>
-<div class="description">
-<h2>Dealing with Interval Data and the nycflights13 package using R</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Dealing with Interval Data and the nycflights13 package using R</p>
-</div>
-</a>
-<a href="posts/visualizing-nba-team-schedule/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">Nov. 26, 2017</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/visualizing-nba-team-schedule/featured.jpg"/>
-</div>
-<div class="description">
-<h2>Visualizing an NBA Team's Schedule Using R</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Visualizing an NBA Team's Schedule Using R</p>
-</div>
-</a>
-</div>
-<div class="posts-sidebar">
-<div class="sidebar-section categories">
-<h3>Categories</h3>
-<ul>
-<li>
-<a href="#category:articles">articles</a>
-<span class="category-count">(15)</span>
-</li>
-<li>
-<a href="#category:data.table">data.table</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:football_(american)">football (american)</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:latex">latex</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:python">python</a>
-<span class="category-count">(2)</span>
-</li>
-<li>
-<a href="#category:r">r</a>
-<span class="category-count">(15)</span>
-</li>
-<li>
-<a href="#category:reticulate">reticulate</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:soccer">soccer</a>
-<span class="category-count">(5)</span>
-</li>
-<li>
-<a href="#category:spatstat">spatstat</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:tidyverse">tidyverse</a>
-<span class="category-count">(1)</span>
-</li>
-</ul>
-</div>
-</div>
-<div class="posts-more">
-<a href="#">More articles &raquo;</a>
-</div>
-</div>
-<!--/radix_placeholder_article_listing-->
 
 <div class="d-title">
-<h1>Posts</h1>
+<h1>Comparing Variable Importance Functions (For Modeling)</h1>
 <!--radix_placeholder_categories-->
+<div class="dt-tags">
+<div class="dt=tag">r</div>
+</div>
 <!--/radix_placeholder_categories-->
-
+<p>Comparing Variable Importance Functions (For Modeling)</p>
 </div>
 
+<div class="d-byline">
+  Tony ElHabr <a href="https://twitter.com/TonyElHabr" class="uri">https://twitter.com/TonyElHabr</a> 
+  
+<br/>2020-07-13
+</div>
 
 <div class="d-article">
+<div class="d-contents d-contents-float">
+<nav class="l-text toc figcaption" id="TOC">
+<h3>Contents</h3>
+<ul>
+<li><a href="#setup">Setup</a></li>
+<li><a href="#results">Results</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ul>
+</nav>
+</div>
+<p>I’ve been doing some machine learning recently, and one thing that keeps popping up is the need to explain the models and their components. There are a variety of ways to go about explaining model features, but probably the most common approach is to use <a href="https://stats.stackexchange.com/questions/332960/what-is-variable-importance">variable (or feature) importance</a> scores. Unfortunately, computing variable importance scores isn’t as straightforward as one might hope—there are a variety of methodologies! Upon implementation, I came to the question “How similar are the variable importance scores calculated using different methodologies?” <a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> I think it’s important to know if the different methods will lead to drastically different results. If so, then the choice of method is a source of bias in model interpretation, which is not ideal.</p>
+<p>This post isn’t intended to be a deep-dive into <a href="https://christophm.github.io/interpretable-ml-book/">model interpretability</a> or variable importance, but some concepts should be highlighted before attempting to answer this question. Generally, variable importance can be categorized as either being <a href="https://topepo.github.io/caret/variable-importance.html">“model-specific”</a> or <a href="https://christophm.github.io/interpretable-ml-book/agnostic.html">“model-agnostic”</a>. Both depend upon some kind of loss function, e.g. <a href="https://en.wikipedia.org/wiki/Root-mean-square_deviation">root mean squared error (RMSE)</a>, <a href="https://en.wikipedia.org/wiki/Confusion_matrix">classification error</a>, etc. The loss function for a model-specific approach will generally be “fixed” by the software and package that are used<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, while model-agnostic approaches tend to give the user flexibility in choosing a loss function. Finally, within model-agnostic approaches, there are different methods, e.g. <a href="https://christophm.github.io/interpretable-ml-book/feature-importance.html">permutation</a> and <a href="https://christophm.github.io/interpretable-ml-book/shap.html">SHAP (Shapley Additive Explanations)</a>.</p>
+<p>So, to summarize, variable importance “methodologies” can be broken down in several ways:</p>
+<ol type="1">
+<li>model-specific vs. model-agnostic approach</li>
+<li>loss function 3 . model agnostic method (given a model agnostic approach)</li>
+</ol>
+<p>I’m going to attempt to address (1) and (3) above. I’m leaving (2) out because (a) I think the results won’t differ too much when using different loss functions (although I haven’t verified this assumption) and (b) for the sake of simplicity, I don’t want to be too exhaustive in this analysis. <a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
+<p>I also want to evaluate how variable importance scores differ across more than one of each of the following:</p>
+<ol type="1">
+<li>model type (e.g. linear regression, decision trees, etc.)</li>
+<li>type of target variables (continuous or discrete )</li>
+<li>data set</li>
+</ol>
+<p>While evaluating the sensitivity of variable importance score to different methodologies is the focus of this analysis, I think it’s important to test how the findings hold up when (1) varying model types, (2) varying target variables, and (3) varying the data itself. This should help us highlight any kind of bias in the results due to choice of model type and type of target variable. Put another way, it should help us quantify the robustness the conclusions that are drawn. If we find that the scores are similar under variation, then we can be more confident that the findings can be generalized.</p>
+<p>Additionally, I’m going to use more than one package for computing variable importance scores. As with varying model types, outcome variables, and data, the purpose is to highlight and quantify possible bias due to choices in this analysis—in this case, the choice of package. Are the results of a permutation-based variable importance calculation the same when using different packages (holding all else equal)?</p>
+<p>Specifically, I’ll be using the <a href="https://cran.r-project.org/web/packages/vip/index.html"><code>{vip}</code></a> and <a href="https://cran.r-project.org/web/packages/DALEX/index.html"><code>{DALEX}</code></a> packages. The <code>{vip}</code> package is my favorite package to compute variable importance scores using Ris because it is capable of doing both types of calculations (model-specific and model-agnostic) for a variety of model types. But other packages are also great. <code>{DALEX}</code> package specializes in model-agnostic model interpretability and can do a lot more than just variable importance calculations.</p>
+<h1 id="setup">Setup</h1>
+<p>For data, I’m going to be using two data sets from <code>{ggplot2}</code>. <a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
+<p>increase computation time. (b) I’ve excluded two of the categorical features—<code>clarity</code> and <code>color</code>, both of which are categorical with a handful of levels. I’ve done this in order to reduce the number of variables involved and, consequently, to speed up computation. (This is just an example after all!) (c) To test how variable importance scores differ for a continuous target variable, I’ll be defining models that predict <code>price</code> as a function of all other variables. (d) For discrete predictions, the target is a binary variable <code>grp</code> that I’ve added. It is equal to <code>'1. Good'</code> when <code>cut %in% c('Idea', 'Premium')</code> and <code>2. Bad'</code> otherwise. It just so happens that <code>grp</code> is relatively evenly balanced between the two levels, so there should not be any bias in the results due to class imbalance.</p>
+<p>I made modifications to both, so see the footnotes and/or code if you’re interested in the detailI made modifications to both, so see the footnotes and/or code if you’re interested in the details.</p>
+<ol start="19" type="a">
+<li></li>
+</ol>
+<p>For model types, I’m going to trial the following:</p>
+<ol type="1">
+<li><a href="https://en.wikipedia.org/wiki/Generalized_linear_model">generalized linear model (linear and logistic regression)</a> with <code>stats::lm()</code> and <code>stats::glm()</code> respective ly</li>
+<li><a href="https://en.wikipedia.org/wiki/Regularized_least_squares">generalized linear model with regularization</a> using the <a href="https://cran.r-project.org/web/packages/glmnet/index.ht%20ml"><code>{glmnet}</code> package</a></li>
+<li>bagged tree (<a href="https://en.wikipedia.org/wiki/Random_forest">random forest</a>) using the <a href="https://cran.r-project.org/web/packages/ranger/index.h%20tml"><code>{ranger}</code> package</a></li>
+<li>boosted tree (extreme <a href="https://en.wikipedia.org/wiki/Gradient_boosting">gradient boosting</a>) using the <a href="https://cran.r-project.org/web/packages/xgboost/index.html"><code>{xgboost}</code> package</a></li>
+</ol>
+<p>With <code>glmnet::glmnet()</code>, I’m actually not going to use a penalty, so (I think) it should return the same results as <code>lm()</code>/<code>glm()</code>. <a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a> For <code>{ranger}</code> and <code>{xgboost}</code>, I’m going to be using defaults for all parameters. <a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
+<ol type="1">
+<li><code>{vip}</code>’s model-specific scores with (<code>vip::vip(method = 'mod l')</code>)</li>
+<li><code>{vip}</code>’s permutation-based scores (with <code>vip::vip(method = 'permute')</code>)</li>
+<li><code>{vip}</code>’s SHAP-based values (with <code>vip::vip(method = 'shap')</code>)</li>
+<li><a href="https://pbiecek.github.io/ema/featureImportance.html"><code>{DALEX}</code>’s permutation-based scores</a> (with <code>DALEX::variable_importance()</code>)</li>
+</ol>
+<p>Note that the model-specific vs. model-agnostic concern is addressed in comparing method (1) vs. methods (2)-(4). I’ll be consistent with the loss function in variable importance computations for the model-agnostic methods–minimization of RMSE for a continuous target variable and <a href="https://en.wikipedia.org/wiki/Residual_sum_of_squares">sum of squared errors (SSE)</a> for a discrete target variable. <a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></p>
+<h1 id="results">Results</h1>
+<p>The following handful of plots illustrate normalized variable importance scores and ranks derived from the scores by data set and type of target variable.</p>
+<p>First up is the results for the <code>diamonds</code> data set with a continuous target variable.</p>
+<p>me: the model-specific scores differ relatively strongly from the rest of the scores given a specific model type. (See the numbers in the parentheses in the first column in each facet labeled <code>vip_model</code> compared to those in the other columns of each facet. <a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> For example, the model-specific variable importance score for the <code>carat</code> feature for the <code>{glm}</code> model type is 49%, while the same score for the SHAP variable importance method (<code>vip_shap</code>) is 35%. To be honest, this is not too surprising. The model-specific methods are exactly that—specific to the model type—which suggests that they may strongly dissimilar to the model-agnostic approaches. Nonetheless, despite the scores themselves having some notable variance, the rankings derived from the scores are relatively similar across a given model type (and, arguably, across all model types).</p>
+<p>As a second observation, there is some disagreement between the <code>{glm}</code> and <code>{glmnet}</code> model types and the <code>{ranger}</code> and <code>{xgboost}</code> model types about which feature is the most important: the former two identify <code>carat</code> has being the most important, while the latter two prioritize <code>y</code>.</p>
+<p>Thirdly–and lastly for this plot—it’s nice to see that the <code>vip_permute</code> and <code>dalex</code> methods produce nearly identical results for each model type, with the exception of <code>{glmnet}</code>. (Hypothetically, these should have nearly identical results since they are both permutation based methods.) Notably, I implemented the <code>explain()</code> function for <code>{glmnet}</code> myself since the <code>{DALEX}</code> package does not export one, so that is probably the reason for the discrepancy 😄.</p>
+<p>Now let’s look at the the results when predicting a discrete target variable with the same data set.</p>
+<p><img src="viz_diamonds_d_rnks.png" /></p>
+<p>Compared to the results for a continuous target variable, we see greater variation across the model types—the rankings from <code>{glm}</code> and <code>{glmnet}</code> are nearly identical, but they are different from those of <code>{xgboost}</code>, and all are different from those of <code>{ranger}</code>. <code>{ranger}</code> has an additional level of variation—lack of agreement among the methodologies.</p>
+<p>Additionally, we observe that the scores for our two permutation implementations— <code>vip_permute</code> and <code>dalex</code>—are <strong>very</strong> different. I think this might have to do with how I’ve chosen to normalize scores (i.e. using absolute value to convert negative scores to positive ones prior to 0-1 normalization) or something I’ve over-looked that is specific to classification settings. If something that can be attributed to me (and not the underlying methods) is really the source of discrepancies, then we should be less concerned with the variation in scores and ranks since it seems most strongly associated with the <code>vip_permute</code>-<code>dalex</code> differences.</p>
+<p>Before we can begin to generalize any deductions (possibly biased by our single data set), let’s take a look at the results for the second data set, <code>mpg</code>. First is the results for the continuous target variable.</p>
+<p><img src="viz_mpg_c_rnks.png" /></p>
+<p>There is consensus on what the most important variable is—<code>cyl</code>—but beyond that, the results are somewhat varied across the board. One might argue that there is going to be lack of agreement among methods (and model types), it’s preferable that the discrepancies occur among lower ranks, as seen here. On the other hand, we’d surely like to see more consensus among variables ranked among the top half or so.</p>
+<p>And now for the results when ranking with models targeting a discrete variable.</p>
+<p><img src="viz_mpg_d_rnks.png" /></p>
+<p>There is some pretty strong variation in the <code>{ranger}</code> results. Also, there are discrepancies between the two permutation methods (<code>vip_permute</code> and <code>dalex</code>), which we also noted in the discrete results for <code>diamonds</code> as well. This makes me think again that the issue is due to something I’ve done and not something that could be attributed to the underlying methods. Aside from these, I would say that the results within each model type are pretty coherent (more so than those with the continuous outcome.)</p>
+<p>Even without performing any kind of similarity evaluation, we can argue that, in general, the rankings computed by the different methods are relatively similar across the two data sets (<code>diamonds</code> and <code>mpg</code>) and the two types of target variables (continuous and discrete). But why stop there? After all, we <strong>can</strong> quantify the similarities between ranks.</p>
+<p><img src="viz_cor_by_engine.png" /></p>
+<p>The plot above shows the pairwise correlations among the variable importance ranks computed for each package-function combo, averaged over the two data sets and over the models for the two types of target variables—continuous and discrete. <a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a> While nothing immediately jumps out from this plot, I think the most notable thing is that the <code>{ranger}</code> scores seem to vary the most across the different variable importance methodologies, bottoming out at 74% for the correlation between the SHAP (<code>vip_shap</code>) and model-specific (<code>vip_model</code>) methodologies. On the other hand, <code>{xgboost}</code> seems to have the most “agreement” and least variance in its scores.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>Overall, we might say that rankings of variable importance based on normalized variable importance scores in this analysis showed that differences will arise when evaluating different methodologies, but the differences may not be strong enough to change any deductions that one might draw. Of course, this will depend on the context. A small differences could make a huge difference in a field like medicine!</p>
+<p>I wouldn’t go so far as to say that these insights can be generalized—among other things, I think I would need to evaluate a much larger variety of data sets—but I think it’s good to be conscious how much the results can vary. It’s ultimately up to the user whether the differences are significant.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>After all, I want to make sure my results aren’t sensitive to some kind of bias (unintentional in this case).<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>This isn’t an academic paper after all!<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>This isn’t an academic paper after all!<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>Modifications include the following: (a) I’ve excluded <code>manufacturer</code>, <code>model</code>, <code>trans</code>, and <code>class</code>. (b) For continuous predictions, I’ll predict <code>displ</code> as a function of all other variables. (c) For discrete predictions, I’ve created a binary variable <code>grp</code> based on <code>class</code>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5" role="doc-endnote"><p>(I haven’t actually checked the source for <code>{glmnet}</code> and compared it to that of <code>lm()</code>/<code>glm()</code>. Differences may arise due to underlying differences in the algorithm for least squares.)<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6" role="doc-endnote"><p>I should say that I’m using the <code>{tidymodels}</code> package to assist with all of this. It really shows off its flexibility here, allowing me to switch between models only having to change-out one line of code!Finally, for variable importance scores (which is really the focus), I’m going to use the following packages and functi ons.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7" role="doc-endnote"><p>Yes, SSE is certainly not the best measure of loss for classification. Nonetheless, when dealing with a binary outcome variable, as is done here, it can arguably be cceptable.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8" role="doc-endnote"><p>Don’t be deceived by the fill contours, which are based on the rankings–the number in front of the parentheses.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9" role="doc-endnote"><p>I could have split (or “facetted”) in a different way–e.g. by type of target variable instead of by package-function combo—but I think splitting in this way makes the most sense because the type of model—<code>{glm}</code>, <code>{ranger}</code>, etc.—is likely the biggest source of variation.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->
 </div>

@@ -7,7 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/>
   <meta name="generator" content="distill" />
-  <link rel="alternate" type="application/rss+xml" href="https://itsmetoeknee.netlify.app/index.xml" />
 
   <style type="text/css">
   /* Hide doc at startup (prevent jankiness while JS renders/transforms) */
@@ -87,635 +86,41 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </style>
 
   <!--radix_placeholder_meta_tags-->
-  <title>Tony Types: Posts</title>
+  <title>A Bayesian Approach to Ranking English Premier League Teams (using R)</title>
+
+  <meta property="description" itemprop="description" content="A Bayesian Approach to Ranking English Premier League Teams (using R)"/>
 
 
-
+  <!--  https://schema.org/Article -->
+  <meta property="article:published" itemprop="datePublished" content="2019-12-13"/>
+  <meta property="article:created" itemprop="dateCreated" content="2019-12-13"/>
+  <meta name="article:author" content="Tony ElHabr"/>
 
   <!--  https://developers.facebook.com/docs/sharing/webmasters#markup -->
-  <meta property="og:title" content="Tony Types: Posts"/>
+  <meta property="og:title" content="A Bayesian Approach to Ranking English Premier League Teams (using R)"/>
   <meta property="og:type" content="article"/>
+  <meta property="og:description" content="A Bayesian Approach to Ranking English Premier League Teams (using R)"/>
   <meta property="og:locale" content="en_US"/>
-  <meta property="og:site_name" content="Tony Types"/>
 
   <!--  https://dev.twitter.com/cards/types/summary -->
   <meta property="twitter:card" content="summary"/>
-  <meta property="twitter:title" content="Tony Types: Posts"/>
+  <meta property="twitter:title" content="A Bayesian Approach to Ranking English Premier League Teams (using R)"/>
+  <meta property="twitter:description" content="A Bayesian Approach to Ranking English Premier League Teams (using R)"/>
+  <meta property="twitter:site" content="@TonyElHabr"/>
+  <meta property="twitter:creator" content="@TonyElHabr"/>
 
   <!--/radix_placeholder_meta_tags-->
   <!--radix_placeholder_rmarkdown_metadata-->
 
   <script type="text/json" id="radix-rmarkdown-metadata">
-  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","site","listing"]}},"value":[{"type":"character","attributes":{},"value":["Posts"]},{"type":"character","attributes":{},"value":["distill::distill_website"]},{"type":"character","attributes":{},"value":["posts"]}]}
+  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","description","author","date","categories","output","preview","twitter"]}},"value":[{"type":"character","attributes":{},"value":["A Bayesian Approach to Ranking English Premier League Teams (using R)"]},{"type":"character","attributes":{},"value":["A Bayesian Approach to Ranking English Premier League Teams (using R)"]},{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","url"]}},"value":[{"type":"character","attributes":{},"value":["Tony ElHabr"]},{"type":"character","attributes":{},"value":["https://twitter.com/TonyElHabr"]}]}]},{"type":"character","attributes":{},"value":["2019-12-13"]},{"type":"character","attributes":{},"value":["r","soccer"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["distill::distill_article"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["toc","toc_depth","self_contained"]}},"value":[{"type":"logical","attributes":{},"value":[true]},{"type":"integer","attributes":{},"value":[3]},{"type":"logical","attributes":{},"value":[false]}]}]},{"type":"character","attributes":{},"value":["viz_summ_1_z_adj.png"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["site","creator"]}},"value":[{"type":"character","attributes":{},"value":["@TonyElHabr"]},{"type":"character","attributes":{},"value":["@TonyElHabr"]}]}]}
   </script>
   <!--/radix_placeholder_rmarkdown_metadata-->
+  
+  <script type="text/json" id="radix-resource-manifest">
+  {"type":"character","attributes":{},"value":["bayesian-statistics-english-premier-league_files/anchor-4.2.2/anchor.min.js","bayesian-statistics-english-premier-league_files/bowser-1.9.3/bowser.min.js","bayesian-statistics-english-premier-league_files/distill-2.2.21/template.v2.js","bayesian-statistics-english-premier-league_files/header-attrs-2.6/header-attrs.js","bayesian-statistics-english-premier-league_files/header-attrs-2.8/header-attrs.js","bayesian-statistics-english-premier-league_files/jquery-1.11.3/jquery.min.js","bayesian-statistics-english-premier-league_files/popper-2.6.0/popper.min.js","bayesian-statistics-english-premier-league_files/tippy-6.2.7/tippy-bundle.umd.min.js","bayesian-statistics-english-premier-league_files/tippy-6.2.7/tippy-light-border.css","bayesian-statistics-english-premier-league_files/tippy-6.2.7/tippy.css","bayesian-statistics-english-premier-league_files/tippy-6.2.7/tippy.umd.min.js","bayesian-statistics-english-premier-league_files/webcomponents-2.0.0/webcomponents.js","viz_conf_mat.png","viz_g_mean.png","viz_g_mode.png","viz_result_mode.png","viz_summ_1_z.png","viz_summ_1_z_adj.png"]}
+  </script>
   <!--radix_placeholder_navigation_in_header-->
-  <meta name="distill:offset" content=""/>
-
-  <script type="application/javascript">
-
-    window.headroom_prevent_pin = false;
-
-    window.document.addEventListener("DOMContentLoaded", function (event) {
-
-      // initialize headroom for banner
-      var header = $('header').get(0);
-      var headerHeight = header.offsetHeight;
-      var headroom = new Headroom(header, {
-        tolerance: 5,
-        onPin : function() {
-          if (window.headroom_prevent_pin) {
-            window.headroom_prevent_pin = false;
-            headroom.unpin();
-          }
-        }
-      });
-      headroom.init();
-      if(window.location.hash)
-        headroom.unpin();
-      $(header).addClass('headroom--transition');
-
-      // offset scroll location for banner on hash change
-      // (see: https://github.com/WickyNilliams/headroom.js/issues/38)
-      window.addEventListener("hashchange", function(event) {
-        window.scrollTo(0, window.pageYOffset - (headerHeight + 25));
-      });
-
-      // responsive menu
-      $('.distill-site-header').each(function(i, val) {
-        var topnav = $(this);
-        var toggle = topnav.find('.nav-toggle');
-        toggle.on('click', function() {
-          topnav.toggleClass('responsive');
-        });
-      });
-
-      // nav dropdowns
-      $('.nav-dropbtn').click(function(e) {
-        $(this).next('.nav-dropdown-content').toggleClass('nav-dropdown-active');
-        $(this).parent().siblings('.nav-dropdown')
-           .children('.nav-dropdown-content').removeClass('nav-dropdown-active');
-      });
-      $("body").click(function(e){
-        $('.nav-dropdown-content').removeClass('nav-dropdown-active');
-      });
-      $(".nav-dropdown").click(function(e){
-        e.stopPropagation();
-      });
-    });
-  </script>
-
-  <style type="text/css">
-
-  /* Theme (user-documented overrideables for nav appearance) */
-
-  .distill-site-nav {
-    color: rgba(255, 255, 255, 0.8);
-    background-color: #0F2E3D;
-    font-size: 15px;
-    font-weight: 300;
-  }
-
-  .distill-site-nav a {
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .distill-site-nav a:hover {
-    color: white;
-  }
-
-  @media print {
-    .distill-site-nav {
-      display: none;
-    }
-  }
-
-  .distill-site-header {
-
-  }
-
-  .distill-site-footer {
-
-  }
-
-
-  /* Site Header */
-
-  .distill-site-header {
-    width: 100%;
-    box-sizing: border-box;
-    z-index: 3;
-  }
-
-  .distill-site-header .nav-left {
-    display: inline-block;
-    margin-left: 8px;
-  }
-
-  @media screen and (max-width: 768px) {
-    .distill-site-header .nav-left {
-      margin-left: 0;
-    }
-  }
-
-
-  .distill-site-header .nav-right {
-    float: right;
-    margin-right: 8px;
-  }
-
-  .distill-site-header a,
-  .distill-site-header .title {
-    display: inline-block;
-    text-align: center;
-    padding: 14px 10px 14px 10px;
-  }
-
-  .distill-site-header .title {
-    font-size: 18px;
-    min-width: 150px;
-  }
-
-  .distill-site-header .logo {
-    padding: 0;
-  }
-
-  .distill-site-header .logo img {
-    display: none;
-    max-height: 20px;
-    width: auto;
-    margin-bottom: -4px;
-  }
-
-  .distill-site-header .nav-image img {
-    max-height: 18px;
-    width: auto;
-    display: inline-block;
-    margin-bottom: -3px;
-  }
-
-
-
-  @media screen and (min-width: 1000px) {
-    .distill-site-header .logo img {
-      display: inline-block;
-    }
-    .distill-site-header .nav-left {
-      margin-left: 20px;
-    }
-    .distill-site-header .nav-right {
-      margin-right: 20px;
-    }
-    .distill-site-header .title {
-      padding-left: 12px;
-    }
-  }
-
-
-  .distill-site-header .nav-toggle {
-    display: none;
-  }
-
-  .nav-dropdown {
-    display: inline-block;
-    position: relative;
-  }
-
-  .nav-dropdown .nav-dropbtn {
-    border: none;
-    outline: none;
-    color: rgba(255, 255, 255, 0.8);
-    padding: 16px 10px;
-    background-color: transparent;
-    font-family: inherit;
-    font-size: inherit;
-    font-weight: inherit;
-    margin: 0;
-    margin-top: 1px;
-    z-index: 2;
-  }
-
-  .nav-dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: white;
-    min-width: 200px;
-    border: 1px solid rgba(0,0,0,0.15);
-    border-radius: 4px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.1);
-    z-index: 1;
-    margin-top: 2px;
-    white-space: nowrap;
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-
-  .nav-dropdown-content hr {
-    margin-top: 4px;
-    margin-bottom: 4px;
-    border: none;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  }
-
-  .nav-dropdown-active {
-    display: block;
-  }
-
-  .nav-dropdown-content a, .nav-dropdown-content .nav-dropdown-header {
-    color: black;
-    padding: 6px 24px;
-    text-decoration: none;
-    display: block;
-    text-align: left;
-  }
-
-  .nav-dropdown-content .nav-dropdown-header {
-    display: block;
-    padding: 5px 24px;
-    padding-bottom: 0;
-    text-transform: uppercase;
-    font-size: 14px;
-    color: #999999;
-    white-space: nowrap;
-  }
-
-  .nav-dropdown:hover .nav-dropbtn {
-    color: white;
-  }
-
-  .nav-dropdown-content a:hover {
-    background-color: #ddd;
-    color: black;
-  }
-
-  .nav-right .nav-dropdown-content {
-    margin-left: -45%;
-    right: 0;
-  }
-
-  @media screen and (max-width: 768px) {
-    .distill-site-header a, .distill-site-header .nav-dropdown  {display: none;}
-    .distill-site-header a.nav-toggle {
-      float: right;
-      display: block;
-    }
-    .distill-site-header .title {
-      margin-left: 0;
-    }
-    .distill-site-header .nav-right {
-      margin-right: 0;
-    }
-    .distill-site-header {
-      overflow: hidden;
-    }
-    .nav-right .nav-dropdown-content {
-      margin-left: 0;
-    }
-  }
-
-
-  @media screen and (max-width: 768px) {
-    .distill-site-header.responsive {position: relative; min-height: 500px; }
-    .distill-site-header.responsive a.nav-toggle {
-      position: absolute;
-      right: 0;
-      top: 0;
-    }
-    .distill-site-header.responsive a,
-    .distill-site-header.responsive .nav-dropdown {
-      display: block;
-      text-align: left;
-    }
-    .distill-site-header.responsive .nav-left,
-    .distill-site-header.responsive .nav-right {
-      width: 100%;
-    }
-    .distill-site-header.responsive .nav-dropdown {float: none;}
-    .distill-site-header.responsive .nav-dropdown-content {position: relative;}
-    .distill-site-header.responsive .nav-dropdown .nav-dropbtn {
-      display: block;
-      width: 100%;
-      text-align: left;
-    }
-  }
-
-  /* Site Footer */
-
-  .distill-site-footer {
-    width: 100%;
-    overflow: hidden;
-    box-sizing: border-box;
-    z-index: 3;
-    margin-top: 30px;
-    padding-top: 30px;
-    padding-bottom: 30px;
-    text-align: center;
-  }
-
-  /* Headroom */
-
-  d-title {
-    padding-top: 6rem;
-  }
-
-  @media print {
-    d-title {
-      padding-top: 4rem;
-    }
-  }
-
-  .headroom {
-    z-index: 1000;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-  }
-
-  .headroom--transition {
-    transition: all .4s ease-in-out;
-  }
-
-  .headroom--unpinned {
-    top: -100px;
-  }
-
-  .headroom--pinned {
-    top: 0;
-  }
-
-  /* adjust viewport for navbar height */
-  /* helps vertically center bootstrap (non-distill) content */
-  .min-vh-100 {
-    min-height: calc(100vh - 100px) !important;
-  }
-
-  </style>
-
-  <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
-  <link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet"/>
-  <link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet"/>
-  <script src="site_libs/headroom-0.9.4/headroom.min.js"></script>
-  <script src="site_libs/autocomplete-0.37.1/autocomplete.min.js"></script>
-  <script src="site_libs/fuse-6.4.1/fuse.min.js"></script>
-
-  <script type="application/javascript">
-
-  function getMeta(metaName) {
-    var metas = document.getElementsByTagName('meta');
-    for (let i = 0; i < metas.length; i++) {
-      if (metas[i].getAttribute('name') === metaName) {
-        return metas[i].getAttribute('content');
-      }
-    }
-    return '';
-  }
-
-  function offsetURL(url) {
-    var offset = getMeta('distill:offset');
-    return offset ? offset + '/' + url : url;
-  }
-
-  function createFuseIndex() {
-
-    // create fuse index
-    var options = {
-      keys: [
-        { name: 'title', weight: 20 },
-        { name: 'categories', weight: 15 },
-        { name: 'description', weight: 10 },
-        { name: 'contents', weight: 5 },
-      ],
-      ignoreLocation: true,
-      threshold: 0
-    };
-    var fuse = new window.Fuse([], options);
-
-    // fetch the main search.json
-    return fetch(offsetURL('search.json'))
-      .then(function(response) {
-        if (response.status == 200) {
-          return response.json().then(function(json) {
-            // index main articles
-            json.articles.forEach(function(article) {
-              fuse.add(article);
-            });
-            // download collections and index their articles
-            return Promise.all(json.collections.map(function(collection) {
-              return fetch(offsetURL(collection)).then(function(response) {
-                if (response.status === 200) {
-                  return response.json().then(function(articles) {
-                    articles.forEach(function(article) {
-                      fuse.add(article);
-                    });
-                  })
-                } else {
-                  return Promise.reject(
-                    new Error('Unexpected status from search index request: ' +
-                              response.status)
-                  );
-                }
-              });
-            })).then(function() {
-              return fuse;
-            });
-          });
-
-        } else {
-          return Promise.reject(
-            new Error('Unexpected status from search index request: ' +
-                        response.status)
-          );
-        }
-      });
-  }
-
-  window.document.addEventListener("DOMContentLoaded", function (event) {
-
-    // get search element (bail if we don't have one)
-    var searchEl = window.document.getElementById('distill-search');
-    if (!searchEl)
-      return;
-
-    createFuseIndex()
-      .then(function(fuse) {
-
-        // make search box visible
-        searchEl.classList.remove('hidden');
-
-        // initialize autocomplete
-        var options = {
-          autoselect: true,
-          hint: false,
-          minLength: 2,
-        };
-        window.autocomplete(searchEl, options, [{
-          source: function(query, callback) {
-            const searchOptions = {
-              isCaseSensitive: false,
-              shouldSort: true,
-              minMatchCharLength: 2,
-              limit: 10,
-            };
-            var results = fuse.search(query, searchOptions);
-            callback(results
-              .map(function(result) { return result.item; })
-            );
-          },
-          templates: {
-            suggestion: function(suggestion) {
-              var img = suggestion.preview && Object.keys(suggestion.preview).length > 0
-                ? `<img src="${offsetURL(suggestion.preview)}"</img>`
-                : '';
-              var html = `
-                <div class="search-item">
-                  <h3>${suggestion.title}</h3>
-                  <div class="search-item-description">
-                    ${suggestion.description || ''}
-                  </div>
-                  <div class="search-item-preview">
-                    ${img}
-                  </div>
-                </div>
-              `;
-              return html;
-            }
-          }
-        }]).on('autocomplete:selected', function(event, suggestion) {
-          window.location.href = offsetURL(suggestion.path);
-        });
-        // remove inline display style on autocompleter (we want to
-        // manage responsive display via css)
-        $('.algolia-autocomplete').css("display", "");
-      })
-      .catch(function(error) {
-        console.log(error);
-      });
-
-  });
-
-  </script>
-
-  <style type="text/css">
-
-  .nav-search {
-    font-size: x-small;
-  }
-
-  /* Algolioa Autocomplete */
-
-  .algolia-autocomplete {
-    display: inline-block;
-    margin-left: 10px;
-    vertical-align: sub;
-    background-color: white;
-    color: black;
-    padding: 6px;
-    padding-top: 8px;
-    padding-bottom: 0;
-    border-radius: 6px;
-    border: 1px #0F2E3D solid;
-    width: 180px;
-  }
-
-
-  @media screen and (max-width: 768px) {
-    .distill-site-nav .algolia-autocomplete {
-      display: none;
-      visibility: hidden;
-    }
-    .distill-site-nav.responsive .algolia-autocomplete {
-      display: inline-block;
-      visibility: visible;
-    }
-    .distill-site-nav.responsive .algolia-autocomplete .aa-dropdown-menu {
-      margin-left: 0;
-      width: 400px;
-      max-height: 400px;
-    }
-  }
-
-  .algolia-autocomplete .aa-input, .algolia-autocomplete .aa-hint {
-    width: 90%;
-    outline: none;
-    border: none;
-  }
-
-  .algolia-autocomplete .aa-hint {
-    color: #999;
-  }
-  .algolia-autocomplete .aa-dropdown-menu {
-    width: 550px;
-    max-height: 70vh;
-    overflow-x: visible;
-    overflow-y: scroll;
-    padding: 5px;
-    margin-top: 3px;
-    margin-left: -150px;
-    background-color: #fff;
-    border-radius: 5px;
-    border: 1px solid #999;
-    border-top: none;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion {
-    cursor: pointer;
-    padding: 5px 4px;
-    border-bottom: 1px solid #eee;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion:last-of-type {
-    border-bottom: none;
-    margin-bottom: 2px;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item {
-    overflow: hidden;
-    font-size: 0.8em;
-    line-height: 1.4em;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item h3 {
-    font-size: 1rem;
-    margin-block-start: 0;
-    margin-block-end: 5px;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item-description {
-    display: inline-block;
-    overflow: hidden;
-    height: 2.8em;
-    width: 80%;
-    margin-right: 4%;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item-preview {
-    display: inline-block;
-    width: 15%;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item-preview img {
-    height: 3em;
-    width: auto;
-    display: none;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion .search-item-preview img[src] {
-    display: initial;
-  }
-
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion.aa-cursor {
-    background-color: #eee;
-  }
-  .algolia-autocomplete .aa-dropdown-menu .aa-suggestion em {
-    font-weight: bold;
-    font-style: normal;
-  }
-
-  </style>
-
-
   <!--/radix_placeholder_navigation_in_header-->
   <!--radix_placeholder_distill-->
 
@@ -2031,681 +1436,302 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   </script>
 
   <!--/radix_placeholder_distill-->
-  <script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
-  <script src="site_libs/popper-2.6.0/popper.min.js"></script>
-  <link href="site_libs/tippy-6.2.7/tippy.css" rel="stylesheet" />
-  <link href="site_libs/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
-  <script src="site_libs/tippy-6.2.7/tippy.umd.min.js"></script>
-  <script src="site_libs/anchor-4.2.2/anchor.min.js"></script>
-  <script src="site_libs/bowser-1.9.3/bowser.min.js"></script>
-  <script src="site_libs/webcomponents-2.0.0/webcomponents.js"></script>
-  <script src="site_libs/distill-2.2.21/template.v2.js"></script>
+  <script src="bayesian-statistics-english-premier-league_files/header-attrs-2.8/header-attrs.js"></script>
+  <script src="bayesian-statistics-english-premier-league_files/jquery-1.11.3/jquery.min.js"></script>
+  <script src="bayesian-statistics-english-premier-league_files/popper-2.6.0/popper.min.js"></script>
+  <link href="bayesian-statistics-english-premier-league_files/tippy-6.2.7/tippy.css" rel="stylesheet" />
+  <link href="bayesian-statistics-english-premier-league_files/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
+  <script src="bayesian-statistics-english-premier-league_files/tippy-6.2.7/tippy.umd.min.js"></script>
+  <script src="bayesian-statistics-english-premier-league_files/anchor-4.2.2/anchor.min.js"></script>
+  <script src="bayesian-statistics-english-premier-league_files/bowser-1.9.3/bowser.min.js"></script>
+  <script src="bayesian-statistics-english-premier-league_files/webcomponents-2.0.0/webcomponents.js"></script>
+  <script src="bayesian-statistics-english-premier-league_files/distill-2.2.21/template.v2.js"></script>
   <!--radix_placeholder_site_in_header-->
-  <style type="text/css">
-  .distill-site-nav {
-    font-family: 'Karla', sans-serif;
-    color: #000;
-    background-color: #fff;
-    font-size: 15px;
-    font-weight: 400;
-  }
-
-  .distill-site-header {
-    font-family: 'Karla', sans-serif;
-    color: #000;
-    background-color: #fff;
-    font-size: 15px;
-    font-weight: 400;
-  }
-
-  @import url('https://fonts.googleapis.com/css2?family=Lato');
-  @import url('https://fonts.googleapis.com/css2?family=Karla');
-  @import url('https://fonts.googleapis.com/css2?family=Fira+Code');
-
-  html,
-  body,
-  p {
-    font-family: 'Lato', sans-serif;
-    font-weight: 200;
-    line-height: 1.3;
-    font-size: 1em;
-    color: #333333;
-    font-style: normal;
-  }
-
-  code {
-    font-family: 'Fira Code', sans-serif;
-    /* color: #383838; */
-    background: #ffffff;
-    /* font-weight: 400; */
-    font-size: 0.9em;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5 {
-    font-family: 'Karla', sans-serif;
-  }
-
-  .distill-site-nav a {
-    font-family: 'Karla', sans-serif;
-    font-weight: 500;
-    font-size: 15px;
-    color: #000;
-    text-decoration: none;
-  }
-
-  .distill-site-nav a:hover {
-    color: #A020F0;
-  }
-
-  .nav-dropdown-content a {
-    font-family: 'Karla', sans-serif;
-    font-weight: 500;
-    color: #ffffff;
-  }
-
-  .distill-site-header {
-    font-family: 'Karla', sans-serif;
-    font-weight: 500;
-    background-color: #ffffff;
-  }
-
-  .distill-site-footer {
-    background-color: #000;
-    color: #ffffff;
-  }
-
-  @media print {
-    .distill-site-nav {
-      display: none;
-    }
-  }
-
-  details {
-    background-color: hsla(60, 7%, 80%, 0.2);
-    cursor: pointer;
-    color: #2d2d2d;
-    margin-bottom: 1vh;
-    padding: 1em;
-    border: none;
-    text-align: left;
-    outline: none;
-  }
-
-  .active,
-  details:hover {
-    transition: max-height 0.2s ease-out;
-    /* background-color: #acc2c2; */
-  }
-
-  details {
-    display: flex;
-    justify-content: space-between;
-    align-content: center;
-    border-radius: 4px;
-  }
-
-  details.active {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
-  summary::-webkit-details-marker {
-    display: none;
-  }
-
-  summary::after {
-    float: right;
-    font-family: 'Font Awesome 5 Free';
-    content: '\f0fe';
-  }
-
-  details[open] summary::after {
-    float: right;
-    font-family: 'Font Awesome 5 Free';
-    content: '\f146';
-  }
-
-  details h4 {
-    margin: 0;
-    color: #2d2d2d !important;
-    line-height: inherit;
-  }
-
-  </style>
   <!--/radix_placeholder_site_in_header-->
 
-  <link rel="stylesheet" href="styles.css" type="text/css"/>
 
 </head>
 
-<body class="layout-listing">
+<body>
 
 <!--radix_placeholder_front_matter-->
 
 <script id="distill-front-matter" type="text/json">
-{"title":"Posts","authors":[]}
+{"title":"A Bayesian Approach to Ranking English Premier League Teams (using R)","description":"A Bayesian Approach to Ranking English Premier League Teams (using R)","authors":[{"author":"Tony ElHabr","authorURL":"https://twitter.com/TonyElHabr","affiliation":"&nbsp;","affiliationURL":"#","orcidID":""}],"publishedDate":"2019-12-13T00:00:00.000-06:00","citationText":"ElHabr, 2019"}
 </script>
 
 <!--/radix_placeholder_front_matter-->
 <!--radix_placeholder_navigation_before_body-->
-<header class="header header--fixed" role="banner">
-<nav class="distill-site-nav distill-site-header">
-<div class="nav-left">
-<a href="index.html" class="title">Tony Types</a>
-<input id="distill-search" class="nav-search hidden" type="text" placeholder="Search..."/>
-</div>
-<div class="nav-right">
-<a href="index.html">Home</a>
-<a href="about.html">About</a>
-<a href="projects.html">Projects</a>
-<a href="javascript:void(0);" class="nav-toggle">&#9776;</a>
-</div>
-</nav>
-</header>
 <!--/radix_placeholder_navigation_before_body-->
 <!--radix_placeholder_site_before_body-->
 <!--/radix_placeholder_site_before_body-->
-<!--radix_placeholder_article_listing-->
-
-
-<script type="application/javascript">
-
-function init_posts_list() {
-
-  function load_image(img) {
-    var src = $(img).attr('data-src');
-    if (src) {
-      $(img).attr('src', src);
-      $(img).load(function() {
-        img.removeAttribute('data-src');
-      });
-    }
-  }
-
-  function set_posts_visible(posts, visible) {
-    if (visible) {
-
-      // show bottom border by default
-      $(posts).removeClass('post-preview-last');
-
-      // apply limits if need be
-      var max_posts = 25;
-      var apply_limits = $('.posts-container').hasClass('posts-apply-limit');
-      if (apply_limits && posts.length > max_posts) {
-        posts = $(posts).slice(0, max_posts);
-      } else {
-        $('.posts-more a').addClass('hidden');
-      }
-
-      // apply last style
-      $(posts.slice(-1)[0]).addClass('post-preview-last');
-
-      $(posts).removeClass('hidden');
-      $(posts).find('img[data-src]').each(function(i, img) {
-        load_image(img);
-      });
-    } else {
-      $(posts).addClass('hidden');
-    }
-  }
-
-  function apply_hash_filter() {
-
-    // clear active state
-    $('.categories .active').removeClass('active');
-
-    // mark all posts invisible to start
-    set_posts_visible($('.posts-list').children('a'), false);
-
-    // if we have a hash filter
-    if (window.location.hash && window.location.hash.startsWith("#category:")) {
-
-      // mark posts that match the category visible
-      var page_category = window.location.hash.replace(/^#category:/, "");
-      var posts = $('.post-metadata').map(function(idx, script) {
-        var metadata = $.parseJSON($(script).html());
-        var post = null;
-        $.each(metadata.categories, function(idx, category) {
-          category = category.replace(/ /g,"_");
-          if ((page_category || '').toLowerCase() === "articles" || category === page_category) {
-            post = $(script).parent().get();
-            return false;
-          }
-        });
-        return post;
-      });
-      set_posts_visible(posts, true);
-
-      // mark the hash active
-      $('.categories li>a[href="' + window.location.hash + '"]').addClass('active');
-
-      // update the list_caption
-      var list_caption = $('.posts-list-caption');
-      var caption = (page_category || '').toLowerCase() === "articles"
-        ? list_caption.attr('data-caption')
-        : ('Category: ' + page_category.replace(/_/g," "));
-      list_caption.text(caption);
-
-    } else {
-
-      // no hash filter, make all posts visible (subject to max display)
-      set_posts_visible($('.posts-list').children(), true);
-
-      // reset list caption
-      var list_caption = $('.posts-list-caption');
-      list_caption.text(list_caption.attr('data-caption'));
-
-
-    }
-  }
-
-  // more articles
-  function apply_post_limits(apply) {
-    if (apply) {
-      $('.posts-container').addClass('posts-apply-limit');
-      $('.posts-more a').removeClass('hidden');
-    } else {
-      $('.posts-container').removeClass('posts-apply-limit');
-      $('.posts-more a').addClass('hidden');
-    }
-  }
-
-  // click handling for tags
-  $('.dt-tag').click(function(ev) {
-    window.location.hash = '#category:' + $(this).text().replace(/ /g, "_");
-    return false;
-  })
-
-  // hash filter handling
-  apply_hash_filter();
-  $(window).on('hashchange',function() {
-    apply_post_limits(true);
-    apply_hash_filter();
-  });
-
-  // more articles link
-  $('.posts-more a').click(function(e) {
-    e.preventDefault();
-    apply_post_limits(false);
-    apply_hash_filter();
-    return false;
-  });
-
-}
-
-</script>
-
-
-
-<div class="posts-container posts-with-sidebar posts-apply-limit l-screen-inset">
-<div class="posts-list">
-<h1 class="posts-list-caption" data-caption="Posts">Posts</h1>
-<a href="posts/dimensionality-reduction-and-clustering/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer"]}</script>
-<div class="metadata">
-<div class="publishedDate">June 30, 2021</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/dimensionality-reduction-and-clustering/featured.png"/>
-</div>
-<div class="description">
-<h2>Tired: PCA + kmeans, Wired: UMAP + GMM</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">soccer</div>
-</div>
-<p>Tired: PCA + kmeans, Wired: UMAP + GMM</p>
-</div>
-</a>
-<a href="posts/soccer-league-strength/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer"]}</script>
-<div class="metadata">
-<div class="publishedDate">June 26, 2021</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/soccer-league-strength/featured.png"/>
-</div>
-<div class="description">
-<h2>Quantifying Relative Soccer League Strength</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">soccer</div>
-</div>
-<p>Quantifying Relative Soccer League Strength</p>
-</div>
-</a>
-<a href="posts/fantasy-football-schedule-problem/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","python","football (american)"]}</script>
-<div class="metadata">
-<div class="publishedDate">Jan. 11, 2021</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/fantasy-football-schedule-problem/viz_standings_tile_2020.png"/>
-</div>
-<div class="description">
-<h2>Fantasy Football and the Classical Scheduling Problem</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">python</div>
-<div class="dt-tag">football (american)</div>
-</div>
-<p>Fantasy Football and the Classical Scheduling Problem</p>
-</div>
-</a>
-<a href="posts/decomposition-smoothing-soccer/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer","reticulate","data.table","spatstat","tidyverse"]}</script>
-<div class="metadata">
-<div class="publishedDate">Oct. 14, 2020</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_smooth.png"/>
-</div>
-<div class="description">
-<h2>Decomposition and Smoothing with data.table, reticulate, and spatstat</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">soccer</div>
-<div class="dt-tag">reticulate</div>
-<div class="dt-tag">data.table</div>
-<div class="dt-tag">spatstat</div>
-<div class="dt-tag">tidyverse</div>
-</div>
-<p>Decomposition and Smoothing with data.table, reticulate, and spatstat</p>
-</div>
-</a>
-<a href="posts/soccer-pitch-control-r/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","python","soccer"]}</script>
-<div class="metadata">
-<div class="publishedDate">Sept. 23, 2020</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img src="posts/soccer-pitch-control-r/viz_pc_823_combined.png"/>
-</div>
-<div class="description">
-<h2>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">python</div>
-<div class="dt-tag">soccer</div>
-</div>
-<p>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</p>
-</div>
-</a>
-<a href="posts/variable-importance-compare/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">July 13, 2020</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/variable-importance-compare/viz_diamonds_c_rnks.png"/>
-</div>
-<div class="description">
-<h2>Comparing Variable Importance Functions (For Modeling)</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Comparing Variable Importance Functions (For Modeling)</p>
-</div>
-</a>
-<a href="posts/bayesian-statistics-english-premier-league/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer"]}</script>
-<div class="metadata">
-<div class="publishedDate">Dec. 13, 2019</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/bayesian-statistics-english-premier-league/viz_summ_1_z_adj.png"/>
-</div>
-<div class="description">
-<h2>A Bayesian Approach to Ranking English Premier League Teams (using R)</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">soccer</div>
-</div>
-<p>A Bayesian Approach to Ranking English Premier League Teams (using R)</p>
-</div>
-</a>
-<a href="posts/cheat-sheet-rmarkdown/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","latex"]}</script>
-<div class="metadata">
-<div class="publishedDate">July 7, 2019</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/cheat-sheet-rmarkdown/cheat-sheet-example.png"/>
-</div>
-<div class="description">
-<h2>Making a Cheat Sheet with Rmarkdown</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-<div class="dt-tag">latex</div>
-</div>
-<p>Making a Cheat Sheet with Rmarkdown</p>
-</div>
-</a>
-<a href="posts/text-parsing-analysis-periodic-report/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">June 29, 2019</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/text-parsing-analysis-periodic-report/viz_words_section_tfidf.PNG"/>
-</div>
-<div class="description">
-<h2>Text Parsing and Text Analysis of a Periodic Report (with R)</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Text Parsing and Text Analysis of a Periodic Report (with R)</p>
-</div>
-</a>
-<a href="posts/rstudio-conf-2019-summary/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">Jan. 27, 2019</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/rstudio-conf-2019-summary/headliner.jpg"/>
-</div>
-<div class="description">
-<h2>Summarizing rstudio::conf 2019 Summaries with Tidy Text Techniques</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Summarizing rstudio::conf 2019 Summaries with Tidy Text Techniques</p>
-</div>
-</a>
-<a href="posts/nested-json-to-tidy-data-frame-r/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">Oct. 20, 2018</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/nested-json-to-tidy-data-frame-r/featured.jpg"/>
-</div>
-<div class="description">
-<h2>Converting nested JSON to a tidy data frame with R</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Converting nested JSON to a tidy data frame with R</p>
-</div>
-</a>
-<a href="posts/using-flexdashboard/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">April 30, 2018</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/using-flexdashboard/featured.jpg"/>
-</div>
-<div class="description">
-<h2>Thoughts on Using Flexdashboard</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Thoughts on Using Flexdashboard</p>
-</div>
-</a>
-<a href="posts/tidy-text-analysis-rweekly/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">March 5, 2018</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/tidy-text-analysis-rweekly/featured.jpg"/>
-</div>
-<div class="description">
-<h2>A Tidy Text Analysis of R Weekly Posts</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>A Tidy Text Analysis of R Weekly Posts</p>
-</div>
-</a>
-<a href="posts/interval-data-nycflights13/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">Feb. 17, 2018</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/interval-data-nycflights13/featured.jpg"/>
-</div>
-<div class="description">
-<h2>Dealing with Interval Data and the nycflights13 package using R</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Dealing with Interval Data and the nycflights13 package using R</p>
-</div>
-</a>
-<a href="posts/visualizing-nba-team-schedule/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r"]}</script>
-<div class="metadata">
-<div class="publishedDate">Nov. 26, 2017</div>
-<div class="dt-authors">
-<div class="dt-author">Tony ElHabr</div>
-</div>
-</div>
-<div class="thumbnail">
-<img data-src="posts/visualizing-nba-team-schedule/featured.jpg"/>
-</div>
-<div class="description">
-<h2>Visualizing an NBA Team's Schedule Using R</h2>
-<div class="dt-tags">
-<div class="dt-tag">r</div>
-</div>
-<p>Visualizing an NBA Team's Schedule Using R</p>
-</div>
-</a>
-</div>
-<div class="posts-sidebar">
-<div class="sidebar-section categories">
-<h3>Categories</h3>
-<ul>
-<li>
-<a href="#category:articles">articles</a>
-<span class="category-count">(15)</span>
-</li>
-<li>
-<a href="#category:data.table">data.table</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:football_(american)">football (american)</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:latex">latex</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:python">python</a>
-<span class="category-count">(2)</span>
-</li>
-<li>
-<a href="#category:r">r</a>
-<span class="category-count">(15)</span>
-</li>
-<li>
-<a href="#category:reticulate">reticulate</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:soccer">soccer</a>
-<span class="category-count">(5)</span>
-</li>
-<li>
-<a href="#category:spatstat">spatstat</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:tidyverse">tidyverse</a>
-<span class="category-count">(1)</span>
-</li>
-</ul>
-</div>
-</div>
-<div class="posts-more">
-<a href="#">More articles &raquo;</a>
-</div>
-</div>
-<!--/radix_placeholder_article_listing-->
 
 <div class="d-title">
-<h1>Posts</h1>
+<h1>A Bayesian Approach to Ranking English Premier League Teams (using R)</h1>
 <!--radix_placeholder_categories-->
+<div class="dt-tags">
+<div class="dt=tag">r</div>
+<div class="dt=tag">soccer</div>
+</div>
 <!--/radix_placeholder_categories-->
-
+<p>A Bayesian Approach to Ranking English Premier League Teams (using R)</p>
 </div>
 
+<div class="d-byline">
+  Tony ElHabr <a href="https://twitter.com/TonyElHabr" class="uri">https://twitter.com/TonyElHabr</a> 
+  
+<br/>2019-12-13
+</div>
 
 <div class="d-article">
+<div class="d-contents d-contents-float">
+<nav class="l-text toc figcaption" id="TOC">
+<h3>Contents</h3>
+<ul>
+<li><a href="#introduction">Introduction</a>
+<ul>
+<li><a href="#data-collection">Data Collection</a></li>
+</ul></li>
+<li><a href="#modeling">Modeling</a></li>
+<li><a href="#interpretation-discussion">Interpretation &amp; Discussion</a>
+<ul>
+<li><a href="#predictions">Predictions</a></li>
+</ul></li>
+<li><a href="#conclusion">Conclusion</a>
+<ul>
+<li><a href="#future-work">Future Work</a></li>
+</ul></li>
+</ul>
+</nav>
+</div>
+<p>I haven’t had as much time (since summer of 2018) to write due to taking classes in pursuit of a degree from <a href="https://pe.gatech.edu/degrees/analytics">Georgia Tech’s Online Master of Science in Analytics (OMSA)</a> program. On the other hand, the classes have given me some ideas for future content. And, in the case of the <a href="https://en.wikipedia.org/wiki/Bayesian_statistics">Bayesian Statistics</a> class that I took this past fall, there’s content that translates well to a blog post directly. What follows is a lightly edited version of the report that I submitted at the end of the semester for this class.</p>
+<h1 id="introduction">Introduction</h1>
+<p>I model and predict <a href="https://en.wikipedia.org/wiki/Premier_League">English Premier League</a> (EPL) game outcomes using Bayesian methods. Specifically, I estimated goals scored by each team in a given game as independent Poisson processes, taking the difference of the estimated points scored on each side to determine game winners. More broadly, one may call this a hierarchical Bayesian Poisson model.</p>
+<p>Why model goals scored using a Poisson distribution? <a href="https://en.wikipedia.org/wiki/Poisson_distribution">By definition</a>, it “is a discrete probability distribution that expresses the probability of a given number of events occurring in a fixed interval of time with a known constant rate.” In the context of soccer, the fixed interval of time is the 90 minutes of a game (disregarding injury time and over time), and the known constant rate is the expected number of goals scored per minute. Importantly, I must make the assumption that the rate of scored goals is the same across all minutes of a game. <a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> Additionally, when computing the difference between Poisson distributions, I must assume that the two distributions are independent of one another. <a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<p>Using Poisson distributions to model soccer scores is certainly not a novel concept. <a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> <a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> In particular, I would like to acknowledge <a href="http://www.sumsar.net/blog/2013/07/modeling-match-results-in-la-liga-part-one/">the work of Rasmus Baath’s</a>, whose series of blog posts exemplifying the use of R and <a href="http://mcmc-jags.sourceforge.net/">JAGS</a> to model scores in <a href="https://en.wikipedia.org/wiki/La_Liga"><em>La Liga</em></a> games between the 2008-09 to 2012-13 season served as a guide for the analysis that I conduct here. <a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a> <a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
+<h2 id="data-collection">Data Collection</h2>
+<p>For this project I retrieved game scores and outcomes for the previous three seasons of EPL games (i.e. from the 2016-17 season through the 2018-2019 season).</p>
+<div class="layout-chunk" data-layout="l-body">
+
+</div>
+<div class="layout-chunk" data-layout="l-body">
+
+</div>
+<div class="layout-chunk" data-layout="l-body">
+
+</div>
+<h1 id="modeling">Modeling</h1>
+<p>My model is formally defined as follows.</p>
+<p><span class="math display">\[
+\begin{array}{c}
+g_h \sim \mathcal{Pois}(\lambda_{h,i,j}) \\
+g_a \sim \mathcal{Pois}(\lambda_{a,i,j}) \\
+\log(\lambda_{h,i,j}) = \text{baseline}_h + (z_i - z_j) \\
+\log(\lambda_{a,i,j}) = \text{baseline}_a + (z_j - z_i). \\
+\end{array}
+\]</span></p>
+<p>This model estimates the goals scored by the home team, <span class="math inline">\(g_h\)</span>, and the goals scored by the away team, <span class="math inline">\(g_a\)</span>, in a given game between home team, <span class="math inline">\(\text{tm}_h\)</span>, and away team, <span class="math inline">\(\text{tm}_a\)</span>, as random variables coming from independent Poisson processes, <span class="math inline">\(\mathcal{Pois}(\lambda_{h,i,j})\)</span> and <span class="math inline">\(\mathcal{Pois}(\lambda_{a,i,j})\)</span>. The log of the rate of goals scored by the home team, <span class="math inline">\(\lambda_{h,i,j}\)</span>, in a game between <span class="math inline">\(\text{tm}_i\)</span> and <span class="math inline">\(\text{tm}_j\)</span> is modeled as the sum of a “baseline” average of goals scored by any given team playing at home, <span class="math inline">\(\text{baseline}_h\)</span>, and the difference between the team “strength” <span class="math inline">\(z\)</span> of teams <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span> in a given game. I define the log of the goal rate by the away team, <span class="math inline">\(\lambda_{a,i,j}\)</span>, in a similar fashion. <a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a> It is important to distinguish the baseline levels for home and away so as to account for <a href="https://en.wikipedia.org/wiki/Home_advantage">“home field advantage”</a>. (One should expect to find that <span class="math inline">\(\text{baseline}_h &gt; \text{baseline}_a\)</span> in the posterior estimates.)</p>
+<p>Since I am employing a Bayesian approach, I need to model priors as well. I define them as follows.</p>
+<p><span class="math display">\[
+\begin{array}{c}
+\text{baseline}_h \sim \mathcal{N}(0, 2^2) \\
+\text{baseline}_a \sim \mathcal{N}(0, 2^2) \\
+z_{i} \sim \mathcal{N}(z_{\text{all}} , \sigma^2_{\text{all}}) \quad \text{tm}_i &gt; 1 \\
+z_{\text{all}} \sim \mathcal{N}(0, 2^2) \\
+\sigma_{\text{all}} \sim \mathcal{U}(0, 2).
+\end{array}
+\]</span></p>
+<p>There are a couple of things to note about these priors. First, I must “zero”-anchor the strength estimate <span class="math inline">\(z\)</span> of one team. (This is manifested by <span class="math inline">\(\text{tm}_i &gt; 1\)</span>.) Here, I choose the first team alphabetically—Arsenal. Second, the priors are intentionally defined to be relatively vague (although not too vauge) so as to allow the posterior estimates to be heavily defined by the data rather than the priors. Note that the standard deviation of the overall team strength parameter <span class="math inline">\(z_{\text{all}}\)</span>, defined as <span class="math inline">\(2\)</span> on a log scale, corresponds to an interval of <span class="math inline">\(\left[e^{-2}, e^2\right] = \left[0.13, 7.40\right]\)</span> on an unstransformed scale, i.e. goals scored per game.</p>
+<p>I leverage the <a href="https://cran.r-project.org/web/packages/R2OpenBUGS/index.html"><code>{R2OpenBUGs}</code> package</a> to create this model with R on the “frontend” and generate the results using the OpenBUGS engine on the “backend”. Regarding the implementation itself, note that I run 100,000 simulations (<code>n.iter</code>), minus 1,000 “burn-in” runs (<code>n.burn</code>).</p>
+<p>The raw results are as follows. (As a quick “validation” of these results, note that <span class="math inline">\(\text{baseline}_h &gt; \text{baseline}_a\)</span>, as hypothesized.)</p>
+<h1 id="interpretation-discussion">Interpretation &amp; Discussion</h1>
+<p>Next, I correspond the strength estimates <span class="math inline">\(z\)</span> to teams. Notably, I must “re-add” the zero-anchored team—Arsenal (whose <span class="math inline">\(z\)</span> is assigned a dummy value of 1). To do this, I impute its credible set quantiles using the values of the overall strength term <span class="math inline">\(z_{\text{all}}\)</span>.</p>
+<p><img src="viz_summ_1_z.png" /></p>
+<p>It’s not surprising to see that the strength (<span class="math inline">\(z\)</span>) corresponding to all but three teams—Liverpool, Man City, and Tottenham—is negative. These three teams, followed closely by Arsenal have been regarded as the best teams for the past two or three EPL seasons. So, relative to Arsenal, all other teams (aside from the top three) are viewed as “worse” by the model.</p>
+<p>Note that the <span class="math inline">\(z\)</span> estimates above should not be interpreted as goals scored by the teams because they are relative to the strength of Arsenal. To facilitate such an interpretation, I need to translate <span class="math inline">\(z\)</span> to goals scored per game. To do this, for each <span class="math inline">\(z\)</span>, I (1) subtract the average value of all <span class="math inline">\(z\)</span>’s, (2) add the posterior mean of <span class="math inline">\(\text{baseline}_{h}\)</span>, and (3) exponentiate.</p>
+<p>The plot below shows the results of this transformation.</p>
+<p><img src="viz_summ_1_z_adj.png" /></p>
+<h2 id="predictions">Predictions</h2>
+<p>I can make predictions of game results for the historical data, given the model. Specifically, I simulate the score for both teams in each matchup (1,140 in all) 1,000 times, choosing the result inferred by the mode of each side’s simulated score. (For example, if the mode of the 1,000 simulated scores for the away team is 1 and that of the home team is 2, then the predicted outcome is a win for the home team.) A breakdown of the predicted and actual outcomes is shown below.</p>
+<p><img src="viz_conf_mat.png" /></p>
+<p>I make a couple of observations:</p>
+<ul>
+<li>The most common outcome is an actual win by the home team and a predicted win by the home team.</li>
+<li>The model never predicts a tie. (This may seem “unreasonable”, but BÃ¥Ã¥th also found this to be true for his final model.)</li>
+<li>The model predicts the outcome correctly in 447 + 216 = 663 of 1,140 games (i.e., 58%).</li>
+</ul>
+<p>The next couple of visuals provide more details regarding the simulated outcomes.</p>
+<p><img src="viz_g_mode.png" /></p>
+<p>From the above graph of the mode of goals scored by both sides, it’s apparent that a 2-1 scores in favor of the home side is the most common outcome.</p>
+<p><img src="viz_g_mean.png" /></p>
+<p>The above histogram illustrating the mean (instead of the mode) of the simulated goals provides a bit more nuance to our understanding of modes shown before.</p>
+<p><img src="viz_result_mode.png" /></p>
+<p>Finally, the above visual shows the predicted outcomes (inferred from the prior graph of predicted modes).</p>
+<p>To better understand how the model works on a team-level basis, let’s look at how well it predicts for each team.</p>
+<div class="layout-chunk" data-layout="l-body">
+
+</div>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Team</th>
+<th style="text-align: right;"># of Wins</th>
+<th style="text-align: left;">Win %</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Arsenal</td>
+<td style="text-align: right;">46</td>
+<td style="text-align: left;">80.70%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Man City</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: left;">78.95%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tottenham</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: left;">75.44%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Liverpool</td>
+<td style="text-align: right;">41</td>
+<td style="text-align: left;">71.93%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Chelsea</td>
+<td style="text-align: right;">39</td>
+<td style="text-align: left;">68.42%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cardiff</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">63.16%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Everton</td>
+<td style="text-align: right;">36</td>
+<td style="text-align: left;">63.16%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fulham</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: left;">63.16%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Man United</td>
+<td style="text-align: right;">35</td>
+<td style="text-align: left;">61.40%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Huddersfield</td>
+<td style="text-align: right;">23</td>
+<td style="text-align: left;">60.53%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Burnley</td>
+<td style="text-align: right;">34</td>
+<td style="text-align: left;">59.65%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Stoke</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: left;">57.89%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Bournemouth</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">52.63%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Crystal Palace</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">52.63%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sunderland</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">52.63%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Swansea</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: left;">52.63%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">West Ham</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">52.63%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Watford</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: left;">50.88%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Newcastle</td>
+<td style="text-align: right;">19</td>
+<td style="text-align: left;">50.00%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Leicester</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: left;">49.12%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Middlesbrough</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">47.37%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">West Brom</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: left;">47.37%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Wolves</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">47.37%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Brighton</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: left;">39.47%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Southampton</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: left;">38.60%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hull</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">31.58%</td>
+</tr>
+</tbody>
+</table>
+<p>In most cases, the model predicts the outcome correctly (see <code>is_correct</code>) with greater than 50% accuracy, although there are also teams for which its accuracy is less than 50%.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>In summary, I have created a hierarchical Poisson model to predict scores—and, consequently, game outcomes—for EPL games for the three seasons starting in 2016 and ending in 2018. The model has an training set prediction accuracy of 66.3%. <a href="http://www.sumsar.net/blog/2013/07/modeling-match-results-in-la-liga-part-one/">Baath</a>, whose work inspired mine, achieved an accuracy of 56% with his final model.</p>
+<h2 id="future-work">Future Work</h2>
+<p>My model can certainly be improved. One major flaw of the model is that it does not account for temporal effects, i.e. differences in team strength across seasons. <a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> The consequences of this flaw are compounded by the fact that the pool of teams in each EPL season changes. At the end of each season, the three “worst” EPL teams (by win-loss-tie record) are “relegated” to a secondary league, and, in turn, three secondary league teams are “promoted” to the EPL in their place. <a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a> Consequently, one might say that the estimates of the teams that do not appear in all seasons are exaggerated.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>This is arguably a “bad” assumption. <a href="http://article.sapub.org/10.5923.s.sports.201401.08.html">Research</a> has shown that goal rate per minute increases in the last 15 minutes of a game.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>This may also be perceived to be a questionable assumption. One may argue that a matchup of “styles”—e.g. an aggressive team against another aggressive team—may distort the results from what would otherwise be expected.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>This approach is arguably too “simplistic”, but it is certainly a valid approach.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>See this <a href="https://www.pinnacle.com/en/betting-articles/Soccer/how-to-calculate-poisson-distribution/MD62MLXUMKMXZ6A8">Pinnacle blog post</a> for a discussion of the topic. (Undoubtedly there are many more articles and papers that explore a similar notion.)<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5" role="doc-endnote"><p>There are several notable differences with my work compared to that of BÃ¥Ã¥th: (1) I use the <a href="http://www.openbugs.net/w/FrontPage">OpenBUGS</a> software (and the <a href="https://cran.r-project.org/web/packages/R2OpenBUGS/index.html"><code>{R2OpenBUGS}</code> package</a>) instead of JAGS; (2) I evaluate EPL teams instead of La Liga teams, and over a different time period; (3) I use a “tidy” approach (in terms of packages, plotting, coding style, etc.) instead of a more traditional “base R” approach; (4) I implement a modified version of the second of Baath’s three proposed models (notably, using different priors).<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6" role="doc-endnote"><p>Baath’s work is licensed under the <a href="https://creativecommons.org/licenses/by/3.0/">Creative Commons license</a>, which allows for others to adapt the work of another.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7" role="doc-endnote"><p>Note that I substitute the baseline home average goal rate with a baseline for away teams, <span class="math inline">\(\text{baseline}_a\)</span>, and I swap the order of the <span class="math inline">\(z_j\)</span> and <span class="math inline">\(z_i\)</span> teams since the relationship is not bi-directional. Also, note that I am careful to distinguish between subscript pair <span class="math inline">\(_h\)</span> and <span class="math inline">\(_a\)</span> for home and away and pair <span class="math inline">\(_i\)</span> and <span class="math inline">\(_j\)</span> for team <span class="math inline">\(i\)</span> and team <span class="math inline">\(j\)</span>. The latter pair is independent of the notion of home or away.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8" role="doc-endnote"><p>There are certainly also changes in team strength within seasons, which are even more difficult to model.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9" role="doc-endnote"><p>This explains why there are more than 20 teams in thee data set even though there are only 20 teams in the EPL in a given season.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->
 </div>
@@ -2713,6 +1739,15 @@ function init_posts_list() {
 <div class="d-appendix">
 </div>
 
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
 
 <!--radix_placeholder_site_after_body-->
 <!--/radix_placeholder_site_after_body-->
