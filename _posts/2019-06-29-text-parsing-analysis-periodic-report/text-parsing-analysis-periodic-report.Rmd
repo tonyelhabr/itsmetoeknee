@@ -8,8 +8,6 @@ base_url: 'https//tonyelhabr.rbind.io'
 date: 2019-06-29
 categories:
   - r
-  - tidytext
-  - ggplot
 output: 
   distill::distill_article:
     toc: true
@@ -38,11 +36,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Some Context
+## Introduction
 
-Those of you non-academia folk who work in industry (like me) are probably conscious of any/all periodic reports that an independent entity publishes for your company's industry. For example, in the insurance industry in the United States, the [Federal Insurance Office of the U.S. Department of the Treasury](https://home.treasury.gov/policy-issues/financial-markets-financial-institutions-and-fiscal-service/federal-insurance-office) publishes [several reports on an annual basis](https://www.treasury.gov/initiatives/fio/reports-and-notices/Pages/default.aspx) discussing the industry at large, like this past year's [***Annual Report on the Insurance Industry***](https://www.treasury.gov/initiatives/fio/reports-and-notices/Documents/2018_FIO_Annual_Report.pdf). (Admittedly, these kinds of reports are not always the most interesting things to read, but they are (usually) very informative.)
+Those of you non-academia folk who work in industry are probably conscious of any/all periodic reports that an independent entity publishes for your company's industry. For example, in the insurance industry in the United States, the [Federal Insurance Office of the U.S. Department of the Treasury](https://home.treasury.gov/policy-issues/financial-markets-financial-institutions-and-fiscal-service/federal-insurance-office) publishes [several reports on an annual basis](https://www.treasury.gov/initiatives/fio/reports-and-notices/Pages/default.aspx) discussing the industry at large, like this past year's [***Annual Report on the Insurance Industry***](https://www.treasury.gov/initiatives/fio/reports-and-notices/Documents/2018_FIO_Annual_Report.pdf). (Admittedly, these kinds of reports are not always the most interesting things to read, but they are (usually) very informative.)
 
-The same goes for the electricity grid and markets operated by the [Electric Reliability Council of Texas (ERCOT)](http://www.ercot.com/) in Texas (which just so happens to be particularly relevant to me). [Potomac Economics](https://www.potomaceconomics.com/) publishes an annual report ["providing an independent assessment of the competitive performance and operational efficiency of the market"](https://www.potomaceconomics.com/markets-monitored/ercot/) operated by ERCOT. This report tends to be pretty long---over 160 pages in every reports since 2016. A relatively large amount of the content is replication of language, figures, and tables from the prior years' report, substituting and updating numbers from the past year. [^1] As an annual reader of said report, I wish it were easier to "parse out" the most important things from a given year's report. [^2]
+The same goes for the electricity grid and markets operated by the [Electric Reliability Council of Texas (ERCOT)](http://www.ercot.com/) in Texas. [Potomac Economics](https://www.potomaceconomics.com/) publishes an annual report ["providing an independent assessment of the competitive performance and operational efficiency of the market"](https://www.potomaceconomics.com/markets-monitored/ercot/) operated by ERCOT. This report tends to be pretty long---over 160 pages in every reports since 2016. A relatively large amount of the content is replication of language, figures, and tables from the prior years' report, substituting and updating numbers from the past year. [^1] As an annual reader of said report, I wish it were easier to "parse out" the most important things from a given year's report. [^2]
 
 [^1]: This is not a knock on the report whatsoever---annual reports will inevitably have redundancy like this! In fact, I really do enjoy the report. The explanations of the various (and sometimes complex) aspects of the electric reliability and market operation are fantastic.
 
@@ -215,7 +213,7 @@ Ok, so given the above examples and explanation, we now have some context for un
 
 ![](viz_sents_section_sim.png)
 
-If you have read the reports, you'll realize that there are lots of "repeated" sentences across the documents. For example, take the description of the first figure in 2018: <i>"Figure 1 summarizes changes in energy prices and other market costs by showing the all-in price of electricity, which is a measure of the total cost of serving load in ERCOT for 2016 through 2018."</i> The "same" sentence in the 2017 report is <i>"Figure 1 summarizes changes in energy prices and other market costs by showing the all-in price of electricity, which is a measure of the total cost of serving load in ERCOT for 2015 through 2017."</i> Just by inspection, you can tell that these two sentences would have a cosine similarity almost equal to 1. In fact, I did some extra text-processing---most notably, replacing year and months with generic labels, e.g. "[year]" and "[month]"---that would make these two sentences appear exactly identical (and, consequently, have a cosine similarity of exactly 1). This whole effort to quantify of sentence similarity was probably the most interesting thing to me out of this entire analysis! [^10]
+If you have read the reports, you'll realize that there are lots of "repeated" sentences across the documents. For example, take the description of the first figure in 2018: <i>"Figure 1 summarizes changes in energy prices and other market costs by showing the all-in price of electricity, which is a measure of the total cost of serving load in ERCOT for 2016 through 2018."</i> The "same" sentence in the 2017 report is <i>"Figure 1 summarizes changes in energy prices and other market costs by showing the all-in price of electricity, which is a measure of the total cost of serving load in ERCOT for 2015 through 2017."</i> Just by inspection, you can tell that these two sentences would have a cosine similarity almost equal to 1. In fact, I did some extra text-processing---most notably, replacing year and months with generic labels, e.g. "[year]" and "[month]"---that would make these two sentences appear exactly identical (and, consequently, have a cosine similarity of exactly 1). This whole effort to quantify of sentence similarity was probably the most interesting thing to me out of this entire analysis. [^10]
 
 [^10]: If nothing else, this part of the analysis was a great opportunity to experiment with the wonderful [`{text2vec}` package](http://text2vec.org/).
 

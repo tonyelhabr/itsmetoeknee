@@ -8,11 +8,6 @@ base_url: 'https//tonyelhabr.rbind.io'
 date: 2020-07-13
 categories:
   - r
-  - python
-  - variable importance
-  - machine learning
-  - interpretable
-  - tidymodels
 output: 
   distill::distill_article:
     toc: true
@@ -32,7 +27,7 @@ knitr::opts_chunk$set(
   include = FALSE,
   eval = FALSE,
   echo = FALSE,
-  cache = TRUE,
+  cache = FALSE,
   cache.lazy = FALSE,
   fig.show = 'hide',
   fig.align = 'center',
@@ -101,8 +96,8 @@ With `glmnet::glmnet()`, I'm actually not going to use a penalty, so (I think) i
 
 [^6]: I should say that I'm using the `{tidymodels}` package to assist with all of this. It really shows off its flexibility here, allowing me to switch between models only having to change-out one line of code!Finally, for variable importance scores (which is really the focus), I'm going to use the following packages and functi ons.
 
-1.  `{vip}`'s model-specific scores with (`vip::vip(method = 'mod el')`)
-2.  `{vip}`'s permutation-based scores (with `vip::vip(method = 'perm ute')`)
+1.  `{vip}`'s model-specific scores with (`vip::vip(method = 'mod l')`)
+2.  `{vip}`'s permutation-based scores (with `vip::vip(method = 'permute')`)
 3.  `{vip}`'s SHAP-based values (with `vip::vip(method = 'shap')`)
 4.  [`{DALEX}`'s permutation-based scores](https://pbiecek.github.io/ema/featureImportance.html) (with `DALEX::variable_importance()`)
 
@@ -599,7 +594,7 @@ viz_diamonds_c_rnks
 export_png(viz_diamonds_c_rnks)
 ```
 
- me: the model-specific scores differ relatively strongly from the rest of the scores given a specific model type. (See the numbers in the parentheses in the first column in each facet labeled `vip_model` compared to those in the other columns of each facet. [^8] For example, the model-specific variable importance score for the `carat` feature for the `{glm}` model type is 49%, while the same score for the SHAP variable importance method (`vip_shap`) is 35%. To be honest, this is not too surprising. The model-specific methods are exactly that---specific to the model type---which suggests that they may strongly dissimilar to the model-agnostic approaches. Nonetheless, despite the scores themselves having some notable variance, the rankings derived from the scores are relatively similar across a given model type (and, arguably, across all model types).
+me: the model-specific scores differ relatively strongly from the rest of the scores given a specific model type. (See the numbers in the parentheses in the first column in each facet labeled `vip_model` compared to those in the other columns of each facet. [^8] For example, the model-specific variable importance score for the `carat` feature for the `{glm}` model type is 49%, while the same score for the SHAP variable importance method (`vip_shap`) is 35%. To be honest, this is not too surprising. The model-specific methods are exactly that---specific to the model type---which suggests that they may strongly dissimilar to the model-agnostic approaches. Nonetheless, despite the scores themselves having some notable variance, the rankings derived from the scores are relatively similar across a given model type (and, arguably, across all model types).
 
 [^8]: Don't be deceived by the fill contours, which are based on the rankings--the number in front of the parentheses.
 
@@ -610,7 +605,6 @@ Thirdly--and lastly for this plot---it's nice to see that the `vip_permute` and 
 Now let's look at the the results when predicting a discrete target variable with the same data set.
 
 ```{r appendix-main-d-diamonds}
-
 diamonds_d_rnks <-
   engines_named %>% 
   map_dfr(
@@ -690,7 +684,6 @@ There is consensus on what the most important variable is---`cyl`---but beyond t
 And now for the results when ranking with models targeting a discrete variable.
 
 ```{r appendix-main-d-mpg}
-
 mpg_d_rnks <-
   engines_named %>% 
   map_dfr(
@@ -706,7 +699,6 @@ mpg_d_rnks
 ```
 
 ```{r appendix-viz-d-mpg}
-
 lab_subtitle_mpg_d <- lab_subtitle_mpg_c %>% str_replace('^.*\\sTarget', '<span style = "color:#F28E2B;"><b>Discrete</b></span> Target')
 viz_mpg_d_rnks <- 
   mpg_d_rnks %>% 
@@ -729,7 +721,6 @@ There is some pretty strong variation in the `{ranger}` results. Also, there are
 Even without performing any kind of similarity evaluation, we can argue that, in general, the rankings computed by the different methods are relatively similar across the two data sets (`diamonds` and `mpg`) and the two types of target variables (continuous and discrete). But why stop there? After all, we **can** quantify the similarities between ranks.
 
 ```{r appendix-cor_by_engine}
-
 cor_by_set_engine <-
   list(
     diamonds_c = diamonds_c_rnks,
@@ -803,10 +794,3 @@ The plot above shows the pairwise correlations among the variable importance ran
 Overall, we might say that rankings of variable importance based on normalized variable importance scores in this analysis showed that differences will arise when evaluating different methodologies, but the differences may not be strong enough to change any deductions that one might draw. Of course, this will depend on the context. A small differences could make a huge difference in a field like medicine!
 
 I wouldn't go so far as to say that these insights can be generalized---among other things, I think I would need to evaluate a much larger variety of data sets---but I think it's good to be conscious how much the results can vary. It's ultimately up to the user whether the differences are significant.
-
-# Appendix
-
-See all relevant R code below.
-
-```{r fin-0, ref.label=stringr::str_subset(knitr::all_labels(), 'appendix'), echo=T, include=T, evl=F}
-```

@@ -8,11 +8,7 @@ base_url: 'https//tonyelhabr.rbind.io'
 date: 2019-12-13
 categories:
   - r
-  - bayes
-  - statistics
-  - poisson
   - soccer
-  - epl
 output: 
   distill::distill_article:
     toc: true
@@ -25,10 +21,6 @@ twitter:
 ---
 
 ```{r setup, include=F, echo=F, cache=F}
-# ::here('content', 'post', 'bayesian-statistics-english-premier-league')
-# .dir_proj <- here::here()
-# rmarkdown::render(file.path(.dir_proj, 'index.Rmd'), output_file = file.path(.dir_proj, 'index.md'))
-# knitr::opts_knit$set(root.dir = .dir_proj)
 knitr::opts_chunk$set(
   rows.print = 30,
   eval = FALSE,
@@ -49,24 +41,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r postprocess, cache=F}
-# .path_sans_ext <- file.path('project')
-# .path_rmd <- paste0(.path_sans_ext, '.Rmd')
-# spelling::spell_check_files(.path_rmd)
-# options(width = 200)
-# opt_old <- getOption('tibble.print_min')
-# options(tibble.print_min = 30)
-```
+I haven't had as much time (since summer of 2018) to write due to taking classes in pursuit of a degree from [Georgia Tech's Online Master of Science in Analytics (OMSA)](https://pe.gatech.edu/degrees/analytics) program. On the other hand, the classes have given me some ideas for future content. And, in the case of the [Bayesian Statistics](https://en.wikipedia.org/wiki/Bayesian_statistics) class that I took this past fall, there's content that translates well to a blog post directly. What follows is a lightly edited version of the report that I submitted at the end of the semester for this class.
 
-As [I mentioned back in July](/post/cheat-sheet-rmarkdown), I haven't had as much time (since summer of 2018) to write due to taking classes in pursuit of a degree from [Georgia Tech's Online Master of Science in Analytics (OMSA)](https://pe.gatech.edu/degrees/analytics) program. On the other hand, the classes have given me some ideas for future content. And, in the case of the [Bayesian Statistics](https://en.wikipedia.org/wiki/Bayesian_statistics) class that I took this past fall, there's content that translates well to a blog post directly. What follows is a lightly edited version of the report that I submitted at the end of the semester for this class.
-
-```{r setup-appendix, eval=T}
+```{r setup-appendix, echo=T}
 library(tidyverse)
 ```
 
-```{r setup-funcs, eval=T}
-# file_path_proj <- partial(here::here, ... =)
-# file_path_out <- partial(here::here, 'output', ... = )
+```{r setup-funcs}
 file_path <- partial(file.path, ... = )
 file_path_proj <- partial(file_path, ... = )
 file_path_out <- partial(file_path_proj, ... = )
@@ -124,17 +105,16 @@ Using Poisson distributions to model soccer scores is certainly not a novel conc
 
 For this project I retrieved game scores and outcomes for the previous three seasons of EPL games (i.e. from the 2016-17 season through the 2018-2019 season).
 
-```{r scrape-prep, eval=T}
+```{r scrape-prep}
 path_epl_data <- file_path_proj('epl.xlsx')
-eval_scrape <- FALSE # !fs::file_exists(path_epl_data)
 ```
 
-```{r scrape-appendix-1}
+```{r scrape-appendix-1, include=T}
 # Data Collection
 seasons <- 2016L:2018L
 ```
 
-```{r scrape-appendix-2, eval=eval_scrape, include=T, echo=T}
+```{r scrape-appendix-2, include=T}
 # Reference: https://github.com/jalapic/engsoccerdata/blob/master/R/england_current.R
 scrape_epl_data <- function(season = lubridate::year(Sys.Date()) - 1L) {
   s1 <- season %>% str_sub(3, 4) %>% as.integer()
@@ -178,7 +158,7 @@ data <-
 data
 ```
 
-```{r scrape-post, eval=eval_scrape}
+```{r scrape-post}
 writexl::write_xlsx(data, path_epl_data, format_headers = FALSE)
 ```
 
@@ -190,11 +170,9 @@ data <- readxl::read_excel(path_epl_data)
 data
 ```
 
-```{r eda-1, eval=F}
+```{r eda-1}
 data %>% summarise_at(vars(g_h, g_a), list(mean = mean, sd = sd))
 ```
-
-<!-- Before implementing some models, I need to "wrangle" the raw data a bit in order to put it in a more workable format for OpenBUGs. (Specifically, I need to put it into a list.) -->
 
 ```{r data_list-appendix, echo=T}
 pull2 <- function(data, ...) {
@@ -256,9 +234,8 @@ There are a couple of things to note about these priors. First, I must "zero"-an
 
 I leverage the [`{R2OpenBUGs}` package](https://cran.r-project.org/web/packages/R2OpenBUGS/index.html) to create this model with R on the "frontend" and generate the results using the OpenBUGS engine on the "backend". Regarding the implementation itself, note that I run 100,000 simulations (`n.iter`), minus 1,000 "burn-in" runs (`n.burn`).
 
-```{r model_1-prep, eval=T}
+```{r model_1-prep}
 path_res_sim_1 <- file_path_out('res_sim_1.rds')
-eval_model_1 <- FALSE # !fs::file_exists(path_res_sim_1)
 ```
 
 ```{r model_1-appendix, echo=F}
@@ -295,36 +272,32 @@ write_lines(model_1, path_model_1)
 model_1
 ```
 
-```{r res_sim_1-show-appendix, eval=eval_model_1}
-if(eval_model_1) {
-  # inits_1 <- list(n_tm = data_list$n_tm)
-  inits_1 <- NULL
-  params_1 <-
-    c(
-      paste0('baseline', c('_a', '_h')),
-      paste0('sigma_all'),
-      paste0('z', c('', '_all'))
-    )
-  
-  res_sim_1 <-
-    R2OpenBUGS::bugs(
-      # debug = TRUE,
-      data = data_list,
-      inits = inits_1,
-      model.file = path_model_1,
-      parameters.to.save = params_1,
-      DIC = FALSE,
-      n.chains = 1,
-      n.iter = 10000,
-      n.burnin = 1000
-    )
-}
+```{r res_sim_1-show-appendix}
+# inits_1 <- list(n_tm = data_list$n_tm)
+inits_1 <- NULL
+params_1 <-
+  c(
+    paste0('baseline', c('_a', '_h')),
+    paste0('sigma_all'),
+    paste0('z', c('', '_all'))
+  )
+
+res_sim_1 <-
+  R2OpenBUGS::bugs(
+    # debug = TRUE,
+    data = data_list,
+    inits = inits_1,
+    model.file = path_model_1,
+    parameters.to.save = params_1,
+    DIC = FALSE,
+    n.chains = 1,
+    n.iter = 10000,
+    n.burnin = 1000
+  )
 ```
 
-```{r res_sim_1_export, eval=eval_model_1}
-if(eval_model_1) {
-  write_rds(res_sim_1, path_res_sim_1)
-}
+```{r res_sim_1_export}
+write_rds(res_sim_1, path_res_sim_1)
 ```
 
 ```{r res_sim_1_import}
@@ -469,9 +442,8 @@ export_png <-
   }
 ```
 
-```{r path_viz_summ_1_z, eval=T}
+```{r path_viz_summ_1_z}
 path_viz_summ_1_z <- file_path_out('viz_summ_1_z.png')
-eval_viz_summ_1_z <- FALSE # !fs::file_exists(path_viz_summ_1_z)
 ```
 
 ```{r viz_summ_1_z}
@@ -481,7 +453,7 @@ viz_summ_1_z <-
 viz_summ_1_z
 ```
 
-```{r viz_summ_1_z_export, eval=eval_viz_summ_1_z}
+```{r viz_summ_1_z_export}
 export_png(
   viz_summ_1_z,
   path = path_viz_summ_1_z,
@@ -506,9 +478,8 @@ res_sim_summ_1_z_adj <-
 res_sim_summ_1_z_adj
 ```
 
-```{r path_viz_summ_1_z_adj, eval=T}
+```{r path_viz_summ_1_z_adj}
 path_viz_summ_1_z_adj <- file_path_out('viz_summ_1_z_adj.png')
-eval_viz_summ_1_z_adj <- FALSE # !fs::file_exists(path_viz_summ_1_z_adj)
 ```
 
 ```{r viz_summ_1_z_adj}
@@ -518,7 +489,7 @@ viz_summ_1_z_adj <-
 viz_summ_1_z_adj
 ```
 
-```{r viz_summ_1_z_adj_export, eval=eval_viz_summ_1_z_adj}
+```{r viz_summ_1_z_adj_export}
 export_png(
   viz_summ_1_z_adj,
   path = path_viz_summ_1_z_adj,
@@ -535,53 +506,48 @@ n_sim <- 1000
 
 I can make predictions of game results for the historical data, given the model. Specifically, I simulate the score for both teams in each matchup (1,140 in all) 1,000 times, choosing the result inferred by the mode of each side's simulated score. (For example, if the mode of the 1,000 simulated scores for the away team is 1 and that of the home team is 2, then the predicted outcome is a win for the home team.) A breakdown of the predicted and actual outcomes is shown below.
 
-```{r path_preds-appendix, eval=T}
+```{r path_preds-appendix}
 path_preds <- file_path_out('preds_1.rds')
-eval_preds <- FALSE # !fs::file_exists(path_preds)
 ```
 
 ```{r do_predict-appendix-2}
-if(eval_preds) {
-  .baseline_h <- res_sim_summ_1 %>% filter(var == 'baseline_h') %>% pull(mean)
-  .baseline_a <- res_sim_summ_1 %>% filter(var == 'baseline_a') %>% pull(mean)
-  .extract_tab_max <- function(tab) {
-    tab[ which.max(tab)] %>% names() %>% as.integer()
-  }
-  do_predict <- function(i) {
-    data_filt <- data %>% slice(i)
-    .tm_h <- data_filt %>% pull(tm_h)
-    .tm_a <- data_filt %>% pull(tm_a)
-    z_h <- res_sim_summ_1_z %>% filter(tm == .tm_h) %>% pull(mean)
-    z_a <- res_sim_summ_1_z %>% filter(tm == .tm_a) %>% pull(mean)
-    g_h <- rpois(n_sim, exp(.baseline_h + (z_h - z_a)))
-    g_a <- rpois(n_sim, exp(.baseline_a + (z_a - z_h)))
-    tab_h <- table(g_h)
-    tab_a <- table(g_a)
-    result_sign <- sign(g_h - g_a)
-    tab_result <- table(result_sign)
-    result_mode <- .extract_tab_max(tab_result)
-    tibble(
-      g_h_mode = .extract_tab_max(tab_h),
-      g_a_mode = .extract_tab_max(tab_a),
-      result_mode = result_mode,
-      g_h_mean = mean(g_h),
-      g_a_mean = mean(g_a)
-    )
-  }
-  
-  set.seed(42)
-  preds <- 
-    tibble(idx = 1:n_gm) %>% 
-    mutate(res = map(idx, do_predict)) %>% 
-    unnest(res)
-  preds
+.baseline_h <- res_sim_summ_1 %>% filter(var == 'baseline_h') %>% pull(mean)
+.baseline_a <- res_sim_summ_1 %>% filter(var == 'baseline_a') %>% pull(mean)
+.extract_tab_max <- function(tab) {
+  tab[ which.max(tab)] %>% names() %>% as.integer()
 }
+do_predict <- function(i) {
+  data_filt <- data %>% slice(i)
+  .tm_h <- data_filt %>% pull(tm_h)
+  .tm_a <- data_filt %>% pull(tm_a)
+  z_h <- res_sim_summ_1_z %>% filter(tm == .tm_h) %>% pull(mean)
+  z_a <- res_sim_summ_1_z %>% filter(tm == .tm_a) %>% pull(mean)
+  g_h <- rpois(n_sim, exp(.baseline_h + (z_h - z_a)))
+  g_a <- rpois(n_sim, exp(.baseline_a + (z_a - z_h)))
+  tab_h <- table(g_h)
+  tab_a <- table(g_a)
+  result_sign <- sign(g_h - g_a)
+  tab_result <- table(result_sign)
+  result_mode <- .extract_tab_max(tab_result)
+  tibble(
+    g_h_mode = .extract_tab_max(tab_h),
+    g_a_mode = .extract_tab_max(tab_a),
+    result_mode = result_mode,
+    g_h_mean = mean(g_h),
+    g_a_mean = mean(g_a)
+  )
+}
+
+set.seed(42)
+preds <- 
+  tibble(idx = 1:n_gm) %>% 
+  mutate(res = map(idx, do_predict)) %>% 
+  unnest(res)
+preds
 ```
 
-```{r preds_export, eval=eval_preds}
-if(eval_preds) {
-  write_rds(preds, path_preds)
-}
+```{r preds_export}
+write_rds(preds, path_preds)
 ```
 
 ```{r preds_import}
@@ -630,9 +596,8 @@ preds_aug <-
   )
 ```
 
-```{r path_viz_conf_mat, eval=T}
+```{r path_viz_conf_mat}
 path_viz_conf_mat <- file_path_out('viz_conf_mat.png')
-eval_viz_conf_mat <- FALSE # !fs::file_exists(path_viz_conf_mat)
 ```
 
 ```{r viz_conf_mat-appendix}
@@ -689,7 +654,7 @@ viz_conf_mat <-
 viz_conf_mat
 ```
 
-```{r viz_conf_mat_export, eval=eval_viz_conf_mat}
+```{r viz_conf_mat_export}
 export_png(
   viz_conf_mat,
   path = path_viz_conf_mat,
@@ -706,9 +671,8 @@ I make a couple of observations:
 
 The next couple of visuals provide more details regarding the simulated outcomes.
 
-```{r path_viz_g_mode, eval=T}
+```{r path_viz_g_mode}
 path_viz_g_mode <- file_path_out('viz_g_mode.png')
-eval_viz_g_mode <- FALSE # !fs::file_exists(path_viz_g_mode)
 .lab_caption_n_gm <- glue::glue('Total games: 1140.')
 ```
 
@@ -734,7 +698,7 @@ viz_g_mode <-
 viz_g_mode
 ```
 
-```{r viz_g_mode_export, eval=eval_viz_g_mode}
+```{r viz_g_mode_export}
 export_png(
   viz_g_mode,
   path = path_viz_g_mode,
@@ -745,9 +709,8 @@ export_png(
 
 From the above graph of the mode of goals scored by both sides, it's apparent that a 2-1 scores in favor of the home side is the most common outcome.
 
-```{r path_viz_g_mean, eval=T}
+```{r path_viz_g_mean}
 path_viz_g_mean <- file_path_out('viz_g_mean.png')
-eval_viz_g_mean <- FALSE # !fs::file_exists(path_viz_g_mean)
 ```
 
 ```{r viz_g_mean-appendix}
@@ -774,7 +737,7 @@ viz_g_mean <-
 viz_g_mean
 ```
 
-```{r viz_g_mean_export, eval=eval_viz_g_mean}
+```{r viz_g_mean_export}
 export_png(
   viz_g_mean,
   path = path_viz_g_mean,
@@ -785,9 +748,8 @@ export_png(
 
 The above histogram illustrating the mean (instead of the mode) of the simulated goals provides a bit more nuance to our understanding of modes shown before.
 
-```{r path_viz_result_mode, eval=T}
+```{r path_viz_result_mode}
 path_viz_result_mode <- file_path_out('viz_result_mode.png')
-eval_viz_result_mode <- FALSE # !fs::file_exists(path_viz_result_mode)
 ```
 
 ```{r viz_result_mode-appendix}
@@ -834,7 +796,7 @@ viz_result_mode <-
 viz_result_mode
 ```
 
-```{r viz_result_mode_export, eval=eval_viz_result_mode}
+```{r viz_result_mode_export}
 export_png(
   viz_result_mode,
   path = path_viz_result_mode,
@@ -922,11 +884,5 @@ My model can certainly be improved. One major flaw of the model is that it does 
 
 [^9]: This explains why there are more than 20 teams in thee data set even though there are only 20 teams in the EPL in a given season.
 
-# Appendix
-
-## Code
-
-See all relevant R code below.
-
-```{r fin-0, ref.label=stringr::str_subset(knitr::all_labels(), 'appendix'), echo=T, include=T, eval=F}
+```{r fin-0, ref.label=stringr::str_subset(knitr::all_labels(), 'appendix'), echo=F, include=F, eval=F}
 ```
