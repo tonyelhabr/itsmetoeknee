@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/>
   <meta name="generator" content="distill" />
-  <link rel="alternate" type="application/rss+xml" href="https://itsmetoeknee.netlify.app/index.xml" />
+  <link rel="alternate" type="application/rss+xml" href="https://tonyelhabr.rbind.io/index.xml" />
 
   <style type="text/css">
   /* Hide doc at startup (prevent jankiness while JS renders/transforms) */
@@ -57,7 +57,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }
 code span.al { color: #ad0000; } /* Alert */
 code span.an { color: #5e5e5e; } /* Annotation */
-code span.at { color: #20794d; } /* Attribute */
+code span.at { } /* Attribute */
 code span.bn { color: #ad0000; } /* BaseN */
 code span.bu { } /* BuiltIn */
 code span.cf { color: #007ba5; } /* ControlFlow */
@@ -78,7 +78,7 @@ code span.kw { color: #007ba5; } /* Keyword */
 code span.op { color: #5e5e5e; } /* Operator */
 code span.ot { color: #007ba5; } /* Other */
 code span.pp { color: #ad0000; } /* Preprocessor */
-code span.sc { color: #20794d; } /* SpecialChar */
+code span.sc { color: #5e5e5e; } /* SpecialChar */
 code span.ss { color: #20794d; } /* SpecialString */
 code span.st { color: #20794d; } /* String */
 code span.va { color: #111111; } /* Variable */
@@ -87,20 +87,20 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </style>
 
   <!--radix_placeholder_meta_tags-->
-  <title>Tony Types: Posts</title>
+  <title>Tony: Posts</title>
 
 
 
 
   <!--  https://developers.facebook.com/docs/sharing/webmasters#markup -->
-  <meta property="og:title" content="Tony Types: Posts"/>
+  <meta property="og:title" content="Tony: Posts"/>
   <meta property="og:type" content="article"/>
   <meta property="og:locale" content="en_US"/>
-  <meta property="og:site_name" content="Tony Types"/>
+  <meta property="og:site_name" content="Tony"/>
 
   <!--  https://dev.twitter.com/cards/types/summary -->
   <meta property="twitter:card" content="summary"/>
-  <meta property="twitter:title" content="Tony Types: Posts"/>
+  <meta property="twitter:title" content="Tony: Posts"/>
 
   <!--/radix_placeholder_meta_tags-->
   <!--radix_placeholder_rmarkdown_metadata-->
@@ -1860,7 +1860,10 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 
       // hoverable references
       $('span.citation[data-cites]').each(function() {
-        var refHtml = $('#ref-' + $(this).attr('data-cites')).html();
+        var refs = $(this).attr('data-cites').split(" ");
+        var refHtml = refs.map(function(ref) {
+          return "<p>" + $('#ref-' + ref).html() + "</p>";
+        }).join("\n");
         window.tippy(this, {
           allowHTML: true,
           content: refHtml,
@@ -2031,7 +2034,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   </script>
 
   <!--/radix_placeholder_distill-->
-  <script src="site_libs/header-attrs-2.8/header-attrs.js"></script>
+  <script src="site_libs/header-attrs-2.9.1/header-attrs.js"></script>
   <script src="site_libs/popper-2.6.0/popper.min.js"></script>
   <link href="site_libs/tippy-6.2.7/tippy.css" rel="stylesheet" />
   <link href="site_libs/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
@@ -2195,7 +2198,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <header class="header header--fixed" role="banner">
 <nav class="distill-site-nav distill-site-header">
 <div class="nav-left">
-<a href="index.html" class="title">Tony Types</a>
+<a href="index.html" class="title">Tony</a>
 <input id="distill-search" class="nav-search hidden" type="text" placeholder="Search..."/>
 </div>
 <div class="nav-right">
@@ -2266,6 +2269,7 @@ function init_posts_list() {
 
       // mark posts that match the category visible
       var page_category = window.location.hash.replace(/^#category:/, "");
+      page_category = decodeURIComponent(page_category)
       var posts = $('.post-metadata').map(function(idx, script) {
         var metadata = $.parseJSON($(script).html());
         var post = null;
@@ -2281,7 +2285,7 @@ function init_posts_list() {
       set_posts_visible(posts, true);
 
       // mark the hash active
-      $('.categories li>a[href="' + window.location.hash + '"]').addClass('active');
+      $('.categories li>a[href="' + decodeURIComponent(window.location.hash) + '"]').addClass('active');
 
       // update the list_caption
       var list_caption = $('.posts-list-caption');
@@ -2361,7 +2365,7 @@ function init_posts_list() {
 <div class="dt-tag">r</div>
 <div class="dt-tag">soccer</div>
 </div>
-<p>Tired: PCA + kmeans, Wired: UMAP + GMM</p>
+<p>A Different Approach to a Different Technique</p>
 </div>
 </a>
 <a href="posts/soccer-league-strength/" class="post-preview">
@@ -2381,7 +2385,7 @@ function init_posts_list() {
 <div class="dt-tag">r</div>
 <div class="dt-tag">soccer</div>
 </div>
-<p>Quantifying Relative Soccer League Strength</p>
+<p>With Atomic VAEP</p>
 </div>
 </a>
 <a href="posts/fantasy-football-schedule-problem/" class="post-preview">
@@ -2402,11 +2406,11 @@ function init_posts_list() {
 <div class="dt-tag">python</div>
 <div class="dt-tag">football (american)</div>
 </div>
-<p>Fantasy Football and the Classical Scheduling Problem</p>
+<p>Brute Force Programming Go Brrr</p>
 </div>
 </a>
 <a href="posts/decomposition-smoothing-soccer/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","soccer","reticulate","data.table","spatstat","tidyverse"]}</script>
+<script class="post-metadata" type="text/json">{"categories":["r","soccer"]}</script>
 <div class="metadata">
 <div class="publishedDate">Oct. 14, 2020</div>
 <div class="dt-authors">
@@ -2417,20 +2421,16 @@ function init_posts_list() {
 <img src="posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_smooth.png"/>
 </div>
 <div class="description">
-<h2>Decomposition and Smoothing with data.table, reticulate, and spatstat</h2>
+<h2>Decomposition and Smoothing</h2>
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 <div class="dt-tag">soccer</div>
-<div class="dt-tag">reticulate</div>
-<div class="dt-tag">data.table</div>
-<div class="dt-tag">spatstat</div>
-<div class="dt-tag">tidyverse</div>
 </div>
-<p>Decomposition and Smoothing with data.table, reticulate, and spatstat</p>
+<p>With data.table, reticulate, and spatstat</p>
 </div>
 </a>
 <a href="posts/soccer-pitch-control-r/" class="post-preview">
-<script class="post-metadata" type="text/json">{"categories":["r","python","soccer"]}</script>
+<script class="post-metadata" type="text/json">{"categories":["r","soccer"]}</script>
 <div class="metadata">
 <div class="publishedDate">Sept. 23, 2020</div>
 <div class="dt-authors">
@@ -2441,13 +2441,12 @@ function init_posts_list() {
 <img src="posts/soccer-pitch-control-r/viz_pc_823_combined.png"/>
 </div>
 <div class="description">
-<h2>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</h2>
+<h2>Creating a Soccer Pitch Control Model</h2>
 <div class="dt-tags">
 <div class="dt-tag">r</div>
-<div class="dt-tag">python</div>
 <div class="dt-tag">soccer</div>
 </div>
-<p>S3 Classes and {vctrs} to Create a Soccer Pitch Control Model</p>
+<p>With S3 Classes and vctrs</p>
 </div>
 </a>
 <a href="posts/variable-importance-compare/" class="post-preview">
@@ -2466,7 +2465,7 @@ function init_posts_list() {
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 </div>
-<p>Comparing Variable Importance Functions (For Modeling)</p>
+<p>Permuation, SHAP, and More</p>
 </div>
 </a>
 <a href="posts/bayesian-statistics-english-premier-league/" class="post-preview">
@@ -2481,12 +2480,12 @@ function init_posts_list() {
 <img data-src="posts/bayesian-statistics-english-premier-league/viz_summ_1_z_adj.png"/>
 </div>
 <div class="description">
-<h2>A Bayesian Approach to Ranking English Premier League Teams (using R)</h2>
+<h2>Ranking English Premier League Teams</h2>
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 <div class="dt-tag">soccer</div>
 </div>
-<p>A Bayesian Approach to Ranking English Premier League Teams (using R)</p>
+<p>With a Bayesian Approach</p>
 </div>
 </a>
 <a href="posts/cheat-sheet-rmarkdown/" class="post-preview">
@@ -2501,12 +2500,12 @@ function init_posts_list() {
 <img data-src="posts/cheat-sheet-rmarkdown/cheat-sheet-example.png"/>
 </div>
 <div class="description">
-<h2>Making a Cheat Sheet with Rmarkdown</h2>
+<h2>Making a Cheat Sheet</h2>
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 <div class="dt-tag">latex</div>
 </div>
-<p>Making a Cheat Sheet with Rmarkdown</p>
+<p>With Rmarkdown</p>
 </div>
 </a>
 <a href="posts/text-parsing-analysis-periodic-report/" class="post-preview">
@@ -2521,11 +2520,11 @@ function init_posts_list() {
 <img data-src="posts/text-parsing-analysis-periodic-report/viz_words_section_tfidf.PNG"/>
 </div>
 <div class="description">
-<h2>Text Parsing and Text Analysis of a Periodic Report (with R)</h2>
+<h2>Text Parsing and Analysis of a Periodic Report</h2>
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 </div>
-<p>Text Parsing and Text Analysis of a Periodic Report (with R)</p>
+<p>With tidytext and Friends</p>
 </div>
 </a>
 <a href="posts/rstudio-conf-2019-summary/" class="post-preview">
@@ -2540,11 +2539,11 @@ function init_posts_list() {
 <img data-src="posts/rstudio-conf-2019-summary/headliner.jpg"/>
 </div>
 <div class="description">
-<h2>Summarizing rstudio::conf 2019 Summaries with Tidy Text Techniques</h2>
+<h2>Summarizing rstudio conf 2019 Summaries</h2>
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 </div>
-<p>Summarizing rstudio::conf 2019 Summaries with Tidy Text Techniques</p>
+<p>A Meta Analysis Using Tidy Text Techniques</p>
 </div>
 </a>
 <a href="posts/nested-json-to-tidy-data-frame-r/" class="post-preview">
@@ -2563,7 +2562,7 @@ function init_posts_list() {
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 </div>
-<p>Converting nested JSON to a tidy data frame with R</p>
+<p>Web Scraping Made Easier</p>
 </div>
 </a>
 <a href="posts/using-flexdashboard/" class="post-preview">
@@ -2582,10 +2581,10 @@ function init_posts_list() {
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 </div>
-<p>Thoughts on Using Flexdashboard</p>
+<p>Examples and Alternatives</p>
 </div>
 </a>
-<a href="posts/tidy-text-analysis-rweekly/" class="post-preview">
+<a href="posts/text-analysis-rweekly/" class="post-preview">
 <script class="post-metadata" type="text/json">{"categories":["r"]}</script>
 <div class="metadata">
 <div class="publishedDate">March 5, 2018</div>
@@ -2594,14 +2593,14 @@ function init_posts_list() {
 </div>
 </div>
 <div class="thumbnail">
-<img data-src="posts/tidy-text-analysis-rweekly/featured.jpg"/>
+<img data-src="posts/text-analysis-rweekly/featured.jpg"/>
 </div>
 <div class="description">
-<h2>A Tidy Text Analysis of R Weekly Posts</h2>
+<h2>A Meta Analysis of R Weekly Posts</h2>
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 </div>
-<p>A Tidy Text Analysis of R Weekly Posts</p>
+<p>With Tidy Text Techniques</p>
 </div>
 </a>
 <a href="posts/interval-data-nycflights13/" class="post-preview">
@@ -2616,11 +2615,11 @@ function init_posts_list() {
 <img data-src="posts/interval-data-nycflights13/featured.jpg"/>
 </div>
 <div class="description">
-<h2>Dealing with Interval Data and the nycflights13 package using R</h2>
+<h2>Dealing with Interval Data and the nycflights13 package</h2>
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 </div>
-<p>Dealing with Interval Data and the nycflights13 package using R</p>
+<p>Dates, ANOVAs, and More</p>
 </div>
 </a>
 <a href="posts/visualizing-nba-team-schedule/" class="post-preview">
@@ -2639,7 +2638,7 @@ function init_posts_list() {
 <div class="dt-tags">
 <div class="dt-tag">r</div>
 </div>
-<p>Visualizing an NBA Team's Schedule Using R</p>
+<p>A Calendar Heatmap with ggplot2</p>
 </div>
 </a>
 </div>
@@ -2652,10 +2651,6 @@ function init_posts_list() {
 <span class="category-count">(15)</span>
 </li>
 <li>
-<a href="#category:data.table">data.table</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
 <a href="#category:football_(american)">football (american)</a>
 <span class="category-count">(1)</span>
 </li>
@@ -2665,27 +2660,15 @@ function init_posts_list() {
 </li>
 <li>
 <a href="#category:python">python</a>
-<span class="category-count">(2)</span>
+<span class="category-count">(1)</span>
 </li>
 <li>
 <a href="#category:r">r</a>
 <span class="category-count">(15)</span>
 </li>
 <li>
-<a href="#category:reticulate">reticulate</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
 <a href="#category:soccer">soccer</a>
 <span class="category-count">(5)</span>
-</li>
-<li>
-<a href="#category:spatstat">spatstat</a>
-<span class="category-count">(1)</span>
-</li>
-<li>
-<a href="#category:tidyverse">tidyverse</a>
-<span class="category-count">(1)</span>
 </li>
 </ul>
 </div>
