@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/>
+  <meta name="generator" content="distill" />
+
+  <style type="text/css">
+  /* Hide doc at startup (prevent jankiness while JS renders/transforms) */
+  body {
+    visibility: hidden;
+  }
+  </style>
+
+ <!--radix_placeholder_import_source-->
+ <!--/radix_placeholder_import_source-->
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ad0000; } /* Alert */
+code span.an { color: #5e5e5e; } /* Annotation */
+code span.at { } /* Attribute */
+code span.bn { color: #ad0000; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007ba5; } /* ControlFlow */
+code span.ch { color: #20794d; } /* Char */
+code span.cn { color: #8f5902; } /* Constant */
+code span.co { color: #5e5e5e; } /* Comment */
+code span.cv { color: #5e5e5e; font-style: italic; } /* CommentVar */
+code span.do { color: #5e5e5e; font-style: italic; } /* Documentation */
+code span.dt { color: #ad0000; } /* DataType */
+code span.dv { color: #ad0000; } /* DecVal */
+code span.er { color: #ad0000; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #ad0000; } /* Float */
+code span.fu { color: #4758ab; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #5e5e5e; } /* Information */
+code span.kw { color: #007ba5; } /* Keyword */
+code span.op { color: #5e5e5e; } /* Operator */
+code span.ot { color: #007ba5; } /* Other */
+code span.pp { color: #ad0000; } /* Preprocessor */
+code span.sc { color: #5e5e5e; } /* SpecialChar */
+code span.ss { color: #20794d; } /* SpecialString */
+code span.st { color: #20794d; } /* String */
+code span.va { color: #111111; } /* Variable */
+code span.vs { color: #20794d; } /* VerbatimString */
+code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
+</style>
+
+  <!--radix_placeholder_meta_tags-->
+  <title>Tired: PCA + kmeans, Wired: UMAP + GMM</title>
+
+  <meta property="description" itemprop="description" content="An Alternative to the Classic Approach to Dimension Reduction + Clustering"/>
+
+
+  <!--  https://schema.org/Article -->
+  <meta property="article:published" itemprop="datePublished" content="2021-06-30"/>
+  <meta property="article:created" itemprop="dateCreated" content="2021-06-30"/>
+  <meta name="article:author" content="Tony ElHabr"/>
+
+  <!--  https://developers.facebook.com/docs/sharing/webmasters#markup -->
+  <meta property="og:title" content="Tired: PCA + kmeans, Wired: UMAP + GMM"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:description" content="An Alternative to the Classic Approach to Dimension Reduction + Clustering"/>
+  <meta property="og:locale" content="en_US"/>
+
+  <!--  https://dev.twitter.com/cards/types/summary -->
+  <meta property="twitter:card" content="summary"/>
+  <meta property="twitter:title" content="Tired: PCA + kmeans, Wired: UMAP + GMM"/>
+  <meta property="twitter:description" content="An Alternative to the Classic Approach to Dimension Reduction + Clustering"/>
+  <meta property="twitter:site" content="@TonyElHabr"/>
+  <meta property="twitter:creator" content="@TonyElHabr"/>
+
+  <!--/radix_placeholder_meta_tags-->
+  <!--radix_placeholder_rmarkdown_metadata-->
+
+  <script type="text/json" id="radix-rmarkdown-metadata">
+  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","description","author","date","categories","output","preview","twitter"]}},"value":[{"type":"character","attributes":{},"value":["Tired: PCA + kmeans, Wired: UMAP + GMM"]},{"type":"character","attributes":{},"value":["An Alternative to the Classic Approach to Dimension Reduction + Clustering"]},{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","url"]}},"value":[{"type":"character","attributes":{},"value":["Tony ElHabr"]},{"type":"character","attributes":{},"value":["https://twitter.com/TonyElHabr"]}]}]},{"type":"character","attributes":{},"value":["2021-06-30"]},{"type":"character","attributes":{},"value":["r","soccer"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["distill::distill_article"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["toc","toc_depth","self_contained"]}},"value":[{"type":"logical","attributes":{},"value":[true]},{"type":"integer","attributes":{},"value":[3]},{"type":"logical","attributes":{},"value":[false]}]}]},{"type":"character","attributes":{},"value":["featured.png"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["site","creator"]}},"value":[{"type":"character","attributes":{},"value":["@TonyElHabr"]},{"type":"character","attributes":{},"value":["@TonyElHabr"]}]}]}
+  </script>
+  <!--/radix_placeholder_rmarkdown_metadata-->
+  
+  <script type="text/json" id="radix-resource-manifest">
+  {"type":"character","attributes":{},"value":["dimensionality-reduction-and-clustering_files/anchor-4.2.2/anchor.min.js","dimensionality-reduction-and-clustering_files/bowser-1.9.3/bowser.min.js","dimensionality-reduction-and-clustering_files/distill-2.2.21/template.v2.js","dimensionality-reduction-and-clustering_files/header-attrs-2.8/header-attrs.js","dimensionality-reduction-and-clustering_files/header-attrs-2.9.1/header-attrs.js","dimensionality-reduction-and-clustering_files/jquery-1.11.3/jquery.min.js","dimensionality-reduction-and-clustering_files/popper-2.6.0/popper.min.js","dimensionality-reduction-and-clustering_files/tippy-6.2.7/tippy-bundle.umd.min.js","dimensionality-reduction-and-clustering_files/tippy-6.2.7/tippy-light-border.css","dimensionality-reduction-and-clustering_files/tippy-6.2.7/tippy.css","dimensionality-reduction-and-clustering_files/tippy-6.2.7/tippy.umd.min.js","dimensionality-reduction-and-clustering_files/webcomponents-2.0.0/webcomponents.js","featured.png","gt_similarity_jadon_sancho.png","jadon-sancho-fbref.PNG","tweet.png","viz_acc.png","viz_cm_umap.png","viz_cors.png","viz_gmm_bic.png","viz_kmeans_wss.png","viz_ll.png","viz_misclassified_umap.png","viz_uncertainty_pca_full.png","viz_uncertainty_umap_filt.png","viz_uncertainty_umap_full.png"]}
+  </script>
+  <!--radix_placeholder_navigation_in_header-->
+  <!--/radix_placeholder_navigation_in_header-->
+  <!--radix_placeholder_distill-->
+
+  <style type="text/css">
+
+  body {
+    background-color: white;
+  }
+
+  .pandoc-table {
+    width: 100%;
+  }
+
+  .pandoc-table>caption {
+    margin-bottom: 10px;
+  }
+
+  .pandoc-table th:not([align]) {
+    text-align: left;
+  }
+
+  .pagedtable-footer {
+    font-size: 15px;
+  }
+
+  d-byline .byline {
+    grid-template-columns: 2fr 2fr;
+  }
+
+  d-byline .byline h3 {
+    margin-block-start: 1.5em;
+  }
+
+  d-byline .byline .authors-affiliations h3 {
+    margin-block-start: 0.5em;
+  }
+
+  .authors-affiliations .orcid-id {
+    width: 16px;
+    height:16px;
+    margin-left: 4px;
+    margin-right: 4px;
+    vertical-align: middle;
+    padding-bottom: 2px;
+  }
+
+  d-title .dt-tags {
+    margin-top: 1em;
+    grid-column: text;
+  }
+
+  .dt-tags .dt-tag {
+    text-decoration: none;
+    display: inline-block;
+    color: rgba(0,0,0,0.6);
+    padding: 0em 0.4em;
+    margin-right: 0.5em;
+    margin-bottom: 0.4em;
+    font-size: 70%;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  d-article table.gt_table td,
+  d-article table.gt_table th {
+    border-bottom: none;
+  }
+
+  .html-widget {
+    margin-bottom: 2.0em;
+  }
+
+  .l-screen-inset {
+    padding-right: 16px;
+  }
+
+  .l-screen .caption {
+    margin-left: 10px;
+  }
+
+  .shaded {
+    background: rgb(247, 247, 247);
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .shaded .html-widget {
+    margin-bottom: 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .shaded .shaded-content {
+    background: white;
+  }
+
+  .text-output {
+    margin-top: 0;
+    line-height: 1.5em;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  d-article {
+    padding-top: 2.5rem;
+    padding-bottom: 30px;
+  }
+
+  d-appendix {
+    padding-top: 30px;
+  }
+
+  d-article>p>img {
+    width: 100%;
+  }
+
+  d-article h2 {
+    margin: 1rem 0 1.5rem 0;
+  }
+
+  d-article h3 {
+    margin-top: 1.5rem;
+  }
+
+  d-article iframe {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 2.0em;
+    width: 100%;
+  }
+
+  /* Tweak code blocks */
+
+  d-article div.sourceCode code,
+  d-article pre code {
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  }
+
+  d-article pre,
+  d-article div.sourceCode,
+  d-article div.sourceCode pre {
+    overflow: auto;
+  }
+
+  d-article div.sourceCode {
+    background-color: white;
+  }
+
+  d-article div.sourceCode pre {
+    padding-left: 10px;
+    font-size: 12px;
+    border-left: 2px solid rgba(0,0,0,0.1);
+  }
+
+  d-article pre {
+    font-size: 12px;
+    color: black;
+    background: none;
+    margin-top: 0;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+
+    -moz-tab-size: 4;
+    -o-tab-size: 4;
+    tab-size: 4;
+
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+  }
+
+  d-article pre a {
+    border-bottom: none;
+  }
+
+  d-article pre a:hover {
+    border-bottom: none;
+    text-decoration: underline;
+  }
+
+  d-article details {
+    grid-column: text;
+    margin-bottom: 0.8em;
+  }
+
+  @media(min-width: 768px) {
+
+  d-article pre,
+  d-article div.sourceCode,
+  d-article div.sourceCode pre {
+    overflow: visible !important;
+  }
+
+  d-article div.sourceCode pre {
+    padding-left: 18px;
+    font-size: 14px;
+  }
+
+  d-article pre {
+    font-size: 14px;
+  }
+
+  }
+
+  figure img.external {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+    padding: 18px;
+    box-sizing: border-box;
+  }
+
+  /* CSS for d-contents */
+
+  .d-contents {
+    grid-column: text;
+    color: rgba(0,0,0,0.8);
+    font-size: 0.9em;
+    padding-bottom: 1em;
+    margin-bottom: 1em;
+    padding-bottom: 0.5em;
+    margin-bottom: 1em;
+    padding-left: 0.25em;
+    justify-self: start;
+  }
+
+  @media(min-width: 1000px) {
+    .d-contents.d-contents-float {
+      height: 0;
+      grid-column-start: 1;
+      grid-column-end: 4;
+      justify-self: center;
+      padding-right: 3em;
+      padding-left: 2em;
+    }
+  }
+
+  .d-contents nav h3 {
+    font-size: 18px;
+    margin-top: 0;
+    margin-bottom: 1em;
+  }
+
+  .d-contents li {
+    list-style-type: none
+  }
+
+  .d-contents nav > ul {
+    padding-left: 0;
+  }
+
+  .d-contents ul {
+    padding-left: 1em
+  }
+
+  .d-contents nav ul li {
+    margin-top: 0.6em;
+    margin-bottom: 0.2em;
+  }
+
+  .d-contents nav a {
+    font-size: 13px;
+    border-bottom: none;
+    text-decoration: none
+    color: rgba(0, 0, 0, 0.8);
+  }
+
+  .d-contents nav a:hover {
+    text-decoration: underline solid rgba(0, 0, 0, 0.6)
+  }
+
+  .d-contents nav > ul > li > a {
+    font-weight: 600;
+  }
+
+  .d-contents nav > ul > li > ul {
+    font-weight: inherit;
+  }
+
+  .d-contents nav > ul > li > ul > li {
+    margin-top: 0.2em;
+  }
+
+
+  .d-contents nav ul {
+    margin-top: 0;
+    margin-bottom: 0.25em;
+  }
+
+  .d-article-with-toc h2:nth-child(2) {
+    margin-top: 0;
+  }
+
+
+  /* Figure */
+
+  .figure {
+    position: relative;
+    margin-bottom: 2.5em;
+    margin-top: 1.5em;
+  }
+
+  .figure img {
+    width: 100%;
+  }
+
+  .figure .caption {
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 12px;
+    line-height: 1.5em;
+  }
+
+  .figure img.external {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+    padding: 18px;
+    box-sizing: border-box;
+  }
+
+  .figure .caption a {
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .figure .caption b,
+  .figure .caption strong, {
+    font-weight: 600;
+    color: rgba(0, 0, 0, 1.0);
+  }
+
+  /* Citations */
+
+  d-article .citation {
+    color: inherit;
+    cursor: inherit;
+  }
+
+  div.hanging-indent{
+    margin-left: 1em; text-indent: -1em;
+  }
+
+  /* Citation hover box */
+
+  .tippy-box[data-theme~=light-border] {
+    background-color: rgba(250, 250, 250, 0.95);
+  }
+
+  .tippy-content > p {
+    margin-bottom: 0;
+    padding: 2px;
+  }
+
+
+  /* Tweak 1000px media break to show more text */
+
+  @media(min-width: 1000px) {
+    .base-grid,
+    distill-header,
+    d-title,
+    d-abstract,
+    d-article,
+    d-appendix,
+    distill-appendix,
+    d-byline,
+    d-footnote-list,
+    d-citation-list,
+    distill-footer {
+      grid-template-columns: [screen-start] 1fr [page-start kicker-start] 80px [middle-start] 50px [text-start kicker-end] 65px 65px 65px 65px 65px 65px 65px 65px [text-end gutter-start] 65px [middle-end] 65px [page-end gutter-end] 1fr [screen-end];
+      grid-column-gap: 16px;
+    }
+
+    .grid {
+      grid-column-gap: 16px;
+    }
+
+    d-article {
+      font-size: 1.06rem;
+      line-height: 1.7em;
+    }
+    figure .caption, .figure .caption, figure figcaption {
+      font-size: 13px;
+    }
+  }
+
+  @media(min-width: 1180px) {
+    .base-grid,
+    distill-header,
+    d-title,
+    d-abstract,
+    d-article,
+    d-appendix,
+    distill-appendix,
+    d-byline,
+    d-footnote-list,
+    d-citation-list,
+    distill-footer {
+      grid-template-columns: [screen-start] 1fr [page-start kicker-start] 60px [middle-start] 60px [text-start kicker-end] 60px 60px 60px 60px 60px 60px 60px 60px [text-end gutter-start] 60px [middle-end] 60px [page-end gutter-end] 1fr [screen-end];
+      grid-column-gap: 32px;
+    }
+
+    .grid {
+      grid-column-gap: 32px;
+    }
+  }
+
+
+  /* Get the citation styles for the appendix (not auto-injected on render since
+     we do our own rendering of the citation appendix) */
+
+  d-appendix .citation-appendix,
+  .d-appendix .citation-appendix {
+    font-size: 11px;
+    line-height: 15px;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    padding-left: 18px;
+    border: 1px solid rgba(0,0,0,0.1);
+    background: rgba(0, 0, 0, 0.02);
+    padding: 10px 18px;
+    border-radius: 3px;
+    color: rgba(150, 150, 150, 1);
+    overflow: hidden;
+    margin-top: -12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  /* Include appendix styles here so they can be overridden */
+
+  d-appendix {
+    contain: layout style;
+    font-size: 0.8em;
+    line-height: 1.7em;
+    margin-top: 60px;
+    margin-bottom: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    color: rgba(0,0,0,0.5);
+    padding-top: 60px;
+    padding-bottom: 48px;
+  }
+
+  d-appendix h3 {
+    grid-column: page-start / text-start;
+    font-size: 15px;
+    font-weight: 500;
+    margin-top: 1em;
+    margin-bottom: 0;
+    color: rgba(0,0,0,0.65);
+  }
+
+  d-appendix h3 + * {
+    margin-top: 1em;
+  }
+
+  d-appendix ol {
+    padding: 0 0 0 15px;
+  }
+
+  @media (min-width: 768px) {
+    d-appendix ol {
+      padding: 0 0 0 30px;
+      margin-left: -30px;
+    }
+  }
+
+  d-appendix li {
+    margin-bottom: 1em;
+  }
+
+  d-appendix a {
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  d-appendix > * {
+    grid-column: text;
+  }
+
+  d-appendix > d-footnote-list,
+  d-appendix > d-citation-list,
+  d-appendix > distill-appendix {
+    grid-column: screen;
+  }
+
+  /* Include footnote styles here so they can be overridden */
+
+  d-footnote-list {
+    contain: layout style;
+  }
+
+  d-footnote-list > * {
+    grid-column: text;
+  }
+
+  d-footnote-list a.footnote-backlink {
+    color: rgba(0,0,0,0.3);
+    padding-left: 0.5em;
+  }
+
+
+
+  /* Anchor.js */
+
+  .anchorjs-link {
+    /*transition: all .25s linear; */
+    text-decoration: none;
+    border-bottom: none;
+  }
+  *:hover > .anchorjs-link {
+    margin-left: -1.125em !important;
+    text-decoration: none;
+    border-bottom: none;
+  }
+
+  /* Social footer */
+
+  .social_footer {
+    margin-top: 30px;
+    margin-bottom: 0;
+    color: rgba(0,0,0,0.67);
+  }
+
+  .disqus-comments {
+    margin-right: 30px;
+  }
+
+  .disqus-comment-count {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  #disqus_thread {
+    margin-top: 30px;
+  }
+
+  .article-sharing a {
+    border-bottom: none;
+    margin-right: 8px;
+  }
+
+  .article-sharing a:hover {
+    border-bottom: none;
+  }
+
+  .sidebar-section.subscribe {
+    font-size: 12px;
+    line-height: 1.6em;
+  }
+
+  .subscribe p {
+    margin-bottom: 0.5em;
+  }
+
+
+  .article-footer .subscribe {
+    font-size: 15px;
+    margin-top: 45px;
+  }
+
+
+  .sidebar-section.custom {
+    font-size: 12px;
+    line-height: 1.6em;
+  }
+
+  .custom p {
+    margin-bottom: 0.5em;
+  }
+
+  /* Styles for listing layout (hide title) */
+  .layout-listing d-title, .layout-listing .d-title {
+    display: none;
+  }
+
+  /* Styles for posts lists (not auto-injected) */
+
+
+  .posts-with-sidebar {
+    padding-left: 45px;
+    padding-right: 45px;
+  }
+
+  .posts-list .description h2,
+  .posts-list .description p {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .posts-list .description h2 {
+    font-weight: 700;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .posts-list h2.post-tag {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    padding-bottom: 12px;
+  }
+  .posts-list {
+    margin-top: 60px;
+    margin-bottom: 24px;
+  }
+
+  .posts-list .post-preview {
+    text-decoration: none;
+    overflow: hidden;
+    display: block;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 24px 0;
+  }
+
+  .post-preview-last {
+    border-bottom: none !important;
+  }
+
+  .posts-list .posts-list-caption {
+    grid-column: screen;
+    font-weight: 400;
+  }
+
+  .posts-list .post-preview h2 {
+    margin: 0 0 6px 0;
+    line-height: 1.2em;
+    font-style: normal;
+    font-size: 24px;
+  }
+
+  .posts-list .post-preview p {
+    margin: 0 0 12px 0;
+    line-height: 1.4em;
+    font-size: 16px;
+  }
+
+  .posts-list .post-preview .thumbnail {
+    box-sizing: border-box;
+    margin-bottom: 24px;
+    position: relative;
+    max-width: 500px;
+  }
+  .posts-list .post-preview img {
+    width: 100%;
+    display: block;
+  }
+
+  .posts-list .metadata {
+    font-size: 12px;
+    line-height: 1.4em;
+    margin-bottom: 18px;
+  }
+
+  .posts-list .metadata > * {
+    display: inline-block;
+  }
+
+  .posts-list .metadata .publishedDate {
+    margin-right: 2em;
+  }
+
+  .posts-list .metadata .dt-authors {
+    display: block;
+    margin-top: 0.3em;
+    margin-right: 2em;
+  }
+
+  .posts-list .dt-tags {
+    display: block;
+    line-height: 1em;
+  }
+
+  .posts-list .dt-tags .dt-tag {
+    display: inline-block;
+    color: rgba(0,0,0,0.6);
+    padding: 0.3em 0.4em;
+    margin-right: 0.2em;
+    margin-bottom: 0.4em;
+    font-size: 60%;
+    border: 1px solid rgba(0,0,0,0.2);
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .posts-list img {
+    opacity: 1;
+  }
+
+  .posts-list img[data-src] {
+    opacity: 0;
+  }
+
+  .posts-more {
+    clear: both;
+  }
+
+
+  .posts-sidebar {
+    font-size: 16px;
+  }
+
+  .posts-sidebar h3 {
+    font-size: 16px;
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    font-weight: 400;
+    text-transform: uppercase;
+  }
+
+  .sidebar-section {
+    margin-bottom: 30px;
+  }
+
+  .categories ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .categories li {
+    color: rgba(0, 0, 0, 0.8);
+    margin-bottom: 0;
+  }
+
+  .categories li>a {
+    border-bottom: none;
+  }
+
+  .categories li>a:hover {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+  }
+
+  .categories .active {
+    font-weight: 600;
+  }
+
+  .categories .category-count {
+    color: rgba(0, 0, 0, 0.4);
+  }
+
+
+  @media(min-width: 768px) {
+    .posts-list .post-preview h2 {
+      font-size: 26px;
+    }
+    .posts-list .post-preview .thumbnail {
+      float: right;
+      width: 30%;
+      margin-bottom: 0;
+    }
+    .posts-list .post-preview .description {
+      float: left;
+      width: 45%;
+    }
+    .posts-list .post-preview .metadata {
+      float: left;
+      width: 20%;
+      margin-top: 8px;
+    }
+    .posts-list .post-preview p {
+      margin: 0 0 12px 0;
+      line-height: 1.5em;
+      font-size: 16px;
+    }
+    .posts-with-sidebar .posts-list {
+      float: left;
+      width: 75%;
+    }
+    .posts-with-sidebar .posts-sidebar {
+      float: right;
+      width: 20%;
+      margin-top: 60px;
+      padding-top: 24px;
+      padding-bottom: 24px;
+    }
+  }
+
+
+  /* Improve display for browsers without grid (IE/Edge <= 15) */
+
+  .downlevel {
+    line-height: 1.6em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+  }
+
+  .downlevel .d-title {
+    padding-top: 6rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .downlevel .d-title h1 {
+    font-size: 50px;
+    font-weight: 700;
+    line-height: 1.1em;
+    margin: 0 0 0.5rem;
+  }
+
+  .downlevel .d-title p {
+    font-weight: 300;
+    font-size: 1.2rem;
+    line-height: 1.55em;
+    margin-top: 0;
+  }
+
+  .downlevel .d-byline {
+    padding-top: 0.8em;
+    padding-bottom: 0.8em;
+    font-size: 0.8rem;
+    line-height: 1.8em;
+  }
+
+  .downlevel .section-separator {
+    border: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .downlevel .d-article {
+    font-size: 1.06rem;
+    line-height: 1.7em;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+  }
+
+
+  .downlevel .d-appendix {
+    padding-left: 0;
+    padding-right: 0;
+    max-width: none;
+    font-size: 0.8em;
+    line-height: 1.7em;
+    margin-bottom: 0;
+    color: rgba(0,0,0,0.5);
+    padding-top: 40px;
+    padding-bottom: 48px;
+  }
+
+  .downlevel .footnotes ol {
+    padding-left: 13px;
+  }
+
+  .downlevel .base-grid,
+  .downlevel .distill-header,
+  .downlevel .d-title,
+  .downlevel .d-abstract,
+  .downlevel .d-article,
+  .downlevel .d-appendix,
+  .downlevel .distill-appendix,
+  .downlevel .d-byline,
+  .downlevel .d-footnote-list,
+  .downlevel .d-citation-list,
+  .downlevel .distill-footer,
+  .downlevel .appendix-bottom,
+  .downlevel .posts-container {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+
+  @media(min-width: 768px) {
+    .downlevel .base-grid,
+    .downlevel .distill-header,
+    .downlevel .d-title,
+    .downlevel .d-abstract,
+    .downlevel .d-article,
+    .downlevel .d-appendix,
+    .downlevel .distill-appendix,
+    .downlevel .d-byline,
+    .downlevel .d-footnote-list,
+    .downlevel .d-citation-list,
+    .downlevel .distill-footer,
+    .downlevel .appendix-bottom,
+    .downlevel .posts-container {
+    padding-left: 150px;
+    padding-right: 150px;
+    max-width: 900px;
+  }
+  }
+
+  .downlevel pre code {
+    display: block;
+    border-left: 2px solid rgba(0, 0, 0, .1);
+    padding: 0 0 0 20px;
+    font-size: 14px;
+  }
+
+  .downlevel code, .downlevel pre {
+    color: black;
+    background: none;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+
+    -moz-tab-size: 4;
+    -o-tab-size: 4;
+    tab-size: 4;
+
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+  }
+
+  .downlevel .posts-list .post-preview {
+    color: inherit;
+  }
+
+
+
+  </style>
+
+  <script type="application/javascript">
+
+  function is_downlevel_browser() {
+    if (bowser.isUnsupportedBrowser({ msie: "12", msedge: "16"},
+                                   window.navigator.userAgent)) {
+      return true;
+    } else {
+      return window.load_distill_framework === undefined;
+    }
+  }
+
+  // show body when load is complete
+  function on_load_complete() {
+
+    // add anchors
+    if (window.anchors) {
+      window.anchors.options.placement = 'left';
+      window.anchors.add('d-article > h2, d-article > h3, d-article > h4, d-article > h5');
+    }
+
+
+    // set body to visible
+    document.body.style.visibility = 'visible';
+
+    // force redraw for leaflet widgets
+    if (window.HTMLWidgets) {
+      var maps = window.HTMLWidgets.findAll(".leaflet");
+      $.each(maps, function(i, el) {
+        var map = this.getMap();
+        map.invalidateSize();
+        map.eachLayer(function(layer) {
+          if (layer instanceof L.TileLayer)
+            layer.redraw();
+        });
+      });
+    }
+
+    // trigger 'shown' so htmlwidgets resize
+    $('d-article').trigger('shown');
+  }
+
+  function init_distill() {
+
+    init_common();
+
+    // create front matter
+    var front_matter = $('<d-front-matter></d-front-matter>');
+    $('#distill-front-matter').wrap(front_matter);
+
+    // create d-title
+    $('.d-title').changeElementType('d-title');
+
+    // create d-byline
+    var byline = $('<d-byline></d-byline>');
+    $('.d-byline').replaceWith(byline);
+
+    // create d-article
+    var article = $('<d-article></d-article>');
+    $('.d-article').wrap(article).children().unwrap();
+
+    // move posts container into article
+    $('.posts-container').appendTo($('d-article'));
+
+    // create d-appendix
+    $('.d-appendix').changeElementType('d-appendix');
+
+    // flag indicating that we have appendix items
+    var appendix = $('.appendix-bottom').children('h3').length > 0;
+
+    // replace footnotes with <d-footnote>
+    $('.footnote-ref').each(function(i, val) {
+      appendix = true;
+      var href = $(this).attr('href');
+      var id = href.replace('#', '');
+      var fn = $('#' + id);
+      var fn_p = $('#' + id + '>p');
+      fn_p.find('.footnote-back').remove();
+      var text = fn_p.html();
+      var dtfn = $('<d-footnote></d-footnote>');
+      dtfn.html(text);
+      $(this).replaceWith(dtfn);
+    });
+    // remove footnotes
+    $('.footnotes').remove();
+
+    // move refs into #references-listing
+    $('#references-listing').replaceWith($('#refs'));
+
+    $('h1.appendix, h2.appendix').each(function(i, val) {
+      $(this).changeElementType('h3');
+    });
+    $('h3.appendix').each(function(i, val) {
+      var id = $(this).attr('id');
+      $('.d-contents a[href="#' + id + '"]').parent().remove();
+      appendix = true;
+      $(this).nextUntil($('h1, h2, h3')).addBack().appendTo($('d-appendix'));
+    });
+
+    // show d-appendix if we have appendix content
+    $("d-appendix").css('display', appendix ? 'grid' : 'none');
+
+    // localize layout chunks to just output
+    $('.layout-chunk').each(function(i, val) {
+
+      // capture layout
+      var layout = $(this).attr('data-layout');
+
+      // apply layout to markdown level block elements
+      var elements = $(this).children().not('details, div.sourceCode, pre, script');
+      elements.each(function(i, el) {
+        var layout_div = $('<div class="' + layout + '"></div>');
+        if (layout_div.hasClass('shaded')) {
+          var shaded_content = $('<div class="shaded-content"></div>');
+          $(this).wrap(shaded_content);
+          $(this).parent().wrap(layout_div);
+        } else {
+          $(this).wrap(layout_div);
+        }
+      });
+
+
+      // unwrap the layout-chunk div
+      $(this).children().unwrap();
+    });
+
+    // remove code block used to force  highlighting css
+    $('.distill-force-highlighting-css').parent().remove();
+
+    // remove empty line numbers inserted by pandoc when using a
+    // custom syntax highlighting theme
+    $('code.sourceCode a:empty').remove();
+
+    // load distill framework
+    load_distill_framework();
+
+    // wait for window.distillRunlevel == 4 to do post processing
+    function distill_post_process() {
+
+      if (!window.distillRunlevel || window.distillRunlevel < 4)
+        return;
+
+      // hide author/affiliations entirely if we have no authors
+      var front_matter = JSON.parse($("#distill-front-matter").html());
+      var have_authors = front_matter.authors && front_matter.authors.length > 0;
+      if (!have_authors)
+        $('d-byline').addClass('hidden');
+
+      // article with toc class
+      $('.d-contents').parent().addClass('d-article-with-toc');
+
+      // strip links that point to #
+      $('.authors-affiliations').find('a[href="#"]').removeAttr('href');
+
+      // add orcid ids
+      $('.authors-affiliations').find('.author').each(function(i, el) {
+        var orcid_id = front_matter.authors[i].orcidID;
+        if (orcid_id) {
+          var a = $('<a></a>');
+          a.attr('href', 'https://orcid.org/' + orcid_id);
+          var img = $('<img></img>');
+          img.addClass('orcid-id');
+          img.attr('alt', 'ORCID ID');
+          img.attr('src','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo1N0NEMjA4MDI1MjA2ODExOTk0QzkzNTEzRjZEQTg1NyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDozM0NDOEJGNEZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozM0NDOEJGM0ZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkZDN0YxMTc0MDcyMDY4MTE5NUZFRDc5MUM2MUUwNEREIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU3Q0QyMDgwMjUyMDY4MTE5OTRDOTM1MTNGNkRBODU3Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+84NovQAAAR1JREFUeNpiZEADy85ZJgCpeCB2QJM6AMQLo4yOL0AWZETSqACk1gOxAQN+cAGIA4EGPQBxmJA0nwdpjjQ8xqArmczw5tMHXAaALDgP1QMxAGqzAAPxQACqh4ER6uf5MBlkm0X4EGayMfMw/Pr7Bd2gRBZogMFBrv01hisv5jLsv9nLAPIOMnjy8RDDyYctyAbFM2EJbRQw+aAWw/LzVgx7b+cwCHKqMhjJFCBLOzAR6+lXX84xnHjYyqAo5IUizkRCwIENQQckGSDGY4TVgAPEaraQr2a4/24bSuoExcJCfAEJihXkWDj3ZAKy9EJGaEo8T0QSxkjSwORsCAuDQCD+QILmD1A9kECEZgxDaEZhICIzGcIyEyOl2RkgwAAhkmC+eAm0TAAAAABJRU5ErkJggg==');
+          a.append(img);
+          $(this).append(a);
+        }
+      });
+
+      // hide elements of author/affiliations grid that have no value
+      function hide_byline_column(caption) {
+        $('d-byline').find('h3:contains("' + caption + '")').parent().css('visibility', 'hidden');
+      }
+
+      // affiliations
+      var have_affiliations = false;
+      for (var i = 0; i<front_matter.authors.length; ++i) {
+        var author = front_matter.authors[i];
+        if (author.affiliation !== "&nbsp;") {
+          have_affiliations = true;
+          break;
+        }
+      }
+      if (!have_affiliations)
+        $('d-byline').find('h3:contains("Affiliations")').css('visibility', 'hidden');
+
+      // published date
+      if (!front_matter.publishedDate)
+        hide_byline_column("Published");
+
+      // document object identifier
+      var doi = $('d-byline').find('h3:contains("DOI")');
+      var doi_p = doi.next().empty();
+      if (!front_matter.doi) {
+        // if we have a citation and valid citationText then link to that
+        if ($('#citation').length > 0 && front_matter.citationText) {
+          doi.html('Citation');
+          $('<a href="#citation"></a>')
+            .text(front_matter.citationText)
+            .appendTo(doi_p);
+        } else {
+          hide_byline_column("DOI");
+        }
+      } else {
+        $('<a></a>')
+           .attr('href', "https://doi.org/" + front_matter.doi)
+           .html(front_matter.doi)
+           .appendTo(doi_p);
+      }
+
+       // change plural form of authors/affiliations
+      if (front_matter.authors.length === 1) {
+        var grid = $('.authors-affiliations');
+        grid.children('h3:contains("Authors")').text('Author');
+        grid.children('h3:contains("Affiliations")').text('Affiliation');
+      }
+
+      // remove d-appendix and d-footnote-list local styles
+      $('d-appendix > style:first-child').remove();
+      $('d-footnote-list > style:first-child').remove();
+
+      // move appendix-bottom entries to the bottom
+      $('.appendix-bottom').appendTo('d-appendix').children().unwrap();
+      $('.appendix-bottom').remove();
+
+      // hoverable references
+      $('span.citation[data-cites]').each(function() {
+        var refs = $(this).attr('data-cites').split(" ");
+        var refHtml = refs.map(function(ref) {
+          return "<p>" + $('#ref-' + ref).html() + "</p>";
+        }).join("\n");
+        window.tippy(this, {
+          allowHTML: true,
+          content: refHtml,
+          maxWidth: 500,
+          interactive: true,
+          interactiveBorder: 10,
+          theme: 'light-border',
+          placement: 'bottom-start'
+        });
+      });
+
+      // clear polling timer
+      clearInterval(tid);
+
+      // show body now that everything is ready
+      on_load_complete();
+    }
+
+    var tid = setInterval(distill_post_process, 50);
+    distill_post_process();
+
+  }
+
+  function init_downlevel() {
+
+    init_common();
+
+     // insert hr after d-title
+    $('.d-title').after($('<hr class="section-separator"/>'));
+
+    // check if we have authors
+    var front_matter = JSON.parse($("#distill-front-matter").html());
+    var have_authors = front_matter.authors && front_matter.authors.length > 0;
+
+    // manage byline/border
+    if (!have_authors)
+      $('.d-byline').remove();
+    $('.d-byline').after($('<hr class="section-separator"/>'));
+    $('.d-byline a').remove();
+
+    // remove toc
+    $('.d-contents').remove();
+
+    // move appendix elements
+    $('h1.appendix, h2.appendix').each(function(i, val) {
+      $(this).changeElementType('h3');
+    });
+    $('h3.appendix').each(function(i, val) {
+      $(this).nextUntil($('h1, h2, h3')).addBack().appendTo($('.d-appendix'));
+    });
+
+
+    // inject headers into references and footnotes
+    var refs_header = $('<h3></h3>');
+    refs_header.text('References');
+    $('#refs').prepend(refs_header);
+
+    var footnotes_header = $('<h3></h3');
+    footnotes_header.text('Footnotes');
+    $('.footnotes').children('hr').first().replaceWith(footnotes_header);
+
+    // move appendix-bottom entries to the bottom
+    $('.appendix-bottom').appendTo('.d-appendix').children().unwrap();
+    $('.appendix-bottom').remove();
+
+    // remove appendix if it's empty
+    if ($('.d-appendix').children().length === 0)
+      $('.d-appendix').remove();
+
+    // prepend separator above appendix
+    $('.d-appendix').before($('<hr class="section-separator" style="clear: both"/>'));
+
+    // trim code
+    $('pre>code').each(function(i, val) {
+      $(this).html($.trim($(this).html()));
+    });
+
+    // move posts-container right before article
+    $('.posts-container').insertBefore($('.d-article'));
+
+    $('body').addClass('downlevel');
+
+    on_load_complete();
+  }
+
+
+  function init_common() {
+
+    // jquery plugin to change element types
+    (function($) {
+      $.fn.changeElementType = function(newType) {
+        var attrs = {};
+
+        $.each(this[0].attributes, function(idx, attr) {
+          attrs[attr.nodeName] = attr.nodeValue;
+        });
+
+        this.replaceWith(function() {
+          return $("<" + newType + "/>", attrs).append($(this).contents());
+        });
+      };
+    })(jQuery);
+
+    // prevent underline for linked images
+    $('a > img').parent().css({'border-bottom' : 'none'});
+
+    // mark non-body figures created by knitr chunks as 100% width
+    $('.layout-chunk').each(function(i, val) {
+      var figures = $(this).find('img, .html-widget');
+      if ($(this).attr('data-layout') !== "l-body") {
+        figures.css('width', '100%');
+      } else {
+        figures.css('max-width', '100%');
+        figures.filter("[width]").each(function(i, val) {
+          var fig = $(this);
+          fig.css('width', fig.attr('width') + 'px');
+        });
+
+      }
+    });
+
+    // auto-append index.html to post-preview links in file: protocol
+    // and in rstudio ide preview
+    $('.post-preview').each(function(i, val) {
+      if (window.location.protocol === "file:")
+        $(this).attr('href', $(this).attr('href') + "index.html");
+    });
+
+    // get rid of index.html references in header
+    if (window.location.protocol !== "file:") {
+      $('.distill-site-header a[href]').each(function(i,val) {
+        $(this).attr('href', $(this).attr('href').replace("index.html", "./"));
+      });
+    }
+
+    // add class to pandoc style tables
+    $('tr.header').parent('thead').parent('table').addClass('pandoc-table');
+    $('.kable-table').children('table').addClass('pandoc-table');
+
+    // add figcaption style to table captions
+    $('caption').parent('table').addClass("figcaption");
+
+    // initialize posts list
+    if (window.init_posts_list)
+      window.init_posts_list();
+
+    // implmement disqus comment link
+    $('.disqus-comment-count').click(function() {
+      window.headroom_prevent_pin = true;
+      $('#disqus_thread').toggleClass('hidden');
+      if (!$('#disqus_thread').hasClass('hidden')) {
+        var offset = $(this).offset();
+        $(window).resize();
+        $('html, body').animate({
+          scrollTop: offset.top - 35
+        });
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    if (is_downlevel_browser())
+      init_downlevel();
+    else
+      window.addEventListener('WebComponentsReady', init_distill);
+  });
+
+  </script>
+
+  <!--/radix_placeholder_distill-->
+  <script src="dimensionality-reduction-and-clustering_files/header-attrs-2.9.1/header-attrs.js"></script>
+  <script src="dimensionality-reduction-and-clustering_files/jquery-1.11.3/jquery.min.js"></script>
+  <script src="dimensionality-reduction-and-clustering_files/popper-2.6.0/popper.min.js"></script>
+  <link href="dimensionality-reduction-and-clustering_files/tippy-6.2.7/tippy.css" rel="stylesheet" />
+  <link href="dimensionality-reduction-and-clustering_files/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
+  <script src="dimensionality-reduction-and-clustering_files/tippy-6.2.7/tippy.umd.min.js"></script>
+  <script src="dimensionality-reduction-and-clustering_files/anchor-4.2.2/anchor.min.js"></script>
+  <script src="dimensionality-reduction-and-clustering_files/bowser-1.9.3/bowser.min.js"></script>
+  <script src="dimensionality-reduction-and-clustering_files/webcomponents-2.0.0/webcomponents.js"></script>
+  <script src="dimensionality-reduction-and-clustering_files/distill-2.2.21/template.v2.js"></script>
+  <!--radix_placeholder_site_in_header-->
+  <!--/radix_placeholder_site_in_header-->
+
+
+</head>
+
+<body>
+
+<!--radix_placeholder_front_matter-->
+
+<script id="distill-front-matter" type="text/json">
+{"title":"Tired: PCA + kmeans, Wired: UMAP + GMM","description":"An Alternative to the Classic Approach to Dimension Reduction + Clustering","authors":[{"author":"Tony ElHabr","authorURL":"https://twitter.com/TonyElHabr","affiliation":"&nbsp;","affiliationURL":"#","orcidID":""}],"publishedDate":"2021-06-30T00:00:00.000-05:00","citationText":"ElHabr, 2021"}
+</script>
+
+<!--/radix_placeholder_front_matter-->
+<!--radix_placeholder_navigation_before_body-->
+<!--/radix_placeholder_navigation_before_body-->
+<!--radix_placeholder_site_before_body-->
+<!--/radix_placeholder_site_before_body-->
+
+<div class="d-title">
+<h1>Tired: PCA + kmeans, Wired: UMAP + GMM</h1>
+<!--radix_placeholder_categories-->
+<div class="dt-tags">
+<div class="dt=tag">r</div>
+<div class="dt=tag">soccer</div>
+</div>
+<!--/radix_placeholder_categories-->
+<p>An Alternative to the Classic Approach to Dimension Reduction + Clustering</p>
+</div>
+
+<div class="d-byline">
+  Tony ElHabr <a href="https://twitter.com/TonyElHabr" class="uri">https://twitter.com/TonyElHabr</a> 
+  
+<br/>2021-06-30
+</div>
+
+<div class="d-article">
+<div class="d-contents d-contents-float">
+<nav class="l-text toc figcaption" id="TOC">
+<h3>Contents</h3>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#unsupervised-evaluation">Unsupervised Evaluation</a></li>
+<li><a href="#supervised-evaluation">“Supervised” Evaluation</a>
+<ul>
+<li><a href="#aside-re-coding-clusters">Aside: Re-coding Clusters</a></li>
+</ul></li>
+<li><a href="#case-study-pca-vs.-umap">Case Study: PCA vs. UMAP</a></li>
+<li><a href="#case-study-umap-gmm">Case Study: UMAP + GMM</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ul>
+</nav>
+</div>
+<h2 id="introduction">Introduction</h2>
+<p>Combining <a href="https://en.wikipedia.org/wiki/Principal_component_analysis">principal component analysis (PCA)</a> and <a href="https://en.wikipedia.org/wiki/K-means_clustering">kmeans clustering</a> seems to be a pretty popular 1-2 punch in data science. While there is some debate about whether combining <a href="https://en.wikipedia.org/wiki/Dimensionality_reduction">dimensionality reduction</a> and <a href="https://en.wikipedia.org/wiki/Clustering">clustering</a> is something we should ever do<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>, I’m not here to debate that. I’m here to illustrate the potential advantages of upgrading your PCA + kmeans workflow to <a href="https://umap-learn.readthedocs.io/en/latest/">Uniform Manifold Approximation and Projection (UMAP)</a> + <a href="https://en.wikipedia.org/wiki/Mixture_model">Gaussian Mixture Model (GMM)</a>, as noted in <a href="https://twitter.com/TonyElHabr/status/1400149998629703681">my reply here</a>.</p>
+<p><img src="tweet.png" /></p>
+<p>For this demonstration, I’ll be using <a href="https://docs.google.com/spreadsheets/d/1lQgIDcxsHT1m_IayMldmiHVOt4ICbX-ys8Mh9rggPHM/edit?usp=sharing">this data set</a> pointed out <a href="https://twitter.com/ronanmann/status/1408504415690969089?s=21">here</a>, including over 100 stats for players from <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">soccer’s “Big 5” leagues</a>.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://tidyverse.tidyverse.org'>tidyverse</a></span><span class='op'>)</span>
+<span class='va'>df</span> <span class='op'>&lt;-</span> 
+  <span class='st'>'FBRef 2020-21 T5 League Data.xlsx'</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>readxl</span><span class='fu'>::</span><span class='fu'><a href='https://readxl.tidyverse.org/reference/read_excel.html'>read_excel</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>janitor</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/janitor/man/clean_names.html'>clean_names</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>mutate</span><span class='op'>(</span><span class='fu'>across</span><span class='op'>(</span><span class='fu'>where</span><span class='op'>(</span><span class='va'>is.double</span><span class='op'>)</span>, <span class='op'>~</span><span class='fu'>replace_na</span><span class='op'>(</span><span class='va'>.x</span>, <span class='fl'>0</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>
+
+<span class='co'># Let's only use players with a 10 matches' worth of minutes.</span>
+<span class='va'>df_filt</span> <span class='op'>&lt;-</span> <span class='va'>df</span> <span class='op'>%&gt;%</span> <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>min</span> <span class='op'>&gt;</span> <span class='op'>(</span><span class='fl'>10</span> <span class='op'>*</span> <span class='fl'>90</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>df_filt</span> <span class='op'>%&gt;%</span> <span class='fu'><a href='https://rdrr.io/r/base/dim.html'>dim</a></span><span class='op'>(</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## [1] 1626  128</span>
+</code></pre>
+</div>
+</div>
+<p>Trying to infer something from the correlation matrix doesn’t get you very far, so one can see why dimensionality reduction will be useful.</p>
+<p><img src="viz_cors.png" /></p>
+<p>Also, we don’t really have “labels” here (more on this later), so clustering can be useful for learning something from our data.</p>
+<h2 id="unsupervised-evaluation">Unsupervised Evaluation</h2>
+<p>We’ll be feeding in the results from the dimensionality reduction—either PCA or UMAP—to a clustering method—either kmeans or GMM. So, since clustering comes last, all we need to do is figure out how to judge the clustering; this will tell us something about how “good” the combination of dimensionality reduction and clustering is overall.</p>
+<p>I’ll save you from google-ing and just tell you that <a href="https://en.wikipedia.org/wiki/Total_sum_of_squares">within-cluster sum of squares (WSS)</a> is typically used for kmeans, and <a href="https://en.wikipedia.org/wiki/Bayesian_information_criterion">Bayesian Information Criteria (BIC)</a> is the go-to metric for GMM. WSS and BIC are not on the same scale, so we can’t directly compare kmeans and GMM at this point. Nonetheless, we can experiment with different numbers of components—the one major <a href="https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)">“hyperparameter”</a> for dimensionality reduction—prior to the clustering to identify if more or less components is “better”, given the clustering method. Oh, and why not also vary the number of clusters—the one notable hyperparameter for clustering—while we’re at it?</p>
+<p><img src="viz_kmeans_wss.png" /></p>
+<p>For kmeans, we see that WSS decreases with increasing number of clusters, which is typically what we see in <a href="https://en.wikipedia.org/wiki/Elbow_method_(clustering)">“elbow” plots</a> like this. Additionally, we see that WSS decreases with increasing number of components. This makes sense—additional components means more data is accounted for.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> There is definitely a point of “diminishing returns”, somewhere around 3 clusters, after which WSS barely improves.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> Overall, we observe that the kmeans models using UMAP pre-processing do better, compared to those using PCA.</p>
+<p>Moving on to GMM, we observe that BIC generally increases with the number of clusters as well. (Note that, due to the way <a href="https://stats.stackexchange.com/questions/237220/mclust-model-selection">the <code>{mclust}</code> package defines it’s objective function, higher BIC is “better”</a>.)</p>
+<p><img src="viz_gmm_bic.png" /></p>
+<p>Regarding number of components, we see that the GMM models using more UMAP components do better, as we should have expected. On the other hand, we observe that GMM models using less PCA components do better than those with more components. This is a bit of an odd finding that I don’t have a great explanation for. (Someone please math-splain to me.) Nonetheless, we see that UMAP does better than PCA overall, as we observed with kmeans.</p>
+<p>For those interested in the code, I <code>map</code>-ed a function across a grid of parameters to generate the data for these plots.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>do_dimr_clust</span> <span class='op'>&lt;-</span>
+  <span class='kw'>function</span><span class='op'>(</span><span class='va'>n</span>, <span class='va'>k</span>,
+           <span class='va'>f_dimr</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'pca'</span>, <span class='st'>'umap'</span><span class='op'>)</span>,
+           <span class='va'>f_clust</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'kmeans'</span>, <span class='st'>'gmm'</span><span class='op'>)</span>,
+           <span class='va'>...</span><span class='op'>)</span> <span class='op'>{</span>
+    <span class='va'>f_dimr</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/match.arg.html'>match.arg</a></span><span class='op'>(</span><span class='va'>f_dimr</span><span class='op'>)</span>
+    <span class='va'>f_clust</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/match.arg.html'>match.arg</a></span><span class='op'>(</span><span class='va'>f_clust</span><span class='op'>)</span>
+    <span class='va'>f_step</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>f_dimr</span> <span class='op'>==</span> <span class='st'>'pca'</span>, <span class='fu'>recipes</span><span class='fu'>::</span><span class='va'><a href='https://recipes.tidymodels.org/reference/step_pca.html'>step_pca</a></span>, <span class='fu'>embed</span><span class='fu'>::</span><span class='va'><a href='https://embed.tidymodels.org/reference/step_umap.html'>step_umap</a></span><span class='op'>)</span>
+    <span class='va'>f_fit</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>f_clust</span> <span class='op'>==</span> <span class='st'>'gmm'</span>, <span class='fu'>stats</span><span class='fu'>::</span><span class='va'><a href='https://rdrr.io/r/stats/kmeans.html'>kmeans</a></span>, <span class='fu'>mclust</span><span class='fu'>::</span><span class='va'><a href='https://mclust-org.github.io/mclust/reference/Mclust.html'>Mclust</a></span><span class='op'>)</span>
+    
+    <span class='va'>data</span> <span class='op'>&lt;-</span>
+      <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/recipe.html'>recipe</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/formula.html'>formula</a></span><span class='op'>(</span> <span class='op'>~</span> <span class='va'>.</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>df_filt</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+      <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/step_normalize.html'>step_normalize</a></span><span class='op'>(</span><span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/has_role.html'>all_numeric_predictors</a></span><span class='op'>(</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+      <span class='fu'>f_step</span><span class='op'>(</span><span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/has_role.html'>all_numeric_predictors</a></span><span class='op'>(</span><span class='op'>)</span>, num_comp <span class='op'>=</span> <span class='va'>n</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+      <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/prep.html'>prep</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+      <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/juice.html'>juice</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+      <span class='fu'>select</span><span class='op'>(</span><span class='fu'>where</span><span class='op'>(</span><span class='va'>is.numeric</span><span class='op'>)</span><span class='op'>)</span>
+    <span class='va'>fit</span> <span class='op'>&lt;-</span> <span class='fu'>f_fit</span><span class='op'>(</span><span class='va'>data</span>, <span class='va'>...</span><span class='op'>)</span>
+    <span class='fu'>broom</span><span class='fu'>::</span><span class='fu'><a href='https://generics.r-lib.org/reference/glance.html'>glance</a></span><span class='op'>(</span><span class='va'>fit</span><span class='op'>)</span>
+  <span class='op'>}</span>
+
+<span class='va'>metrics</span> <span class='op'>&lt;-</span>
+  <span class='fu'>crossing</span><span class='op'>(</span>
+    n <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>2</span>, <span class='fl'>8</span><span class='op'>)</span>,
+    k <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>2</span>, <span class='fl'>8</span><span class='op'>)</span>,
+    f_dimr <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'pca'</span>, <span class='st'>'umap'</span><span class='op'>)</span>,
+    f_clust <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'kmeans'</span>, <span class='st'>'mclust'</span><span class='op'>)</span>
+  <span class='op'>)</span> <span class='op'>%&gt;%</span>
+  <span class='fu'>mutate</span><span class='op'>(</span>metrics <span class='op'>=</span> <span class='fu'>pmap</span><span class='op'>(</span>
+    <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>n</span>, <span class='va'>k</span>, <span class='va'>f</span>, <span class='va'>g</span><span class='op'>)</span>,
+    <span class='op'>~</span> <span class='fu'>do_dimr_clust</span><span class='op'>(</span>
+      n <span class='op'>=</span> <span class='va'>..1</span>,
+      k <span class='op'>=</span> <span class='va'>..2</span>,
+      f <span class='op'>=</span> <span class='va'>..3</span>,
+      g <span class='op'>=</span> <span class='va'>..4</span>
+    <span class='op'>)</span>
+  <span class='op'>)</span><span class='op'>)</span>
+<span class='va'>metrics</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 196 x 5</span>
+<span class='co'>##        n     k f     g      metrics         </span>
+<span class='co'>##    &lt;int&gt; &lt;int&gt; &lt;chr&gt; &lt;chr&gt;  &lt;list&gt;          </span>
+<span class='co'>##  1     2     2 pca   kmeans &lt;tibble [1 x 4]&gt;</span>
+<span class='co'>##  2     2     2 pca   gmm    &lt;tibble [1 x 7]&gt;</span>
+<span class='co'>##  3     2     2 umap  kmeans &lt;tibble [1 x 4]&gt;</span>
+<span class='co'>##  4     2     2 umap  gmm    &lt;tibble [1 x 7]&gt;</span>
+<span class='co'>##  5     2     3 pca   kmeans &lt;tibble [1 x 4]&gt;</span>
+<span class='co'>##  6     2     3 pca   gmm    &lt;tibble [1 x 7]&gt;</span>
+<span class='co'>##  7     2     3 umap  kmeans &lt;tibble [1 x 4]&gt;</span>
+<span class='co'>##  8     2     3 umap  gmm    &lt;tibble [1 x 7]&gt;</span>
+<span class='co'>##  9     2     4 pca   kmeans &lt;tibble [1 x 4]&gt;</span>
+<span class='co'>## 10     2     4 pca   gmm    &lt;tibble [1 x 7]&gt;</span>
+<span class='co'>## # ... with 186 more rows</span>
+</code></pre>
+</div>
+</div>
+<h2 id="supervised-evaluation">“Supervised” Evaluation</h2>
+<p>We actually do have something that we can use to help us identify clusters—player position (<code>pos</code>). Let’s treat these position groups as pseudo-labels with which we can gauge the effectiveness of the clustering.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>df_filt</span> <span class='op'>&lt;-</span>
+  <span class='va'>df_filt</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>mutate</span><span class='op'>(</span>
+    <span class='fu'>across</span><span class='op'>(</span>
+      <span class='va'>pos</span>,
+      <span class='op'>~</span><span class='fu'>case_when</span><span class='op'>(</span>
+        <span class='va'>.x</span> <span class='op'>%in%</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'DF,MF'</span>, <span class='st'>'MF,DF'</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>'DM'</span>,
+        <span class='va'>.x</span> <span class='op'>%in%</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'DF,FW'</span>, <span class='st'>'FW,DF'</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>'M'</span>,
+        <span class='va'>.x</span> <span class='op'>%in%</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'MF,FW'</span>, <span class='st'>'FW,MF'</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>'AM'</span>,
+        <span class='va'>.x</span> <span class='op'>==</span> <span class='st'>'DF'</span> <span class='op'>~</span> <span class='st'>'D'</span>,
+        <span class='va'>.x</span> <span class='op'>==</span> <span class='st'>'MF'</span> <span class='op'>~</span> <span class='st'>'M'</span>,
+        <span class='va'>.x</span> <span class='op'>==</span> <span class='st'>'FW'</span> <span class='op'>~</span> <span class='st'>'F'</span>,
+        <span class='va'>.x</span> <span class='op'>==</span> <span class='st'>'GK'</span> <span class='op'>~</span> <span class='st'>'G'</span>,
+        <span class='va'>.x</span> <span class='op'>==</span> <span class='st'>'GK,MF'</span> <span class='op'>~</span> <span class='st'>'G'</span>,
+        <span class='cn'>TRUE</span> <span class='op'>~</span> <span class='va'>.x</span>
+      <span class='op'>)</span>
+    <span class='op'>)</span>
+  <span class='op'>)</span>
+<span class='va'>df_filt</span> <span class='op'>%&gt;%</span> <span class='fu'>count</span><span class='op'>(</span><span class='va'>pos</span>, sort <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 6 x 2</span>
+<span class='co'>##   pos       n</span>
+<span class='co'>##   &lt;chr&gt; &lt;int&gt;</span>
+<span class='co'>## 1 D       595</span>
+<span class='co'>## 2 M       364</span>
+<span class='co'>## 3 AM      273</span>
+<span class='co'>## 4 F       196</span>
+<span class='co'>## 5 G       113</span>
+<span class='co'>## 6 DM       85</span>
+</code></pre>
+</div>
+</div>
+<p>Typically we don’t have labels for clustering tasks; if we do, we’re usually doing some kind of supervised multi-label classification. But our labels aren’t “true” labels in this case, both because:</p>
+<ol type="1">
+<li>a player’s nominal position often doesn’t completely describe their style of play, and</li>
+<li>the grouping I did to reduce the number of positions from 11 to 6 was perhaps not optimal.</li>
+</ol>
+<p>So now let’s do the same as before—evaluate different combinations of PCA and UMAP with kmeans and GMM. But now we can use some supervised evaluation metrics: (1) <a href="https://en.wikipedia.org/wiki/Accuracy_and_precision">accuracy</a> and (2) mean <a href="https://en.wikipedia.org/wiki/Cross_entropy">log loss</a>. While the former is based on the “hard” predictions, the latter is based on probabilities for each class. kmeans returns just hard cluster assignments, so computing accuracy is straightforward; since it doesn’t return probabilities, we’ll treat the hard assignments as having a probability of 1 to compute log loss.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
+<p>We can compare the two clustering methods more directly now using these two metrics. Since we know that there are 6 position groups, we’ll keep the number of clusters constant at 6. (Note that number of <strong>clusters</strong> was shown on the x-axis before; but since we have fixed number of components at 6, now we show the number of <strong>components</strong> on the x-axis.)</p>
+<p>Looking at accuracy first, we see that the best combo depends on our choice for number of components. Overall, we might say that the UMAP combos are better.</p>
+<p><img src="viz_acc.png" /></p>
+<p>Next, looking at average log loss, we see that the GMM clustering methods seem to do better overall (although this may be due to the fact that log loss is not typically used for supervised kmeans). The PCA + GMM does the best across all number of components, with the exception of 7. Note that we get a mean log loss around 28 when we predict the majority class (defender) with a probability of 1 for all observations. (This is a good “baseline” to contextualize our numbers.)</p>
+<p><img src="viz_ll.png" /></p>
+<p>UMAP shines relative to PCA according to accuracy, and GMM beats out kmeans in terms of log loss. Despite these conclusions, we still don’t have clear evidence that UMAP + GMM is the best 1-2 combo; nonetheless, we can at least feel good about its general strength.</p>
+<h3 id="aside-re-coding-clusters">Aside: Re-coding Clusters</h3>
+<p>I won’t bother to show all the code to generate the above plots since it’s mostly just <code>broom::augmment()</code> and <code>{ggplot2}</code>. But, if you have ever worked with supervised stuff like this (if we can call it that), you’ll know that figuring out which of your clusters correspond to your known groups can be difficult. In this case, I started from a variable holding the predicted <code>.class</code> and the true class (<code>pos</code>).</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>assignments</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 1,626 x 2</span>
+<span class='co'>##    .class pos  </span>
+<span class='co'>##     &lt;int&gt; &lt;chr&gt;</span>
+<span class='co'>##  1      1 D    </span>
+<span class='co'>##  2      2 D    </span>
+<span class='co'>##  3      3 M    </span>
+<span class='co'>##  4      3 M    </span>
+<span class='co'>##  5      4 AM   </span>
+<span class='co'>##  6      2 D    </span>
+<span class='co'>##  7      2 D    </span>
+<span class='co'>##  8      4 F    </span>
+<span class='co'>##  9      2 D    </span>
+<span class='co'>## 10      1 D    </span>
+<span class='co'>## # ... with 1,616 more rows</span>
+</code></pre>
+</div>
+</div>
+<p>I generated a correlation matrix for these two columns, ready to pass into a matching procedure.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>cors</span> <span class='op'>&lt;-</span>
+  <span class='va'>assignments</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>fastDummies</span><span class='fu'>::</span><span class='fu'><a href='https://jacobkap.github.io/fastDummies/reference/dummy_cols.html'>dummy_cols</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'.class'</span>, <span class='st'>'pos'</span><span class='op'>)</span>, remove_selected_columns <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>corrr</span><span class='fu'>::</span><span class='fu'><a href='https://corrr.tidymodels.org/reference/correlate.html'>correlate</a></span><span class='op'>(</span>method <span class='op'>=</span> <span class='st'>'spearman'</span>, quiet <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>term</span> <span class='op'>%&gt;%</span> <span class='fu'>str_detect</span><span class='op'>(</span><span class='st'>'pos'</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>select</span><span class='op'>(</span><span class='va'>term</span>, <span class='fu'>matches</span><span class='op'>(</span><span class='st'>'^[.]class'</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>cors</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 6 x 7</span>
+<span class='co'>##   term   .class_1 .class_2 .class_3 .class_4 .class_5 .class_6</span>
+<span class='co'>##   &lt;chr&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;</span>
+<span class='co'>## 1 pos_AM  -0.208   -0.241   -0.178    0.0251   0.625   -0.123 </span>
+<span class='co'>## 2 pos_D    0.499    0.615   -0.335   -0.264   -0.428   -0.208 </span>
+<span class='co'>## 3 pos_DM   0.0797   0.0330   0.0548  -0.0829  -0.0519  -0.0642</span>
+<span class='co'>## 4 pos_F   -0.171   -0.199   -0.168    0.724    0.0232  -0.101 </span>
+<span class='co'>## 5 pos_G   -0.127   -0.147   -0.124   -0.0964  -0.157    1     </span>
+<span class='co'>## 6 pos_M   -0.222   -0.267    0.724   -0.180    0.0395  -0.147</span>
+</code></pre>
+</div>
+</div>
+<p>Then I used <code>clue::solve_LSAP()</code> to do the <a href="https://en.wikipedia.org/wiki/Hungarian_algorithm">bipartite matching magic</a>. The rest is just pre- and post-processing.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>k</span> <span class='op'>&lt;-</span> <span class='fl'>6</span> <span class='co'># number of clusters</span>
+<span class='va'>cols_idx</span> <span class='op'>&lt;-</span> <span class='fl'>2</span><span class='op'>:</span><span class='op'>(</span><span class='va'>k</span><span class='op'>+</span><span class='fl'>1</span><span class='op'>)</span>
+<span class='va'>cors_mat</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/matrix.html'>as.matrix</a></span><span class='op'>(</span><span class='va'>cors</span><span class='op'>[</span>,<span class='va'>cols_idx</span><span class='op'>]</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>1</span> <span class='co'># all values have to be positive</span>
+<span class='fu'><a href='https://rdrr.io/r/base/colnames.html'>rownames</a></span><span class='op'>(</span><span class='va'>cors_mat</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='va'>cors</span><span class='op'>$</span><span class='va'>term</span>
+<span class='va'>cols</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/names.html'>names</a></span><span class='op'>(</span><span class='va'>cors</span><span class='op'>)</span><span class='op'>[</span><span class='va'>cols_idx</span><span class='op'>]</span>
+<span class='fu'><a href='https://rdrr.io/r/base/colnames.html'>colnames</a></span><span class='op'>(</span><span class='va'>cors_mat</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='va'>cols</span>
+<span class='va'>cols_idx_min</span> <span class='op'>&lt;-</span> <span class='fu'>clue</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/clue/man/solve_LSAP.html'>solve_LSAP</a></span><span class='op'>(</span><span class='va'>cors_mat</span>, maximum <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+<span class='va'>cols_min</span> <span class='op'>&lt;-</span> <span class='va'>cols</span><span class='op'>[</span><span class='va'>cols_idx_min</span><span class='op'>]</span>
+<span class='va'>pairs</span> <span class='op'>&lt;-</span>
+  <span class='fu'>tibble</span><span class='fu'>::</span><span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
+    .class <span class='op'>=</span> <span class='va'>cols_min</span> <span class='op'>%&gt;%</span> <span class='fu'>str_remove</span><span class='op'>(</span><span class='st'>'^[.]class_'</span><span class='op'>)</span> <span class='op'>%&gt;%</span> <span class='fu'><a href='https://rdrr.io/r/base/integer.html'>as.integer</a></span><span class='op'>(</span><span class='op'>)</span>,
+    pos <span class='op'>=</span> <span class='va'>cors</span><span class='op'>$</span><span class='va'>term</span> <span class='op'>%&gt;%</span> <span class='fu'>str_remove</span><span class='op'>(</span><span class='st'>'pos_'</span><span class='op'>)</span>
+  <span class='op'>)</span>
+<span class='va'>pairs</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 6 x 2</span>
+<span class='co'>##   .class pos  </span>
+<span class='co'>##    &lt;int&gt; &lt;chr&gt;</span>
+<span class='co'>## 1      5 AM   </span>
+<span class='co'>## 2      2 D    </span>
+<span class='co'>## 3      1 DM   </span>
+<span class='co'>## 4      4 F    </span>
+<span class='co'>## 5      6 G    </span>
+<span class='co'>## 6      3 M </span>
+</code></pre>
+</div>
+</div>
+<p>This <code>pairs</code> variable can be used to re-code the <code>.class</code> column in our <code>assignments</code> from before.</p>
+<h2 id="case-study-pca-vs.-umap">Case Study: PCA vs. UMAP</h2>
+<p>Let’s step back from the clustering techniques and focus on dimensionality reduction for a moment. One of the ways that dimensionality reduction can be leveraged in sports like soccer is for player similarity metrics.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a> Let’s take a look at how this can be done, comparing the PCA and UMAP results while we’re at it.</p>
+<p>Direct comparison of the similarity “scores” we’ll compute—based on Euclidean distance between a chosen player’s components and other players’ components—is not wise given the different ranges of our PCA and UMAP components, so we’ll rely on rankings based on these scores.<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a> Additionally, <a href="https://fbref.com/">fbref</a> provides a “baseline” that we can use to judge our similarity rankings.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></p>
+<p>We’ll start with <a href="https://fbref.com/en/players/dbf053da/Jadon-Sancho">Jadon Sancho</a>, a highly discussed player at the moment (as a potential transfer).</p>
+<span style="max-width:100%; height:auto"><img src="jadon-sancho-fbref.PNG"></span>
+<p>We first need to set up our data into the following format. (This is for 2-component, 6-cluster UMAP + GMM.)</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>sims_int</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 1,664 x 6</span>
+<span class='co'>##    player_1     player_2           comp_1 comp_2 value_1 value_2</span>
+<span class='co'>##    &lt;chr&gt;        &lt;chr&gt;               &lt;int&gt;  &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt;</span>
+<span class='co'>##  1 Jadon Sancho Aaron Leya Iseka        1      1  -4.18  -5.14  </span>
+<span class='co'>##  2 Jadon Sancho Aaron Leya Iseka        2      2  -0.678  2.49  </span>
+<span class='co'>##  3 Jadon Sancho Aaron Ramsey            1      1  -4.18  -3.25  </span>
+<span class='co'>##  4 Jadon Sancho Aaron Ramsey            2      2  -0.678 -0.738 </span>
+<span class='co'>##  5 Jadon Sancho Abdoul Kader Bamba      1      1  -4.18  -3.40  </span>
+<span class='co'>##  6 Jadon Sancho Abdoul Kader Bamba      2      2  -0.678  0.0929</span>
+<span class='co'>##  7 Jadon Sancho Abdoulaye Doucouré      1      1  -4.18  -1.36  </span>
+<span class='co'>##  8 Jadon Sancho Abdoulaye Doucouré      2      2  -0.678 -2.66  </span>
+<span class='co'>##  9 Jadon Sancho Abdoulaye Touré         1      1  -4.18  -1.36  </span>
+<span class='co'>## 10 Jadon Sancho Abdoulaye Touré         2      2  -0.678 -2.89  </span>
+<span class='co'>## # ... with 1,654 more rows</span>
+</code></pre>
+</div>
+</div>
+<p>Then the Euclidean distance calculation is fairly straightforward.</p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>sims</span> <span class='op'>&lt;-</span>
+  <span class='va'>sims_init</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>player_1</span>, <span class='va'>player_2</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>summarize</span><span class='op'>(</span>
+    d <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>sqrt</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='op'>(</span><span class='va'>value_1</span> <span class='op'>-</span> <span class='va'>value_2</span><span class='op'>)</span><span class='op'>^</span><span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>
+  <span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>mutate</span><span class='op'>(</span>score <span class='op'>=</span> <span class='fl'>1</span> <span class='op'>-</span> <span class='op'>(</span><span class='op'>(</span><span class='va'>d</span> <span class='op'>-</span> <span class='fl'>0</span><span class='op'>)</span> <span class='op'>/</span> <span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/Extremes.html'>max</a></span><span class='op'>(</span><span class='va'>d</span><span class='op'>)</span> <span class='op'>-</span> <span class='fl'>0</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>mutate</span><span class='op'>(</span>rnk <span class='op'>=</span> <span class='fu'>row_number</span><span class='op'>(</span><span class='fu'>desc</span><span class='op'>(</span><span class='va'>score</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>rnk</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>select</span><span class='op'>(</span>player <span class='op'>=</span> <span class='va'>player_2</span>, <span class='va'>d</span>, <span class='va'>score</span>, <span class='va'>rnk</span><span class='op'>)</span>
+<span class='va'>sims</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 830 x 4</span>
+<span class='co'>##    player                  d score   rnk</span>
+<span class='co'>##    &lt;chr&gt;               &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt;</span>
+<span class='co'>##  1 Alexis Sánchez     0.0581 0.994     1</span>
+<span class='co'>##  2 Riyad Mahrez       0.120  0.988     2</span>
+<span class='co'>##  3 Serge Gnabry       0.132  0.986     3</span>
+<span class='co'>##  4 Jack Grealish      0.137  0.986     4</span>
+<span class='co'>##  5 Pablo Sarabia      0.171  0.983     5</span>
+<span class='co'>##  6 Thomas Müller      0.214  0.978     6</span>
+<span class='co'>##  7 Leroy Sané         0.223  0.977     7</span>
+<span class='co'>##  8 Callum Hudson-Odoi 0.226  0.977     8</span>
+<span class='co'>##  9 Jesse Lingard      0.260  0.973     9</span>
+<span class='co'>## 10 Ousmane Dembélé    0.263  0.973    10</span>
+<span class='co'>## # ... with 820 more rows</span>
+</code></pre>
+</div>
+</div>
+<p>Doing the same for PCA and combining all results, we get the following set of rankings.</p>
+<span style="max-width:80%; height:auto"><img src="gt_similarity_jadon_sancho.png"></span>
+<p>We see that the UMAP rankings are “closer” overall to the fbref rankings. Of course, there are some caveats:</p>
+<ol type="1">
+<li>This is just one player.</li>
+<li>This is with a specific number of components and clusters.</li>
+<li>We are comparing to similarity rankings based on a separate methodology.</li>
+</ol>
+<p>Our observation here (that UMAP &gt; PCA) shouldn’t be taken out of context to conclude that UMAP &gt; PCA in all contexts. Nonetheless, I think this is an interesting use case for dimensionality reduction, where one can justify PCA, UMAP, or any other similar technique, depending on how intuitive the results are.</p>
+<h2 id="case-study-umap-gmm">Case Study: UMAP + GMM</h2>
+<p>Finally, let’s bring clustering back into the conversation. We’re going to focus on how the heralded UMAP + GMM combo can be visualized to provide insight that supports (or debunks) our prior understanding.</p>
+<p>With a 2-component UMAP + 6-cluster GMM, we can see how the 6 position groups can be identified in a 2-D space.</p>
+<p><img src="viz_uncertainty_umap_full.png" /></p>
+<p>For those curious, using PCA instead of UMAP also leads to an identifiable set of clusters. However, uncertainties are generally higher across the board (larger point sizes, more overlap between covariance ellipsoids).</p>
+<p><img src="viz_uncertainty_pca_full.png" /></p>
+<p>If we exclude keepers (G) and defenders (D) to focus on the other 4 positions with our UMAP + GMM approach, we can better see how some individual points —at the edges or outside of covariance ellipsoids—are classified with a higher degree of uncertainty.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a></p>
+<p><img src="viz_uncertainty_umap_filt.png" /></p>
+<p>Now, highlighting incorrect classifications, we can see how the defensive midfielder (DM) position group (upper left) seems to be a blind spot in our approach.</p>
+<p><img src="viz_misclassified_umap.png" /></p>
+<p>A more traditional confusion matrix<a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a> also illustrates the inaccuracy with classifying DMs. (Note the lack of dark grey fill in the DM column.)</p>
+<p><img src="viz_cm_umap.png" /></p>
+<p>DMs are often classified as defenders instead. I think this poor result has is more so due to my lazy grouping of players with <code>"MF,DF'</code> or <code>"DF,MF"</code> positions in the original data set than a fault in our approach.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>So, should our overall conclusion be that we should never use PCA or kmeans? No, not necessarily. They can both be much faster to compute than UMAP and GMMs respectively, which can be a huge positive if computation is a concern. PCA is linear while UMAP is not, so you may want to choose PCA to make it easier to explain to your friends. Regarding clustering, kmeans is technically a specific form of a GMM, so if you want to sound cool to your friends and tell them that you use GMMs, you can do that.</p>
+<p>Anyways, I hope I’ve shown why you should try out UMAP and GMM the next time you think about using PCA and kmeans.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>In some contexts you may want to do feature selection and/or manual grouping of data.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>While this whole thing is more about comparing techniques, I should make a note about WSS. We don’t want to increase the number of components for the sake of minimizing WSS. We lose some degree of interpretation with increasing components. Additionally, we could be <a href="https://en.wikipedia.org/wiki/Overfitting">overfitting</a> the model by increasing the number of components. Although we don’t have the intention of classifying new observations in this demo, it’s still good to keep overfitting in mind.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>This demo isn’t really intended to be a study in how to choose the best number of clusters, but I figured I’d point this out.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>I’d suggest <a href="https://juliasilge.com/blog/kmeans-employment/">this blog post from Julia Silge</a> for a better explanation of clustering with R and <a href="https://www.tidymodels.org/"><code>{tidymodels}</code></a>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5" role="doc-endnote"><p>Perhaps this is against best practice, but we’ll do it here for the sake of comparison.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6" role="doc-endnote"><p>Normalization perhaps doesn’t help much here given the clustered nature of the reduced data.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7" role="doc-endnote"><p>Normalization perhaps doesn’t help much here given the clustered nature of the reduced data.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8" role="doc-endnote"><p>fbref uses a different methodology, so perhaps it’s unwise to compare to them.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9" role="doc-endnote"><p>Sure, one can argue that a player like Diogo Jota should have been classified as an attacking midfielder (AM) to begin with, in which case he might not have been misclassified here.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn10" role="doc-endnote"><p>By the way, the <code>autoplot()</code> function for <code>yardstick::conf_mat()</code> results is awesome if you haven’t ever used it.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
+<!--radix_placeholder_article_footer-->
+<!--/radix_placeholder_article_footer-->
+</div>
+
+<div class="d-appendix">
+</div>
+
+
+<!--radix_placeholder_site_after_body-->
+<!--/radix_placeholder_site_after_body-->
+<!--radix_placeholder_appendices-->
+<div class="appendix-bottom"></div>
+<!--/radix_placeholder_appendices-->
+<!--radix_placeholder_navigation_after_body-->
+<!--/radix_placeholder_navigation_after_body-->
+
+</body>
+
+</html>
