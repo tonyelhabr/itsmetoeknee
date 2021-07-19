@@ -118,7 +118,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   <!--/radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-resource-manifest">
-  {"type":"character","attributes":{},"value":["decomposition-smoothing-soccer_files/anchor-4.2.2/anchor.min.js","decomposition-smoothing-soccer_files/bowser-1.9.3/bowser.min.js","decomposition-smoothing-soccer_files/distill-2.2.21/template.v2.js","decomposition-smoothing-soccer_files/header-attrs-2.6/header-attrs.js","decomposition-smoothing-soccer_files/header-attrs-2.8/header-attrs.js","decomposition-smoothing-soccer_files/jquery-1.11.3/jquery.min.js","decomposition-smoothing-soccer_files/popper-2.6.0/popper.min.js","decomposition-smoothing-soccer_files/tippy-6.2.7/tippy-bundle.umd.min.js","decomposition-smoothing-soccer_files/tippy-6.2.7/tippy-light-border.css","decomposition-smoothing-soccer_files/tippy-6.2.7/tippy.css","decomposition-smoothing-soccer_files/tippy-6.2.7/tippy.umd.min.js","decomposition-smoothing-soccer_files/webcomponents-2.0.0/webcomponents.js","viz_43_messi_binned.png","viz_grid_nnmf.png","viz_nnmf_dimensions_1to9_combined.png","viz_nnmf_dimensions_1to9_py.png","viz_nnmf_dimensions_1to9_r_smooth.png","viz_nnmf_dimensions_1to9_r_unsmooth.png"]}
+  {"type":"character","attributes":{},"value":["decomposition-smoothing-soccer_files/anchor-4.2.2/anchor.min.js","decomposition-smoothing-soccer_files/bowser-1.9.3/bowser.min.js","decomposition-smoothing-soccer_files/distill-2.2.21/template.v2.js","decomposition-smoothing-soccer_files/header-attrs-2.6/header-attrs.js","decomposition-smoothing-soccer_files/header-attrs-2.8/header-attrs.js","decomposition-smoothing-soccer_files/header-attrs-2.9.1/header-attrs.js","decomposition-smoothing-soccer_files/jquery-1.11.3/jquery.min.js","decomposition-smoothing-soccer_files/popper-2.6.0/popper.min.js","decomposition-smoothing-soccer_files/tippy-6.2.7/tippy-bundle.umd.min.js","decomposition-smoothing-soccer_files/tippy-6.2.7/tippy-light-border.css","decomposition-smoothing-soccer_files/tippy-6.2.7/tippy.css","decomposition-smoothing-soccer_files/tippy-6.2.7/tippy.umd.min.js","decomposition-smoothing-soccer_files/webcomponents-2.0.0/webcomponents.js","viz_43_messi_binned.png","viz_grid_nnmf.png","viz_nnmf_dimensions_1to9_combined.png","viz_nnmf_dimensions_1to9_py.png","viz_nnmf_dimensions_1to9_r_smooth.png","viz_nnmf_dimensions_1to9_r_unsmooth.png"]}
   </script>
   <!--radix_placeholder_navigation_in_header-->
   <!--/radix_placeholder_navigation_in_header-->
@@ -1529,6 +1529,15 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </code></pre>
 </div>
 </div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 1 x 8</span>
+<span class='co'>##       n n_player x_min x_max x_mean y_min y_max y_mean</span>
+<span class='co'>##   &lt;int&gt;    &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;</span>
+<span class='co'>## 1 224018      603     1   120  60.05     1    80  40.37</span>
+</code></pre>
+</div>
+</div>
 <h2 id="non-equi-joining-with-data.table">Non-Equi Joining with <code>{data.table}</code></h2>
 <p>Our first challenge is to convert the following chunk of python.</p>
 <div class="layout-chunk" data-layout="l-body">
@@ -1572,6 +1581,25 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </code></pre>
 </div>
 </div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 600 x 5</span>
+<span class='co'>##     idx     x      y next_y next_x</span>
+<span class='co'>##   &lt;int&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;</span>
+<span class='co'>## 1     1     0  0      4.211  4.138</span>
+<span class='co'>## 2     2     0  4.211  8.421  4.138</span>
+<span class='co'>## 3     3     0  8.421 12.63   4.138</span>
+<span class='co'>## 4     4     0 12.63  16.84   4.138</span>
+<span class='co'>## 5     5     0 16.84  21.05   4.138</span>
+<span class='co'>## 6     6     0 21.05  25.26   4.138</span>
+<span class='co'>## 7     7     0 25.26  29.47   4.138</span>
+<span class='co'>## 8     8     0 29.47  33.68   4.138</span>
+<span class='co'>## 9     9     0 33.68  37.89   4.138</span>
+<span class='co'>## 10    10    0 37.89  42.11   4.138</span>
+<span class='co'>## # ... with 590 more rows</span>
+</code></pre>
+</div>
+</div>
 <p>Two things to note about this supplementary data frame:</p>
 <ol type="1">
 <li><p>Cells aren’t evenly spaced integers, i.e. <code>x</code> cells are defined at 0, 4.138, 8.276, …, 80 instead of something like 0, 4, 8, …, 80, and <code>y</code> cells are defined at 0, 4.211, 8.421, …, 120 instead of something like 0, 4, 8, …, 120). That’s simply due to using 30 and 20 instead of 31 and 21 to split up the <code>x</code> and <code>y</code> ranges respectively. I point this out because this SQL-ish approach would have been much easier if these numbers were just integers! We could have done an inner join on an integer grid instead of non-equi-joining upon a grid of floating point numbers. Unfortunately, joining on floating point numbers as keys leads to <a href="https://stackoverflow.com/questions/52207851/how-do-you-join-on-floating-point-columns-in-sql">inconsistent results, simply due to the nature of floating points</a>.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p></li>
@@ -1589,6 +1617,25 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   <span class='fu'>as_tibble</span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>select</span><span class='op'>(</span><span class='va'>player_id</span>, <span class='va'>idx</span>, <span class='va'>x</span>, <span class='va'>y</span><span class='op'>)</span>
 <span class='va'>events_binned</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 224,038 x 4</span>
+<span class='co'>##    player_id   idx     x     y</span>
+<span class='co'>##        &lt;int&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;</span>
+<span class='co'>##  1      5462     1     0     0</span>
+<span class='co'>##  2      5467     1     0     0</span>
+<span class='co'>##  3      5488     1     0     0</span>
+<span class='co'>##  4      3632     1     0     0</span>
+<span class='co'>##  5      5576     1     0     0</span>
+<span class='co'>##  6      5595     1     0     0</span>
+<span class='co'>##  7      5263     1     0     0</span>
+<span class='co'>##  8      4063     1     0     0</span>
+<span class='co'>##  9      5231     1     0     0</span>
+<span class='co'>## 10      5231     1     0     0</span>
+<span class='co'>## # ... with 224,028 more rows</span>
 </code></pre>
 </div>
 </div>
@@ -1756,6 +1803,25 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   <span class='fu'>mutate</span><span class='op'>(</span>data <span class='op'>=</span> <span class='fu'>map</span><span class='op'>(</span><span class='va'>data</span>, <span class='va'>smoothen_component</span>, sigma <span class='op'>=</span> <span class='fl'>1.5</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>unnest</span><span class='op'>(</span><span class='va'>data</span><span class='op'>)</span>
 <span class='va'>decomp_smooth</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## # A tibble: 18,000 x 8</span>
+<span class='co'>##    dimension    value   idx     x     y next_y next_x     frac</span>
+<span class='co'>##        &lt;int&gt;    &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;</span>
+<span class='co'>##  1         1 0.002191     1     0 68     4.211  4.138 0.004569</span>
+<span class='co'>##  2         1 0.004843     2     0 64.42  8.421  4.138 0.01064 </span>
+<span class='co'>##  3         1 0.008334     3     0 60.84 12.63   4.138 0.01863 </span>
+<span class='co'>##  4         1 0.01130      4     0 57.26 16.84   4.138 0.02541 </span>
+<span class='co'>##  5         1 0.01258      5     0 53.68 21.05   4.138 0.02834 </span>
+<span class='co'>##  6         1 0.01208      6     0 50.11 25.26   4.138 0.02719 </span>
+<span class='co'>##  7         1 0.01033      7     0 46.53 29.47   4.138 0.02319 </span>
+<span class='co'>##  8         1 0.008165     8     0 42.95 33.68   4.138 0.01824 </span>
+<span class='co'>##  9         1 0.006156     9     0 39.37 37.89   4.138 0.01364 </span>
+<span class='co'>## 10         1 0.004425    10     0 35.79 42.11   4.138 0.009680</span>
+<span class='co'>## # ... with 17,990 more rows</span>
 </code></pre>
 </div>
 </div>

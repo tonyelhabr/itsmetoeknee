@@ -118,7 +118,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   <!--/radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-resource-manifest">
-  {"type":"character","attributes":{},"value":["epv_822_python.png","epv_823_r.png","pc_822_python.png","pc_823_r.png","soccer-pitch-control-r_files/anchor-4.2.2/anchor.min.js","soccer-pitch-control-r_files/bowser-1.9.3/bowser.min.js","soccer-pitch-control-r_files/distill-2.2.21/template.v2.js","soccer-pitch-control-r_files/header-attrs-2.6/header-attrs.js","soccer-pitch-control-r_files/header-attrs-2.8/header-attrs.js","soccer-pitch-control-r_files/jquery-1.11.3/jquery.min.js","soccer-pitch-control-r_files/popper-2.6.0/popper.min.js","soccer-pitch-control-r_files/tippy-6.2.7/tippy-bundle.umd.min.js","soccer-pitch-control-r_files/tippy-6.2.7/tippy-light-border.css","soccer-pitch-control-r_files/tippy-6.2.7/tippy.css","soccer-pitch-control-r_files/tippy-6.2.7/tippy.umd.min.js","soccer-pitch-control-r_files/webcomponents-2.0.0/webcomponents.js","viz_epv_823_combined.png","viz_p_intercept_ex_1.png","viz_p_intercept_ex_2.png","viz_pc_823_combined.png","viz_tti_ex.png"]}
+  {"type":"character","attributes":{},"value":["epv_822_python.png","epv_823_r.png","pc_822_python.png","pc_823_r.png","soccer-pitch-control-r_files/anchor-4.2.2/anchor.min.js","soccer-pitch-control-r_files/bowser-1.9.3/bowser.min.js","soccer-pitch-control-r_files/distill-2.2.21/template.v2.js","soccer-pitch-control-r_files/header-attrs-2.6/header-attrs.js","soccer-pitch-control-r_files/header-attrs-2.8/header-attrs.js","soccer-pitch-control-r_files/header-attrs-2.9.1/header-attrs.js","soccer-pitch-control-r_files/jquery-1.11.3/jquery.min.js","soccer-pitch-control-r_files/popper-2.6.0/popper.min.js","soccer-pitch-control-r_files/tippy-6.2.7/tippy-bundle.umd.min.js","soccer-pitch-control-r_files/tippy-6.2.7/tippy-light-border.css","soccer-pitch-control-r_files/tippy-6.2.7/tippy.css","soccer-pitch-control-r_files/tippy-6.2.7/tippy.umd.min.js","soccer-pitch-control-r_files/webcomponents-2.0.0/webcomponents.js","viz_epv_823_combined.png","viz_p_intercept_ex_1.png","viz_p_intercept_ex_2.png","viz_pc_823_combined.png","viz_tti_ex.png"]}
   </script>
   <!--radix_placeholder_navigation_in_header-->
   <!--/radix_placeholder_navigation_in_header-->
@@ -1492,7 +1492,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <h3>Contents</h3>
 <ul>
 <li><a href="#intro">Intro</a></li>
-<li><a href="#contructor">Contructor</a></li>
+<li><a href="#constructor">Constructor</a></li>
 <li><a href="#validator">Validator</a></li>
 <li><a href="#helper">Helper</a></li>
 <li><a href="#aside">Aside</a></li>
@@ -1504,7 +1504,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </ul>
 </nav>
 </div>
-<p><strong><em>Note: This post was update on 2020-09-24 to correct field dimension translations that were previously distorting the pitch control contours. The R analogues now match up much more closely with the python versions after the updates.</em></strong></p>
+<p><strong><em>Note: This post was updated on 2020-09-24 to correct field dimension translations that were previously distorting the pitch control contours. The R equivalents now match up much more closely with the python versions after the updates.</em></strong></p>
 <h2 id="intro">Intro</h2>
 <p>There’s never been a better time to be involved in sports analytics. There is a wealth of open-sourced data and code (not to mention well-researched and public analysis) to digest and use. Both people working for teams and people just doing at as a hobby are publishing new and interesting analyses every day.</p>
 <p>In particular, the <a href="https://www.youtube.com/channel/UCUBFJYcag8j2rm_9HkrrA7w">FriendsOfTracking (FOT)</a> group, co-led by Professor and author <a href="ttps://twitter.com/Soccermatics">David Sumpter</a><a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> have put together an awesome series of videos on YouTube discussing modern soccer analytics, along with a collection of repositories on GitHub sharing the code shown in videos.</p>
@@ -1513,7 +1513,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <p>Most of the process of translating python to R was relatively straightforward (slicing and dicing data frames and arrays/vectors is just part of data cleaning), so I won’t detail them here. However, there was one part that was particularly interesting—the conversion of a python class object. This was actually the key (and most challenging part) of the conversion process.</p>
 <p>There are some great resources for describing how to implement <a href="https://en.wikipedia.org/wiki/Object-oriented_programming">object-orientated programming (OOP)</a> in R, including a couple of chapter’s from <a href="https://twitter.com/hadleywickham">Hadley Wickham</a>’s <a href="https://adv-r.hadley.nz/oo.html">Advanced R book</a> and a <a href="https://blog.earo.me/2019/11/03/practical-guide-to-s3/">very practical write-up</a> from <a href="https://twitter.com/earowang">Earo Wang</a>. Every object-oriented task has its unique aspects, so hopefully my discussion here has something to add to what has already been written on the subject matter.</p>
 <p><strong><em>For demonstration purposes, I’m going to walk through my steps for converting the python class object as if I were doing it for the first time.</em></strong></p>
-<h2 id="contructor">Contructor</h2>
+<h2 id="constructor">Constructor</h2>
 <p>Below is a stripped down version of Laurie’s code, showing the “essence” of what we need to replicate.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> player(<span class="bu">object</span>):</span>
@@ -1541,7 +1541,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </div>
 <p>Let’s make some notes and come back to these as we develop our R class.</p>
 <ol type="1">
-<li><p>We need a unique identifier: <code>player_id</code>. This is really just a “best practice” thing for object-oriented programming and makes sense given our context. For a sport like soccer, a unique identifier could just be the player’s name, a combination of the team name and the player jersey number, a league unique identifier, etc.</p></li>
+<li><p>We need a unique identifier: <code>player_id</code>. This is just a “best practice” thing for object-oriented programming and makes sense given our context. For a sport like soccer, a unique identifier could just be the player’s name, a combination of the team name and the player jersey number, a league unique identifier, etc.</p></li>
 <li><p>A single-row data frame <code>frame</code> is passed to several of the methods, including the constructor <code>__init__</code>. This single row data frame is sourced from a much larger <code>tracking</code> data frame, with rows for every 0.04 second time interval (25 frames per second, or one frame per 0.04 seconds) in the game.</p></li>
 <li><p>The python code stores both the player’s <code>position</code> and <code>velocity</code> as 2x1 arrays. This works well with the <a href="https://www.w3schools.com/python/gloss_python_assign_value_to_multiple_variables.asp">unpacking</a> that is done in other places in Laurie’s code.</p></li>
 <li><p><code>tti</code>, short for “time to intercept (a target location)”, uses the player’s <code>position</code> and <code>velocity</code> to define the attribute <code>tti</code> (not to be confused with the method itself). This implies that <code>position</code> and <code>velocity</code> should be defined before <code>tti()</code> is ever called, as they are in <code>__init__</code>. <code>tti</code> needs the <code>position_final</code> 2x1 array to calculate <code>tti</code> which is not known upon instantiation; rather, <code>tti</code> can only be properly defined when called to do a specific calculation relating the player’s <code>position</code> and <code>velocity</code> (both defined implicitly in the class, without needing user-specification) with a user-supplied <code>position_final</code> pair of x and y values.</p></li>
@@ -1638,7 +1638,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <li>We pass in our entire <code>tracking</code> data frame (that has rows for every 0.04 second interval in the game), as well as the <code>frame</code> to slice out of it. (<code>player_id</code> is also used to filter <code>tracking</code>.) This makes it convenient for user to instantiate new <code>player</code> objects when operating on the <code>tracking</code> data frame. There is no need to extract the singular initial position and velocity components “manually”; instead, the helper function does it for the user.</li>
 </ul>
 <h2 id="aside">Aside</h2>
-<p>R’s S3 framework is not a formal OOP framework (not even close really). Note that it does not have a reserved keyword to represent the instance of the class like <code>self</code> in python. Also, it is not actually necessary to much of what is done above (with the constructor, validator, and helper).</p>
+<p>R’s S3 framework is not a formal OOP framework (not even close really). Note that it does not have a reserved keyword to represent the instance of the class like <code>self</code> in python. Also, it is not actually necessary for most of what is done above (with the constructor, validator, and helper).</p>
 <p>For example, we don’t actually have to create a formal-ish constructor prefixed with <code>new_</code>. We don’t even need a constructor function at all in S3. We could do something like <code>class(var) &lt;- 'player'</code> to create a a <code>player</code> object. Of course, this is prone to errors down the line, so we don’t do that. Likewise with the validator and helper functions. The point of these constructs is to add clarity to our class code. They aren’t strictly necessary.</p>
 <h2 id="printing">Printing</h2>
 <p>Let’s do one more thing for our <code>player</code> class—create a custom print method. (Writing a custom print method is not required whatsoever, but it can be very helpful for debugging.) If we weren’t using <code>{vctrs}</code> and just S3, we would do this by writing a <code>print.player</code> function. However, <code>{vctrs}</code> provides a “pretty” header for us auto-magically (that looks like <code>&lt;player[1]&gt;</code>) if we use it to write our print method.</p>
@@ -1678,10 +1678,45 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </code></pre>
 </div>
 </div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>##  # A tibble: 26 x 9</span>
+<span class='co'>##     frame ball_x ball_y side  player_id     x     y   x_v    y_v</span>
+<span class='co'>##     &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;     &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;</span>
+<span class='co'>##   1 53027  93.71  24.56 home          1 90.72 39.37 5.906 -3.985</span>
+<span class='co'>##   2 53027  93.71  24.56 home          2 95.10 27.14 1.5   -2.023</span>
+<span class='co'>##   3 53027  93.71  24.56 home          3 96.01 23.32 1.418  2.395</span>
+<span class='co'>##   4 53027  93.71  24.56 home          4 92.39 15.64 1.005  3.473</span>
+<span class='co'>##   5 53027  93.71  24.56 home          5 83.96 24.69 4.238  1.2  </span>
+<span class='co'>##   6 53027  93.71  24.56 home          6 82.19 35.63 3.893 -0.619</span>
+<span class='co'>##   7 53027  93.71  24.56 home          7 85.79 17.34 1.703  1.523</span>
+<span class='co'>##   8 53027  93.71  24.56 home          8 76.06 50.16 2.018 -0.493</span>
+<span class='co'>##   9 53027  93.71  24.56 home          9 61.22 25.35 0.863 -0.77 </span>
+<span class='co'>##  10 53027  93.71  24.56 home         10 59.69 35.10 0.9   -0.573</span>
+<span class='co'>##  # ... with 16 more rows</span>
+</code></pre>
+</div>
+</div>
 <p>Let’s convert players with id’s 10 through 12 (on the home team) to <code>player</code> instances and see how they look when printed out.</p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='fl'>10L</span><span class='op'>:</span><span class='fl'>12L</span> <span class='op'>%&gt;%</span> <span class='fu'>map</span><span class='op'>(</span><span class='op'>~</span><span class='fu'>player</span><span class='op'>(</span>player_id <span class='op'>=</span> <span class='va'>.x</span>, frame <span class='op'>=</span> <span class='fl'>53027L</span>, tracking <span class='op'>=</span> <span class='va'>tracking_start</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>##  [[1]]</span>
+<span class='co'>##  &lt;player[1]&gt;</span>
+<span class='co'>##  `player_id = 10` with `position = (10.00, 35.09)` and `velocity = &lt;0.9, -0.6&gt;`</span>
+<span class='co'>##  </span>
+<span class='co'>##  [[2]]</span>
+<span class='co'>##  &lt;player[1]&gt;</span>
+<span class='co'>##  `player_id = 11` with `position = (11.00, 32.28)` and `velocity = &lt;-0.3, 0.6&gt;`</span>
+<span class='co'>##  </span>
+<span class='co'>##  [[3]]</span>
+<span class='co'>##  &lt;player[1]&gt;</span>
+<span class='co'>##  `player_id = 12` is not on the pitch</span>
 </code></pre>
 </div>
 </div>
@@ -1762,6 +1797,26 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## [[1]]</span>
+
+<span class='co'>## [1] -1</span>
+
+<span class='co'>## </span>
+
+<span class='co'>## [[2]]</span>
+
+<span class='co'>## [1] -1</span>
+
+<span class='co'>## </span>
+
+<span class='co'>## [[3]]</span>
+
+<span class='co'>## [1] -1</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>target_x</span> <span class='op'>&lt;-</span> <span class='fl'>94</span>
 <span class='va'>target_y</span> <span class='op'>&lt;-</span> <span class='fl'>63</span>
 <span class='kw'>for</span><span class='op'>(</span><span class='va'>i</span> <span class='kw'>in</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq_along</a></span><span class='op'>(</span><span class='va'>players</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>{</span>
@@ -1769,6 +1824,26 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   <span class='fu'>.set_tti</span><span class='op'>(</span><span class='va'>players</span><span class='op'>[[</span><span class='va'>i</span><span class='op'>]</span><span class='op'>]</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='va'>value</span>
 <span class='op'>}</span>
 <span class='fu'>map</span><span class='op'>(</span><span class='va'>players</span>, <span class='op'>~</span><span class='fu'>vctrs</span><span class='fu'>::</span><span class='fu'><a href='https://vctrs.r-lib.org/reference/fields.html'>field</a></span><span class='op'>(</span><span class='va'>.x</span>, <span class='st'>'tti'</span><span class='op'>)</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='co'>## [[1]]</span>
+
+<span class='co'>## [1] 4.92839</span>
+
+<span class='co'>## </span>
+
+<span class='co'>## [[2]]</span>
+
+<span class='co'>## [1] 10.6878</span>
+
+<span class='co'>## </span>
+
+<span class='co'>## [[3]]</span>
+
+<span class='co'>## [1] 9.49904</span>
 </code></pre>
 </div>
 </div>
@@ -1796,7 +1871,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <p><img src="epv_823_r.png" /></p>
 <p>Again, we can compare this plot to the python equivalent.</p>
 <p><img src="epv_822_python.png" /></p>
-<p>Cool, my R version seems to very close to the python original. We do have a small discrepancy in the EPV added calculation. (This EPV is actually an “expected” EPV calculation that uses pitch control to weight the pre-learned EPV grid). I believe this is probably due to discrepancies in the integration done in the pitch control calculation and not due to a significant a code issue.</p>
+<p>Cool, my R version seems to be very close to the python original. We do have a small discrepancy in the EPV added calculation. (This EPV is actually an “expected” EPV calculation that uses pitch control to weight the pre-learned EPV grid). I believe this is probably due to discrepancies in the integration done in the pitch control calculation and not due to a significant code issue.</p>
 <p>The code to prepare the data for these plots gets more complex, which is why I have excluded it here.<a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a> However, none of it is unreasonably difficult to understand or implement once we have a properly defined <code>player</code> object.</p>
 <h1 id="conclusion">Conclusion</h1>
 <p>Thus, we see that there is a huge payoff to creating a sound and robust <code>player</code> object—we can calculate pitch control and EPV, and feed them into pretty visualizations that can provide insight. I believe that the code here could be easily adapted to fit whatever one would like to study. For example, the valuation grid used here could be easily swapped out with <a href="https://karun.in/blog/expected-threat.html">expected threat (xT)</a>, which is a more modern and probably a better valuation framework than the one used here.<a href="#fn11" class="footnote-ref" id="fnref11" role="doc-noteref"><sup>11</sup></a> Furthermore, one could calculate EPV across the entire game. The possibilities for analyses really open up.</p>
@@ -1811,7 +1886,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 <li id="fn6" role="doc-endnote"><p><code>vctrs::obj_print_data</code> that can also handle <a href="https://home.unicode.org/">Unicode</a> easily, although we are not using any Unicode characters here. Also, it is able to handle extra <code>NULL</code>s and <code>[1]</code> that may be printed out if we just use <code>cat</code> or <code>print</code> directly.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn7" role="doc-endnote"><p>This is the same data used to generate the first handful of plots.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn8" role="doc-endnote"><p><a href="https://adv-r.hadley.nz/r6.html">R6</a> is probably a better OOP system to use for this whole use case. The capability to update instance attributes is more native to that framework.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn9" role="doc-endnote"><p>It’s best to separate out logic in functions like this where it makes sense to do so. It ultimately makes re-factoring and debugging a lot easier.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9" role="doc-endnote"><p>It’s best to separate our logic in functions like this where it makes sense to do so. It ultimately makes re-factoring and debugging a lot easier.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn10" role="doc-endnote"><p>Feel free to check out the source the <a href="https://github.com/tonyelhabr/LaurieOnTracking/blob/master/analysis/01-freestyle-blog.R">code</a> used in the full implementation, as well as the code to generate the plots.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn11" role="doc-endnote"><p><a href="https://raw.githubusercontent.com/anenglishgoat/InteractivePitchControl/master/xT.csv">Here</a> is a CSV with the grid for xT.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>

@@ -41,7 +41,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-***Note: This post was update on 2020-09-24 to correct field dimension translations that were previously distorting the pitch control contours. The R analogues now match up much more closely with the python versions after the updates.***
+***Note: This post was updated on 2020-09-24 to correct field dimension translations that were previously distorting the pitch control contours. The R equivalents now match up much more closely with the python versions after the updates.***
 
 ## Intro
 
@@ -61,7 +61,7 @@ There are some great resources for describing how to implement [object-orientate
 
 ***For demonstration purposes, I'm going to walk through my steps for converting the python class object as if I were doing it for the first time.***
 
-## Contructor
+## Constructor
 
 Below is a stripped down version of Laurie's code, showing the "essence" of what we need to replicate.[^2]
 
@@ -95,7 +95,7 @@ class player(object):
 
 Let's make some notes and come back to these as we develop our R class.
 
-1.  We need a unique identifier: `player_id`. This is really just a "best practice" thing for object-oriented programming and makes sense given our context. For a sport like soccer, a unique identifier could just be the player's name, a combination of the team name and the player jersey number, a league unique identifier, etc.
+1.  We need a unique identifier: `player_id`. This is just a "best practice" thing for object-oriented programming and makes sense given our context. For a sport like soccer, a unique identifier could just be the player's name, a combination of the team name and the player jersey number, a league unique identifier, etc.
 
 2.  A single-row data frame `frame` is passed to several of the methods, including the constructor `__init__`. This single row data frame is sourced from a much larger `tracking` data frame, with rows for every 0.04 second time interval (25 frames per second, or one frame per 0.04 seconds) in the game.
 
@@ -214,7 +214,7 @@ Note the following:
 
 ## Aside
 
-R's S3 framework is not a formal OOP framework (not even close really). Note that it does not have a reserved keyword to represent the instance of the class like `self` in python. Also, it is not actually necessary to much of what is done above (with the constructor, validator, and helper).
+R's S3 framework is not a formal OOP framework (not even close really). Note that it does not have a reserved keyword to represent the instance of the class like `self` in python. Also, it is not actually necessary for most of what is done above (with the constructor, validator, and helper).
 
 For example, we don't actually have to create a formal-ish constructor prefixed with `new_`. We don't even need a constructor function at all in S3. We could do something like `class(var) <- 'player'` to create a a `player` object. Of course, this is prone to errors down the line, so we don't do that. Likewise with the validator and helper functions. The point of these constructs is to add clarity to our class code. They aren't strictly necessary.
 
@@ -262,7 +262,7 @@ Let's say that we want to calculate the pitch control for a single `frame` in th
 tracking_start
 ```
 
-```{r eval=F}
+```{r eval=F, include=T, echo=T}
 ##  # A tibble: 26 x 9
 ##     frame ball_x ball_y side  player_id     x     y   x_v    y_v
 ##     <int>  <dbl>  <dbl> <chr>     <int> <dbl> <dbl> <dbl>  <dbl>
@@ -285,7 +285,7 @@ Let's convert players with id's 10 through 12 (on the home team) to `player` ins
 10L:12L %>% map(~player(player_id = .x, frame = 53027L, tracking = tracking_start))
 ```
 
-```{r eval=F}
+```{r eval=F, include=T, echo=T}
 ##  [[1]]
 ##  <player[1]>
 ##  `player_id = 10` with `position = (10.00, 35.09)` and `velocity = <0.9, -0.6>`
@@ -355,7 +355,7 @@ There's a couple of things going on here:
 
 [^8]: [R6](https://adv-r.hadley.nz/r6.html) is probably a better OOP system to use for this whole use case. The capability to update instance attributes is more native to that framework.
 
-[^9]: It's best to separate out logic in functions like this where it makes sense to do so. It ultimately makes re-factoring and debugging a lot easier.
+[^9]: It's best to separate our logic in functions like this where it makes sense to do so. It ultimately makes re-factoring and debugging a lot easier.
 
 To really complete our getter and setter methods for `tti`, we should write methods to handle the case when a non-`player` object is passed to them. The generic `.get_tti` and `.set_tti` methods will dispatch to these functions if the object passed to them (the first argument named `player`) doesn't actually inherit from the `player` class.
 
@@ -376,7 +376,7 @@ players <- 8L:10L %>% map(~player(player_id = .x, frame = 53027L, tracking = tra
 map(players, ~vctrs::field(.x, 'tti'))
 ```
 
-```{r eval=F}
+```{r eval=F, include=T, echo=T}
 ## [[1]]
 
 ## [1] -1
@@ -404,7 +404,7 @@ for(i in seq_along(players)) {
 map(players, ~vctrs::field(.x, 'tti'))
 ```
 
-```{r eval=F}
+```{r eval=F, include=T, echo=T}
 ## [[1]]
 
 ## [1] 4.92839
@@ -458,7 +458,7 @@ Again, we can compare this plot to the python equivalent.
 
 ![](epv_822_python.png)
 
-Cool, my R version seems to very close to the python original. We do have a small discrepancy in the EPV added calculation. (This EPV is actually an "expected" EPV calculation that uses pitch control to weight the pre-learned EPV grid). I believe this is probably due to discrepancies in the integration done in the pitch control calculation and not due to a significant a code issue.
+Cool, my R version seems to be very close to the python original. We do have a small discrepancy in the EPV added calculation. (This EPV is actually an "expected" EPV calculation that uses pitch control to weight the pre-learned EPV grid). I believe this is probably due to discrepancies in the integration done in the pitch control calculation and not due to a significant code issue.
 
 The code to prepare the data for these plots gets more complex, which is why I have excluded it here.[^10] However, none of it is unreasonably difficult to understand or implement once we have a properly defined `player` object.
 
