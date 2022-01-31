@@ -1,6 +1,6 @@
 ---
-title: Quantifying symmetry and flow in soccer pass networks
-description: 'Making up stats to look smart'
+title: 'Yet Another (Advenced?) Soccer Statistic'
+description: 'Quantifying soccer pass networks with maximum cuts'
 author:
   - name: Tony ElHabr
     url: 'https://twitter.com/TonyElHabr'
@@ -63,23 +63,39 @@ What is a maximum cut? Visually, it's an arbitrary line that you can draw throug
 
 ![](C:/Users/antho/Documents/projects/sports_viz/47-formation_symmetry/example_max_cut.png)
 
-To put this into the context of soccer, here's the pass network and max cut numbers for [the match between Liverpool and Manchester City on October 3, 2021](https://www.fotmob.com/match/3609994/matchfacts/liverpool-vs-manchester-city). [^3]
+That is actually a weighted max cut, since edges are treated differently, according to their assigned value. (An unweighted max cut would assign each edge a value of 1.)
+
+Switching over to soccer, here's what the pass network and weighted max cut numbers for [the match between Liverpool and Manchester City on October 3, 2021](https://www.fotmob.com/match/3609994/matchfacts/liverpool-vs-manchester-city) look like. [^3]
 
 [^3]: Unfortunately, max cuts can be difficult to visualize for graphs with lots of edges and/or nodes, so reporting just the quantity is often the best thing we can do. 🤷
 
 ![](C:/Users/antho/Documents/projects/sports_viz/47-formation_symmetry/network-game_id=1549604-max_cut_weighted_w_logo.png)
 
-Eliakim et. al. argue that, in relation to soccer, maximum cuts surmises what is captured separately by various measures of centrality ([betweenness](https://en.wikipedia.org/wiki/Betweenness_centrality), [indegree and outdegree](https://en.wikipedia.org/wiki/Directed_graph#Indegree_and_outdegree), etc.).
+Zooming out from a single example to all games in our data set, the distribution of weighted max cuts per 90 minutes (wMC/90) looks normal.[^4]
 
-This is what the distribution of maximum cut values looks like for the games evaluated. The average is around 55.
+[^4]: It's important to adjust for time since not all games have the same number of minutes played due to variance in the occurrence of the first formation change.
 
-histogram
+![](C:/Users/antho/Documents/projects/sports_viz/47-formation_symmetry/game_mc_hist_w_logo.png)
 
-The season-level correlation between maximum cut and the expected goals (xG) difference is 0.55. (We use xG difference because it is more indicative of relative quality of play than potential alternative measures, such as time of possession and goal differential.)
+When plotting wMC/90 against xG/90 differential---probably the best singular measure of overall quality of play[^5]---we see that there's some correlation.
 
-But is that number big, or, dare I say, "significant"? Well, the correlation of xG differential with the relative proportion of shots is 0.9. And with the relative proportion of passes is 0.6. So yes, 0.55 is certainly non-trivial. Higher correlation means that we could potentially use whatever metric as it's own standalone measure of quality of play.
+[^5]: If we wanted to do an un-weighted calculation, we would use `1` for any `n>0` in the example here.
 
-facetted scatter plots
+![](C:/Users/antho/Documents/projects/sports_viz/47-formation_symmetry/game_mc_xg_scatter_w_logo.png)
+
+In fact, weighted max cut compares favorably against other network stats for summarizing networks in correlation with xG/90 difference, and is basically equivalent to relative % of completed passes at the game-level.[^6] Eliakim et. al. argue that, in relation to soccer, maximum cut surmises what is captured separately by various measures of centrality ([betweenness](https://en.wikipedia.org/wiki/Betweenness_centrality), [indegree and outdegree](https://en.wikipedia.org/wiki/Directed_graph#Indegree_and_outdegree), etc.), which certainly rings true here.
+
+[^6]: We should expect that % of shots has the highest correlation by a fair margin since, given a constant xG per shot, % of shots would perfectly correlate with xG/90 difference.
+
+```{=html}
+<span style="max-width:80%; height:auto"><img src=":/Users/antho/Documents/projects/sports_viz/47-formation_symmetry/game_xg_cors_table.png"></span>
+```
+These correlations are fairly weak, indicating that we can't read too much into them for individual games. The correlations are stronger at the season-level, showing the same ordinality in magnitude of correlation.
+
+```{=html}
+<span style="max-width:1000%; height:auto"><img src=":/Users/antho/Documents/projects/sports_viz/47-formation_symmetry/game_and_season_xg_cors_table.png"></span>
+```
+But this approach is probably too naive. The biggest factor in forecasting xG/90 difference is relative percentage of shots. If we regress max cut on xG/90 difference with relative percentage of shots as a confounder---undoubtedly the most important factor in forecasting xG difference, as evident in the correlations---we see that the influence of max cut diminishes.
 
 How does that 0.55 number change when we add potential confounders to the equation? A regression with xG differential as the target variable and relative proportion of shots, relative proportion of passes, and max cuts of the pass network show that max cut is useful for predicting xG differential, although certainly less significant than the other two variables.
 
@@ -95,9 +111,9 @@ So why haven't people tried to compute max cuts for pass networks before? I can 
 
 1.  The calculation requires an un-directed network. In our context, this requires treating passes between players as equal, regardless of who is the passer and who is the receiver. This can distort the role of a striker, who may receive much more than pass, or a keeper, who may pass much more than receive.
 2.  It's difficult to visualize beyond just reporting a single number, and, thus, may not resonate with an audience.
-3.  It's not super easy to calculate! In fact, `{igraph}`---the most popular R framework for network analysis---doesn't have a function for it! FWIW the code that I wrote to calculate the weighted maximum cut for a pass network looks something like this.[^4] (This is the calculation for the 4-node example network shown before.)
+3.  It's not super easy to calculate! In fact, `{igraph}`---the most popular R framework for network analysis---doesn't have a function for it! FWIW the code that I wrote to calculate the weighted maximum cut for a pass network looks something like this.[^7] (This is the calculation for the 4-node example network shown before.)
 
-[^4]: If we wanted to do an un-weighted calculation, we would use `1` for any `n>0` in the example here.
+[^7]: If we wanted to do an un-weighted calculation, we would use `1` for any `n>0` in the example here.
 
 ```{r eval=F}
 library(tibble)
