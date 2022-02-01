@@ -1,5 +1,5 @@
 ---
-title: 'Yet Another (Advenced?) Soccer Statistic'
+title: 'Yet Another (Advanced?) Soccer Statistic'
 description: 'Quantifying soccer pass networks with weighted maximum cuts'
 author:
   - name: Tony ElHabr
@@ -38,7 +38,7 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-[Pass networks](https://www.datofutbol.cl/passing-networks-r/) are a common visualization form used to summarize a team's behavior in a soccer match. Nodes represent average player position on passes that they are involved with, and edges represent passes between players. Most pass networks also weight node size and edge width by the relative to the total number of passes.
+[Pass networks](https://www.datofutbol.cl/passing-networks-r/) are a common visualization form used to summarize a team's behavior in a soccer match. Nodes represent average player position on passes that they are involved with, and edges represent passes between players. Most pass networks also weight node size and edge width by the total number of passes.
 
 ![](betweentheposts-example-pass-network.jpg)
 
@@ -46,7 +46,7 @@ While pass networks provide a nice visual tool for providing insight that can (a
 
 [^1]: There are other things researchers have done, such as [subsetting the passes that make up the network based on game situation](https://karun.in/blog/interactive-passing-networks.html), or [supplement the visual with meaningful color](https://statsbomb.com/2018/08/explaining-xgchain-passing-networks/)
 
-Inspired by the findings of Eliakim et. al. in ["The development of metrics for measuring the level of symmetry in team formation and ball movement flow, and their association with performance"](https://www.tandfonline.com/doi/abs/10.1080/24733938.2021.1919747), I wanted to evaluate a graph theory concept that has not been explored in relation to soccer pass networks (except for by Eliakim et. al.): [maximum cuts](https://en.wikipedia.org/wiki/Maximum_cut).
+Inspired by the findings of Eliakim et al. in ["The development of metrics for measuring the level of symmetry in team formation and ball movement flow, and their association with performance"](https://www.tandfonline.com/doi/abs/10.1080/24733938.2021.1919747), I wanted to evaluate a graph theory concept that has not been explored in relation to soccer pass networks (except for by Eliakim et al.): [maximum cuts](https://en.wikipedia.org/wiki/Maximum_cut).
 
 To do so, I'll be using data from the 2017/18 - 2020/21 Premier League seasons, along with the games up through Boxing Day of the 2021/22 season. Passes and other events are only considered up through the first substitution or red card of each match.
 
@@ -106,7 +106,7 @@ A first step in looking at the relationship between weighted max cut with xG and
 
 ![](game_x_cors_table.png)
 
-Weighted max cut compares favorably to other network stats for summarizing (pass) networks. Perhaps this isn't too surprising; Eliakim et. al. argue that, in relation to soccer, maximum cut surmises what is captured separately by various measures of centrality ([betweenness](https://en.wikipedia.org/wiki/Betweenness_centrality), [indegree and outdegree](https://en.wikipedia.org/wiki/Directed_graph#Indegree_and_outdegree), etc.).
+Weighted max cut compares favorably to other network stats for summarizing (pass) networks. Perhaps this isn't too surprising; Eliakim et al. argue that, in relation to soccer, maximum cut surmises what is captured separately by various measures of centrality ([betweenness](https://en.wikipedia.org/wiki/Betweenness_centrality), [indegree and outdegree](https://en.wikipedia.org/wiki/Directed_graph#Indegree_and_outdegree), etc.).
 
 Weighted max cut has a similar correlation to traditional pass metrics such as relative percentage of passes, but not as strong as counting stats for shots. We really shouldn't expect any metric to have as strong a relation with xG and xT (especially xG) as shot-based metrics since these are derived from shots and their outcomes.
 
@@ -124,7 +124,7 @@ If we regress max cut on xG and xT with z-score normalized counts of shots and p
 
 ![](team_stat_coefs_w_logo.png)
 
-In the case of xG, the coefficient estimate for weighted max cut is offset by the coefficient for the passing term. This is due to their [collinearity](https://en.wikipedia.org/wiki/Collinearity) and their lack of explanatory value in the presence of shot counts, which is directly informs xG. For xT, the weighted max cut coefficient is completely suppressed, likely due to collinearity with passing.
+In the case of xG, the coefficient estimate for weighted max cut is offset by the coefficient for the passing term. This is due to their [collinearity](https://en.wikipedia.org/wiki/Collinearity) (over 90%) and their lack of explanatory value in the presence of shot counts, which directly informs xG. For xT, the weighted max cut coefficient is completely suppressed, likely due to collinearity with passing.
 
 Of course, we could be a little more sophisticated here, drawing out [directed acyclic graphs (DAG)](https://en.wikipedia.org/wiki/Directed_acyclic_graph) and running a more formal [causal analysis](https://en.wikipedia.org/wiki/Causal_inference). But my intuition is that we would come to the same general conclusion: in the face of more traditional metrics like shot and pass counts, possibly the most robust pass-network-derived statistic---weighted max cut---provides minimal additional descriptive power for quantifying quality of play.
 
