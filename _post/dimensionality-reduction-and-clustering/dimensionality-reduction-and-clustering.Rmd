@@ -48,18 +48,17 @@ For this demonstration, I'll be using [this data set](https://docs.google.com/sp
 
 ```{r }
 library(tidyverse)
-df <- 
-  'FBRef 2020-21 T5 League Data.xlsx' %>% 
+raw_df <- 'FBRef 2020-21 T5 League Data.xlsx' %>% 
   readxl::read_excel() %>% 
   janitor::clean_names() %>% 
   mutate(across(where(is.double), ~replace_na(.x, 0)))
 
 # Let's only use players with a 10 matches' worth of minutes.
-df_filt <- df %>% filter(min > (10 * 90))
+df <- raw_df %>% filter(min > (10 * 90))
 ```
 
 ```{r}
-df_filt %>% dim()
+dim(df)
 ```
 
 ```{r }
@@ -97,41 +96,41 @@ For those interested in the code, I `map`-ed a function across a grid of paramet
 [^4]: I'd suggest [this blog post from Julia Silge](https://juliasilge.com/blog/kmeans-employment/) for a better explanation of clustering with R and [`{tidymodels}`](https://www.tidymodels.org/).
 
 ```{r}
-do_dimr_clust <-
-  function(n, k,
-           f_dimr = c('pca', 'umap'),
-           f_clust = c('kmeans', 'gmm'),
-           ...) {
-    f_dimr <- match.arg(f_dimr)
-    f_clust <- match.arg(f_clust)
-    f_step <- ifelse(f_dimr == 'pca', recipes::step_pca, embed::step_umap)
-    f_fit <- ifelse(f_clust == 'gmm', stats::kmeans, mclust::Mclust)
-    
-    data <-
-      recipes::recipe(formula( ~ .), data = df_filt) %>%
-      recipes::step_normalize(recipes::all_numeric_predictors()) %>%
-      f_step(recipes::all_numeric_predictors(), num_comp = n) %>% 
-      recipes::prep() %>% 
-      recipes::juice() %>% 
-      select(where(is.numeric))
-    fit <- f_fit(data, ...)
-    broom::glance(fit)
-  }
+do_dimr_clust <- function(
+  n,
+  k,
+  f_dimr = c('pca', 'umap'),
+  f_clust = c('kmeans', 'gmm'),
+  ...) {
+  f_dimr <- match.arg(f_dimr)
+  f_clust <- match.arg(f_clust)
+  f_step <- ifelse(f_dimr == 'pca', recipes::step_pca, embed::step_umap)
+  f_fit <- ifelse(f_clust == 'gmm', stats::kmeans, mclust::Mclust)
+  
+  data <-
+    recipes::recipe(formula( ~ .), data = df) %>%
+    recipes::step_normalize(recipes::all_numeric_predictors()) %>%
+    f_step(recipes::all_numeric_predictors(), num_comp = n) %>% 
+    recipes::prep() %>% 
+    recipes::juice() %>% 
+    select(where(is.numeric))
+  fit <- f_fit(data, ...)
+  broom::glance(fit)
+}
 
-metrics <-
-  crossing(
-    n = seq.int(2, 8),
-    k = seq.int(2, 8),
-    f_dimr = c('pca', 'umap'),
-    f_clust = c('kmeans', 'mclust')
-  ) %>%
+metrics <- crossing(
+  n = seq.int(2, 8),
+  k = seq.int(2, 8),
+  f_dimr = c('pca', 'umap'),
+  f_clust = c('kmeans', 'mclust')
+) %>%
   mutate(metrics = pmap(
-    list(n, k, f, g),
+    list(n, k, f_dimr, f_clust),
     ~ do_dimr_clust(
       n = ..1,
       k = ..2,
-      f = ..3,
-      g = ..4
+      f_dimr = ..3,
+      f_clust = ..4
     )
   ))
 metrics
@@ -159,8 +158,7 @@ metrics
 We actually do have something that we can use to help us identify clusters---player position (`pos`). Let's treat these position groups as pseudo-labels with which we can gauge the effectiveness of the clustering.
 
 ```{r}
-df_filt <-
-  df_filt %>% 
+df <- df %>% 
   mutate(
     across(
       pos,
@@ -177,7 +175,7 @@ df_filt <-
       )
     )
   )
-df_filt %>% count(pos, sort = TRUE)
+df %>% count(pos, sort = TRUE)
 ```
 
 ```{r}
@@ -241,8 +239,7 @@ assignments
 I generated a correlation matrix for these two columns, ready to pass into a matching procedure.
 
 ```{r}
-cors <-
-  assignments %>% 
+cors <- assignments %>% 
   fastDummies::dummy_cols(c('.class', 'pos'), remove_selected_columns = TRUE) %>% 
   corrr::correlate(method = 'spearman', quiet = TRUE) %>% 
   filter(term %>% str_detect('pos')) %>% 
@@ -338,8 +335,7 @@ sims_int
 Then the Euclidean distance calculation is fairly straightforward.
 
 ```{r}
-sims <-
-  sims_init %>% 
+sims <- sims_init %>% 
   group_by(player_1, player_2) %>% 
   summarize(
     d = sqrt(sum((value_1 - value_2)^2))

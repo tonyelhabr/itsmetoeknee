@@ -85,6 +85,7 @@ code span.vs { color: #20794d; } /* VerbatimString */
 code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 </style>
 
+
   <!--radix_placeholder_meta_tags-->
 <title>Tony: Tired: PCA + kmeans, Wired: UMAP + GMM</title>
 
@@ -2062,8 +2063,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!--/radix_placeholder_distill-->
-  <script src="../../site_libs/header-attrs-2.9.1/header-attrs.js"></script>
-  <script src="../../site_libs/jquery-1.11.3/jquery.min.js"></script>
+  <script src="../../site_libs/header-attrs-2.11/header-attrs.js"></script>
+  <script src="../../site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
   <script src="../../site_libs/popper-2.6.0/popper.min.js"></script>
   <link href="../../site_libs/tippy-6.2.7/tippy.css" rel="stylesheet" />
   <link href="../../site_libs/tippy-6.2.7/tippy-light-border.css" rel="stylesheet" />
@@ -2309,20 +2310,19 @@ d-article pre {
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://tidyverse.tidyverse.org'>tidyverse</a></span><span class='op'>)</span>
-<span class='va'>df</span> <span class='op'>&lt;-</span> 
-  <span class='st'>'FBRef 2020-21 T5 League Data.xlsx'</span> <span class='op'>%&gt;%</span> 
+<span class='va'>raw_df</span> <span class='op'>&lt;-</span> <span class='st'>'FBRef 2020-21 T5 League Data.xlsx'</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>readxl</span><span class='fu'>::</span><span class='fu'><a href='https://readxl.tidyverse.org/reference/read_excel.html'>read_excel</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>janitor</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/janitor/man/clean_names.html'>clean_names</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>mutate</span><span class='op'>(</span><span class='fu'>across</span><span class='op'>(</span><span class='fu'>where</span><span class='op'>(</span><span class='va'>is.double</span><span class='op'>)</span>, <span class='op'>~</span><span class='fu'>replace_na</span><span class='op'>(</span><span class='va'>.x</span>, <span class='fl'>0</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>
 
 <span class='co'># Let's only use players with a 10 matches' worth of minutes.</span>
-<span class='va'>df_filt</span> <span class='op'>&lt;-</span> <span class='va'>df</span> <span class='op'>%&gt;%</span> <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>min</span> <span class='op'>&gt;</span> <span class='op'>(</span><span class='fl'>10</span> <span class='op'>*</span> <span class='fl'>90</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>df</span> <span class='op'>&lt;-</span> <span class='va'>raw_df</span> <span class='op'>%&gt;%</span> <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>min</span> <span class='op'>&gt;</span> <span class='op'>(</span><span class='fl'>10</span> <span class='op'>*</span> <span class='fl'>90</span><span class='op'>)</span><span class='op'>)</span>
 </code></pre>
 </div>
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>df_filt</span> <span class='op'>%&gt;%</span> <span class='fu'><a href='https://rdrr.io/r/base/dim.html'>dim</a></span><span class='op'>(</span><span class='op'>)</span>
+<pre class="sourceCode r"><code class="sourceCode r"><span class='fu'><a href='https://rdrr.io/r/base/dim.html'>dim</a></span><span class='op'>(</span><span class='va'>df</span><span class='op'>)</span>
 </code></pre>
 </div>
 </div>
@@ -2346,41 +2346,41 @@ d-article pre {
 <p>For those interested in the code, I <code>map</code>-ed a function across a grid of parameters to generate the data for these plots.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>do_dimr_clust</span> <span class='op'>&lt;-</span>
-  <span class='kw'>function</span><span class='op'>(</span><span class='va'>n</span>, <span class='va'>k</span>,
-           <span class='va'>f_dimr</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'pca'</span>, <span class='st'>'umap'</span><span class='op'>)</span>,
-           <span class='va'>f_clust</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'kmeans'</span>, <span class='st'>'gmm'</span><span class='op'>)</span>,
-           <span class='va'>...</span><span class='op'>)</span> <span class='op'>{</span>
-    <span class='va'>f_dimr</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/match.arg.html'>match.arg</a></span><span class='op'>(</span><span class='va'>f_dimr</span><span class='op'>)</span>
-    <span class='va'>f_clust</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/match.arg.html'>match.arg</a></span><span class='op'>(</span><span class='va'>f_clust</span><span class='op'>)</span>
-    <span class='va'>f_step</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>f_dimr</span> <span class='op'>==</span> <span class='st'>'pca'</span>, <span class='fu'>recipes</span><span class='fu'>::</span><span class='va'><a href='https://recipes.tidymodels.org/reference/step_pca.html'>step_pca</a></span>, <span class='fu'>embed</span><span class='fu'>::</span><span class='va'><a href='https://embed.tidymodels.org/reference/step_umap.html'>step_umap</a></span><span class='op'>)</span>
-    <span class='va'>f_fit</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>f_clust</span> <span class='op'>==</span> <span class='st'>'gmm'</span>, <span class='fu'>stats</span><span class='fu'>::</span><span class='va'><a href='https://rdrr.io/r/stats/kmeans.html'>kmeans</a></span>, <span class='fu'>mclust</span><span class='fu'>::</span><span class='va'><a href='https://mclust-org.github.io/mclust/reference/Mclust.html'>Mclust</a></span><span class='op'>)</span>
-    
-    <span class='va'>data</span> <span class='op'>&lt;-</span>
-      <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/recipe.html'>recipe</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/formula.html'>formula</a></span><span class='op'>(</span> <span class='op'>~</span> <span class='va'>.</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>df_filt</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
-      <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/step_normalize.html'>step_normalize</a></span><span class='op'>(</span><span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/has_role.html'>all_numeric_predictors</a></span><span class='op'>(</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
-      <span class='fu'>f_step</span><span class='op'>(</span><span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/has_role.html'>all_numeric_predictors</a></span><span class='op'>(</span><span class='op'>)</span>, num_comp <span class='op'>=</span> <span class='va'>n</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
-      <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/prep.html'>prep</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
-      <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/juice.html'>juice</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
-      <span class='fu'>select</span><span class='op'>(</span><span class='fu'>where</span><span class='op'>(</span><span class='va'>is.numeric</span><span class='op'>)</span><span class='op'>)</span>
-    <span class='va'>fit</span> <span class='op'>&lt;-</span> <span class='fu'>f_fit</span><span class='op'>(</span><span class='va'>data</span>, <span class='va'>...</span><span class='op'>)</span>
-    <span class='fu'>broom</span><span class='fu'>::</span><span class='fu'><a href='https://generics.r-lib.org/reference/glance.html'>glance</a></span><span class='op'>(</span><span class='va'>fit</span><span class='op'>)</span>
-  <span class='op'>}</span>
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>do_dimr_clust</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span>
+  <span class='va'>n</span>,
+  <span class='va'>k</span>,
+  <span class='va'>f_dimr</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'pca'</span>, <span class='st'>'umap'</span><span class='op'>)</span>,
+  <span class='va'>f_clust</span> <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'kmeans'</span>, <span class='st'>'gmm'</span><span class='op'>)</span>,
+  <span class='va'>...</span><span class='op'>)</span> <span class='op'>{</span>
+  <span class='va'>f_dimr</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/match.arg.html'>match.arg</a></span><span class='op'>(</span><span class='va'>f_dimr</span><span class='op'>)</span>
+  <span class='va'>f_clust</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/match.arg.html'>match.arg</a></span><span class='op'>(</span><span class='va'>f_clust</span><span class='op'>)</span>
+  <span class='va'>f_step</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>f_dimr</span> <span class='op'>==</span> <span class='st'>'pca'</span>, <span class='fu'>recipes</span><span class='fu'>::</span><span class='va'><a href='https://recipes.tidymodels.org/reference/step_pca.html'>step_pca</a></span>, <span class='fu'>embed</span><span class='fu'>::</span><span class='va'>step_umap</span><span class='op'>)</span>
+  <span class='va'>f_fit</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>f_clust</span> <span class='op'>==</span> <span class='st'>'gmm'</span>, <span class='fu'>stats</span><span class='fu'>::</span><span class='va'><a href='https://rdrr.io/r/stats/kmeans.html'>kmeans</a></span>, <span class='fu'>mclust</span><span class='fu'>::</span><span class='va'>Mclust</span><span class='op'>)</span>
+  
+  <span class='va'>data</span> <span class='op'>&lt;-</span>
+    <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/recipe.html'>recipe</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/formula.html'>formula</a></span><span class='op'>(</span> <span class='op'>~</span> <span class='va'>.</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>df</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+    <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/step_normalize.html'>step_normalize</a></span><span class='op'>(</span><span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/has_role.html'>all_numeric_predictors</a></span><span class='op'>(</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span>
+    <span class='fu'>f_step</span><span class='op'>(</span><span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/has_role.html'>all_numeric_predictors</a></span><span class='op'>(</span><span class='op'>)</span>, num_comp <span class='op'>=</span> <span class='va'>n</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+    <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/prep.html'>prep</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+    <span class='fu'>recipes</span><span class='fu'>::</span><span class='fu'><a href='https://recipes.tidymodels.org/reference/juice.html'>juice</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+    <span class='fu'>select</span><span class='op'>(</span><span class='fu'>where</span><span class='op'>(</span><span class='va'>is.numeric</span><span class='op'>)</span><span class='op'>)</span>
+  <span class='va'>fit</span> <span class='op'>&lt;-</span> <span class='fu'>f_fit</span><span class='op'>(</span><span class='va'>data</span>, <span class='va'>...</span><span class='op'>)</span>
+  <span class='fu'>broom</span><span class='fu'>::</span><span class='fu'><a href='https://generics.r-lib.org/reference/glance.html'>glance</a></span><span class='op'>(</span><span class='va'>fit</span><span class='op'>)</span>
+<span class='op'>}</span>
 
-<span class='va'>metrics</span> <span class='op'>&lt;-</span>
-  <span class='fu'>crossing</span><span class='op'>(</span>
-    n <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>2</span>, <span class='fl'>8</span><span class='op'>)</span>,
-    k <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>2</span>, <span class='fl'>8</span><span class='op'>)</span>,
-    f_dimr <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'pca'</span>, <span class='st'>'umap'</span><span class='op'>)</span>,
-    f_clust <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'kmeans'</span>, <span class='st'>'mclust'</span><span class='op'>)</span>
-  <span class='op'>)</span> <span class='op'>%&gt;%</span>
+<span class='va'>metrics</span> <span class='op'>&lt;-</span> <span class='fu'>crossing</span><span class='op'>(</span>
+  n <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>2</span>, <span class='fl'>8</span><span class='op'>)</span>,
+  k <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>2</span>, <span class='fl'>8</span><span class='op'>)</span>,
+  f_dimr <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'pca'</span>, <span class='st'>'umap'</span><span class='op'>)</span>,
+  f_clust <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'kmeans'</span>, <span class='st'>'mclust'</span><span class='op'>)</span>
+<span class='op'>)</span> <span class='op'>%&gt;%</span>
   <span class='fu'>mutate</span><span class='op'>(</span>metrics <span class='op'>=</span> <span class='fu'>pmap</span><span class='op'>(</span>
-    <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>n</span>, <span class='va'>k</span>, <span class='va'>f</span>, <span class='va'>g</span><span class='op'>)</span>,
+    <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>n</span>, <span class='va'>k</span>, <span class='va'>f_dimr</span>, <span class='va'>f_clust</span><span class='op'>)</span>,
     <span class='op'>~</span> <span class='fu'>do_dimr_clust</span><span class='op'>(</span>
       n <span class='op'>=</span> <span class='va'>..1</span>,
       k <span class='op'>=</span> <span class='va'>..2</span>,
-      f <span class='op'>=</span> <span class='va'>..3</span>,
-      g <span class='op'>=</span> <span class='va'>..4</span>
+      f_dimr <span class='op'>=</span> <span class='va'>..3</span>,
+      f_clust <span class='op'>=</span> <span class='va'>..4</span>
     <span class='op'>)</span>
   <span class='op'>)</span><span class='op'>)</span>
 <span class='va'>metrics</span>
@@ -2410,8 +2410,7 @@ d-article pre {
 <p>We actually do have something that we can use to help us identify clusters—player position (<code>pos</code>). Let’s treat these position groups as pseudo-labels with which we can gauge the effectiveness of the clustering.</p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>df_filt</span> <span class='op'>&lt;-</span>
-  <span class='va'>df_filt</span> <span class='op'>%&gt;%</span> 
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>df</span> <span class='op'>&lt;-</span> <span class='va'>df</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>mutate</span><span class='op'>(</span>
     <span class='fu'>across</span><span class='op'>(</span>
       <span class='va'>pos</span>,
@@ -2428,7 +2427,7 @@ d-article pre {
       <span class='op'>)</span>
     <span class='op'>)</span>
   <span class='op'>)</span>
-<span class='va'>df_filt</span> <span class='op'>%&gt;%</span> <span class='fu'>count</span><span class='op'>(</span><span class='va'>pos</span>, sort <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+<span class='va'>df</span> <span class='op'>%&gt;%</span> <span class='fu'>count</span><span class='op'>(</span><span class='va'>pos</span>, sort <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
 </code></pre>
 </div>
 </div>
@@ -2488,9 +2487,8 @@ d-article pre {
 <p>I generated a correlation matrix for these two columns, ready to pass into a matching procedure.</p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>cors</span> <span class='op'>&lt;-</span>
-  <span class='va'>assignments</span> <span class='op'>%&gt;%</span> 
-  <span class='fu'>fastDummies</span><span class='fu'>::</span><span class='fu'><a href='https://jacobkap.github.io/fastDummies/reference/dummy_cols.html'>dummy_cols</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'.class'</span>, <span class='st'>'pos'</span><span class='op'>)</span>, remove_selected_columns <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>cors</span> <span class='op'>&lt;-</span> <span class='va'>assignments</span> <span class='op'>%&gt;%</span> 
+  <span class='fu'>fastDummies</span><span class='fu'>::</span><span class='fu'>dummy_cols</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'.class'</span>, <span class='st'>'pos'</span><span class='op'>)</span>, remove_selected_columns <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>corrr</span><span class='fu'>::</span><span class='fu'><a href='https://corrr.tidymodels.org/reference/correlate.html'>correlate</a></span><span class='op'>(</span>method <span class='op'>=</span> <span class='st'>'spearman'</span>, quiet <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
   <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>term</span> <span class='op'>%&gt;%</span> <span class='fu'>str_detect</span><span class='op'>(</span><span class='st'>'pos'</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>select</span><span class='op'>(</span><span class='va'>term</span>, <span class='fu'>matches</span><span class='op'>(</span><span class='st'>'^[.]class'</span><span class='op'>)</span><span class='op'>)</span>
@@ -2521,7 +2519,7 @@ d-article pre {
 <span class='fu'><a href='https://rdrr.io/r/base/colnames.html'>rownames</a></span><span class='op'>(</span><span class='va'>cors_mat</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='va'>cors</span><span class='op'>$</span><span class='va'>term</span>
 <span class='va'>cols</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/names.html'>names</a></span><span class='op'>(</span><span class='va'>cors</span><span class='op'>)</span><span class='op'>[</span><span class='va'>cols_idx</span><span class='op'>]</span>
 <span class='fu'><a href='https://rdrr.io/r/base/colnames.html'>colnames</a></span><span class='op'>(</span><span class='va'>cors_mat</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='va'>cols</span>
-<span class='va'>cols_idx_min</span> <span class='op'>&lt;-</span> <span class='fu'>clue</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/clue/man/solve_LSAP.html'>solve_LSAP</a></span><span class='op'>(</span><span class='va'>cors_mat</span>, maximum <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+<span class='va'>cols_idx_min</span> <span class='op'>&lt;-</span> <span class='fu'>clue</span><span class='fu'>::</span><span class='fu'>solve_LSAP</span><span class='op'>(</span><span class='va'>cors_mat</span>, maximum <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
 <span class='va'>cols_min</span> <span class='op'>&lt;-</span> <span class='va'>cols</span><span class='op'>[</span><span class='va'>cols_idx_min</span><span class='op'>]</span>
 <span class='va'>pairs</span> <span class='op'>&lt;-</span>
   <span class='fu'>tibble</span><span class='fu'>::</span><span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
@@ -2581,8 +2579,7 @@ d-article pre {
 <p>Then the Euclidean distance calculation is fairly straightforward.</p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>sims</span> <span class='op'>&lt;-</span>
-  <span class='va'>sims_init</span> <span class='op'>%&gt;%</span> 
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>sims</span> <span class='op'>&lt;-</span> <span class='va'>sims_init</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>player_1</span>, <span class='va'>player_2</span><span class='op'>)</span> <span class='op'>%&gt;%</span> 
   <span class='fu'>summarize</span><span class='op'>(</span>
     d <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>sqrt</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='op'>(</span><span class='va'>value_1</span> <span class='op'>-</span> <span class='va'>value_2</span><span class='op'>)</span><span class='op'>^</span><span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>
