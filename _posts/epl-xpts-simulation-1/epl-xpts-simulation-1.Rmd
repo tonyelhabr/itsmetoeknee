@@ -4,7 +4,7 @@ description: 'Calculating and comparing expected points from different expected 
 author:
   - name: Tony ElHabr
     url: 'https://twitter.com/TonyElHabr'
-date: 2022-09-05
+date: 2022-09-04
 categories:
   - r
   - soccer
@@ -19,7 +19,10 @@ twitter:
   creator: '@TonyElHabr'
 ---
 
-```{r setup, include=F, echo=F, cache=F}
+```{r}
+#| label: setup,
+#| include: FALSE
+#| echo: FALSE
 knitr::opts_chunk$set(
   include = TRUE,
   echo = TRUE,
@@ -57,11 +60,13 @@ What exactly is an " expected goal "? Who decides the criteria ? Is there a list
 ```
 So let's talk about [expected points (xPts)](https://www.bettingodds.com/news/what-are-expected-points-xp-football-betting). The one sentence explainer for xPts: it's a number between 0 and 3 assigned to each team in a match that we estimate from the xG of each shot in the match. Teams that accumulate more xG than their opponents in the match are more likely to have xPts closer to 3, i.e. the points awarded for a win, and those that accumulate less than their opponents are more likely to earn xPts closer to 0. xPts is convenient for translating a team's xG (relative to it's opponents) to the team's expected placement in the standings.
 
-While [several](https://luke-beggs.medium.com/creating-an-expected-points-xp-calculator-for-football-matches-ce4edd18d16f) [outlets](https://theshortfuse.sbnation.com/2017/11/15/16655916/how-to-calculate-xpoints-analysis-stats-xg) have described computing expected points with simulation, simulation is actually not necessary if you have the xG for every shot taken in a match.[^1] For example, let's say team A shoots six times with an xG of 0.1 for each shot, and team B shoots three shots with xG's of 0.1, 0.2, and 0.3 respectively. Given these goal probabilities, we can analytically compute the probabilities of (1) team A winning, (2) team B winning, and (3) a draw as follows.[^2]
+While [several](https://luke-beggs.medium.com/creating-an-expected-points-xp-calculator-for-football-matches-ce4edd18d16f) [outlets](https://theshortfuse.sbnation.com/2017/11/15/16655916/how-to-calculate-xpoints-analysis-stats-xg) have described computing expected points with simulation[^1], [simulation is actually not necessary](https://www.jonaslindstrom.dk/?p=330) if you have the xG for every shot taken in a match.[^2] For example, let's say team A shoots six times with an xG of 0.1 for each shot, and team B shoots three shots with xG's of 0.1, 0.2, and 0.3 respectively. Given these goal probabilities, we can analytically compute the probabilities of (1) team A winning, (2) team B winning, and (3) a draw as follows.[^3]
 
-[^1]: Now, if you desire the statistical properties that simulation offers, such as an estimation of error, that's understandable; however, in write-ups that I've seen, such is not mentioned explicitly. Additionally, if one chooses to go down the simulation route because they believe that it helps to suppress flaws with the xG model, that's also understandable. On the other hand, the analytical approach I present should present nearly identical results to that which one would find with simulation, and it offers the advantage of being much faster.
+[^1]: [Danny Page's interactive web app](https://danny.page/expected_goals.html) also uses simulation.
 
-[^2]: How does this work? Under the assumption that xG comes from a Poisson binomial distributions, we look at all combinations of makes and misses of the shots and compare the relative proportion of instances in which one team's number of success, i.e. goals, is greater than, equal to, or less than their opponent's.
+[^2]: Now, if you desire the statistical properties that simulation offers, such as an estimation of error, that's understandable; however, in write-ups that I've seen, such is not mentioned explicitly. Additionally, if one chooses to go down the simulation route because they believe that it helps to suppress flaws with the xG model, that's also understandable. On the other hand, the analytical approach I present should present nearly identical results to that which one would find with simulation, and it offers the advantage of being much faster.
+
+[^3]: How does this work? Under the assumption that xG comes from a [Poisson binomial distribution](https://en.wikipedia.org/wiki/Poisson_binomial_distribution), we look at all combinations of makes and misses of the shots and compare the relative proportion of instances in which one team's number of success, i.e. goals, is greater than, equal to, or less than their opponent's.
 
 ```{r}
 #| label: ex-probs
@@ -98,11 +103,11 @@ For this example, we arrive at the interesting result that, despite the two team
 
 So we've gone over what expected points are and why they're important. Now we set out to do the following.
 
-1.  **Calculate xPts from shot xG for multiple seasons of data.** We'll limit the scope to the 2020/21 and 2021/22 seasons for the English Premier League.[^3]
+1.  **Calculate xPts from shot xG for multiple seasons of data.** We'll limit the scope to the 2020/21 and 2021/22 seasons for the English Premier League.[^4]
 2.  **Compare the calibration of the understat and fotmob match outcome probabilities.** `{worldfootballR}` makes it easy for us to get xG from both [understat](https://understat.com/) and [fotmob](https://www.fotmob.com/), and it should be interesting to compare the the predictive performance of the two models.
 3.  **Compare predictions of actual season-long points using xPts that we derive from understat and fotmob xG.** In particular, we'll be interested to see if our conclusions regarding the better source for xG here matches the conclusions for (2).
 
-[^3]: We've limited the scope for several reasons: (1) fotmob only has complete xG data for the 2020/21 and 2021/22 seasons as of writing, (2) I didn't want to have to map team names across the two data sources for a ton of teams; and (3) of all league, I'm most interested in the EPL 😄.
+[^4]: We've limited the scope for several reasons: (1) fotmob only has complete xG data for the 2020/21 and 2021/22 seasons as of writing, (2) I didn't want to have to map team names across the two data sources for a ton of teams; and (3) of all league, I'm most interested in the EPL 😄.
 
 ## Analysis
 
@@ -122,8 +127,8 @@ library(lubridate)
 library(worldfootballR) ## version: 0.5.12.5000
 library(janitor)
 
-## manually created CSV with 3 columns: team_538, team_understat, team_fotmob.
-##   use the team_538 name to be consistent across sources.
+## manually created CSV with 2 columns: team_understat, team_fotmob.
+##   use the team_understat name to be consistent across sources.
 ##   CSV: https://raw.githubusercontent.com/tonyelhabr/sports_viz/master/59-xg_xpoints/team_mapping.csv
 team_mapping <- 'team_mapping.csv' |> readr::read_csv()
 
@@ -132,18 +137,18 @@ rename_teams <- function(df, src) {
   df |> 
     dplyr::left_join(
       team_mapping |> 
-        dplyr::select(.data$team_538, .data[[team_src]]),
+        dplyr::select(.data$team_understat, .data[[team_src]]),
       by = c('home_team' = team_src)
     ) |> 
     dplyr::select(-.data$home_team) |> 
     dplyr::rename(home_team = .data$team_538) |> 
     dplyr::left_join(
       team_mapping |> 
-        dplyr::select(.data$team_538, .data[[team_src]]),
+        dplyr::select(.data$team_understat, .data[[team_src]]),
       by = c('away_team' = team_src)
     ) |> 
     dplyr::select(-.data$away_team) |> 
-    dplyr::rename(away_team = .data$team_538) |> 
+    dplyr::rename(away_team = .data$team_understat) |> 
     dplyr::mutate(
       team = ifelse(is_home, home_team, away_team),
       opponent = ifelse(is_home, away_team, home_team)
@@ -197,9 +202,9 @@ understat_shots
 #> # … with 19,000 more rows
 ```
 
-We can use `load_fotmob_match_details()` to get fotmob's shot xG in a similar fashion.[^4]
+We can use `load_fotmob_match_details()` to get fotmob's shot xG in a similar fashion.[^5]
 
-[^4]: Note that there are three additional shots in the fotmob data. There's no simple solution to resolving this data discrepancy since we don't have matching shot identifiers in the two data sets 🤷.
+[^5]: Note that there are three additional shots in the fotmob data. There's no simple solution to resolving this data discrepancy since we don't have matching shot identifiers in the two data sets 🤷.
 
 ```{r}
 #| label: load_fotmob_match_details
@@ -377,8 +382,8 @@ understat_xpts_by_match |>
 #>  6 2021-01-12 Burnley           Manchester United     0.3     0.18    0.52  0.84
 #>  7 2021-01-20 Aston Villa       Manchester City       0.04    0.01    0.95  0.07
 #>  8 2021-01-20 Manchester City   Aston Villa           0.04    0.95    0.01  2.89
-#>  9 2020-09-12 Leeds United      Liverpool             0.03    0       0.97  0.04
-#> 10 2020-09-12 Liverpool         Leeds United          0.03    0.97    0     2.93
+#>  9 2020-09-12 Leeds             Liverpool             0.03    0       0.97  0.04
+#> 10 2020-09-12 Liverpool         Leeds                 0.03    0.97    0     2.93
 #> # … with 1,510 more rows, and abbreviated variable names ¹​prob_draw, ²​prob_win,
 #> #   ³​prob_lose
 ```
@@ -396,19 +401,10 @@ all_raw_understat_xpts_by_match <- 2014:2021 |>
     ~understatr::get_league_teams_stats('EPL', .x),
     .id = 'season'
   ) |> 
-  dplyr::mutate(
-    season = convert_understat_year_to_season(as.integer(season))
-  ) |> 
-  dplyr::inner_join(
-    team_mapping |> dplyr::select(team_538, team_understat),
-    by = c('team_name' = 'team_understat')
-  ) |> 
-  dplyr::select(-team_name) |> 
-  dplyr::rename(team = team_538) |> 
-  dplyr::select(
-    season,
+  dplyr::transmute(
+    across(season, ~convert_understat_year_to_season(as.integer(.x))),
     date,
-    team,
+    team = team_name,
     result,
     pts,
     raw_xpts = xpts,
@@ -426,18 +422,18 @@ raw_understat_xpts_by_match <- all_raw_understat_xpts_by_match |>
   arrange(season, date, team)
 raw_understat_xpts_by_match
 #> # A tibble: 1,520 × 9
-#>    season  date       team            result   pts raw_x…¹    xg   xpts    xptsd
-#>    <chr>   <date>     <chr>           <chr>  <int>   <dbl> <dbl>  <dbl>    <dbl>
-#>  1 2020/21 2020-09-12 Arsenal         w          3  2.89   2.16  2.93   -3.40e-2
-#>  2 2020/21 2020-09-12 Crystal Palace  w          3  1.48   1.40  1.48   -1.08e-3
-#>  3 2020/21 2020-09-12 Fulham          l          0  0.0587 0.126 0.0405  1.82e-2
-#>  4 2020/21 2020-09-12 Leeds United    l          0  0.0434 0.270 0.0440 -5.77e-4
-#>  5 2020/21 2020-09-12 Liverpool       w          3  2.93   3.15  2.93    1.03e-3
-#>  6 2020/21 2020-09-12 Newcastle       w          3  2.05   1.66  2.03    1.86e-2
-#>  7 2020/21 2020-09-12 Southampton     l          0  1.22   1.26  1.22   -5.44e-4
-#>  8 2020/21 2020-09-12 West Ham United l          0  0.700  0.861 0.717  -1.71e-2
-#>  9 2020/21 2020-09-13 Everton         w          3  1.74   1.27  1.74    5.98e-3
-#> 10 2020/21 2020-09-13 Leicester City  w          3  2.91   2.96  2.91    6.14e-4
+#>    season  date       team           result   pts raw_x…¹    xg   xpts    xptsd
+#>    <chr>   <date>     <chr>          <chr>  <int>   <dbl> <dbl>  <dbl>    <dbl>
+#>  1 2020/21 2020-09-12 Arsenal        w          3  2.89   2.16  2.93   -3.40e-2
+#>  2 2020/21 2020-09-12 Crystal Palace w          3  1.48   1.40  1.48   -1.08e-3
+#>  3 2020/21 2020-09-12 Fulham         l          0  0.0587 0.126 0.0405  1.82e-2
+#>  4 2020/21 2020-09-12 Leeds          l          0  0.0434 0.270 0.0440 -5.77e-4
+#>  5 2020/21 2020-09-12 Liverpool      w          3  2.93   3.15  2.93    1.03e-3
+#>  6 2020/21 2020-09-12 Newcastle      w          3  2.05   1.66  2.03    1.86e-2
+#>  7 2020/21 2020-09-12 Southampton    l          0  1.22   1.26  1.22   -5.44e-4
+#>  8 2020/21 2020-09-12 West Ham       l          0  0.700  0.861 0.717  -1.71e-2
+#>  9 2020/21 2020-09-13 Everton        w          3  1.74   1.27  1.74    5.98e-3
+#> 10 2020/21 2020-09-13 Leicester      w          3  2.91   2.96  2.91    6.14e-4
 #> # … with 1,510 more rows, and abbreviated variable name ¹​raw_xpts
 
 ## mean absolute error
@@ -445,9 +441,9 @@ round(mean(abs(raw_understat_xpts_by_match$xptsd)), 3)
 #> [1] 0.022
 ```
 
-### 2. Match predictive performance[^5]
+### 2. Match predictive performance[^6]
 
-[^5]: Using the adjective "predictive" is a little misleading, since we're not actually making predictions out-of-sample. Rather, we're using models based on xG to evaluate which xG data source better explains the observed results.
+[^6]: Using the adjective "predictive" is a little misleading, since we're not actually making predictions out-of-sample. Rather, we're using models based on xG to evaluate which xG data source better explains the observed results.
 
 As one might guess, the match outcome probabilities implied by the xG from understat and fotmob are strongly correlated.
 
@@ -480,21 +476,21 @@ round(c(cor_draw, cor_win, cor_lose), 3)
 #> [1] 0.906 0.958 0.958
 ```
 
-Note that the win and loss correlations are identical. This is due to the symmetric nature of the data---we have two records for each match, one from each team's perspective.[^6]
+Note that the win and loss correlations are identical. This is due to the symmetric nature of the data---we have two records for each match, one from each team's perspective.[^7]
 
-[^6]: Home field advantage is treated as a feature instead of defined directly via columns, i.e. `home_team`, `home_score`, etc., which is good practice in general.
+[^7]: Home field advantage is treated as a feature instead of defined directly via columns, i.e. `home_team`, `home_score`, etc., which is good practice in general.
 
 #### Predicting match outcomes with binary logistic regression
 
 Now let's compare how "good" the implied probabilities from the two sources are. To do this, we'll create binary logistic regression models to predict a given outcome and compute:
 
 1.  the [mean squared error (MSE)](https://en.wikipedia.org/wiki/Mean_squared_error);
-2.  the [brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)), treating the empirical proportion of the specified outcome as the reference.[^7][^8]
+2.  the [brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)), treating the empirical proportion of the specified outcome as the reference.[^8][^9]
 3.  a [calibration plot](https://changhsinlee.com/python-calibration-plot/), grouping predictions into "buckets" at every 5%.
 
-[^7]: Draws occur for 22.5% of matches in the data set, and wins and losses occur in 38.8% of matches each.
+[^8]: Draws occur for 22.5% of matches in the data set, and wins and losses occur in 38.8% of matches each.
 
-[^8]: Personally, I tend to rely on BSS wherever I can. Not only is it more interpretable---it's a number between 0 and 1, while MSE can take on any value, depending on the context---I like that it forces one to compare to a baseline, which is a good principle in general.
+[^9]: Personally, I tend to rely on BSS wherever I can. Not only is it more interpretable---it's a number between 0 and 1, while MSE can take on any value, depending on the context---I like that it forces one to compare to a baseline, which is a good principle in general.
 
 ```{r}
 #| label: diagnose_prob_by_match
@@ -584,9 +580,9 @@ diagnostics
 
 The MSE (where lower is "better") and the BSS (where higher is "better") lead us to same conclusion---the models based on understat's xG slightly outperform the one based on fotmob's xG.
 
-Moreover, looking at the calibration plot, the understat model predictions seem to stick closer to the 45 degree slope, which represents perfect calibration.[^9]
+Moreover, looking at the calibration plot, the understat model predictions seem to stick closer to the 45 degree slope, which represents perfect calibration.[^10]
 
-[^9]: Plotting code is omitted here since it's not relevant to our analysis.
+[^10]: Plotting code is omitted here since it's not relevant to our analysis.
 
 ```{r}
 #| label: theming
@@ -757,9 +753,9 @@ Overall, we might say that understat seems to be the better of the two xG source
 
 ### 3. Season predictive performance
 
-How do the understat and fotmob models fare if we aggregate up the expected points to the season level and predict actual points?[^10]
+How do the understat and fotmob models fare if we aggregate up the expected points to the season level and predict actual points?[^11]
 
-[^10]: Note that aggregating match-level probabilities to the season-level is not a statistically valid way to use the probabilities, which are intended to be treated independently.
+[^11]: Note that aggregating match-level probabilities to the season-level is not a statistically valid way to use the probabilities, which are intended to be treated independently.
 
 ```{r}
 xpts_by_season <- xpts_by_match |> 
@@ -799,7 +795,7 @@ The results are closer than those at the match-level. In fact, fotmob barely edg
 
 ***SARCASM ACTIVATED***
 
-Alas, we find that understat's xG model seems to outperform fotmob's in terms of explaining match results and season-long point totals, so no one should ever use fotmob's site again! As my long-time dedicated follower know (all three of you), I am not one to shy away from calling out data providers on their B.S. I am glad to continue to live up to my reputation.
+Alas, we find that understat's xG model seems to outperform fotmob's in terms of explaining match results and season-long point totals, so no one should ever use fotmob's site again! As my dedicated followers know (all three of you), I am not one to shy away from calling out data providers on their B.S. I am glad to continue to live up to my reputation.
 
 <blockquote class="twitter-tweet">
 

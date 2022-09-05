@@ -4,7 +4,7 @@ description: 'Calculating and comparing expected points from different expected 
 author:
   - name: Tony ElHabr
     url: 'https://twitter.com/TonyElHabr'
-date: 2022-09-05
+date: 2022-09-04
 categories:
   - r
   - soccer
@@ -127,8 +127,8 @@ library(lubridate)
 library(worldfootballR) ## version: 0.5.12.5000
 library(janitor)
 
-## manually created CSV with 3 columns: team_538, team_understat, team_fotmob.
-##   use the team_538 name to be consistent across sources.
+## manually created CSV with 2 columns: team_understat, team_fotmob.
+##   use the team_understat name to be consistent across sources.
 ##   CSV: https://raw.githubusercontent.com/tonyelhabr/sports_viz/master/59-xg_xpoints/team_mapping.csv
 team_mapping <- 'team_mapping.csv' |> readr::read_csv()
 
@@ -137,18 +137,18 @@ rename_teams <- function(df, src) {
   df |> 
     dplyr::left_join(
       team_mapping |> 
-        dplyr::select(.data$team_538, .data[[team_src]]),
+        dplyr::select(.data$team_understat, .data[[team_src]]),
       by = c('home_team' = team_src)
     ) |> 
     dplyr::select(-.data$home_team) |> 
     dplyr::rename(home_team = .data$team_538) |> 
     dplyr::left_join(
       team_mapping |> 
-        dplyr::select(.data$team_538, .data[[team_src]]),
+        dplyr::select(.data$team_understat, .data[[team_src]]),
       by = c('away_team' = team_src)
     ) |> 
     dplyr::select(-.data$away_team) |> 
-    dplyr::rename(away_team = .data$team_538) |> 
+    dplyr::rename(away_team = .data$team_understat) |> 
     dplyr::mutate(
       team = ifelse(is_home, home_team, away_team),
       opponent = ifelse(is_home, away_team, home_team)
@@ -382,8 +382,8 @@ understat_xpts_by_match |>
 #>  6 2021-01-12 Burnley           Manchester United     0.3     0.18    0.52  0.84
 #>  7 2021-01-20 Aston Villa       Manchester City       0.04    0.01    0.95  0.07
 #>  8 2021-01-20 Manchester City   Aston Villa           0.04    0.95    0.01  2.89
-#>  9 2020-09-12 Leeds United      Liverpool             0.03    0       0.97  0.04
-#> 10 2020-09-12 Liverpool         Leeds United          0.03    0.97    0     2.93
+#>  9 2020-09-12 Leeds             Liverpool             0.03    0       0.97  0.04
+#> 10 2020-09-12 Liverpool         Leeds                 0.03    0.97    0     2.93
 #> # … with 1,510 more rows, and abbreviated variable names ¹​prob_draw, ²​prob_win,
 #> #   ³​prob_lose
 ```
@@ -401,19 +401,10 @@ all_raw_understat_xpts_by_match <- 2014:2021 |>
     ~understatr::get_league_teams_stats('EPL', .x),
     .id = 'season'
   ) |> 
-  dplyr::mutate(
-    season = convert_understat_year_to_season(as.integer(season))
-  ) |> 
-  dplyr::inner_join(
-    team_mapping |> dplyr::select(team_538, team_understat),
-    by = c('team_name' = 'team_understat')
-  ) |> 
-  dplyr::select(-team_name) |> 
-  dplyr::rename(team = team_538) |> 
-  dplyr::select(
-    season,
+  dplyr::transmute(
+    across(season, ~convert_understat_year_to_season(as.integer(.x))),
     date,
-    team,
+    team = team_name,
     result,
     pts,
     raw_xpts = xpts,
@@ -431,18 +422,18 @@ raw_understat_xpts_by_match <- all_raw_understat_xpts_by_match |>
   arrange(season, date, team)
 raw_understat_xpts_by_match
 #> # A tibble: 1,520 × 9
-#>    season  date       team            result   pts raw_x…¹    xg   xpts    xptsd
-#>    <chr>   <date>     <chr>           <chr>  <int>   <dbl> <dbl>  <dbl>    <dbl>
-#>  1 2020/21 2020-09-12 Arsenal         w          3  2.89   2.16  2.93   -3.40e-2
-#>  2 2020/21 2020-09-12 Crystal Palace  w          3  1.48   1.40  1.48   -1.08e-3
-#>  3 2020/21 2020-09-12 Fulham          l          0  0.0587 0.126 0.0405  1.82e-2
-#>  4 2020/21 2020-09-12 Leeds United    l          0  0.0434 0.270 0.0440 -5.77e-4
-#>  5 2020/21 2020-09-12 Liverpool       w          3  2.93   3.15  2.93    1.03e-3
-#>  6 2020/21 2020-09-12 Newcastle       w          3  2.05   1.66  2.03    1.86e-2
-#>  7 2020/21 2020-09-12 Southampton     l          0  1.22   1.26  1.22   -5.44e-4
-#>  8 2020/21 2020-09-12 West Ham United l          0  0.700  0.861 0.717  -1.71e-2
-#>  9 2020/21 2020-09-13 Everton         w          3  1.74   1.27  1.74    5.98e-3
-#> 10 2020/21 2020-09-13 Leicester City  w          3  2.91   2.96  2.91    6.14e-4
+#>    season  date       team           result   pts raw_x…¹    xg   xpts    xptsd
+#>    <chr>   <date>     <chr>          <chr>  <int>   <dbl> <dbl>  <dbl>    <dbl>
+#>  1 2020/21 2020-09-12 Arsenal        w          3  2.89   2.16  2.93   -3.40e-2
+#>  2 2020/21 2020-09-12 Crystal Palace w          3  1.48   1.40  1.48   -1.08e-3
+#>  3 2020/21 2020-09-12 Fulham         l          0  0.0587 0.126 0.0405  1.82e-2
+#>  4 2020/21 2020-09-12 Leeds          l          0  0.0434 0.270 0.0440 -5.77e-4
+#>  5 2020/21 2020-09-12 Liverpool      w          3  2.93   3.15  2.93    1.03e-3
+#>  6 2020/21 2020-09-12 Newcastle      w          3  2.05   1.66  2.03    1.86e-2
+#>  7 2020/21 2020-09-12 Southampton    l          0  1.22   1.26  1.22   -5.44e-4
+#>  8 2020/21 2020-09-12 West Ham       l          0  0.700  0.861 0.717  -1.71e-2
+#>  9 2020/21 2020-09-13 Everton        w          3  1.74   1.27  1.74    5.98e-3
+#> 10 2020/21 2020-09-13 Leicester      w          3  2.91   2.96  2.91    6.14e-4
 #> # … with 1,510 more rows, and abbreviated variable name ¹​raw_xpts
 
 ## mean absolute error
