@@ -1,0 +1,122 @@
+---
+title: 'What exactly is an "expected point"? (part 1)'
+description: 'Evaluating how we can use match outcome probabilites for season-long insights'
+author:
+  - name: Tony ElHabr
+    url: 'https://twitter.com/TonyElHabr'
+date: 2022-10-01
+categories:
+  - r
+  - soccer
+output: 
+  distill::distill_article:
+    toc: true
+    toc_depth: 3
+    self_contained: false
+preview: featured.png
+twitter:
+  site: '@TonyElHabr'
+  creator: '@TonyElHabr'
+---
+
+```{r setup, include=F, echo=F, cache=F}
+knitr::opts_chunk$set(
+  include = TRUE,
+  echo = TRUE,
+  cache = FALSE,
+  eval = FALSE,
+  cache.lazy = FALSE,
+  fig.show = 'hide',
+  fig.align = 'center',
+  fig.width = 8,
+  fig.asp = 0.75,
+  fig.retina = 2,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## Introduction
+
+My hypothesis is that such an approach will lead to slighly worse predictions than what we find with (3), since rolling up match-level predictions to season-long forecasts introduce compounding error. Nonetheless, it's something worth looking at, and may be useful for purposes other than season-long projections.
+
+```{r}
+#| label: all_raw_understat_xpts_xgd_by_season
+#| eval: false
+all_raw_understat_xpts_by_match_with_opponent <- all_raw_understat_xpts_by_match |> 
+  inner_join(
+    all_understat_shots |> distinct(match_id, season, date, team, opponent),
+    by = c('season', 'date', 'team')
+  )
+
+all_raw_understat_xpts_xgd_by_match <- all_raw_understat_xpts_by_match_with_opponent |> 
+  select(
+    match_id,
+    season,
+    date,
+    team,
+    opponent,
+    pts,
+    ## we've already determined that the raw_xpts (provided directly by understat) 
+    ##   is close to our calculated xpts, so we'll just use the raw_xpts.
+    xpts = raw_xpts,
+    xg
+  ) |> 
+  inner_join(
+    all_raw_understat_xpts_by_match_with_opponent |> 
+      select(match_id, opponent = team, opponent_xg = xg),
+    by = c('match_id', 'opponent')
+  ) |> 
+  mutate(
+    xgd = xg - opponent_xg
+  )
+
+all_raw_understat_xpts_xgd_by_season <- all_raw_understat_xpts_xgd_by_match |> 
+  group_by(season, team) |> 
+  summarize(
+    across(c(pts, xpts, xgd), sum)
+  ) |> 
+  ungroup() |> 
+  group_by(season) |> 
+  mutate(xrank = row_number(desc(xpts))) |> 
+  ungroup() |> 
+  arrange(season, desc(pts), team)
+
+compute_understat_xpts_by_season_rmse <- function(col) {
+  fit <- lm(
+    all_raw_understat_xpts_xgd_by_season$pts ~ all_raw_understat_xpts_xgd_by_season[[col]]
+  )
+  
+  preds <- tibble::tibble(
+    season = all_raw_understat_xpts_xgd_by_season$season,
+    pts = all_raw_understat_xpts_xgd_by_season$pts,
+    .pred = unname(predict(fit))
+  )
+
+  preds |> 
+    group_by(season) |> 
+    summarize(
+      rmse = compute_rmse(pts, .pred) 
+    ) |> 
+    ungroup() |> 
+    select(season, rmse)
+}
+
+understat_rmses_by_season <- c('xgd', 'xpts') |> 
+  set_names() |> 
+  map_dfr(compute_understat_xpts_by_season_rmse, .id = 'feature')
+understat_rmses_by_season
+```
+
+## Conclusion
+
+```{r}
+#| label: printout
+#| eval: false
+#| echo: false
+#| include: false
+qs::qsave(z, 'z.qs')
+
+library(dplyr)
+qs::qread('c:/users/antho/documents/projects/itsmetoeknee/z.qs')
+```
