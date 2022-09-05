@@ -1,5 +1,5 @@
 ---
-title: 'What exactly is an "expected point"? (part 1)'
+title: 'What exactly is an "expected point"? (part 2)'
 description: 'Evaluating how we can use match outcome probabilites for season-long insights'
 author:
   - name: Tony ElHabr
@@ -19,7 +19,10 @@ twitter:
   creator: '@TonyElHabr'
 ---
 
-```{r setup, include=F, echo=F, cache=F}
+```{r}
+#| label: setup,
+#| include: FALSE
+#| echo: FALSE
 knitr::opts_chunk$set(
   include = TRUE,
   echo = TRUE,
@@ -38,10 +41,22 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-My hypothesis is that such an approach will lead to slighly worse predictions than what we find with (3), since rolling up match-level predictions to season-long forecasts introduce compounding error. Nonetheless, it's something worth looking at, and may be useful for purposes other than season-long projections.
+I'll be picking up where I left off in [my last post](https://tonyelhabr.rbind.io//post/epl-xpts-simulation-1), so stop everything that you're doing and go read that if you haven't already. In this post we'll do two things:
+
+1.  We'll compare how well season-level expected goal difference (xGD), season-level xPts, and aggregated match-level xPts predict season-long points for a given team.
+
+2.  We'll use the match-level probabilites to answer the question "Which teams had the most unlikely placings in the table given the quality of all their shots across the season?"
+
+## Analysis
+
+### 1. Predicting season-long points
+
+#### With season-long xPts and xGD
+
+We start with the `all_raw_understat_xpts_by_match` variable from the prior post, adding the opponent's expected goals to create a column for expected goal difference (`xgd`).
 
 ```{r}
-#| label: all_raw_understat_xpts_xgd_by_season
+#| label: all_raw_understat_xpts_xgd_by_match
 #| eval: false
 all_raw_understat_xpts_by_match_with_opponent <- all_raw_understat_xpts_by_match |> 
   inner_join(
@@ -70,7 +85,13 @@ all_raw_understat_xpts_xgd_by_match <- all_raw_understat_xpts_by_match_with_oppo
   mutate(
     xgd = xg - opponent_xg
   )
+```
 
+Next, we aggregate up to the season-level.
+
+```{r}
+#| label: all_raw_understat_xpts_xgd_by_season
+#| eval: false
 all_raw_understat_xpts_xgd_by_season <- all_raw_understat_xpts_xgd_by_match |> 
   group_by(season, team) |> 
   summarize(
@@ -81,34 +102,507 @@ all_raw_understat_xpts_xgd_by_season <- all_raw_understat_xpts_xgd_by_match |>
   mutate(xrank = row_number(desc(xpts))) |> 
   ungroup() |> 
   arrange(season, desc(pts), team)
-
-compute_understat_xpts_by_season_rmse <- function(col) {
-  fit <- lm(
-    all_raw_understat_xpts_xgd_by_season$pts ~ all_raw_understat_xpts_xgd_by_season[[col]]
-  )
-  
-  preds <- tibble::tibble(
-    season = all_raw_understat_xpts_xgd_by_season$season,
-    pts = all_raw_understat_xpts_xgd_by_season$pts,
-    .pred = unname(predict(fit))
-  )
-
-  preds |> 
-    group_by(season) |> 
-    summarize(
-      rmse = compute_rmse(pts, .pred) 
-    ) |> 
-    ungroup() |> 
-    select(season, rmse)
-}
-
-understat_rmses_by_season <- c('xgd', 'xpts') |> 
-  set_names() |> 
-  map_dfr(compute_understat_xpts_by_season_rmse, .id = 'feature')
-understat_rmses_by_season
 ```
 
+Finally, we compute RMSE and R squared, like we did in the last post.
+
+```{r}
+#| label: diagnose_season_feature
+#| eval: false
+diagnose_season_feature <- function(df, col) {
+  fit <- lm(
+    df$pts ~ df[[col]]
+  )
+  
+  preds <- predict(fit)
+  tibble::tibble(
+    rmse = compute_rmse(df$pts, preds),
+    r2 = summary(fit)$r.squared
+  )
+}
+
+c('xgd', 'xpts') |> 
+  set_names() |> 
+  map_dfr(
+    ~diagnose_season_feature(all_raw_understat_xpts_xgd_by_season, .x), 
+    .id = 'feature'
+  )
+#> # A tibble: 2 × 3
+#>   feature  rmse    r2
+#>   <chr>   <dbl> <dbl>
+#> 1 xgd      7.31 0.831
+#> 2 xpts     7.19 0.837
+```
+
+As we should expect, a model using season-long xPts to predict final points outperforms one using season-long xGD as a feature, although maybe the difference between the two is smaller than we might have expected
+
+#### With match-level outcome probabilities
+
+First, we use the full understat shot data set and the custom functions from the prior post to calculate xPts by match.
+
+```{r}
+#| label: all_understat_xpts_by_match
+#| eval: false
+all_understat_xpts_by_match <- all_understat_shots |> 
+  calculate_permuted_xg() |> 
+  summarize_permuted_xg_by_match()
+all_understat_xpts_by_match
+#> # A tibble: 6,078 × 10
+#>    match…¹ season date       is_home team  oppon…² prob_…³ prob_…⁴ prob_…⁵  xpts
+#>      <dbl> <chr>  <date>     <lgl>   <chr> <chr>     <dbl>   <dbl>   <dbl> <dbl>
+#>  1      81 2015/… 2015-08-08 FALSE   Tott… Manche…   0.399   0.321   0.280 1.36 
+#>  2      81 2015/… 2015-08-08 TRUE    Manc… Totten…   0.399   0.280   0.321 1.24 
+#>  3      82 2015/… 2015-08-08 FALSE   Asto… AFC Bo…   0.358   0.292   0.350 1.23 
+#>  4      82 2015/… 2015-08-08 TRUE    AFC … Aston …   0.358   0.350   0.292 1.41 
+#>  5      83 2015/… 2015-08-08 FALSE   Watf… Everton   0.425   0.270   0.305 1.24 
+#>  6      83 2015/… 2015-08-08 TRUE    Ever… Watford   0.425   0.305   0.270 1.34 
+#>  7      84 2015/… 2015-08-08 FALSE   Sund… Leices…   0.207   0.148   0.645 0.651
+#>  8      84 2015/… 2015-08-08 TRUE    Leic… Sunder…   0.207   0.645   0.148 2.14 
+#>  9      85 2015/… 2015-08-08 FALSE   Crys… Norwic…   0.224   0.635   0.141 2.13 
+#> 10      85 2015/… 2015-08-08 TRUE    Norw… Crysta…   0.224   0.141   0.635 0.648
+#> # … with 6,068 more rows, and abbreviated variable names ¹​match_id, ²​opponent,
+#> #   ³​prob_draw, ⁴​prob_win, ⁵​prob_lose
+```
+
+Then, before we move on, we need to handle an edge case: some teams do not have any shots in some matches.[^1] So we need to specify that their loss probability is 1.
+
+[^1]: Theoretically, there is an even more extreme case: when both teams do not have any shots in a match. This does not occur in the data set, so we do not need to correct for this.
+
+```{r}
+#| label: all_understat_probs_by_match
+#| eval: false
+init_all_understat_probs_by_match <- all_understat_xpts_by_match |> 
+  select(team, season, match_id, starts_with('prob')) |> 
+  rename_with(~str_remove(.x, '^prob_'), starts_with('prob')) |> 
+  pivot_longer(
+    -c(team, season, match_id),
+    names_to = 'result',
+    values_to = 'prob'
+  )
+
+understat_guaranteed_losses <- init_all_understat_probs_by_match |> 
+  group_by(team, match_id) |> 
+  filter(all(prob == 0)) |> 
+  ungroup() |> 
+  filter(result == 'lose') |> 
+  mutate(prob = 1)
+
+all_understat_probs_by_match <- init_all_understat_probs_by_match |> 
+  anti_join(
+    understat_guaranteed_losses |> select(team, match_id, result),
+    by = c('team', 'match_id', 'result')
+  ) |> 
+  bind_rows(
+    understat_guaranteed_losses
+  ) |> 
+  arrange(season, team, match_id)
+all_understat_probs_by_match
+#> # A tibble: 18,234 × 5
+#>    team    season  match_id result   prob
+#>    <chr>   <chr>      <dbl> <chr>   <dbl>
+#>  1 Arsenal 2014/15     4408 draw   0.0675
+#>  2 Arsenal 2014/15     4408 win    0.914 
+#>  3 Arsenal 2014/15     4408 lose   0.0183
+#>  4 Arsenal 2014/15     4418 draw   0.159 
+#>  5 Arsenal 2014/15     4418 win    0.795 
+#>  6 Arsenal 2014/15     4418 lose   0.0454
+#>  7 Arsenal 2014/15     4427 draw   0.323 
+#>  8 Arsenal 2014/15     4427 win    0.467 
+#>  9 Arsenal 2014/15     4427 lose   0.210 
+#> 10 Arsenal 2014/15     4429 draw   0.259 
+#> # … with 18,224 more rows
+```
+
+Next, the fun part: simulating match outcomes using the xG-implied match outcome probabilities, and aggregating the resulting points for an entire season.[^2] This is quite computationally intense, so we parallelize the calculation.
+
+[^2]: This approach is flawed in at least on way: it doesn't guarantee that the assigned results in a simulated match are actually symmetric. For example, if team A is assigned a win in simulation 1, there is no guarantee that team B is assigned a loss in that simulation. Nonetheless, running lots of simulations minimizes the noise introduced by such logical discrepancies.
+
+```{r}
+#| label: understat_sim_pts_by_season
+#| eval: false
+library(parallel)
+library(future)
+library(furrr)
+library(dplyr)
+n_cores <- parallel::detectCores()
+cores_for_parallel <- ceiling(n_cores * 1/2)
+future::plan(
+  future::multisession,
+  workers = cores_for_parallel
+)
+
+set.seed(42)
+n_sims <- 10000
+understat_sim_pts_by_season <- furrr::future_imap_dfr(
+  rlang::set_names(1:n_sims),
+  ~{
+    understat_probs_by_match |> 
+      dplyr::group_by(team, season, match_id) |> 
+      dplyr::slice_sample(n = 1, weight_by = prob) |> 
+      dplyr::ungroup() |>
+      dplyr::mutate(
+        sim_idx = as.integer(!!.y),
+        .before = 1
+      ) |> 
+      dplyr::mutate(
+        pts = dplyr::case_when(
+          result == 'win' ~ 3L,
+          result == 'lose' ~ 1L,
+          TRUE ~ 0L
+        )
+      ) |> 
+      dplyr::group_by(season, team, sim_idx) |> 
+      dplyr::summarize(
+        dplyr::across(pts, sum)
+      ) |> 
+      dplyr::ungroup() |> 
+      dplyr::group_by(season, sim_idx) |> 
+      dplyr::mutate(
+        rank = dplyr::row_number(dplyr::desc(pts))
+      ) |> 
+      dplyr::ungroup() |> 
+      dplyr::arrange(season, sim_idx, rank)
+  }
+)
+
+## back to normal processing
+future::plan(future::sequential)
+
+understat_sim_pts_by_season
+#> # A tibble: 1,600,000 × 5
+#>    season  team                 sim_idx   pts  rank
+#>    <chr>   <chr>                  <int> <int> <int>
+#>  1 2014/15 Chelsea                    1    75     1
+#>  2 2014/15 Manchester City            1    75     2
+#>  3 2014/15 Arsenal                    1    70     3
+#>  4 2014/15 Manchester United          1    69     4
+#>  5 2014/15 Stoke City                 1    69     5
+#>  6 2014/15 Liverpool                  1    68     6
+#>  7 2014/15 Southampton                1    68     7
+#>  8 2014/15 West Ham United            1    67     8
+#>  9 2014/15 Tottenham Hotspur          1    57     9
+#> 10 2014/15 West Bromwich Albion       1    56    10
+#> # … with 1,599,990 more rows
+```
+
+Next, we aggregate the season-long points across simulations, calculating the relative proportion of simulations (`prop`) in which a given team ends up at a given rank (`xrank`).
+
+```{r}
+#| label: understat_sim_placings
+#| eval: false
+understat_sim_placings <- understat_sim_pts_by_season |> 
+  group_by(season, team, xrank = rank) |> 
+  summarize(
+    n = n(),
+    xpts = mean(pts)
+  ) |> 
+  ungroup() |> 
+  group_by(season, team) |> 
+  mutate(
+    prop = n / sum(n)
+  ) |> 
+  ungroup() |> 
+  arrange(season, team, desc(xrank)) |> 
+  group_by(season, team) |> 
+  mutate(
+    inv_cumu_prop = cumsum(prop)
+  ) |> 
+  ungroup() |> 
+  arrange(season, team, xrank) |> 
+  group_by(season, team) |> 
+  mutate(
+    cumu_prop = cumsum(prop),
+    .before = inv_cumu_prop
+  ) |> 
+  ungroup()
+understat_sim_placings
+#> # A tibble: 2,907 × 8
+#>    season  team    xrank     n  xpts   prop cumu_prop inv_cumu_prop
+#>    <chr>   <chr>   <int> <int> <dbl>  <dbl>     <dbl>         <dbl>
+#>  1 2014/15 Arsenal     1  3897  80.8 0.390      0.390        1     
+#>  2 2014/15 Arsenal     2  2561  75.4 0.256      0.646        0.610 
+#>  3 2014/15 Arsenal     3  1790  71.7 0.179      0.825        0.354 
+#>  4 2014/15 Arsenal     4   859  68.5 0.0859     0.911        0.175 
+#>  5 2014/15 Arsenal     5   418  65.6 0.0418     0.952        0.0893
+#>  6 2014/15 Arsenal     6   196  63.9 0.0196     0.972        0.0475
+#>  7 2014/15 Arsenal     7   117  61.6 0.0117     0.984        0.0279
+#>  8 2014/15 Arsenal     8    66  59.4 0.0066     0.990        0.0162
+#>  9 2014/15 Arsenal     9    41  58.3 0.0041     0.994        0.0096
+#> 10 2014/15 Arsenal    10    21  57.9 0.0021     0.997        0.0055
+#> # … with 2,897 more rows
+```
+
+Finally, we calculate the weighted average of expected points that a team ends up with, and run the same regression that we ran earlier with season-long xPts and xGD.
+
+```{r}
+#| label: understat_sim_placings_agg
+#| eval: false
+understat_sim_placings_agg <- understat_sim_placings |> 
+  group_by(season, team) |> 
+  summarize(
+    xpts = sum(xpts * prop)
+  ) |> 
+  ungroup() |>
+  select(
+    season,
+    team,
+    xpts
+  ) |>
+  inner_join(
+    all_raw_understat_xpts_xgd_by_season |> select(season, team, pts),
+    by = c('season', 'team')
+  ) |> 
+  arrange(season, desc(xpts))
+
+diagnose_season_feature(understat_sim_placings_agg, 'xpts')
+#> # A tibble: 1 × 2
+#>    rmse    r2
+#>   <dbl> <dbl>
+#> 1  7.33 0.831
+```
+
+Interestingly, the RMSE and R squared values are almost identical to the model using season-long xGD, which are themselves almost identical to the values using season-long xPts. I think this is not too surprising. Match-level outcome probabilities simulated to get season-long xPts should give us something very close to just computing season-long xPts directly. And xPts itself is very closely related to xGD, particularly at the match-level.
+
+All that work was not for nothing---we may still leverage the match-level probabilities in a useful manner for season-long insights. In particular we can use the the relative proportion of simulations (`prop`) in which a given team ends up at a given rank (`xrank`) to identify which actual end-of-season placings were the most unexpected.
+
+### 2. Identifying un-expected placings
+
+Before we can identify unlikely placings, we need to step back and retrieve data on the actual placings. We could theoretically calculate this from the shot data we already have, calculating goal differential to break any ties in final points. However, the logic for handling own goals is a little complicated. We're probably better off using `worldfootballR::understat_league_match_results()`, which returns goals at the match-level, to calculate the table. [^3]
+
+[^3]: Maybe even more simply, we could use `worldfootballR::fb_season_team_stats(..., stat_type = 'league_table')`, although we'd need to add a column for team names for [FBref](https://fbref.com/en/) to our team mapping to corroborate team names.
+
+```{r}
+#| label: table
+#| eval: false
+match_results <- 2014:2021 |> 
+  purrr::map_dfr(~worldfootballR::understat_league_match_results('EPL', .x)) |> 
+  tibble::as_tibble()
+
+init_table <- match_results |> 
+  dplyr::transmute(
+    match_id,
+    dplyr::across(season, ~stringr::str_replace(.x, '\\/20', '/')),
+    date = strptime(datetime, '%Y-%m-%d %H:%M:%S', tz = 'UTC') |> lubridate::date(),
+    home_team,
+    home_goals,
+    away_team,
+    away_goals
+  )
+
+table <- dplyr::bind_rows(
+  init_table |>
+    dplyr::mutate(is_home = TRUE) |> 
+    rename_teams('understat') |> 
+    dplyr::transmute(
+      match_id,
+      date,
+      season,
+      team, 
+      opponent,
+      goals = home_goals,
+      opponent_goals = away_goals
+    ),
+  init_table |> 
+    dplyr::mutate(is_home = FALSE) |> 
+    rename_teams('understat') |> 
+    dplyr::transmute(
+      match_id,
+      date,
+      season,
+      is_home,
+      team, 
+      opponent,
+      goals = away_goals,
+      opponent_goals = home_goals
+    )
+) |> 
+  dplyr::mutate(
+    pts = dplyr::case_when(
+      goals > opponent_goals ~ 3L,
+      goals < opponent_goals ~ 0L,
+      TRUE ~ 1L
+    )
+  ) |> 
+  dplyr::group_by(season, team) |> 
+  dplyr::summarize(
+    dplyr::across(c(goals, opponent_goals, pts), sum)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(gd = goals - opponent_goals) |> 
+  dplyr::arrange(season, desc(pts), desc(gd)) |> 
+  dplyr::group_by(season) |> 
+  dplyr::mutate(rank = row_number(desc(pts))) |> 
+  dplyr::ungroup() |> 
+  arrange(season, rank)
+table
+#> # A tibble: 160 × 7
+#>    season  team              goals opponent_goals   pts    gd  rank
+#>    <chr>   <chr>             <dbl>          <dbl> <int> <dbl> <int>
+#>  1 2014/15 Chelsea              73             32    87    41     1
+#>  2 2014/15 Manchester City      83             38    79    45     2
+#>  3 2014/15 Arsenal              71             36    75    35     3
+#>  4 2014/15 Manchester United    62             37    70    25     4
+#>  5 2014/15 Tottenham Hotspur    58             53    64     5     5
+#>  6 2014/15 Liverpool            52             48    62     4     6
+#>  7 2014/15 Southampton          54             33    60    21     7
+#>  8 2014/15 Swansea City         46             49    56    -3     8
+#>  9 2014/15 Stoke City           48             45    54     3     9
+#> 10 2014/15 Crystal Palace       47             51    48    -4    10
+#> # … with 150 more rows
+```
+
+Next, we join the `table` of end-of-season placements (`actual_rank`) to the simulation results that are ***not*** aggregated to a single `xrank` per team (`understat_sim_placings` instead of `understat_sim_placings_agg`).
+
+```{r}
+#| label: understat_sim_placings_with_actual_ranks
+#| eval: false
+understat_sim_placings_with_actual_ranks <- understat_sim_placings |> 
+  dplyr::inner_join(
+    table |> dplyr::select(season, team, actual_pts = pts, actual_rank = rank),
+    by = c('season', 'team')
+  ) |> 
+  dplyr::inner_join(
+    all_raw_understat_xpts_xgd_by_season |> 
+      dplyr::select(season, team, actual_xpts = xpts, xgd),
+    by = c('season', 'team')
+  ) |> 
+  dplyr::transmute(
+    season,
+    team,
+    actual_rank,
+    xrank,
+    actual_pts,
+    actual_xpts, 
+    xpts,
+    cumu_prop,
+    inv_cumu_prop
+  )
+
+understat_sim_placings_with_actual_ranks |>
+  select(-c(actual_xpts)) |> 
+  mutate(across(ends_with('cumu_prop'), round, 2))
+#> # A tibble: 2,907 × 8
+#>    season  team    actual_rank xrank actual_pts  xpts cumu_prop inv_cumu_prop
+#>    <chr>   <chr>         <int> <int>      <int> <dbl>     <dbl>         <dbl>
+#>  1 2014/15 Arsenal           3     1         75  80.8      0.39          1   
+#>  2 2014/15 Arsenal           3     2         75  75.4      0.65          0.61
+#>  3 2014/15 Arsenal           3     3         75  71.7      0.82          0.35
+#>  4 2014/15 Arsenal           3     4         75  68.5      0.91          0.18
+#>  5 2014/15 Arsenal           3     5         75  65.6      0.95          0.09
+#>  6 2014/15 Arsenal           3     6         75  63.9      0.97          0.05
+#>  7 2014/15 Arsenal           3     7         75  61.6      0.98          0.03
+#>  8 2014/15 Arsenal           3     8         75  59.4      0.99          0.02
+#>  9 2014/15 Arsenal           3     9         75  58.3      0.99          0.01
+#> 10 2014/15 Arsenal           3    10         75  57.9      1             0.01
+#> # … with 2,897 more rows
+```
+
+Finally, to identify over-acheiving teams, we identify the teams that had the lowest cumulative probability of placing at their actual placing or better; and to identify under-achieving teams, we identify the teams with the lowest cumulative probability of placing at thier actual placing or worse.
+
+```{r}
+#| label: unexpected_understat_sim_placings
+#| eval: false
+slice_top5_sim_placings <- function(which) {
+  
+  col <- switch(
+    which,
+    'over' = 'cumu_prop',
+    'under' = 'inv_cumu_prop'
+  )
+  
+  understat_sim_placings_with_actual_ranks |> 
+    dplyr::filter(xrank == actual_rank) |> 
+    dplyr::slice_min(.data[[col]], n = 5, with_ties = FALSE) |> 
+    dplyr::mutate(tail_prop = .data[[col]]) |> 
+    dplyr::select(-c(xrank, xgd, cumu_prop, inv_cumu_prop)) |> 
+    dplyr::mutate(
+      unexpected_rank = dplyr::row_number(tail_prop),
+      .before = 1
+    )
+}
+
+unexpected_understat_sim_placings <- c('over', 'under') |> 
+  rlang::set_names() |> 
+  purrr::map_dfr(slice_top5_sim_placings, .id = 'which')
+```
+
+```{r}
+#| label: unexpected_understat_sim_placings-gt
+#| eval: false
+```
+
+This table certainly passes the eye test. Brighton's sixteenth place finish in the 2020/21 season was discussed ad nauseum in the analytics sphere. Brigthon under-performed historically given their massively positive xGD. On the other end of the spectrum, it's not hyperbole to say that Manchester United's second place finish in the 2017/18 season was an under-achievement. Although they ended up with the third best goal differential that season, they were closely followed by several teams. And Their xGD was sixth in the league that season.
+
+#### Comparison with a simpler approach
+
+Notably, we could get somewhat similar results by simply looking at the largest residuals of a model that regresses the actual final table placing on just xGD, which is how most people tend to think of "unexpected placings".
+
+```{r}
+#| label: slice_xgd_resids_matching_top5_sim_placings
+#| eval: false
+table_with_xgd <- table |> 
+  dplyr::select(season, team, actual_pts = pts, actual_rank = rank) |> 
+  dplyr::inner_join(
+    all_raw_understat_xpts_xgd_by_season |> dplyr::select(season, team, xgd),
+    by = c('season', 'team')
+  )
+
+xgd_rank_fit <- lm(actual_rank ~ xgd, df)
+
+xgd_rank_preds <- table_with_xgd |> 
+  dplyr::transmute(
+    season,
+    team,
+    actual_rank,
+    .pred = predict(fit),
+    .resid = .pred - actual_rank,
+    xgd_unexpected_rank = dplyr::row_number(dplyr::desc(.resid)),
+    inv_xgd_unexpected_rank = dplyr::row_number(.resid)
+  )
+
+slice_xgd_resids_matching_top5_sim_placings <- function(which) {
+  
+  col <- switch(
+    which,
+    'over' = 'xgd_unexpected_rank',
+    'under' = 'inv_xgd_unexpected_rank'
+  )
+  
+  unexpected_understat_sim_placings |> 
+    dplyr::filter(which == !!which) |> 
+    dplyr::transmute(season, team, unexpected_rank) |> 
+    dplyr::inner_join(
+      xgd_rank_preds |> 
+        dplyr::select(season, team, xgd_unexpected_rank = .data[[col]]),
+      by = c('season', 'team')
+    )
+}
+
+c('over', 'under') |> 
+  rlang::set_names() |> 
+  purrr::map_dfr(slice_xgd_resids_matching_top5_sim_placings, .id = 'which')
+#> # A tibble: 10 × 5
+#>    which season  team                     unexpected_rank xgd_unexpected_rank
+#>    <chr> <chr>   <chr>                              <int>               <int>
+#>  1 over  2017/18 Manchester United                      1                   6
+#>  2 over  2017/18 Burnley                                2                   1
+#>  3 over  2019/20 Liverpool                              3                  41
+#>  4 over  2020/21 Manchester United                      4                  13
+#>  5 over  2019/20 Newcastle                              5                  17
+#>  6 under 2020/21 Brighton and Hove Albion               1                   1
+#>  7 under 2019/20 Watford                                2                   3
+#>  8 under 2014/15 Queens Park Rangers                    3                   5
+#>  9 under 2017/18 West Bromwich Albion                   4                   2
+#> 10 under 2017/18 Crystal Palace                         5                  58
+```
+
+Four of the top five under-performers according to our expected points approach are identified as being among the top five under-achievers by this simpler xGD approach. On the other hand, just one of the top five over-achievers, 2017/18 Burnley, is identified in the top five of the xGD approach.
+
+Overall, without doing more analysis, we might say that the simpler approach does not do a terrible job of identifying over- and under-achieving teams. However, it is nowhere near as rigorous as our simulated expected points method, and it's results should not be treated equally. All that hard work we did for simulating matches based on observed xG arguably pays off here, with a topic that often comes up when reviewing historical season---the quantitative impact of luck in a team's end-of-season placing.
+
 ## Conclusion
+
+While leveraging match-level information may initially seem like it is the better approach, we should see that it fails to outperform the simpler, aggregated xPts and xGD models due to compounding error.
 
 ```{r}
 #| label: printout
