@@ -1532,8 +1532,8 @@ class="uri">https://twitter.com/TonyElHabr</a>
 <ul>
 <li><a href="#calculating-xpts-from-xg"
 id="toc-calculating-xpts-from-xg">1. Calculating xPts from xG</a></li>
-<li><a href="#match-predictive-performance5"
-id="toc-match-predictive-performance5">2. Match predictive
+<li><a href="#match-predictive-performance6"
+id="toc-match-predictive-performance6">2. Match predictive
 performance</a>
 <ul>
 <li><a href="#predicting-match-outcomes-with-binary-logistic-regression"
@@ -1586,15 +1586,17 @@ the team’s expected placement in the standings.</p>
 href="https://luke-beggs.medium.com/creating-an-expected-points-xp-calculator-for-football-matches-ce4edd18d16f">several</a>
 <a
 href="https://theshortfuse.sbnation.com/2017/11/15/16655916/how-to-calculate-xpoints-analysis-stats-xg">outlets</a>
-have described computing expected points with simulation, simulation is
-actually not necessary if you have the xG for every shot taken in a
-match.<a href="#fn1" class="footnote-ref" id="fnref1"
-role="doc-noteref"><sup>1</sup></a> For example, let’s say team A shoots
+have described computing expected points with simulation<a href="#fn1"
+class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>, <a
+href="https://www.jonaslindstrom.dk/?p=330">simulation is actually not
+necessary</a> if you have the xG for every shot taken in a match.<a
+href="#fn2" class="footnote-ref" id="fnref2"
+role="doc-noteref"><sup>2</sup></a> For example, let’s say team A shoots
 six times with an xG of 0.1 for each shot, and team B shoots three shots
 with xG’s of 0.1, 0.2, and 0.3 respectively. Given these goal
 probabilities, we can analytically compute the probabilities of (1) team
-A winning, (2) team B winning, and (3) a draw as follows.<a href="#fn2"
-class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+A winning, (2) team B winning, and (3) a draw as follows.<a href="#fn3"
+class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'>poibin</span><span class='op'>)</span>
@@ -1640,8 +1642,8 @@ important. Now we set out to do the following.</p>
 <ol type="1">
 <li><strong>Calculate xPts from shot xG for multiple seasons of
 data.</strong> We’ll limit the scope to the 2020/21 and 2021/22 seasons
-for the English Premier League.<a href="#fn3" class="footnote-ref"
-id="fnref3" role="doc-noteref"><sup>3</sup></a></li>
+for the English Premier League.<a href="#fn4" class="footnote-ref"
+id="fnref4" role="doc-noteref"><sup>4</sup></a></li>
 <li><strong>Compare the calibration of the understat and fotmob match
 outcome probabilities.</strong> <code>{worldfootballR}</code> makes it
 easy for us to get xG from both <a
@@ -1746,8 +1748,8 @@ shot.</p>
 </div>
 </div>
 <p>We can use <code>load_fotmob_match_details()</code> to get fotmob’s
-shot xG in a similar fashion.<a href="#fn4" class="footnote-ref"
-id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
+shot xG in a similar fashion.<a href="#fn5" class="footnote-ref"
+id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>fotmob_shots</span> <span class='op'>&lt;-</span> <span class='fu'>worldfootballR</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/worldfootballR/man/load_fotmob_match_details.html'>load_fotmob_match_details</a></span><span class='op'>(</span>
@@ -1996,9 +1998,9 @@ error of our calculation of xPts with theirs is ~0.02.</p>
 </code></pre>
 </div>
 </div>
-<h3 id="match-predictive-performance5">2. Match predictive performance<a
-href="#fn5" class="footnote-ref" id="fnref5"
-role="doc-noteref"><sup>5</sup></a></h3>
+<h3 id="match-predictive-performance6">2. Match predictive performance<a
+href="#fn6" class="footnote-ref" id="fnref6"
+role="doc-noteref"><sup>6</sup></a></h3>
 <p>As one might guess, the match outcome probabilities implied by the xG
 from understat and fotmob are strongly correlated.</p>
 <div class="layout-chunk" data-layout="l-body">
@@ -2032,8 +2034,8 @@ from understat and fotmob are strongly correlated.</p>
 </div>
 <p>Note that the win and loss correlations are identical. This is due to
 the symmetric nature of the data—we have two records for each match, one
-from each team’s perspective.<a href="#fn6" class="footnote-ref"
-id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
+from each team’s perspective.<a href="#fn7" class="footnote-ref"
+id="fnref7" role="doc-noteref"><sup>7</sup></a></p>
 <h4
 id="predicting-match-outcomes-with-binary-logistic-regression">Predicting
 match outcomes with binary logistic regression</h4>
@@ -2046,10 +2048,10 @@ squared error (MSE)</a>;</li>
 <li>the <a
 href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">brier
 skill score (BSS)</a>, treating the empirical proportion of the
-specified outcome as the reference.<a href="#fn7" class="footnote-ref"
-id="fnref7" role="doc-noteref"><sup>7</sup></a><a href="#fn8"
-class="footnote-ref" id="fnref8"
-role="doc-noteref"><sup>8</sup></a></li>
+specified outcome as the reference.<a href="#fn8" class="footnote-ref"
+id="fnref8" role="doc-noteref"><sup>8</sup></a><a href="#fn9"
+class="footnote-ref" id="fnref9"
+role="doc-noteref"><sup>9</sup></a></li>
 <li>a <a
 href="https://changhsinlee.com/python-calibration-plot/">calibration
 plot</a>, grouping predictions into “buckets” at every 5%.</li>
@@ -2145,8 +2147,8 @@ plot</a>, grouping predictions into “buckets” at every 5%.</li>
 slightly outperform the one based on fotmob’s xG.</p>
 <p>Moreover, looking at the calibration plot, the understat model
 predictions seem to stick closer to the 45 degree slope, which
-represents perfect calibration.<a href="#fn9" class="footnote-ref"
-id="fnref9" role="doc-noteref"><sup>9</sup></a></p>
+represents perfect calibration.<a href="#fn10" class="footnote-ref"
+id="fnref10" role="doc-noteref"><sup>10</sup></a></p>
 <p><img src="calib.png" /></p>
 <h4 id="predicting-points-with-linear-regression">Predicting points with
 linear regression</h4>
@@ -2235,8 +2237,8 @@ two xG sources for explaining individual match results.</p>
 performance</h3>
 <p>How do the understat and fotmob models fare if we aggregate up the
 expected points to the season level and predict actual points?<a
-href="#fn10" class="footnote-ref" id="fnref10"
-role="doc-noteref"><sup>10</sup></a></p>
+href="#fn11" class="footnote-ref" id="fnref11"
+role="doc-noteref"><sup>11</sup></a></p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>xpts_by_season</span> <span class='op'>&lt;-</span> <span class='va'>xpts_by_match</span> |&gt; 
@@ -2281,9 +2283,9 @@ but we might lean in favor of understat again.</p>
 <p><strong><em>SARCASM ACTIVATED</em></strong></p>
 <p>Alas, we find that understat’s xG model seems to outperform fotmob’s
 in terms of explaining match results and season-long point totals, so no
-one should ever use fotmob’s site again! As my long-time dedicated
-follower know (all three of you), I am not one to shy away from calling
-out data providers on their B.S. I am glad to continue to live up to my
+one should ever use fotmob’s site again! As my dedicated followers know
+(all three of you), I am not one to shy away from calling out data
+providers on their B.S. I am glad to continue to live up to my
 reputation.</p>
 <blockquote class="twitter-tweet">
 <p lang="en" dir="ltr">
@@ -2309,7 +2311,11 @@ class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"><
 role="doc-endnotes">
 <hr />
 <ol>
-<li id="fn1" role="doc-endnote"><p>Now, if you desire the statistical
+<li id="fn1" role="doc-endnote"><p><a
+href="https://danny.page/expected_goals.html">Danny Page’s interactive
+web app</a> also uses simulation.<a href="#fnref1" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>Now, if you desire the statistical
 properties that simulation offers, such as an estimation of error,
 that’s understandable; however, in write-ups that I’ve seen, such is not
 mentioned explicitly. Additionally, if one chooses to go down the
@@ -2317,51 +2323,53 @@ simulation route because they believe that it helps to suppress flaws
 with the xG model, that’s also understandable. On the other hand, the
 analytical approach I present should present nearly identical results to
 that which one would find with simulation, and it offers the advantage
-of being much faster.<a href="#fnref1" class="footnote-back"
+of being much faster.<a href="#fnref2" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn2" role="doc-endnote"><p>How does this work? Under the
-assumption that xG comes from a Poisson binomial distributions, we look
-at all combinations of makes and misses of the shots and compare the
-relative proportion of instances in which one team’s number of success,
-i.e. goals, is greater than, equal to, or less than their opponent’s.<a
-href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn3" role="doc-endnote"><p>We’ve limited the scope for several
+<li id="fn3" role="doc-endnote"><p>How does this work? Under the
+assumption that xG comes from a <a
+href="https://en.wikipedia.org/wiki/Poisson_binomial_distribution">Poisson
+binomial distribution</a>, we look at all combinations of makes and
+misses of the shots and compare the relative proportion of instances in
+which one team’s number of success, i.e. goals, is greater than, equal
+to, or less than their opponent’s.<a href="#fnref3"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>We’ve limited the scope for several
 reasons: (1) fotmob only has complete xG data for the 2020/21 and
 2021/22 seasons as of writing, (2) I didn’t want to have to map team
 names across the two data sources for a ton of teams; and (3) of all
-league, I’m most interested in the EPL 😄.<a href="#fnref3"
+league, I’m most interested in the EPL 😄.<a href="#fnref4"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4" role="doc-endnote"><p>Note that there are three additional
+<li id="fn5" role="doc-endnote"><p>Note that there are three additional
 shots in the fotmob data. There’s no simple solution to resolving this
 data discrepancy since we don’t have matching shot identifiers in the
-two data sets 🤷.<a href="#fnref4" class="footnote-back"
+two data sets 🤷.<a href="#fnref5" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn5" role="doc-endnote"><p>Using the adjective “predictive” is a
+<li id="fn6" role="doc-endnote"><p>Using the adjective “predictive” is a
 little misleading, since we’re not actually making predictions
 out-of-sample. Rather, we’re using models based on xG to evaluate which
-xG data source better explains the observed results.<a href="#fnref5"
+xG data source better explains the observed results.<a href="#fnref6"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6" role="doc-endnote"><p>Home field advantage is treated as a
+<li id="fn7" role="doc-endnote"><p>Home field advantage is treated as a
 feature instead of defined directly via columns,
 i.e. <code>home_team</code>, <code>home_score</code>, etc., which is
-good practice in general.<a href="#fnref6" class="footnote-back"
+good practice in general.<a href="#fnref7" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn7" role="doc-endnote"><p>Draws occur for 22.5% of matches in
+<li id="fn8" role="doc-endnote"><p>Draws occur for 22.5% of matches in
 the data set, and wins and losses occur in 38.8% of matches each.<a
-href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn8" role="doc-endnote"><p>Personally, I tend to rely on BSS
+href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9" role="doc-endnote"><p>Personally, I tend to rely on BSS
 wherever I can. Not only is it more interpretable—it’s a number between
 0 and 1, while MSE can take on any value, depending on the context—I
 like that it forces one to compare to a baseline, which is a good
-principle in general.<a href="#fnref8" class="footnote-back"
+principle in general.<a href="#fnref9" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn9" role="doc-endnote"><p>Plotting code is omitted here since
-it’s not relevant to our analysis.<a href="#fnref9"
+<li id="fn10" role="doc-endnote"><p>Plotting code is omitted here since
+it’s not relevant to our analysis.<a href="#fnref10"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn10" role="doc-endnote"><p>Note that aggregating match-level
+<li id="fn11" role="doc-endnote"><p>Note that aggregating match-level
 probabilities to the season-level is not a statistically valid way to
 use the probabilities, which are intended to be treated independently.<a
-href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+href="#fnref11" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
 <!--radix_placeholder_article_footer-->
