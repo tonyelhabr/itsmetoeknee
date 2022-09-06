@@ -76,12 +76,12 @@ library(gdata)
 xg_a <- rep(0.1, 6)
 xg_b <- c(0.1, 0.2, 0.3)
 
-probs_a <- poibin::dpoibin(seq.int(0, length(xg_a)), xg_a)
-probs_b <- poibin::dpoibin(seq.int(0, length(xg_b)), xg_b)
+probs_a <- dpoibin(seq.int(0, length(xg_a)), xg_a)
+probs_b <- dpoibin(seq.int(0, length(xg_b)), xg_b)
 
 outer_prod <- outer(probs_a, probs_b)
-p_a <- sum(gdata::upperTriangle(outer_prod))
-p_b <- sum(gdata::lowerTriangle(outer_prod))
+p_a <- sum(upperTriangle(outer_prod))
+p_b <- sum(lowerTriangle(outer_prod))
 p_draw <- sum(diag(outer_prod))
 round(c(p_a, p_b, p_draw), 2)
 #> [1] 0.30 0.28 0.42
@@ -127,79 +127,64 @@ library(lubridate)
 library(worldfootballR) ## version: 0.5.12.5000
 library(janitor)
 
-## manually created CSV with 2 columns: team_understat, team_fotmob.
+## manually created CSV with at least 2 columns: team_understat, team_fotmob.
 ##   use the team_understat name to be consistent across sources.
-##   CSV: https://raw.githubusercontent.com/tonyelhabr/sports_viz/master/59-xg_xpoints/team_mapping.csv
-team_mapping <- 'team_mapping.csv' |> readr::read_csv()
+team_mapping <- 'https://raw.githubusercontent.com/tonyelhabr/sports_viz/master/59-xg_xpoints/team_mapping.csv' |> 
+  read_csv()
 
-rename_teams <- function(df, src) {
-  team_src <- sprintf('team_%s', src)
+rename_fotmob_teams <- function(df) {
   df |> 
-    dplyr::left_join(
-      team_mapping |> 
-        dplyr::select(.data$team_understat, .data[[team_src]]),
-      by = c('home_team' = team_src)
+    left_join(
+      team_mapping |> select(team_understat, team_fotmob),
+      by = c('home_team' = 'team_fotmob')
     ) |> 
-    dplyr::select(-.data$home_team) |> 
-    dplyr::rename(home_team = .data$team_538) |> 
-    dplyr::left_join(
-      team_mapping |> 
-        dplyr::select(.data$team_understat, .data[[team_src]]),
-      by = c('away_team' = team_src)
+    select(-home_team) |> 
+    rename(home_team = team_understat) |> 
+    left_join(
+      team_mapping |> select(team_understat, team_fotmob),
+      by = c('away_team' = 'team_fotmob')
     ) |> 
-    dplyr::select(-.data$away_team) |> 
-    dplyr::rename(away_team = .data$team_understat) |> 
-    dplyr::mutate(
+    select(-away_team) |> 
+    rename(away_team = team_understat)
+}
+
+rename_home_away_teams <- function(df) {
+  df |> 
+    mutate(
       team = ifelse(is_home, home_team, away_team),
       opponent = ifelse(is_home, away_team, home_team)
     ) |> 
-    dplyr::select(-c(home_team, away_team)) 
+    select(-c(home_team, away_team)) 
 }
 
 convert_understat_year_to_season <- function(x) {
-  sprintf('%s/%s', x, stringr::str_sub(x + 1, 3, 4))
+  sprintf('%s/%s', x, str_sub(x + 1, 3, 4))
 }
 
 ## we'll use all of the shots later when exporing understat data only
-all_understat_shots <- worldfootballR::load_understat_league_shots('EPL') |> 
-  tibble::as_tibble() |> 
+all_understat_shots <- load_understat_league_shots('EPL') |> 
+  as_tibble() |> 
   ## camelcase like "xG" is for Java scrubs
-  janitor::clean_names() |> 
+  clean_names() |> 
   filter(season <= 2021) |> 
   ## transmute = select + mutate
-  dplyr::transmute(
+  transmute(
     match_id,
     ## "2021/2022" format so that we have a clear, consistent way to represent season
-    dplyr::across(season, convert_understat_year_to_season),
+    across(season, convert_understat_year_to_season),
     ## to convert "2020-09-12 11:30:00" to a date ("2020-09-12")
-    dplyr::across(date, lubridate::date),
+    across(date, lubridate::date),
     home_team,
     away_team,
     is_home = h_a == 'h',
     xg = x_g
   ) |>
-  rename_teams('understat') |> 
-  dplyr::arrange(season, date, team)
+  rename_home_away_teams() |> 
+  arrange(season, date, team)
 
 ## but when comparing understat with fotmob, we'll need to limit the seasons to just
 ##   those that both sources have
-understat_shots <- all_understat_shots |> 
-  dplyr::filter(season >= 2020)
-understat_shots
-#> # A tibble: 19,010 × 7
-#>    match_id season  date       is_home     xg team    opponent
-#>       <dbl> <chr>   <date>     <lgl>    <dbl> <chr>   <chr>   
-#>  1    14086 2020/21 2020-09-12 FALSE   0.0644 Arsenal Fulham  
-#>  2    14086 2020/21 2020-09-12 FALSE   0.649  Arsenal Fulham  
-#>  3    14086 2020/21 2020-09-12 FALSE   0.758  Arsenal Fulham  
-#>  4    14086 2020/21 2020-09-12 FALSE   0.110  Arsenal Fulham  
-#>  5    14086 2020/21 2020-09-12 FALSE   0.0572 Arsenal Fulham  
-#>  6    14086 2020/21 2020-09-12 FALSE   0.136  Arsenal Fulham  
-#>  7    14086 2020/21 2020-09-12 FALSE   0.0817 Arsenal Fulham  
-#>  8    14086 2020/21 2020-09-12 FALSE   0.506  Arsenal Fulham  
-#>  9    14086 2020/21 2020-09-12 FALSE   0.0943 Arsenal Fulham  
-#> 10    14086 2020/21 2020-09-12 FALSE   0.0526 Arsenal Fulham  
-#> # … with 19,000 more rows
+understat_shots <- all_understat_shots |> filter(season >= 2020)
 ```
 
 We can use `load_fotmob_match_details()` to get fotmob's shot xG in a similar fashion.[^5]
@@ -209,25 +194,25 @@ We can use `load_fotmob_match_details()` to get fotmob's shot xG in a similar fa
 ```{r}
 #| label: load_fotmob_match_details
 #| eval: false
-fotmob_shots <- worldfootballR::load_fotmob_match_details(
+fotmob_shots <- load_fotmob_match_details(
   country = 'ENG',
   league_name = 'Premier League'
 ) |> 
-  dplyr::mutate(
+  mutate(
     ## to convert strings from 'Sat, Sep 12, 2020, 11:30 UTC' to a date
-    date = strptime(match_time_utc, '%a, %b %d, %Y, %H:%M UTC', tz = 'UTC') |> lubridate::date(),
+    date = strptime(match_time_utc, '%a, %b %d, %Y, %H:%M UTC', tz = 'UTC') |> date(),
     ## fotmob's parent_league_season always reflects the current season, so we need to manually
     ##   define the season from the date. we would certainly want a more automated approach
     ##   if working with more seasons and more leagues.
-    season = dplyr::case_when(
-      date >= lubridate::ymd('2020-09-12') & date <= lubridate::ymd('2021-05-23') ~ '2020/21',
-      date >= lubridate::ymd('2021-08-13') & date <= lubridate::ymd('2022-05-22') ~ '2021/22',
+    season = case_when(
+      date >= ymd('2020-09-12') & date <= ymd('2021-05-23') ~ '2020/21',
+      date >= ymd('2021-08-13') & date <= ymd('2022-05-22') ~ '2021/22',
       TRUE ~ NA_character_
     )
   ) |> 
   ## the NAs are for 2022/2023 (incomplete as of writing) and the partial data for 2019/2020
-  tidyr::drop_na(season) |> 
-  dplyr::transmute(
+  drop_na(season) |> 
+  transmute(
     match_id,
     season,
     date,
@@ -237,23 +222,9 @@ fotmob_shots <- worldfootballR::load_fotmob_match_details(
     ## some shots with NAs for some reason
     xg = coalesce(expected_goals, 0)
   ) |>
-  rename_teams('fotmob') |> 
-  dplyr::arrange(season, date, team)
-fotmob_shots
-#> # A tibble: 19,013 × 7
-#>    match_id season  date       is_home     xg team    opponent
-#>       <int> <chr>   <date>     <lgl>    <dbl> <chr>   <chr>   
-#>  1  3411352 2020/21 2020-09-12 FALSE   0.0602 Arsenal Fulham  
-#>  2  3411352 2020/21 2020-09-12 FALSE   0.737  Arsenal Fulham  
-#>  3  3411352 2020/21 2020-09-12 FALSE   0.845  Arsenal Fulham  
-#>  4  3411352 2020/21 2020-09-12 FALSE   0.0879 Arsenal Fulham  
-#>  5  3411352 2020/21 2020-09-12 FALSE   0.0443 Arsenal Fulham  
-#>  6  3411352 2020/21 2020-09-12 FALSE   0.131  Arsenal Fulham  
-#>  7  3411352 2020/21 2020-09-12 FALSE   0.0916 Arsenal Fulham  
-#>  8  3411352 2020/21 2020-09-12 FALSE   0.310  Arsenal Fulham  
-#>  9  3411352 2020/21 2020-09-12 FALSE   0.0531 Arsenal Fulham  
-#> 10  3411352 2020/21 2020-09-12 FALSE   0.0631 Arsenal Fulham  
-#> # … with 19,003 more rows
+  rename_fotmob_teams() |> 
+  rename_home_away_teams() |> 
+  arrange(season, date, team)
 ```
 
 Alright, now the fun part. We functionalize the code from the example for calculating the probability that xG will result in 0, 1, 2, etc. goals (up to the number of shots taken).
@@ -265,45 +236,28 @@ library(purrr)
 permute_xg <- function(xg) {
   n <- length(xg)
   x <- seq.int(0, n)
-  poibin::dpoibin(x, xg)
+  dpoibin(x, xg)
 }
 
 calculate_permuted_xg <- function(df) {
   df |> 
-    dplyr::group_by(dplyr::across(c(dplyr::everything(), -xg))) |> 
-    dplyr::summarize(dplyr::across(xg, ~list(.x))) |> 
-    dplyr::mutate(
-      prob = purrr::map(xg, ~permute_xg(.x))
+    group_by(across(c(everything(), -xg))) |> 
+    summarize(across(xg, ~list(.x))) |> 
+    mutate(
+      prob = map(xg, ~permute_xg(.x))
     ) |> 
-    dplyr::select(-c(xg)) |> 
-    tidyr::unnest(cols = c(prob)) |> 
-    dplyr::group_by(dplyr::across(-c(prob))) |>
-    dplyr::mutate(
-      g = dplyr::row_number() - 1L
+    select(-c(xg)) |> 
+    unnest(cols = c(prob)) |> 
+    group_by(across(-c(prob))) |>
+    mutate(
+      g = row_number() - 1L
     ) |>
-    dplyr::ungroup() |> 
-    dplyr::arrange(match_id, is_home, g)
+    ungroup() |> 
+    arrange(match_id, is_home, g)
 }
 
 understat_permuted_xg <- understat_shots |> calculate_permuted_xg()
 fotmob_permuted_xg <- fotmob_shots |> calculate_permuted_xg()
-
-## just one of the variables. the other one looks the same, with different values for prob
-understat_permuted_xg
-#> # A tibble: 20,530 × 8
-#>    match_id season  date       is_home team    opponent       prob     g
-#>       <dbl> <chr>   <date>     <lgl>   <chr>   <chr>         <dbl> <int>
-#>  1    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.0180         0
-#>  2    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.124          1
-#>  3    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.298          2
-#>  4    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.320          3
-#>  5    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.172          4
-#>  6    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.0543         5
-#>  7    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.0110         6
-#>  8    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.00150        7
-#>  9    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.000141       8
-#> 10    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.00000917     9
-#> # … with 20,520 more rows
 ```
 
 Next, we identify all possible goal combinations using xG as "weights" to compute the relative likelihood of each combination, and then analytically calculate the probabilities of winning, losing, and drawing.
@@ -314,8 +268,8 @@ Next, we identify all possible goal combinations using xG as "weights" to comput
 summarize_pivoted_permuted_xg <- function(prob_away, prob_home) {
   outer_prod <- outer(prob_away, prob_home)
   p_draw <- sum(diag(outer_prod), na.rm = TRUE)
-  p_home <- sum(gdata::upperTriangle(outer_prod), na.rm = TRUE)
-  p_away <- sum(gdata::lowerTriangle(outer_prod), na.rm = TRUE)
+  p_home <- sum(upperTriangle(outer_prod), na.rm = TRUE)
+  p_away <- sum(lowerTriangle(outer_prod), na.rm = TRUE)
   list(
     draw = p_draw,
     home = p_home,
@@ -325,7 +279,7 @@ summarize_pivoted_permuted_xg <- function(prob_away, prob_home) {
 
 summarize_permuted_xg_by_match <- function(df) {
   pivoted <- df |>
-    dplyr::transmute(
+    transmute(
       match_id,
       season,
       date,
@@ -333,7 +287,7 @@ summarize_permuted_xg_by_match <- function(df) {
       is_home = ifelse(is_home, 'home', 'away'),
       prob
     ) |>
-    tidyr::pivot_wider(
+    pivot_wider(
       names_from = is_home,
       names_prefix = 'prob_',
       values_from = prob,
@@ -341,51 +295,31 @@ summarize_permuted_xg_by_match <- function(df) {
     )
   
   pivoted |> 
-    dplyr::select(match_id, season, date, prob_away, prob_home) |>
-    dplyr::group_by(match_id, season, date) |> 
-    dplyr::summarize(
-      dplyr::across(dplyr::starts_with('prob_'), ~list(.x))
+    select(match_id, season, date, prob_away, prob_home) |>
+    group_by(match_id, season, date) |> 
+    summarize(
+      across(starts_with('prob_'), ~list(.x))
     ) |> 
-    dplyr::ungroup() |> 
-    dplyr::inner_join(
+    ungroup() |> 
+    inner_join(
       df |> distinct(match_id, team, opponent, is_home),
       by = 'match_id'
     ) |> 
-    dplyr::mutate(
+    mutate(
       prob = map2(prob_away, prob_home, summarize_pivoted_permuted_xg)
     ) |> 
-    dplyr::select(-starts_with('prob_')) |> 
-    tidyr::unnest_wider(prob, names_sep = '_') |> 
-    dplyr::mutate(
+    select(-starts_with('prob_')) |> 
+    unnest_wider(prob, names_sep = '_') |> 
+    mutate(
       prob_win = ifelse(is_home, prob_home, prob_away),
       prob_lose = ifelse(is_home, prob_away, prob_home),
       xpts = 3 * prob_win + 1 * prob_draw
     ) |> 
-    dplyr::select(-c(prob_home, prob_away))
+    select(-c(prob_home, prob_away))
 }
 
 understat_xpts_by_match <- understat_permuted_xg |> summarize_permuted_xg_by_match()
 fotmob_xpts_by_match <- fotmob_permuted_xg |> summarize_permuted_xg_by_match()
-
-## just one of the variables. the other looks the same, with different values for prob* and xpts
-understat_xpts_by_match |> 
-  dplyr::select(-c(season, match_id, is_home)) |>
-  dplyr::mutate(dplyr::across(c(dplyr::starts_with('prob_'), xpts), round, 2))
-#> # A tibble: 1,520 × 7
-#>    date       team              opponent          prob_d…¹ prob_…² prob_…³  xpts
-#>    <date>     <chr>             <chr>                <dbl>   <dbl>   <dbl> <dbl>
-#>  1 2020-09-12 Arsenal           Fulham                0.03    0.97    0     2.93
-#>  2 2020-09-12 Fulham            Arsenal               0.03    0       0.97  0.04
-#>  3 2020-09-12 Southampton       Crystal Palace        0.3     0.31    0.39  1.22
-#>  4 2020-09-12 Crystal Palace    Southampton           0.3     0.39    0.31  1.48
-#>  5 2021-01-12 Manchester United Burnley               0.3     0.52    0.18  1.86
-#>  6 2021-01-12 Burnley           Manchester United     0.3     0.18    0.52  0.84
-#>  7 2021-01-20 Aston Villa       Manchester City       0.04    0.01    0.95  0.07
-#>  8 2021-01-20 Manchester City   Aston Villa           0.04    0.95    0.01  2.89
-#>  9 2020-09-12 Leeds             Liverpool             0.03    0       0.97  0.04
-#> 10 2020-09-12 Liverpool         Leeds                 0.03    0.97    0     2.93
-#> # … with 1,510 more rows, and abbreviated variable names ¹​prob_draw, ²​prob_win,
-#> #   ³​prob_lose
 ```
 
 If there was any doubt about the expected points calculation, note that understat offers xPts directly in their data. The mean absolute error of our calculation of xPts with theirs is \~0.02.
@@ -396,12 +330,12 @@ If there was any doubt about the expected points calculation, note that understa
 library(understatr)
 
 all_raw_understat_xpts_by_match <- 2014:2021 |> 
-  rlang::set_names() |> 
-  purrr::map_dfr(
-    ~understatr::get_league_teams_stats('EPL', .x),
+  set_names() |> 
+  map_dfr(
+    ~get_league_teams_stats('EPL', .x),
     .id = 'season'
   ) |> 
-  dplyr::transmute(
+  transmute(
     across(season, ~convert_understat_year_to_season(as.integer(.x))),
     date,
     team = team_name,
@@ -412,29 +346,14 @@ all_raw_understat_xpts_by_match <- 2014:2021 |>
   )
 
 raw_understat_xpts_by_match <- all_raw_understat_xpts_by_match |> 
-  dplyr::inner_join(
-    understat_xpts_by_match |> dplyr::select(season, date, team, xpts),
+  inner_join(
+    understat_xpts_by_match |> select(season, date, team, xpts),
     by = c('season', 'date', 'team')
   ) |> 
   mutate(
     xptsd = raw_xpts - xpts
   ) |> 
   arrange(season, date, team)
-raw_understat_xpts_by_match
-#> # A tibble: 1,520 × 9
-#>    season  date       team           result   pts raw_x…¹    xg   xpts    xptsd
-#>    <chr>   <date>     <chr>          <chr>  <int>   <dbl> <dbl>  <dbl>    <dbl>
-#>  1 2020/21 2020-09-12 Arsenal        w          3  2.89   2.16  2.93   -3.40e-2
-#>  2 2020/21 2020-09-12 Crystal Palace w          3  1.48   1.40  1.48   -1.08e-3
-#>  3 2020/21 2020-09-12 Fulham         l          0  0.0587 0.126 0.0405  1.82e-2
-#>  4 2020/21 2020-09-12 Leeds          l          0  0.0434 0.270 0.0440 -5.77e-4
-#>  5 2020/21 2020-09-12 Liverpool      w          3  2.93   3.15  2.93    1.03e-3
-#>  6 2020/21 2020-09-12 Newcastle      w          3  2.05   1.66  2.03    1.86e-2
-#>  7 2020/21 2020-09-12 Southampton    l          0  1.22   1.26  1.22   -5.44e-4
-#>  8 2020/21 2020-09-12 West Ham       l          0  0.700  0.861 0.717  -1.71e-2
-#>  9 2020/21 2020-09-13 Everton        w          3  1.74   1.27  1.74    5.98e-3
-#> 10 2020/21 2020-09-13 Leicester      w          3  2.91   2.96  2.91    6.14e-4
-#> # … with 1,510 more rows, and abbreviated variable name ¹​raw_xpts
 
 ## mean absolute error
 round(mean(abs(raw_understat_xpts_by_match$xptsd)), 3)
@@ -452,19 +371,19 @@ As one might guess, the match outcome probabilities implied by the xG from under
 #| eval: false
 rename_xpts_by_match <- function(df, src) {
   df |> 
-    dplyr::select(season, date, team, dplyr::starts_with('prob_'), xpts) |> 
-    dplyr::rename_with(
-      ~sprintf('%s_%s', .x, src), c(dplyr::starts_with('prob_'), xpts)
+    select(season, date, team, starts_with('prob_'), xpts) |> 
+    rename_with(
+      ~sprintf('%s_%s', .x, src), c(starts_with('prob_'), xpts)
     )
 }
 
 xpts_by_match <- raw_understat_xpts_by_match |> 
-  dplyr::select(season, date, team, result, pts) |> 
-  dplyr::inner_join(
+  select(season, date, team, result, pts) |> 
+  inner_join(
     understat_xpts_by_match |> rename_xpts_by_match('understat'),
     by = c('season', 'date', 'team')
   ) |> 
-  dplyr::inner_join(
+  inner_join(
     fotmob_xpts_by_match |> rename_xpts_by_match('fotmob'),
     by = c('season', 'date', 'team')
   )
@@ -496,8 +415,8 @@ Now let's compare how "good" the implied probabilities from the two sources are.
 #| label: diagnose_prob_by_match
 #| eval: false
 result_props <- xpts_by_match |> 
-  dplyr::count(result) |> 
-  dplyr::mutate(prop = n / sum(n))
+  count(result) |> 
+  mutate(prop = n / sum(n))
 
 compute_mse <- function(truth, estimate) {
   mean((truth - estimate)^2)
@@ -506,7 +425,7 @@ compute_mse <- function(truth, estimate) {
 diagnose_prob_by_match <- function(src, result) {
   
   df <- xpts_by_match |> 
-    dplyr::mutate(
+    mutate(
       result = ifelse(result == !!result, 1L, 0L) |> factor()
     )
   
@@ -523,7 +442,7 @@ diagnose_prob_by_match <- function(src, result) {
     family = 'binomial'
   )
   
-  probs <- tibble::tibble(
+  probs <- tibble(
     result_num = as.numeric(df$result) - 1,
     .prob = unname(predict(fit, type = 'response'))
   )
@@ -531,24 +450,24 @@ diagnose_prob_by_match <- function(src, result) {
   n_buckets <- 20
   alpha <- 0.05
   calib <- probs |>
-    dplyr::mutate(
-      dplyr::across(.prob, ~round(.x * n_buckets) / n_buckets)
+    mutate(
+      across(.prob, ~round(.x * n_buckets) / n_buckets)
     ) |>
-    dplyr::group_by(.prob) |>
-    dplyr::summarize(
+    group_by(.prob) |>
+    summarize(
       ## Jeffreys' prior
-      ci_lower = qbeta(alpha / 2, sum(result_num) + 0.5, dplyr::n() - sum(result_num) + 0.5),
-      ci_upper = qbeta(1 - alpha / 2, sum(result_num) + 0.5, dplyr::n() - sum(result_num) + 0.5),
+      ci_lower = qbeta(alpha / 2, sum(result_num) + 0.5, n() - sum(result_num) + 0.5),
+      ci_upper = qbeta(1 - alpha / 2, sum(result_num) + 0.5, n() - sum(result_num) + 0.5),
       actual = sum(result_num) / n(),
-      n = dplyr::n()
+      n = n()
     ) |> 
-    dplyr::ungroup()
+    ungroup()
   
   mse <- compute_mse(probs$result_num, probs$.prob)
   
   ref_prob <- result_props |> 
-    dplyr::filter(result == !!result) |> 
-    dplyr::pull(prop)
+    filter(result == !!result) |> 
+    pull(prop)
   
   ref_mse <- compute_mse(probs$result_num, ref_prob)
   bss <- 1 - (mse / ref_mse)
@@ -568,14 +487,14 @@ diagnostics <- crossing(
     diagnostics = map2(src, result, diagnose_prob_by_match)
   ) |> 
   unnest_wider(diagnostics)
-diagnostics
-#> # A tibble: 4 × 5
-#>   result src       calib               mse    bss
-#>   <chr>  <chr>     <list>            <dbl>  <dbl>
-#> 1 d      fotmob    <tibble [10 × 5]> 0.170 0.0268
-#> 2 d      understat <tibble [10 × 5]> 0.166 0.0466
-#> 3 w      fotmob    <tibble [17 × 5]> 0.173 0.270 
-#> 4 w      understat <tibble [17 × 5]> 0.162 0.317
+diagnostics |> select(-calib)
+#> # A tibble: 4 × 4
+#>   result src         mse    bss
+#>   <chr>  <chr>     <dbl>  <dbl>
+#> 1 d      fotmob    0.170 0.0268
+#> 2 d      understat 0.166 0.0466
+#> 3 w      fotmob    0.173 0.270 
+#> 4 w      understat 0.162 0.317
 ```
 
 The MSE (where lower is "better") and the BSS (where higher is "better") lead us to same conclusion---the models based on understat's xG slightly outperform the one based on fotmob's xG.
@@ -585,17 +504,18 @@ Moreover, looking at the calibration plot, the understat model predictions seem 
 [^10]: Plotting code is omitted here since it's not relevant to our analysis.
 
 ```{r}
-#| label: theming
+#| label: p_calib
 #| eval: false
 #| include: false
 library(ggplot2)
 library(extrafont)
+library(scales)
 blackish_background <- '#1c1c1c'
 gray_points <- '#4d4d4d'
 gray_text <- '#999999'
 
 font <- 'Karla'
-extrafont::loadfonts(quiet = TRUE)
+loadfonts(quiet = TRUE)
 theme_set(theme_minimal())
 theme_update(
   text = element_text(family = font),
@@ -620,55 +540,39 @@ theme_update(
   panel.background = element_rect(fill = blackish_background, color = blackish_background)
 )
 update_geom_defaults('point', list(color = 'white'))
-```
-
-```{r}
-#| label: p_calib
-#| eval: false
-#| include: false
-library(ggplot2)
-library(scales)
 
 calib |> 
-  ggplot2::ggplot() +
-  ggplot2::aes(x = .prob, y = actual, color = src) +
-  ggplot2::geom_point(
+  ggplot() +
+  aes(x = .prob, y = actual, color = src) +
+  geom_point(
     aes(size = n),
-    position = ggplot2::position_dodge(width = 0.05)
+    position = position_dodge(width = 0.05)
   ) +
-  ggplot2::geom_errorbar(
-    ggplot2::aes(
+  geom_errorbar(
+    aes(
       ymin = ci_lower, 
       ymax = ci_upper
     ), 
-    position = ggplot2::position_dodge(width = 0.05),
+    position = position_dodge(width = 0.05),
     width = 0.025
   ) +
-  ggplot2::geom_abline(slope = 1, intercept = 0, color = 'white') +
-  ggplot2::scale_x_continuous(labels = scales::percent, limits = c(-0.025, 1.025)) +
-  ggplot2::scale_y_continuous(labels = scales::percent, limits = c(-0.025, 1.025)) +
-  ggplot2::facet_wrap(~result) +
+  geom_abline(slope = 1, intercept = 0, color = 'white') +
+  scale_x_continuous(labels = percent, limits = c(-0.025, 1.025)) +
+  scale_y_continuous(labels = percent, limits = c(-0.025, 1.025)) +
+  facet_wrap(~result) +
   guides(
-    color = ggplot2::guide_legend('Source', override.aes = list(size = 3)),
-    size = ggplot2::guide_legend('Sample size')
+    color = guide_legend('Source', override.aes = list(size = 3)),
+    size = guide_legend('Sample size')
   ) +
-  ggplot2::labs(
+  labs(
     title = 'Calibration of implied match outcome probabilities',
     subtitle = '2021/22 - 2021/22 English Premier League',
     x = 'Probability',
     y = 'Actual Proportion',
     caption = 'Error bars represent a 95% posterior credible interval for the mean predicted chance using a beta-binomial conjugate (i.e. Jeffreys\' Prior).\nLoss calibration is redundant with win calibration.'
   )
-```
-
-```{r}
-#| label: p_calib-save
-#| eval: false
-#| include: false
-path_calib <- file.path(dir_proj, 'calib.png')
-
 ggsave(
-  filename = path_calib,
+  filename = '_post/epl-xpts-simulation-2/calib.png',
   width = 10,
   height = 7.5
 )
@@ -694,9 +598,9 @@ diagnose_xpts_by_match <- function(src) {
   
   pred <- predict(fit)
   
-  tibble::tibble(
+  tibble(
     rmse = compute_rmse(xpts_by_match$pts, pred),
-    r2 = summary(fit)r.squared
+    r2 = summary(fit)$r.squared
   )
 }
 
@@ -724,14 +628,14 @@ diagnose_implied_xpts_by_match <- function(src) {
   
   col_win <- sprintf('prob_win_%s', src)
   col_draw <- sprintf('prob_draw_%s', src)
-  fit <- nnet::multinom(
+  fit <- multinom(
     xpts_by_match$result ~ xpts_by_match[[col_win]] + xpts_by_match[[col_draw]],
     trace = FALSE
   )
-  probs <- predict(fit, type = 'probs') |> tibble::as_tibble()
+  probs <- predict(fit, type = 'probs') |> as_tibble()
   preds <- 3 * probs$w + 1 * probs$d
   
-  tibble::tibble(
+  tibble(
     rmse = compute_rmse(xpts_by_match$pts, preds),
     r2 = cor(xpts_by_match$pts, preds)^2
   )
@@ -758,13 +662,14 @@ How do the understat and fotmob models fare if we aggregate up the expected poin
 [^11]: Note that aggregating match-level probabilities to the season-level is not a statistically valid way to use the probabilities, which are intended to be treated independently.
 
 ```{r}
+#| label: diagnose_xpts_by_season
+#| eval: false
 xpts_by_season <- xpts_by_match |> 
   group_by(season, team) |> 
   summarize(
     across(c(pts, starts_with('xpts')), sum)
   ) |> 
   ungroup()
-xpts_by_season
 
 diagnose_xpts_by_season <- function(src) {
   
@@ -773,7 +678,7 @@ diagnose_xpts_by_season <- function(src) {
   
   preds <- predict(fit)
   
-  tibble::tibble(
+  tibble(
     rmse = compute_rmse(xpts_by_match$pts, preds),
     r2 = summary(fit)$r.squared
   )

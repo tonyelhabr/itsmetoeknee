@@ -2403,12 +2403,12 @@ class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 <span class='va'>xg_a</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/rep.html'>rep</a></span><span class='op'>(</span><span class='fl'>0.1</span>, <span class='fl'>6</span><span class='op'>)</span>
 <span class='va'>xg_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>0.1</span>, <span class='fl'>0.2</span>, <span class='fl'>0.3</span><span class='op'>)</span>
 
-<span class='va'>probs_a</span> <span class='op'>&lt;-</span> <span class='fu'>poibin</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/poibin/man/ppoibin.html'>dpoibin</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>0</span>, <span class='fu'><a href='https://rdrr.io/r/base/length.html'>length</a></span><span class='op'>(</span><span class='va'>xg_a</span><span class='op'>)</span><span class='op'>)</span>, <span class='va'>xg_a</span><span class='op'>)</span>
-<span class='va'>probs_b</span> <span class='op'>&lt;-</span> <span class='fu'>poibin</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/poibin/man/ppoibin.html'>dpoibin</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>0</span>, <span class='fu'><a href='https://rdrr.io/r/base/length.html'>length</a></span><span class='op'>(</span><span class='va'>xg_b</span><span class='op'>)</span><span class='op'>)</span>, <span class='va'>xg_b</span><span class='op'>)</span>
+<span class='va'>probs_a</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/poibin/man/ppoibin.html'>dpoibin</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>0</span>, <span class='fu'><a href='https://rdrr.io/r/base/length.html'>length</a></span><span class='op'>(</span><span class='va'>xg_a</span><span class='op'>)</span><span class='op'>)</span>, <span class='va'>xg_a</span><span class='op'>)</span>
+<span class='va'>probs_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/poibin/man/ppoibin.html'>dpoibin</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>0</span>, <span class='fu'><a href='https://rdrr.io/r/base/length.html'>length</a></span><span class='op'>(</span><span class='va'>xg_b</span><span class='op'>)</span><span class='op'>)</span>, <span class='va'>xg_b</span><span class='op'>)</span>
 
 <span class='va'>outer_prod</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/outer.html'>outer</a></span><span class='op'>(</span><span class='va'>probs_a</span>, <span class='va'>probs_b</span><span class='op'>)</span>
-<span class='va'>p_a</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'>gdata</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/gdata/man/upperTriangle.html'>upperTriangle</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span><span class='op'>)</span>
-<span class='va'>p_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'>gdata</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/gdata/man/upperTriangle.html'>lowerTriangle</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>p_a</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/gdata/man/upperTriangle.html'>upperTriangle</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>p_b</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/gdata/man/upperTriangle.html'>lowerTriangle</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span><span class='op'>)</span>
 <span class='va'>p_draw</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/diag.html'>diag</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>p_a</span>, <span class='va'>p_b</span>, <span class='va'>p_draw</span><span class='op'>)</span>, <span class='fl'>2</span><span class='op'>)</span>
 <span class='co'>#&gt; [1] 0.30 0.28 0.42</span>
@@ -2470,79 +2470,64 @@ shot.</p>
 <span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/JaseZiv/worldfootballR'>worldfootballR</a></span><span class='op'>)</span> <span class='co'>## version: 0.5.12.5000</span>
 <span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/sfirke/janitor'>janitor</a></span><span class='op'>)</span>
 
-<span class='co'>## manually created CSV with 2 columns: team_understat, team_fotmob.</span>
+<span class='co'>## manually created CSV with at least 2 columns: team_understat, team_fotmob.</span>
 <span class='co'>##   use the team_understat name to be consistent across sources.</span>
-<span class='co'>##   CSV: https://raw.githubusercontent.com/tonyelhabr/sports_viz/master/59-xg_xpoints/team_mapping.csv</span>
-<span class='va'>team_mapping</span> <span class='op'>&lt;-</span> <span class='st'>'team_mapping.csv'</span> |&gt; <span class='fu'>readr</span><span class='fu'>::</span><span class='fu'><a href='https://readr.tidyverse.org/reference/read_delim.html'>read_csv</a></span><span class='op'>(</span><span class='op'>)</span>
+<span class='va'>team_mapping</span> <span class='op'>&lt;-</span> <span class='st'>'https://raw.githubusercontent.com/tonyelhabr/sports_viz/master/59-xg_xpoints/team_mapping.csv'</span> |&gt; 
+  <span class='fu'><a href='https://readr.tidyverse.org/reference/read_delim.html'>read_csv</a></span><span class='op'>(</span><span class='op'>)</span>
 
-<span class='va'>rename_teams</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>df</span>, <span class='va'>src</span><span class='op'>)</span> <span class='op'>{</span>
-  <span class='va'>team_src</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sprintf.html'>sprintf</a></span><span class='op'>(</span><span class='st'>'team_%s'</span>, <span class='va'>src</span><span class='op'>)</span>
+<span class='va'>rename_fotmob_teams</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>df</span><span class='op'>)</span> <span class='op'>{</span>
   <span class='va'>df</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>left_join</a></span><span class='op'>(</span>
-      <span class='va'>team_mapping</span> |&gt; 
-        <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>.data</span><span class='op'>$</span><span class='va'>team_understat</span>, <span class='va'>.data</span><span class='op'>[[</span><span class='va'>team_src</span><span class='op'>]</span><span class='op'>]</span><span class='op'>)</span>,
-      by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'home_team'</span> <span class='op'>=</span> <span class='va'>team_src</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>left_join</a></span><span class='op'>(</span>
+      <span class='va'>team_mapping</span> |&gt; <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>team_understat</span>, <span class='va'>team_fotmob</span><span class='op'>)</span>,
+      by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'home_team'</span> <span class='op'>=</span> <span class='st'>'team_fotmob'</span><span class='op'>)</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='va'>.data</span><span class='op'>$</span><span class='va'>home_team</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/rename.html'>rename</a></span><span class='op'>(</span>home_team <span class='op'>=</span> <span class='va'>.data</span><span class='op'>$</span><span class='va'>team_538</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>left_join</a></span><span class='op'>(</span>
-      <span class='va'>team_mapping</span> |&gt; 
-        <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>.data</span><span class='op'>$</span><span class='va'>team_understat</span>, <span class='va'>.data</span><span class='op'>[[</span><span class='va'>team_src</span><span class='op'>]</span><span class='op'>]</span><span class='op'>)</span>,
-      by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'away_team'</span> <span class='op'>=</span> <span class='va'>team_src</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='va'>home_team</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/rename.html'>rename</a></span><span class='op'>(</span>home_team <span class='op'>=</span> <span class='va'>team_understat</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>left_join</a></span><span class='op'>(</span>
+      <span class='va'>team_mapping</span> |&gt; <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>team_understat</span>, <span class='va'>team_fotmob</span><span class='op'>)</span>,
+      by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'away_team'</span> <span class='op'>=</span> <span class='st'>'team_fotmob'</span><span class='op'>)</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='va'>.data</span><span class='op'>$</span><span class='va'>away_team</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/rename.html'>rename</a></span><span class='op'>(</span>away_team <span class='op'>=</span> <span class='va'>.data</span><span class='op'>$</span><span class='va'>team_understat</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='va'>away_team</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/rename.html'>rename</a></span><span class='op'>(</span>away_team <span class='op'>=</span> <span class='va'>team_understat</span><span class='op'>)</span>
+<span class='op'>}</span>
+
+<span class='va'>rename_home_away_teams</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>df</span><span class='op'>)</span> <span class='op'>{</span>
+  <span class='va'>df</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
       team <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>is_home</span>, <span class='va'>home_team</span>, <span class='va'>away_team</span><span class='op'>)</span>,
       opponent <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>is_home</span>, <span class='va'>away_team</span>, <span class='va'>home_team</span><span class='op'>)</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>home_team</span>, <span class='va'>away_team</span><span class='op'>)</span><span class='op'>)</span> 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>home_team</span>, <span class='va'>away_team</span><span class='op'>)</span><span class='op'>)</span> 
 <span class='op'>}</span>
 
 <span class='va'>convert_understat_year_to_season</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span> <span class='op'>{</span>
-  <span class='fu'><a href='https://rdrr.io/r/base/sprintf.html'>sprintf</a></span><span class='op'>(</span><span class='st'>'%s/%s'</span>, <span class='va'>x</span>, <span class='fu'>stringr</span><span class='fu'>::</span><span class='fu'><a href='https://stringr.tidyverse.org/reference/str_sub.html'>str_sub</a></span><span class='op'>(</span><span class='va'>x</span> <span class='op'>+</span> <span class='fl'>1</span>, <span class='fl'>3</span>, <span class='fl'>4</span><span class='op'>)</span><span class='op'>)</span>
+  <span class='fu'><a href='https://rdrr.io/r/base/sprintf.html'>sprintf</a></span><span class='op'>(</span><span class='st'>'%s/%s'</span>, <span class='va'>x</span>, <span class='fu'><a href='https://stringr.tidyverse.org/reference/str_sub.html'>str_sub</a></span><span class='op'>(</span><span class='va'>x</span> <span class='op'>+</span> <span class='fl'>1</span>, <span class='fl'>3</span>, <span class='fl'>4</span><span class='op'>)</span><span class='op'>)</span>
 <span class='op'>}</span>
 
 <span class='co'>## we'll use all of the shots later when exporing understat data only</span>
-<span class='va'>all_understat_shots</span> <span class='op'>&lt;-</span> <span class='fu'>worldfootballR</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/worldfootballR/man/load_understat_league_shots.html'>load_understat_league_shots</a></span><span class='op'>(</span><span class='st'>'EPL'</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>tibble</span><span class='fu'>::</span><span class='fu'><a href='https://tibble.tidyverse.org/reference/as_tibble.html'>as_tibble</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+<span class='va'>all_understat_shots</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/worldfootballR/man/load_understat_league_shots.html'>load_understat_league_shots</a></span><span class='op'>(</span><span class='st'>'EPL'</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://tibble.tidyverse.org/reference/as_tibble.html'>as_tibble</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
   <span class='co'>## camelcase like "xG" is for Java scrubs</span>
-  <span class='fu'>janitor</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/janitor/man/clean_names.html'>clean_names</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://rdrr.io/pkg/janitor/man/clean_names.html'>clean_names</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
   <span class='fu'><a href='https://dplyr.tidyverse.org/reference/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>season</span> <span class='op'>&lt;=</span> <span class='fl'>2021</span><span class='op'>)</span> |&gt; 
   <span class='co'>## transmute = select + mutate</span>
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>transmute</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>transmute</a></span><span class='op'>(</span>
     <span class='va'>match_id</span>,
     <span class='co'>## "2021/2022" format so that we have a clear, consistent way to represent season</span>
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>convert_understat_year_to_season</span><span class='op'>)</span>,
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>convert_understat_year_to_season</span><span class='op'>)</span>,
     <span class='co'>## to convert "2020-09-12 11:30:00" to a date ("2020-09-12")</span>
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>date</span>, <span class='fu'>lubridate</span><span class='fu'>::</span><span class='va'><a href='https://lubridate.tidyverse.org/reference/date.html'>date</a></span><span class='op'>)</span>,
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>date</span>, <span class='fu'>lubridate</span><span class='fu'>::</span><span class='va'><a href='https://lubridate.tidyverse.org/reference/date.html'>date</a></span><span class='op'>)</span>,
     <span class='va'>home_team</span>,
     <span class='va'>away_team</span>,
     is_home <span class='op'>=</span> <span class='va'>h_a</span> <span class='op'>==</span> <span class='st'>'h'</span>,
     xg <span class='op'>=</span> <span class='va'>x_g</span>
   <span class='op'>)</span> |&gt;
-  <span class='fu'>rename_teams</span><span class='op'>(</span><span class='st'>'understat'</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/arrange.html'>arrange</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span><span class='op'>)</span>
+  <span class='fu'>rename_home_away_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/arrange.html'>arrange</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span><span class='op'>)</span>
 
 <span class='co'>## but when comparing understat with fotmob, we'll need to limit the seasons to just</span>
 <span class='co'>##   those that both sources have</span>
-<span class='va'>understat_shots</span> <span class='op'>&lt;-</span> <span class='va'>all_understat_shots</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>season</span> <span class='op'>&gt;=</span> <span class='fl'>2020</span><span class='op'>)</span>
-<span class='va'>understat_shots</span>
-<span class='co'>#&gt; # A tibble: 19,010 × 7</span>
-<span class='co'>#&gt;    match_id season  date       is_home     xg team    opponent</span>
-<span class='co'>#&gt;       &lt;dbl&gt; &lt;chr&gt;   &lt;date&gt;     &lt;lgl&gt;    &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;   </span>
-<span class='co'>#&gt;  1    14086 2020/21 2020-09-12 FALSE   0.0644 Arsenal Fulham  </span>
-<span class='co'>#&gt;  2    14086 2020/21 2020-09-12 FALSE   0.649  Arsenal Fulham  </span>
-<span class='co'>#&gt;  3    14086 2020/21 2020-09-12 FALSE   0.758  Arsenal Fulham  </span>
-<span class='co'>#&gt;  4    14086 2020/21 2020-09-12 FALSE   0.110  Arsenal Fulham  </span>
-<span class='co'>#&gt;  5    14086 2020/21 2020-09-12 FALSE   0.0572 Arsenal Fulham  </span>
-<span class='co'>#&gt;  6    14086 2020/21 2020-09-12 FALSE   0.136  Arsenal Fulham  </span>
-<span class='co'>#&gt;  7    14086 2020/21 2020-09-12 FALSE   0.0817 Arsenal Fulham  </span>
-<span class='co'>#&gt;  8    14086 2020/21 2020-09-12 FALSE   0.506  Arsenal Fulham  </span>
-<span class='co'>#&gt;  9    14086 2020/21 2020-09-12 FALSE   0.0943 Arsenal Fulham  </span>
-<span class='co'>#&gt; 10    14086 2020/21 2020-09-12 FALSE   0.0526 Arsenal Fulham  </span>
-<span class='co'>#&gt; # … with 19,000 more rows</span>
+<span class='va'>understat_shots</span> <span class='op'>&lt;-</span> <span class='va'>all_understat_shots</span> |&gt; <span class='fu'><a href='https://dplyr.tidyverse.org/reference/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>season</span> <span class='op'>&gt;=</span> <span class='fl'>2020</span><span class='op'>)</span>
 </code></pre>
 </div>
 </div>
@@ -2551,25 +2536,25 @@ shot xG in a similar fashion.<a href="#fn5" class="footnote-ref"
 id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>fotmob_shots</span> <span class='op'>&lt;-</span> <span class='fu'>worldfootballR</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/worldfootballR/man/load_fotmob_match_details.html'>load_fotmob_match_details</a></span><span class='op'>(</span>
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>fotmob_shots</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/worldfootballR/man/load_fotmob_match_details.html'>load_fotmob_match_details</a></span><span class='op'>(</span>
   country <span class='op'>=</span> <span class='st'>'ENG'</span>,
   league_name <span class='op'>=</span> <span class='st'>'Premier League'</span>
 <span class='op'>)</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
     <span class='co'>## to convert strings from 'Sat, Sep 12, 2020, 11:30 UTC' to a date</span>
-    date <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/strptime.html'>strptime</a></span><span class='op'>(</span><span class='va'>match_time_utc</span>, <span class='st'>'%a, %b %d, %Y, %H:%M UTC'</span>, tz <span class='op'>=</span> <span class='st'>'UTC'</span><span class='op'>)</span> |&gt; <span class='fu'>lubridate</span><span class='fu'>::</span><span class='fu'><a href='https://lubridate.tidyverse.org/reference/date.html'>date</a></span><span class='op'>(</span><span class='op'>)</span>,
+    date <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/strptime.html'>strptime</a></span><span class='op'>(</span><span class='va'>match_time_utc</span>, <span class='st'>'%a, %b %d, %Y, %H:%M UTC'</span>, tz <span class='op'>=</span> <span class='st'>'UTC'</span><span class='op'>)</span> |&gt; <span class='fu'><a href='https://lubridate.tidyverse.org/reference/date.html'>date</a></span><span class='op'>(</span><span class='op'>)</span>,
     <span class='co'>## fotmob's parent_league_season always reflects the current season, so we need to manually</span>
     <span class='co'>##   define the season from the date. we would certainly want a more automated approach</span>
     <span class='co'>##   if working with more seasons and more leagues.</span>
-    season <span class='op'>=</span> <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/case_when.html'>case_when</a></span><span class='op'>(</span>
-      <span class='va'>date</span> <span class='op'>&gt;=</span> <span class='fu'>lubridate</span><span class='fu'>::</span><span class='fu'><a href='https://lubridate.tidyverse.org/reference/ymd.html'>ymd</a></span><span class='op'>(</span><span class='st'>'2020-09-12'</span><span class='op'>)</span> <span class='op'>&amp;</span> <span class='va'>date</span> <span class='op'>&lt;=</span> <span class='fu'>lubridate</span><span class='fu'>::</span><span class='fu'><a href='https://lubridate.tidyverse.org/reference/ymd.html'>ymd</a></span><span class='op'>(</span><span class='st'>'2021-05-23'</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>'2020/21'</span>,
-      <span class='va'>date</span> <span class='op'>&gt;=</span> <span class='fu'>lubridate</span><span class='fu'>::</span><span class='fu'><a href='https://lubridate.tidyverse.org/reference/ymd.html'>ymd</a></span><span class='op'>(</span><span class='st'>'2021-08-13'</span><span class='op'>)</span> <span class='op'>&amp;</span> <span class='va'>date</span> <span class='op'>&lt;=</span> <span class='fu'>lubridate</span><span class='fu'>::</span><span class='fu'><a href='https://lubridate.tidyverse.org/reference/ymd.html'>ymd</a></span><span class='op'>(</span><span class='st'>'2022-05-22'</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>'2021/22'</span>,
+    season <span class='op'>=</span> <span class='fu'><a href='https://dplyr.tidyverse.org/reference/case_when.html'>case_when</a></span><span class='op'>(</span>
+      <span class='va'>date</span> <span class='op'>&gt;=</span> <span class='fu'><a href='https://lubridate.tidyverse.org/reference/ymd.html'>ymd</a></span><span class='op'>(</span><span class='st'>'2020-09-12'</span><span class='op'>)</span> <span class='op'>&amp;</span> <span class='va'>date</span> <span class='op'>&lt;=</span> <span class='fu'><a href='https://lubridate.tidyverse.org/reference/ymd.html'>ymd</a></span><span class='op'>(</span><span class='st'>'2021-05-23'</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>'2020/21'</span>,
+      <span class='va'>date</span> <span class='op'>&gt;=</span> <span class='fu'><a href='https://lubridate.tidyverse.org/reference/ymd.html'>ymd</a></span><span class='op'>(</span><span class='st'>'2021-08-13'</span><span class='op'>)</span> <span class='op'>&amp;</span> <span class='va'>date</span> <span class='op'>&lt;=</span> <span class='fu'><a href='https://lubridate.tidyverse.org/reference/ymd.html'>ymd</a></span><span class='op'>(</span><span class='st'>'2022-05-22'</span><span class='op'>)</span> <span class='op'>~</span> <span class='st'>'2021/22'</span>,
       <span class='cn'>TRUE</span> <span class='op'>~</span> <span class='cn'>NA_character_</span>
     <span class='op'>)</span>
   <span class='op'>)</span> |&gt; 
   <span class='co'>## the NAs are for 2022/2023 (incomplete as of writing) and the partial data for 2019/2020</span>
-  <span class='fu'>tidyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyr.tidyverse.org/reference/drop_na.html'>drop_na</a></span><span class='op'>(</span><span class='va'>season</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>transmute</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://tidyr.tidyverse.org/reference/drop_na.html'>drop_na</a></span><span class='op'>(</span><span class='va'>season</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>transmute</a></span><span class='op'>(</span>
     <span class='va'>match_id</span>,
     <span class='va'>season</span>,
     <span class='va'>date</span>,
@@ -2579,23 +2564,9 @@ id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
     <span class='co'>## some shots with NAs for some reason</span>
     xg <span class='op'>=</span> <span class='fu'><a href='https://dplyr.tidyverse.org/reference/coalesce.html'>coalesce</a></span><span class='op'>(</span><span class='va'>expected_goals</span>, <span class='fl'>0</span><span class='op'>)</span>
   <span class='op'>)</span> |&gt;
-  <span class='fu'>rename_teams</span><span class='op'>(</span><span class='st'>'fotmob'</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/arrange.html'>arrange</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span><span class='op'>)</span>
-<span class='va'>fotmob_shots</span>
-<span class='co'>#&gt; # A tibble: 19,013 × 7</span>
-<span class='co'>#&gt;    match_id season  date       is_home     xg team    opponent</span>
-<span class='co'>#&gt;       &lt;int&gt; &lt;chr&gt;   &lt;date&gt;     &lt;lgl&gt;    &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;   </span>
-<span class='co'>#&gt;  1  3411352 2020/21 2020-09-12 FALSE   0.0602 Arsenal Fulham  </span>
-<span class='co'>#&gt;  2  3411352 2020/21 2020-09-12 FALSE   0.737  Arsenal Fulham  </span>
-<span class='co'>#&gt;  3  3411352 2020/21 2020-09-12 FALSE   0.845  Arsenal Fulham  </span>
-<span class='co'>#&gt;  4  3411352 2020/21 2020-09-12 FALSE   0.0879 Arsenal Fulham  </span>
-<span class='co'>#&gt;  5  3411352 2020/21 2020-09-12 FALSE   0.0443 Arsenal Fulham  </span>
-<span class='co'>#&gt;  6  3411352 2020/21 2020-09-12 FALSE   0.131  Arsenal Fulham  </span>
-<span class='co'>#&gt;  7  3411352 2020/21 2020-09-12 FALSE   0.0916 Arsenal Fulham  </span>
-<span class='co'>#&gt;  8  3411352 2020/21 2020-09-12 FALSE   0.310  Arsenal Fulham  </span>
-<span class='co'>#&gt;  9  3411352 2020/21 2020-09-12 FALSE   0.0531 Arsenal Fulham  </span>
-<span class='co'>#&gt; 10  3411352 2020/21 2020-09-12 FALSE   0.0631 Arsenal Fulham  </span>
-<span class='co'>#&gt; # … with 19,003 more rows</span>
+  <span class='fu'>rename_fotmob_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>rename_home_away_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/arrange.html'>arrange</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span><span class='op'>)</span>
 </code></pre>
 </div>
 </div>
@@ -2608,45 +2579,28 @@ goals (up to the number of shots taken).</p>
 <span class='va'>permute_xg</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>xg</span><span class='op'>)</span> <span class='op'>{</span>
   <span class='va'>n</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/length.html'>length</a></span><span class='op'>(</span><span class='va'>xg</span><span class='op'>)</span>
   <span class='va'>x</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq.int</a></span><span class='op'>(</span><span class='fl'>0</span>, <span class='va'>n</span><span class='op'>)</span>
-  <span class='fu'>poibin</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/poibin/man/ppoibin.html'>dpoibin</a></span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>xg</span><span class='op'>)</span>
+  <span class='fu'><a href='https://rdrr.io/pkg/poibin/man/ppoibin.html'>dpoibin</a></span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>xg</span><span class='op'>)</span>
 <span class='op'>}</span>
 
 <span class='va'>calculate_permuted_xg</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>df</span><span class='op'>)</span> <span class='op'>{</span>
   <span class='va'>df</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/everything.html'>everything</a></span><span class='op'>(</span><span class='op'>)</span>, <span class='op'>-</span><span class='va'>xg</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/summarise.html'>summarize</a></span><span class='op'>(</span><span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>xg</span>, <span class='op'>~</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
-      prob <span class='op'>=</span> <span class='fu'>purrr</span><span class='fu'>::</span><span class='fu'><a href='https://purrr.tidyverse.org/reference/map.html'>map</a></span><span class='op'>(</span><span class='va'>xg</span>, <span class='op'>~</span><span class='fu'>permute_xg</span><span class='op'>(</span><span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/everything.html'>everything</a></span><span class='op'>(</span><span class='op'>)</span>, <span class='op'>-</span><span class='va'>xg</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/summarise.html'>summarize</a></span><span class='op'>(</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>xg</span>, <span class='op'>~</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
+      prob <span class='op'>=</span> <span class='fu'><a href='https://purrr.tidyverse.org/reference/map.html'>map</a></span><span class='op'>(</span><span class='va'>xg</span>, <span class='op'>~</span><span class='fu'>permute_xg</span><span class='op'>(</span><span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>xg</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>tidyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyr.tidyverse.org/reference/nest.html'>unnest</a></span><span class='op'>(</span>cols <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>prob</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>prob</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt;
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
-      g <span class='op'>=</span> <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/ranking.html'>row_number</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>-</span> <span class='fl'>1L</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>xg</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://tidyr.tidyverse.org/reference/nest.html'>unnest</a></span><span class='op'>(</span>cols <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>prob</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>prob</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt;
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
+      g <span class='op'>=</span> <span class='fu'><a href='https://dplyr.tidyverse.org/reference/ranking.html'>row_number</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>-</span> <span class='fl'>1L</span>
     <span class='op'>)</span> |&gt;
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>ungroup</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/arrange.html'>arrange</a></span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>is_home</span>, <span class='va'>g</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>ungroup</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/arrange.html'>arrange</a></span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>is_home</span>, <span class='va'>g</span><span class='op'>)</span>
 <span class='op'>}</span>
 
 <span class='va'>understat_permuted_xg</span> <span class='op'>&lt;-</span> <span class='va'>understat_shots</span> |&gt; <span class='fu'>calculate_permuted_xg</span><span class='op'>(</span><span class='op'>)</span>
 <span class='va'>fotmob_permuted_xg</span> <span class='op'>&lt;-</span> <span class='va'>fotmob_shots</span> |&gt; <span class='fu'>calculate_permuted_xg</span><span class='op'>(</span><span class='op'>)</span>
-
-<span class='co'>## just one of the variables. the other one looks the same, with different values for prob</span>
-<span class='va'>understat_permuted_xg</span>
-<span class='co'>#&gt; # A tibble: 20,530 × 8</span>
-<span class='co'>#&gt;    match_id season  date       is_home team    opponent       prob     g</span>
-<span class='co'>#&gt;       &lt;dbl&gt; &lt;chr&gt;   &lt;date&gt;     &lt;lgl&gt;   &lt;chr&gt;   &lt;chr&gt;         &lt;dbl&gt; &lt;int&gt;</span>
-<span class='co'>#&gt;  1    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.0180         0</span>
-<span class='co'>#&gt;  2    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.124          1</span>
-<span class='co'>#&gt;  3    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.298          2</span>
-<span class='co'>#&gt;  4    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.320          3</span>
-<span class='co'>#&gt;  5    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.172          4</span>
-<span class='co'>#&gt;  6    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.0543         5</span>
-<span class='co'>#&gt;  7    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.0110         6</span>
-<span class='co'>#&gt;  8    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.00150        7</span>
-<span class='co'>#&gt;  9    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.000141       8</span>
-<span class='co'>#&gt; 10    14086 2020/21 2020-09-12 FALSE   Arsenal Fulham   0.00000917     9</span>
-<span class='co'>#&gt; # … with 20,520 more rows</span>
 </code></pre>
 </div>
 </div>
@@ -2659,8 +2613,8 @@ drawing.</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>summarize_pivoted_permuted_xg</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>prob_away</span>, <span class='va'>prob_home</span><span class='op'>)</span> <span class='op'>{</span>
   <span class='va'>outer_prod</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/outer.html'>outer</a></span><span class='op'>(</span><span class='va'>prob_away</span>, <span class='va'>prob_home</span><span class='op'>)</span>
   <span class='va'>p_draw</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/diag.html'>diag</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
-  <span class='va'>p_home</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'>gdata</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/gdata/man/upperTriangle.html'>upperTriangle</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
-  <span class='va'>p_away</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'>gdata</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/gdata/man/upperTriangle.html'>lowerTriangle</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+  <span class='va'>p_home</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/gdata/man/upperTriangle.html'>upperTriangle</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+  <span class='va'>p_away</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/gdata/man/upperTriangle.html'>lowerTriangle</a></span><span class='op'>(</span><span class='va'>outer_prod</span><span class='op'>)</span>, na.rm <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
   <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>
     draw <span class='op'>=</span> <span class='va'>p_draw</span>,
     home <span class='op'>=</span> <span class='va'>p_home</span>,
@@ -2670,7 +2624,7 @@ drawing.</p>
 
 <span class='va'>summarize_permuted_xg_by_match</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>df</span><span class='op'>)</span> <span class='op'>{</span>
   <span class='va'>pivoted</span> <span class='op'>&lt;-</span> <span class='va'>df</span> |&gt;
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>transmute</a></span><span class='op'>(</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>transmute</a></span><span class='op'>(</span>
       <span class='va'>match_id</span>,
       <span class='va'>season</span>,
       <span class='va'>date</span>,
@@ -2678,7 +2632,7 @@ drawing.</p>
       is_home <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>is_home</span>, <span class='st'>'home'</span>, <span class='st'>'away'</span><span class='op'>)</span>,
       <span class='va'>prob</span>
     <span class='op'>)</span> |&gt;
-    <span class='fu'>tidyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyr.tidyverse.org/reference/pivot_wider.html'>pivot_wider</a></span><span class='op'>(</span>
+    <span class='fu'><a href='https://tidyr.tidyverse.org/reference/pivot_wider.html'>pivot_wider</a></span><span class='op'>(</span>
       names_from <span class='op'>=</span> <span class='va'>is_home</span>,
       names_prefix <span class='op'>=</span> <span class='st'>'prob_'</span>,
       values_from <span class='op'>=</span> <span class='va'>prob</span>,
@@ -2686,51 +2640,31 @@ drawing.</p>
     <span class='op'>)</span>
   
   <span class='va'>pivoted</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>prob_away</span>, <span class='va'>prob_home</span><span class='op'>)</span> |&gt;
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>season</span>, <span class='va'>date</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/summarise.html'>summarize</a></span><span class='op'>(</span>
-      <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span>, <span class='op'>~</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>prob_away</span>, <span class='va'>prob_home</span><span class='op'>)</span> |&gt;
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>season</span>, <span class='va'>date</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/summarise.html'>summarize</a></span><span class='op'>(</span>
+      <span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span>, <span class='op'>~</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>ungroup</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>inner_join</a></span><span class='op'>(</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>ungroup</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>inner_join</a></span><span class='op'>(</span>
       <span class='va'>df</span> |&gt; <span class='fu'><a href='https://dplyr.tidyverse.org/reference/distinct.html'>distinct</a></span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, <span class='va'>is_home</span><span class='op'>)</span>,
       by <span class='op'>=</span> <span class='st'>'match_id'</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
       prob <span class='op'>=</span> <span class='fu'><a href='https://purrr.tidyverse.org/reference/map2.html'>map2</a></span><span class='op'>(</span><span class='va'>prob_away</span>, <span class='va'>prob_home</span>, <span class='va'>summarize_pivoted_permuted_xg</span><span class='op'>)</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>tidyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyr.tidyverse.org/reference/hoist.html'>unnest_wider</a></span><span class='op'>(</span><span class='va'>prob</span>, names_sep <span class='op'>=</span> <span class='st'>'_'</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://tidyr.tidyverse.org/reference/hoist.html'>unnest_wider</a></span><span class='op'>(</span><span class='va'>prob</span>, names_sep <span class='op'>=</span> <span class='st'>'_'</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
       prob_win <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>is_home</span>, <span class='va'>prob_home</span>, <span class='va'>prob_away</span><span class='op'>)</span>,
       prob_lose <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>is_home</span>, <span class='va'>prob_away</span>, <span class='va'>prob_home</span><span class='op'>)</span>,
       xpts <span class='op'>=</span> <span class='fl'>3</span> <span class='op'>*</span> <span class='va'>prob_win</span> <span class='op'>+</span> <span class='fl'>1</span> <span class='op'>*</span> <span class='va'>prob_draw</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>prob_home</span>, <span class='va'>prob_away</span><span class='op'>)</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>prob_home</span>, <span class='va'>prob_away</span><span class='op'>)</span><span class='op'>)</span>
 <span class='op'>}</span>
 
 <span class='va'>understat_xpts_by_match</span> <span class='op'>&lt;-</span> <span class='va'>understat_permuted_xg</span> |&gt; <span class='fu'>summarize_permuted_xg_by_match</span><span class='op'>(</span><span class='op'>)</span>
 <span class='va'>fotmob_xpts_by_match</span> <span class='op'>&lt;-</span> <span class='va'>fotmob_permuted_xg</span> |&gt; <span class='fu'>summarize_permuted_xg_by_match</span><span class='op'>(</span><span class='op'>)</span>
-
-<span class='co'>## just one of the variables. the other looks the same, with different values for prob* and xpts</span>
-<span class='va'>understat_xpts_by_match</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>match_id</span>, <span class='va'>is_home</span><span class='op'>)</span><span class='op'>)</span> |&gt;
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span><span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span>, <span class='va'>xpts</span><span class='op'>)</span>, <span class='va'>round</span>, <span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>
-<span class='co'>#&gt; # A tibble: 1,520 × 7</span>
-<span class='co'>#&gt;    date       team              opponent          prob_d…¹ prob_…² prob_…³  xpts</span>
-<span class='co'>#&gt;    &lt;date&gt;     &lt;chr&gt;             &lt;chr&gt;                &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;</span>
-<span class='co'>#&gt;  1 2020-09-12 Arsenal           Fulham                0.03    0.97    0     2.93</span>
-<span class='co'>#&gt;  2 2020-09-12 Fulham            Arsenal               0.03    0       0.97  0.04</span>
-<span class='co'>#&gt;  3 2020-09-12 Southampton       Crystal Palace        0.3     0.31    0.39  1.22</span>
-<span class='co'>#&gt;  4 2020-09-12 Crystal Palace    Southampton           0.3     0.39    0.31  1.48</span>
-<span class='co'>#&gt;  5 2021-01-12 Manchester United Burnley               0.3     0.52    0.18  1.86</span>
-<span class='co'>#&gt;  6 2021-01-12 Burnley           Manchester United     0.3     0.18    0.52  0.84</span>
-<span class='co'>#&gt;  7 2021-01-20 Aston Villa       Manchester City       0.04    0.01    0.95  0.07</span>
-<span class='co'>#&gt;  8 2021-01-20 Manchester City   Aston Villa           0.04    0.95    0.01  2.89</span>
-<span class='co'>#&gt;  9 2020-09-12 Leeds             Liverpool             0.03    0       0.97  0.04</span>
-<span class='co'>#&gt; 10 2020-09-12 Liverpool         Leeds                 0.03    0.97    0     2.93</span>
-<span class='co'>#&gt; # … with 1,510 more rows, and abbreviated variable names ¹​prob_draw, ²​prob_win,</span>
-<span class='co'>#&gt; #   ³​prob_lose</span>
 </code></pre>
 </div>
 </div>
@@ -2742,12 +2676,12 @@ error of our calculation of xPts with theirs is ~0.02.</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://ewenme.github.io/understatr'>understatr</a></span><span class='op'>)</span>
 
 <span class='va'>all_raw_understat_xpts_by_match</span> <span class='op'>&lt;-</span> <span class='fl'>2014</span><span class='op'>:</span><span class='fl'>2021</span> |&gt; 
-  <span class='fu'>rlang</span><span class='fu'>::</span><span class='fu'><a href='https://rlang.r-lib.org/reference/set_names.html'>set_names</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>purrr</span><span class='fu'>::</span><span class='fu'><a href='https://purrr.tidyverse.org/reference/map.html'>map_dfr</a></span><span class='op'>(</span>
-    <span class='op'>~</span><span class='fu'>understatr</span><span class='fu'>::</span><span class='fu'><a href='https://ewenme.github.io/understatr/reference/get_league_teams_stats.html'>get_league_teams_stats</a></span><span class='op'>(</span><span class='st'>'EPL'</span>, <span class='va'>.x</span><span class='op'>)</span>,
+  <span class='fu'><a href='https://purrr.tidyverse.org/reference/set_names.html'>set_names</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://purrr.tidyverse.org/reference/map.html'>map_dfr</a></span><span class='op'>(</span>
+    <span class='op'>~</span><span class='fu'><a href='https://ewenme.github.io/understatr/reference/get_league_teams_stats.html'>get_league_teams_stats</a></span><span class='op'>(</span><span class='st'>'EPL'</span>, <span class='va'>.x</span><span class='op'>)</span>,
     .id <span class='op'>=</span> <span class='st'>'season'</span>
   <span class='op'>)</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>transmute</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>transmute</a></span><span class='op'>(</span>
     <span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='op'>~</span><span class='fu'>convert_understat_year_to_season</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/integer.html'>as.integer</a></span><span class='op'>(</span><span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>,
     <span class='va'>date</span>,
     team <span class='op'>=</span> <span class='va'>team_name</span>,
@@ -2758,29 +2692,14 @@ error of our calculation of xPts with theirs is ~0.02.</p>
   <span class='op'>)</span>
 
 <span class='va'>raw_understat_xpts_by_match</span> <span class='op'>&lt;-</span> <span class='va'>all_raw_understat_xpts_by_match</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>inner_join</a></span><span class='op'>(</span>
-    <span class='va'>understat_xpts_by_match</span> |&gt; <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span>, <span class='va'>xpts</span><span class='op'>)</span>,
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>inner_join</a></span><span class='op'>(</span>
+    <span class='va'>understat_xpts_by_match</span> |&gt; <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span>, <span class='va'>xpts</span><span class='op'>)</span>,
     by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'season'</span>, <span class='st'>'date'</span>, <span class='st'>'team'</span><span class='op'>)</span>
   <span class='op'>)</span> |&gt; 
   <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
     xptsd <span class='op'>=</span> <span class='va'>raw_xpts</span> <span class='op'>-</span> <span class='va'>xpts</span>
   <span class='op'>)</span> |&gt; 
   <span class='fu'><a href='https://dplyr.tidyverse.org/reference/arrange.html'>arrange</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span><span class='op'>)</span>
-<span class='va'>raw_understat_xpts_by_match</span>
-<span class='co'>#&gt; # A tibble: 1,520 × 9</span>
-<span class='co'>#&gt;    season  date       team           result   pts raw_x…¹    xg   xpts    xptsd</span>
-<span class='co'>#&gt;    &lt;chr&gt;   &lt;date&gt;     &lt;chr&gt;          &lt;chr&gt;  &lt;int&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;</span>
-<span class='co'>#&gt;  1 2020/21 2020-09-12 Arsenal        w          3  2.89   2.16  2.93   -3.40e-2</span>
-<span class='co'>#&gt;  2 2020/21 2020-09-12 Crystal Palace w          3  1.48   1.40  1.48   -1.08e-3</span>
-<span class='co'>#&gt;  3 2020/21 2020-09-12 Fulham         l          0  0.0587 0.126 0.0405  1.82e-2</span>
-<span class='co'>#&gt;  4 2020/21 2020-09-12 Leeds          l          0  0.0434 0.270 0.0440 -5.77e-4</span>
-<span class='co'>#&gt;  5 2020/21 2020-09-12 Liverpool      w          3  2.93   3.15  2.93    1.03e-3</span>
-<span class='co'>#&gt;  6 2020/21 2020-09-12 Newcastle      w          3  2.05   1.66  2.03    1.86e-2</span>
-<span class='co'>#&gt;  7 2020/21 2020-09-12 Southampton    l          0  1.22   1.26  1.22   -5.44e-4</span>
-<span class='co'>#&gt;  8 2020/21 2020-09-12 West Ham       l          0  0.700  0.861 0.717  -1.71e-2</span>
-<span class='co'>#&gt;  9 2020/21 2020-09-13 Everton        w          3  1.74   1.27  1.74    5.98e-3</span>
-<span class='co'>#&gt; 10 2020/21 2020-09-13 Leicester      w          3  2.91   2.96  2.91    6.14e-4</span>
-<span class='co'>#&gt; # … with 1,510 more rows, and abbreviated variable name ¹​raw_xpts</span>
 
 <span class='co'>## mean absolute error</span>
 <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>abs</a></span><span class='op'>(</span><span class='va'>raw_understat_xpts_by_match</span><span class='op'>$</span><span class='va'>xptsd</span><span class='op'>)</span><span class='op'>)</span>, <span class='fl'>3</span><span class='op'>)</span>
@@ -2797,19 +2716,19 @@ from understat and fotmob are strongly correlated.</p>
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>rename_xpts_by_match</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>df</span>, <span class='va'>src</span><span class='op'>)</span> <span class='op'>{</span>
   <span class='va'>df</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span>, <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span>, <span class='va'>xpts</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/rename.html'>rename_with</a></span><span class='op'>(</span>
-      <span class='op'>~</span><span class='fu'><a href='https://rdrr.io/r/base/sprintf.html'>sprintf</a></span><span class='op'>(</span><span class='st'>'%s_%s'</span>, <span class='va'>.x</span>, <span class='va'>src</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span>, <span class='va'>xpts</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span>, <span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span>, <span class='va'>xpts</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/rename.html'>rename_with</a></span><span class='op'>(</span>
+      <span class='op'>~</span><span class='fu'><a href='https://rdrr.io/r/base/sprintf.html'>sprintf</a></span><span class='op'>(</span><span class='st'>'%s_%s'</span>, <span class='va'>.x</span>, <span class='va'>src</span><span class='op'>)</span>, <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'prob_'</span><span class='op'>)</span>, <span class='va'>xpts</span><span class='op'>)</span>
     <span class='op'>)</span>
 <span class='op'>}</span>
 
 <span class='va'>xpts_by_match</span> <span class='op'>&lt;-</span> <span class='va'>raw_understat_xpts_by_match</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span>, <span class='va'>result</span>, <span class='va'>pts</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>inner_join</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>date</span>, <span class='va'>team</span>, <span class='va'>result</span>, <span class='va'>pts</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>inner_join</a></span><span class='op'>(</span>
     <span class='va'>understat_xpts_by_match</span> |&gt; <span class='fu'>rename_xpts_by_match</span><span class='op'>(</span><span class='st'>'understat'</span><span class='op'>)</span>,
     by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'season'</span>, <span class='st'>'date'</span>, <span class='st'>'team'</span><span class='op'>)</span>
   <span class='op'>)</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>inner_join</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate-joins.html'>inner_join</a></span><span class='op'>(</span>
     <span class='va'>fotmob_xpts_by_match</span> |&gt; <span class='fu'>rename_xpts_by_match</span><span class='op'>(</span><span class='st'>'fotmob'</span><span class='op'>)</span>,
     by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'season'</span>, <span class='st'>'date'</span>, <span class='st'>'team'</span><span class='op'>)</span>
   <span class='op'>)</span>
@@ -2849,8 +2768,8 @@ plot</a>, grouping predictions into “buckets” at every 5%.</li>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>result_props</span> <span class='op'>&lt;-</span> <span class='va'>xpts_by_match</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/count.html'>count</a></span><span class='op'>(</span><span class='va'>result</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>prop <span class='op'>=</span> <span class='va'>n</span> <span class='op'>/</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>n</span><span class='op'>)</span><span class='op'>)</span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/count.html'>count</a></span><span class='op'>(</span><span class='va'>result</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>prop <span class='op'>=</span> <span class='va'>n</span> <span class='op'>/</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>n</span><span class='op'>)</span><span class='op'>)</span>
 
 <span class='va'>compute_mse</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>truth</span>, <span class='va'>estimate</span><span class='op'>)</span> <span class='op'>{</span>
   <span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='op'>(</span><span class='va'>truth</span> <span class='op'>-</span> <span class='va'>estimate</span><span class='op'>)</span><span class='op'>^</span><span class='fl'>2</span><span class='op'>)</span>
@@ -2859,7 +2778,7 @@ plot</a>, grouping predictions into “buckets” at every 5%.</li>
 <span class='va'>diagnose_prob_by_match</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>src</span>, <span class='va'>result</span><span class='op'>)</span> <span class='op'>{</span>
   
   <span class='va'>df</span> <span class='op'>&lt;-</span> <span class='va'>xpts_by_match</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
       result <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>result</span> <span class='op'>==</span> <span class='op'>!</span><span class='op'>!</span><span class='va'>result</span>, <span class='fl'>1L</span>, <span class='fl'>0L</span><span class='op'>)</span> |&gt; <span class='fu'><a href='https://rdrr.io/r/base/factor.html'>factor</a></span><span class='op'>(</span><span class='op'>)</span>
     <span class='op'>)</span>
   
@@ -2876,7 +2795,7 @@ plot</a>, grouping predictions into “buckets” at every 5%.</li>
     family <span class='op'>=</span> <span class='st'>'binomial'</span>
   <span class='op'>)</span>
   
-  <span class='va'>probs</span> <span class='op'>&lt;-</span> <span class='fu'>tibble</span><span class='fu'>::</span><span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
+  <span class='va'>probs</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
     result_num <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/numeric.html'>as.numeric</a></span><span class='op'>(</span><span class='va'>df</span><span class='op'>$</span><span class='va'>result</span><span class='op'>)</span> <span class='op'>-</span> <span class='fl'>1</span>,
     .prob <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/unname.html'>unname</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span><span class='op'>(</span><span class='va'>fit</span>, type <span class='op'>=</span> <span class='st'>'response'</span><span class='op'>)</span><span class='op'>)</span>
   <span class='op'>)</span>
@@ -2884,24 +2803,24 @@ plot</a>, grouping predictions into “buckets” at every 5%.</li>
   <span class='va'>n_buckets</span> <span class='op'>&lt;-</span> <span class='fl'>20</span>
   <span class='va'>alpha</span> <span class='op'>&lt;-</span> <span class='fl'>0.05</span>
   <span class='va'>calib</span> <span class='op'>&lt;-</span> <span class='va'>probs</span> |&gt;
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
-      <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>.prob</span>, <span class='op'>~</span><span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>.x</span> <span class='op'>*</span> <span class='va'>n_buckets</span><span class='op'>)</span> <span class='op'>/</span> <span class='va'>n_buckets</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
+      <span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='va'>.prob</span>, <span class='op'>~</span><span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>.x</span> <span class='op'>*</span> <span class='va'>n_buckets</span><span class='op'>)</span> <span class='op'>/</span> <span class='va'>n_buckets</span><span class='op'>)</span>
     <span class='op'>)</span> |&gt;
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='va'>.prob</span><span class='op'>)</span> |&gt;
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/summarise.html'>summarize</a></span><span class='op'>(</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>group_by</a></span><span class='op'>(</span><span class='va'>.prob</span><span class='op'>)</span> |&gt;
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/summarise.html'>summarize</a></span><span class='op'>(</span>
       <span class='co'>## Jeffreys' prior</span>
-      ci_lower <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/stats/Beta.html'>qbeta</a></span><span class='op'>(</span><span class='va'>alpha</span> <span class='op'>/</span> <span class='fl'>2</span>, <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>0.5</span>, <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/context.html'>n</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>0.5</span><span class='op'>)</span>,
-      ci_upper <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/stats/Beta.html'>qbeta</a></span><span class='op'>(</span><span class='fl'>1</span> <span class='op'>-</span> <span class='va'>alpha</span> <span class='op'>/</span> <span class='fl'>2</span>, <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>0.5</span>, <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/context.html'>n</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>0.5</span><span class='op'>)</span>,
+      ci_lower <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/stats/Beta.html'>qbeta</a></span><span class='op'>(</span><span class='va'>alpha</span> <span class='op'>/</span> <span class='fl'>2</span>, <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>0.5</span>, <span class='fu'><a href='https://dplyr.tidyverse.org/reference/context.html'>n</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>0.5</span><span class='op'>)</span>,
+      ci_upper <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/stats/Beta.html'>qbeta</a></span><span class='op'>(</span><span class='fl'>1</span> <span class='op'>-</span> <span class='va'>alpha</span> <span class='op'>/</span> <span class='fl'>2</span>, <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>0.5</span>, <span class='fu'><a href='https://dplyr.tidyverse.org/reference/context.html'>n</a></span><span class='op'>(</span><span class='op'>)</span> <span class='op'>-</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>+</span> <span class='fl'>0.5</span><span class='op'>)</span>,
       actual <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sum.html'>sum</a></span><span class='op'>(</span><span class='va'>result_num</span><span class='op'>)</span> <span class='op'>/</span> <span class='fu'><a href='https://dplyr.tidyverse.org/reference/context.html'>n</a></span><span class='op'>(</span><span class='op'>)</span>,
-      n <span class='op'>=</span> <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/context.html'>n</a></span><span class='op'>(</span><span class='op'>)</span>
+      n <span class='op'>=</span> <span class='fu'><a href='https://dplyr.tidyverse.org/reference/context.html'>n</a></span><span class='op'>(</span><span class='op'>)</span>
     <span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>ungroup</a></span><span class='op'>(</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>ungroup</a></span><span class='op'>(</span><span class='op'>)</span>
   
   <span class='va'>mse</span> <span class='op'>&lt;-</span> <span class='fu'>compute_mse</span><span class='op'>(</span><span class='va'>probs</span><span class='op'>$</span><span class='va'>result_num</span>, <span class='va'>probs</span><span class='op'>$</span><span class='va'>.prob</span><span class='op'>)</span>
   
   <span class='va'>ref_prob</span> <span class='op'>&lt;-</span> <span class='va'>result_props</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>result</span> <span class='op'>==</span> <span class='op'>!</span><span class='op'>!</span><span class='va'>result</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>dplyr</span><span class='fu'>::</span><span class='fu'><a href='https://dplyr.tidyverse.org/reference/pull.html'>pull</a></span><span class='op'>(</span><span class='va'>prop</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/filter.html'>filter</a></span><span class='op'>(</span><span class='va'>result</span> <span class='op'>==</span> <span class='op'>!</span><span class='op'>!</span><span class='va'>result</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/pull.html'>pull</a></span><span class='op'>(</span><span class='va'>prop</span><span class='op'>)</span>
   
   <span class='va'>ref_mse</span> <span class='op'>&lt;-</span> <span class='fu'>compute_mse</span><span class='op'>(</span><span class='va'>probs</span><span class='op'>$</span><span class='va'>result_num</span>, <span class='va'>ref_prob</span><span class='op'>)</span>
   <span class='va'>bss</span> <span class='op'>&lt;-</span> <span class='fl'>1</span> <span class='op'>-</span> <span class='op'>(</span><span class='va'>mse</span> <span class='op'>/</span> <span class='va'>ref_mse</span><span class='op'>)</span>
@@ -2921,14 +2840,14 @@ plot</a>, grouping predictions into “buckets” at every 5%.</li>
     diagnostics <span class='op'>=</span> <span class='fu'><a href='https://purrr.tidyverse.org/reference/map2.html'>map2</a></span><span class='op'>(</span><span class='va'>src</span>, <span class='va'>result</span>, <span class='va'>diagnose_prob_by_match</span><span class='op'>)</span>
   <span class='op'>)</span> |&gt; 
   <span class='fu'><a href='https://tidyr.tidyverse.org/reference/hoist.html'>unnest_wider</a></span><span class='op'>(</span><span class='va'>diagnostics</span><span class='op'>)</span>
-<span class='va'>diagnostics</span>
-<span class='co'>#&gt; # A tibble: 4 × 5</span>
-<span class='co'>#&gt;   result src       calib               mse    bss</span>
-<span class='co'>#&gt;   &lt;chr&gt;  &lt;chr&gt;     &lt;list&gt;            &lt;dbl&gt;  &lt;dbl&gt;</span>
-<span class='co'>#&gt; 1 d      fotmob    &lt;tibble [10 × 5]&gt; 0.170 0.0268</span>
-<span class='co'>#&gt; 2 d      understat &lt;tibble [10 × 5]&gt; 0.166 0.0466</span>
-<span class='co'>#&gt; 3 w      fotmob    &lt;tibble [17 × 5]&gt; 0.173 0.270 </span>
-<span class='co'>#&gt; 4 w      understat &lt;tibble [17 × 5]&gt; 0.162 0.317</span>
+<span class='va'>diagnostics</span> |&gt; <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='op'>-</span><span class='va'>calib</span><span class='op'>)</span>
+<span class='co'>#&gt; # A tibble: 4 × 4</span>
+<span class='co'>#&gt;   result src         mse    bss</span>
+<span class='co'>#&gt;   &lt;chr&gt;  &lt;chr&gt;     &lt;dbl&gt;  &lt;dbl&gt;</span>
+<span class='co'>#&gt; 1 d      fotmob    0.170 0.0268</span>
+<span class='co'>#&gt; 2 d      understat 0.166 0.0466</span>
+<span class='co'>#&gt; 3 w      fotmob    0.173 0.270 </span>
+<span class='co'>#&gt; 4 w      understat 0.162 0.317</span>
 </code></pre>
 </div>
 </div>
@@ -2949,31 +2868,34 @@ mean squared error (RMSE)</a> (where lower is “better”) and <a
 href="https://en.wikipedia.org/wiki/Coefficient_of_determination">R
 squared</a> (where higher is “better”) to compare the models.</p>
 <div class="layout-chunk" data-layout="l-body">
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>compute_rmse <span class="ot">&lt;-</span> <span class="cf">function</span>(truth, estimate) {</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sqrt</span>(<span class="fu">mean</span>((truth <span class="sc">-</span> estimate)<span class="sc">^</span><span class="dv">2</span>))</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>diagnose_xpts_by_match <span class="ot">&lt;-</span> <span class="cf">function</span>(src) {</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  col <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">&#39;xpts_%s&#39;</span>, src)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  fit <span class="ot">&lt;-</span> <span class="fu">lm</span>(xpts_by_match<span class="sc">$</span>pts <span class="sc">~</span> xpts_by_match[[col]])</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit)</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">rmse =</span> <span class="fu">compute_rmse</span>(xpts_by_match<span class="sc">$</span>pts, pred),</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">r2 =</span> <span class="fu">summary</span>(fit)r.squared</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="st">&#39;understat&#39;</span>, <span class="st">&#39;fotmob&#39;</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_names</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">map_dfr</span>(diagnose_xpts_by_match, <span class="at">.id =</span> <span class="st">&#39;src&#39;</span>)</span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 3</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   src        rmse    r2</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;     &lt;dbl&gt; &lt;dbl&gt;</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 understat  1.06 0.374</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 fotmob     1.10 0.322</span></span></code></pre></div>
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>compute_rmse</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>truth</span>, <span class='va'>estimate</span><span class='op'>)</span> <span class='op'>{</span>
+  <span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>sqrt</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/mean.html'>mean</a></span><span class='op'>(</span><span class='op'>(</span><span class='va'>truth</span> <span class='op'>-</span> <span class='va'>estimate</span><span class='op'>)</span><span class='op'>^</span><span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>
+<span class='op'>}</span>
+
+<span class='va'>diagnose_xpts_by_match</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>src</span><span class='op'>)</span> <span class='op'>{</span>
+  
+  <span class='va'>col</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sprintf.html'>sprintf</a></span><span class='op'>(</span><span class='st'>'xpts_%s'</span>, <span class='va'>src</span><span class='op'>)</span>
+  <span class='va'>fit</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/lm.html'>lm</a></span><span class='op'>(</span><span class='va'>xpts_by_match</span><span class='op'>$</span><span class='va'>pts</span> <span class='op'>~</span> <span class='va'>xpts_by_match</span><span class='op'>[[</span><span class='va'>col</span><span class='op'>]</span><span class='op'>]</span><span class='op'>)</span>
+  
+  <span class='va'>pred</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span><span class='op'>(</span><span class='va'>fit</span><span class='op'>)</span>
+  
+  <span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
+    rmse <span class='op'>=</span> <span class='fu'>compute_rmse</span><span class='op'>(</span><span class='va'>xpts_by_match</span><span class='op'>$</span><span class='va'>pts</span>, <span class='va'>pred</span><span class='op'>)</span>,
+    r2 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>fit</span><span class='op'>)</span><span class='op'>$</span><span class='va'>r.squared</span>
+  <span class='op'>)</span>
+<span class='op'>}</span>
+
+<span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'understat'</span>, <span class='st'>'fotmob'</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://purrr.tidyverse.org/reference/set_names.html'>set_names</a></span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://purrr.tidyverse.org/reference/map.html'>map_dfr</a></span><span class='op'>(</span><span class='va'>diagnose_xpts_by_match</span>, .id <span class='op'>=</span> <span class='st'>'src'</span><span class='op'>)</span>
+<span class='co'>#&gt; # A tibble: 2 × 3</span>
+<span class='co'>#&gt;   src        rmse    r2</span>
+<span class='co'>#&gt;   &lt;chr&gt;     &lt;dbl&gt; &lt;dbl&gt;</span>
+<span class='co'>#&gt; 1 understat  1.06 0.374</span>
+<span class='co'>#&gt; 2 fotmob     1.10 0.322</span>
+</code></pre>
+</div>
 </div>
 <p>The understat model proves to be better by both metrics, having a
 lower RMSE and higher R squared than the fotmob model.</p>
@@ -2992,14 +2914,14 @@ convert the predicted probabilities to expected points.</p>
   
   <span class='va'>col_win</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sprintf.html'>sprintf</a></span><span class='op'>(</span><span class='st'>'prob_win_%s'</span>, <span class='va'>src</span><span class='op'>)</span>
   <span class='va'>col_draw</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/sprintf.html'>sprintf</a></span><span class='op'>(</span><span class='st'>'prob_draw_%s'</span>, <span class='va'>src</span><span class='op'>)</span>
-  <span class='va'>fit</span> <span class='op'>&lt;-</span> <span class='fu'>nnet</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/pkg/nnet/man/multinom.html'>multinom</a></span><span class='op'>(</span>
+  <span class='va'>fit</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/nnet/man/multinom.html'>multinom</a></span><span class='op'>(</span>
     <span class='va'>xpts_by_match</span><span class='op'>$</span><span class='va'>result</span> <span class='op'>~</span> <span class='va'>xpts_by_match</span><span class='op'>[[</span><span class='va'>col_win</span><span class='op'>]</span><span class='op'>]</span> <span class='op'>+</span> <span class='va'>xpts_by_match</span><span class='op'>[[</span><span class='va'>col_draw</span><span class='op'>]</span><span class='op'>]</span>,
     trace <span class='op'>=</span> <span class='cn'>FALSE</span>
   <span class='op'>)</span>
-  <span class='va'>probs</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span><span class='op'>(</span><span class='va'>fit</span>, type <span class='op'>=</span> <span class='st'>'probs'</span><span class='op'>)</span> |&gt; <span class='fu'>tibble</span><span class='fu'>::</span><span class='fu'><a href='https://tibble.tidyverse.org/reference/as_tibble.html'>as_tibble</a></span><span class='op'>(</span><span class='op'>)</span>
+  <span class='va'>probs</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span><span class='op'>(</span><span class='va'>fit</span>, type <span class='op'>=</span> <span class='st'>'probs'</span><span class='op'>)</span> |&gt; <span class='fu'><a href='https://tibble.tidyverse.org/reference/as_tibble.html'>as_tibble</a></span><span class='op'>(</span><span class='op'>)</span>
   <span class='va'>preds</span> <span class='op'>&lt;-</span> <span class='fl'>3</span> <span class='op'>*</span> <span class='va'>probs</span><span class='op'>$</span><span class='va'>w</span> <span class='op'>+</span> <span class='fl'>1</span> <span class='op'>*</span> <span class='va'>probs</span><span class='op'>$</span><span class='va'>d</span>
   
-  <span class='fu'>tibble</span><span class='fu'>::</span><span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
     rmse <span class='op'>=</span> <span class='fu'>compute_rmse</span><span class='op'>(</span><span class='va'>xpts_by_match</span><span class='op'>$</span><span class='va'>pts</span>, <span class='va'>preds</span><span class='op'>)</span>,
     r2 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/stats/cor.html'>cor</a></span><span class='op'>(</span><span class='va'>xpts_by_match</span><span class='op'>$</span><span class='va'>pts</span>, <span class='va'>preds</span><span class='op'>)</span><span class='op'>^</span><span class='fl'>2</span>
   <span class='op'>)</span>
@@ -3037,7 +2959,6 @@ role="doc-noteref"><sup>11</sup></a></p>
     <span class='fu'><a href='https://dplyr.tidyverse.org/reference/across.html'>across</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>pts</span>, <span class='fu'><a href='https://tidyselect.r-lib.org/reference/starts_with.html'>starts_with</a></span><span class='op'>(</span><span class='st'>'xpts'</span><span class='op'>)</span><span class='op'>)</span>, <span class='va'>sum</span><span class='op'>)</span>
   <span class='op'>)</span> |&gt; 
   <span class='fu'><a href='https://dplyr.tidyverse.org/reference/group_by.html'>ungroup</a></span><span class='op'>(</span><span class='op'>)</span>
-<span class='va'>xpts_by_season</span>
 
 <span class='va'>diagnose_xpts_by_season</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>src</span><span class='op'>)</span> <span class='op'>{</span>
   
@@ -3046,7 +2967,7 @@ role="doc-noteref"><sup>11</sup></a></p>
   
   <span class='va'>preds</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span><span class='op'>(</span><span class='va'>fit</span><span class='op'>)</span>
   
-  <span class='fu'>tibble</span><span class='fu'>::</span><span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
+  <span class='fu'><a href='https://tibble.tidyverse.org/reference/tibble.html'>tibble</a></span><span class='op'>(</span>
     rmse <span class='op'>=</span> <span class='fu'>compute_rmse</span><span class='op'>(</span><span class='va'>xpts_by_match</span><span class='op'>$</span><span class='va'>pts</span>, <span class='va'>preds</span><span class='op'>)</span>,
     r2 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>fit</span><span class='op'>)</span><span class='op'>$</span><span class='va'>r.squared</span>
   <span class='op'>)</span>
@@ -3095,7 +3016,7 @@ data-cites="TonyElHabr">@TonyElHabr</span>)
 leverage the match outcome probabilities to simulate season-ending
 points in a more rigorous fashion that done in the last section
 above.</p>
-<div class="sourceCode" id="cb2"><pre
+<div class="sourceCode" id="cb1"><pre
 class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
 <section class="footnotes footnotes-end-of-document"
 role="doc-endnotes">
