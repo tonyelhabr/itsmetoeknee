@@ -45,7 +45,7 @@ I'll be picking up where I left off in [my last post](https://tonyelhabr.rbind.i
 
 1.  We'll compare how well season-level expected goal difference (xGD), season-level xPts, and aggregated match-level xPts predict season-long points for a given team.
 
-2.  We'll use the match-level probabilites to answer the question "Which teams had the most unlikely placings in the table given the quality of all their shots across the season?"
+2.  We'll use the match-level probabilites to answer the questions "Which teams had the most unlikely placings in the table given the quality of all their shots across the season?" and "How unlikely were such placings?"
 
 ## Analysis
 
@@ -581,16 +581,29 @@ xgd_rank_fit <- lm(actual_rank ~ xgd, table_with_xgd)
 #| label: xgd_rank_preds
 #| eval: false
 #| include: false
-xgd_rank_preds <- table_with_xgd |> 
+table_with_xgd_xpts <- table_with_xgd |> 
+  inner_join(
+    all_raw_understat_xpts_xgd_by_season |> select(season, team, xpts),
+    by = c('season', 'team')
+  )
+
+library(broom)
+xgd_rank_preds <- xgd_rank_fit |> 
+  augment_columns(table_with_xgd_xpts) |> 
   transmute(
     season,
     team,
     actual_rank,
     actual_pts,
-    .pred = predict(xgd_rank_fit),
-    .resid = .pred - actual_rank,
-    xgd_unexpected_rank = row_number(desc(.resid)),
-    inv_xgd_unexpected_rank = row_number(.resid)
+    xgd,
+    xpts,
+    .pred = .fitted,
+    .resid,
+    .std.resid,
+    xgd_unexpected_rank = row_number(.resid),
+    inv_xgd_unexpected_rank = row_number(desc(.resid)),
+    xgd_tail_prop = pnorm(.std.resid),
+    inv_xgd_tail_prop = pnorm(desc(.std.resid))
   )
 ```
 
@@ -601,13 +614,13 @@ xgd_rank_preds <- table_with_xgd |>
 slice_top5_xgd_resids <- function(which) {
   
   if (which == 'over') {
-    slice_f <- slice_max
-    op <- -1
+    slice_f <- slice_min
+    op <- 1
     col <- 'xgd_unexpected_rank'
     col_sim <- 'cumu_prop'
   } else {
-    slice_f <- slice_min
-    op <- 1
+    slice_f <- slice_max
+    op <- -1
     col <- 'inv_xgd_unexpected_rank'
     col_sim <- 'inv_cumu_prop'
   }
@@ -671,7 +684,7 @@ tb_xgd_unexpected
 
 gtsave(
   tb_xgd_unexpected,
-  vwidth = 600,
+  vwidth = 650,
   # zoom = 2,
   filename = '_post/epl-xpts-simulation-2/xgd_unexpected.png'
 )
@@ -739,7 +752,7 @@ tb_matching_unexpected
 
 gtsave(
   tb_matching_unexpected,
-  vwidth = 600,
+  vwidth = 650,
   # zoom = 2,
   filename = '_post/epl-xpts-simulation-2/xgd_matching_unexpected.png'
 )
@@ -751,9 +764,54 @@ We can also look at this from the opposite perspective. Where do the top five ov
 
 As shown by the prior table, three team-season pairs in each group appear in the top five when ranked by the likelihood resulting from match probabilities or by the season-ending xGD regression. Overall, we might say that the two methods produce similar results.
 
-Nonetheless, we might argue in favor of the approach based on simulations using match probabilities. It can be used to tell us quantitatively how likely a team's placing was.[^5] (See the "Prob." column in the first table.) The regression approach can also be used to quantify likelihood; however, the approach is more brittle, dependent on statistical assumptions.
+```{r}
+# inv_xgd_unexpected_rank
+xgd_rank_preds |> 
+  transmute(
+    season,
+    team,
+    actual_rank,
+    actual_pts,
+    xgd,
+    xpts,
+    xgd_unexpected_rank = inv_xgd_unexpected_rank,
+    xgd_tail_prop = inv_xgd_tail_prop
+  ) |> 
+  filter(
+    xgd_unexpected_rank <= 80
+  ) |> 
+  inner_join(
+    understat_sim_placings_with_actual_ranks |> 
+      filter(xrank == actual_rank) |> 
+      mutate(tail_prop = .data[[col_sim]]) |> 
+      transmute(
+        season, 
+        team, 
+        tail_prop = inv_cumu_prop ,
+        unexpected_rank = row_number(inv_cumu_prop)
+      ),
+    by = c('season', 'team')
+  ) |> 
+  mutate(
+    diff_rank = xgd_unexpected_rank - unexpected_rank,
+    diff_prop = xgd_tail_prop - tail_prop
+  ) |> 
+  filter(
+    unexpected_rank < xgd_unexpected_rank,
+  ) |> 
+  slice_max(abs(diff_prop), n = 5, with_ties = FALSE) |> 
+  arrange(desc(abs(diff_prop)))
+```
 
-[^5]: We'd convert the standard residual of the regression to a tail probability. With R, one could use `pnrom()` with the standardized residual.
+However, there are some big differences between the two methods once we look outside the top five or so biggest over- and under- achievers. For example, in terms of over-achieving, Arsenal's fifth place finish 2018/19 season is given just a 8.9% chance of occurring given their season-long xGD, ranking them at 16th among 80 team-season pairs considered to have over-achieved from 2014/15.[^5][^6] On the other hand, the match-level simulation approach marks the likelihood of them finishing fourth as 31.9% (38th of 180). The season-long xGD model essentially sees that they finished with an xGD of 7.5---less than any other fifth place finisher from 2014/15 - 2021/22---and penalizes them, while the match-level approach contextualizes them among their competition more robustly.
+
+[^5]: Any team with a residual less than 0 is considered to have over-achieved. Note that there are 160 team-season pairs in the data set, so a split of 80 and 80 teams classified as over- and under-achieving is expected, since a linear regression model cannot perfectly predict a team's placing with just a singular feature.
+
+[^6]: To quantify the likelihood of a team's placing with the simple regresion, we convert the standard residual of the regression to a tail probability.
+
+As another example, Manchester United's under-achieving sixth place finish in the 2016/17 is given a fairly reasonable 37.3% chance (66th of 80 under-achieving teams) of occurring given their season-long 25.9 xGD, most for any sixth place team in the data set. On the other hand, the match-level simulation approach sees their sixth place finish as more unlikely, at just a 15.4% probability (15th of 80). While one might have their own opinion regarding which approach seems more "correct", I'd say that likelihoods from the simulation approach seem more appropriate for extreme examples.
+
+Overall, both approaches seem reasonable to use to answer the question "Which teams had the most unlikely placings in the table given the quality of all their shots across the season?" But the approach based on simulations using match probabilities seems more appropriate to use to quantify just how unlikely a team's final placing was. While the simpler regression approach can also be used to quantify likelihood, it is more brittle, dependent on statistical assumptions. Additionally, while it contextualizes a team's xGD with historical xGD, it does not contextualize a team's xGD among the other teams in the league, meaning that it does not do a good job with capturing likelihood when there are strong xGD over- and under-performances among a set of teams in a given season.
 
 ## Conclusion
 
