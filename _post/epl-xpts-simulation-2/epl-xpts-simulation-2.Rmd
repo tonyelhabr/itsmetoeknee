@@ -315,6 +315,68 @@ diagnose_season_feature(understat_sim_placings_agg, 'xpts')
 
 Interestingly, the RMSE and R squared values are almost identical to those for the season-long xPts. Perhaps this is not too surprising---match-level outcome probabilities simulated and averaged to arrive at a singular estimate of season-long xPts should give us something very close to just computing season-long xPts directly.
 
+While the null result may be discouraging, the simulations are useful in and of themselves. They can be used to understand the distribution of outcomes for team in a given season, as seen in the table below.[^3]
+
+[^3]: Table code is not shown since it's not particularly instructive.
+
+![](sim_placings.png)
+
+We can see that Leicester, Wolves, and Newcastle all placed at the uppper end of their simulated placings, indicating that they over-achieved relative to expectation; on the other hand, Crystal Palace, Brentford, and Leeds placed on the lower end of the distribution of placings, indicating that they under-achieved.
+
+In fact, we can go beyond simple observational judgement of whether teams over- and under-achieved---we can use the relative proportion of simulations where a team ends up at a given placing (or "rank") in the standings to quantify just how unexpected actual end-of-season placings were.
+
+### 2. Identifying un-expected placings
+
+First, we need to step back and retrieve data on the actual placings. We could theoretically calculate this from the shot data we already have. However, the logic for handling own goals is a little complicated. We're probably better off using `worldfootballR::understat_league_match_results()`---which returns goals at the match-level---to calculate the table. [^4]
+
+[^4]: Maybe even more simply, we could use `worldfootballR::fb_season_team_stats(..., stat_type = 'league_table')`, although we'd need to add a column for team names for [FBref](https://fbref.com/en/) to our team mapping to corroborate team names.
+
+```{r}
+#| label: table
+#| eval: false
+match_results <- 2014:2021 |> 
+  map_dfr(~understat_league_match_results('EPL', .x)) |> 
+  as_tibble()
+
+init_table <- match_results |> 
+  transmute(
+    match_id,
+    across(season, ~str_replace(.x, '\\/20', '/')),
+    date = strptime(datetime, '%Y-%m-%d %H:%M:%S', tz = 'UTC') |> date(),
+    home_team,
+    home_goals,
+    away_team,
+    away_goals
+  )
+
+table <- bind_rows(
+  init_table |>
+    mutate(is_home = TRUE) |> 
+    rename_home_away_teams() |> 
+    select(season, team, opponent, goals = home_goals, opponent_goals = away_goals),
+  init_table |> 
+    mutate(is_home = FALSE) |> 
+    rename_home_away_teams() |> 
+    select(season, team, opponent, goals = away_goals,opponent_goals = home_goals)
+) |> 
+  mutate(
+    pts = case_when(
+      goals > opponent_goals ~ 3L,
+      goals < opponent_goals ~ 0L,
+      TRUE ~ 1L
+    )
+  ) |> 
+  group_by(season, team) |> 
+  summarize(across(c(goals, opponent_goals, pts), sum)) |> 
+  ungroup() |> 
+  mutate(gd = goals - opponent_goals) |> 
+  arrange(season, desc(pts), desc(gd)) |> 
+  group_by(season) |> 
+  mutate(rank = row_number(desc(pts))) |> 
+  ungroup() |> 
+  arrange(season, rank)
+```
+
 ```{r}
 #| label: tb_sim_placings
 #| eval: false
@@ -414,11 +476,18 @@ add_common_gt_styling <- function(tb) {
   
   plot_fn_spark <- function(input_data) {
     
+    actual_rank <- 21 - unique(input_data$rank)
     plot_out <- ggplot(input_data) +
       theme_void() +
       geom_col(
         aes(x = .data$xrank, y = .data$n),
         fill = 'orange'
+      ) +
+      geom_vline(
+        aes(xintercept = actual_rank),
+        linetype = 1,
+        color = 'black',
+        size = 0.25
       ) +
       coord_cartesian(
         clip = 'off',
@@ -471,13 +540,13 @@ tb_sim_placings <- understat_sim_placings |>
     across(xrank, ~21 - .x),
     n
   ) |> 
-  nest(data = -c(season, team)) |> 
-  add_logo_url() |> 
   inner_join(
     table |> 
-      select(season, team, actual_pts = pts, actual_rank = rank),
+      transmute(season, team, actual_pts = pts, actual_rank = rank, rank),
     by = c('season', 'team')
   ) |> 
+  nest(data = c(xrank, rank, n)) |> 
+  add_logo_url() |> 
   # inner_join(
   #   understat_sim_placings_agg |> select(season, team, xpts),
   #   by = c('season', 'team')
@@ -509,7 +578,7 @@ tb_sim_placings <- understat_sim_placings |>
   # ) |> 
   tab_footnote(
     locations = cells_column_labels(data),
-    footnote = 'Given the team\'s shot-by-shot xG for the entire season, the frequency at which the team finishes at a given spot in the final table in 10k simulations. Further right indicates higher in the table, closer to rank one; further left indicates lower in the table, closer to relegation.'
+    footnote = 'Given the team\'s shot-by-shot xG for the entire season, the frequency at which the team finishes at a given spot in the final table in 10k simulations. Black vertical line indicates actual placing. Further right indicates higher in the table, closer to rank one; further left indicates lower in the table, closer to relegation.'
   ) |> 
   tab_header(
     title = md('**Actual and simulated 2021/22 standings**')
@@ -542,65 +611,7 @@ gtsave(
 )
 ```
 
-While the null result may be discouraging, the simulations are useful in and of themselves. They can be used to understand the distribution of outcomes for team in a given season, as seen in the table below.
-
-![](sim_placings.png)
-
-In fact, we can use the the relative proportion of simulations in which a given team ends up at a given placing (or "rank") to identify which actual end-of-season placings were the most unexpected.
-
-### 2. Identifying un-expected placings
-
-First, we need to step back and retrieve data on the actual placings. We could theoretically calculate this from the shot data we already have. However, the logic for handling own goals is a little complicated. We're probably better off using `worldfootballR::understat_league_match_results()`---which returns goals at the match-level---to calculate the table. [^3]
-
-[^3]: Maybe even more simply, we could use `worldfootballR::fb_season_team_stats(..., stat_type = 'league_table')`, although we'd need to add a column for team names for [FBref](https://fbref.com/en/) to our team mapping to corroborate team names.
-
-```{r}
-#| label: table
-#| eval: false
-match_results <- 2014:2021 |> 
-  map_dfr(~understat_league_match_results('EPL', .x)) |> 
-  as_tibble()
-
-init_table <- match_results |> 
-  transmute(
-    match_id,
-    across(season, ~str_replace(.x, '\\/20', '/')),
-    date = strptime(datetime, '%Y-%m-%d %H:%M:%S', tz = 'UTC') |> date(),
-    home_team,
-    home_goals,
-    away_team,
-    away_goals
-  )
-
-table <- bind_rows(
-  init_table |>
-    mutate(is_home = TRUE) |> 
-    rename_home_away_teams() |> 
-    select(season, team, opponent, goals = home_goals, opponent_goals = away_goals),
-  init_table |> 
-    mutate(is_home = FALSE) |> 
-    rename_home_away_teams() |> 
-    select(season, team, opponent, goals = away_goals,opponent_goals = home_goals)
-) |> 
-  mutate(
-    pts = case_when(
-      goals > opponent_goals ~ 3L,
-      goals < opponent_goals ~ 0L,
-      TRUE ~ 1L
-    )
-  ) |> 
-  group_by(season, team) |> 
-  summarize(across(c(goals, opponent_goals, pts), sum)) |> 
-  ungroup() |> 
-  mutate(gd = goals - opponent_goals) |> 
-  arrange(season, desc(pts), desc(gd)) |> 
-  group_by(season) |> 
-  mutate(rank = row_number(desc(pts))) |> 
-  ungroup() |> 
-  arrange(season, rank)
-```
-
-Next, we join the `table` of end-of-season placements (`actual_rank`) to the simulation results that are ***not*** aggregated to a single `xrank` per team (`understat_sim_placings` instead of `understat_sim_placings_agg`).
+Next, we join the `table` of end-of-season placements (`actual_rank`) to the simulation results that describe the frequency with which a given team places at a given rank (`xrank`).
 
 ```{r}
 #| label: understat_sim_placings_with_actual_ranks
@@ -617,9 +628,7 @@ understat_sim_placings_with_actual_ranks <- understat_sim_placings |>
   )
 ```
 
-Finally, to identify over-achieving teams, we find the teams that had the lowest cumulative probability of placing at their actual placing or better; and to identify under-achieving teams, we find the teams with the lowest cumulative probability of placing at their actual placing or worse.[^4]
-
-[^4]: Table code is not shown since it's not particularly instructive.
+Finally, to identify over-achieving teams, we find the teams that had the lowest cumulative probability of placing at their actual placing or better; and to identify under-achieving teams, we find the teams with the lowest cumulative probability of placing at their actual placing or worse.
 
 ```{r}
 #| label: unexpected_understat_sim_placings
