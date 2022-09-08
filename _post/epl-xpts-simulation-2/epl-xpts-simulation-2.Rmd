@@ -313,9 +313,240 @@ diagnose_season_feature(understat_sim_placings_agg, 'xpts')
 #> 1  7.14 0.839
 ```
 
-Interestingly, the RMSE and R squared values are almost identical to those for the season-long xPts. I think this is not too surprising---match-level outcome probabilities simulated to get season-long xPts should give us something very close to just computing season-long xPts directly.
+Interestingly, the RMSE and R squared values are almost identical to those for the season-long xPts. Perhaps this is not too surprising---match-level outcome probabilities simulated and averaged to arrive at a singular estimate of season-long xPts should give us something very close to just computing season-long xPts directly.
 
-All that work just to arrive at a null result was not for nothing---we may still leverage the match-level probabilities in a useful manner for season-long insights. In particular we can use the the relative proportion of simulations in which a given team ends up at a given rank to identify which actual end-of-season placings were the most unexpected.
+```{r}
+#| label: tb_sim_placings
+#| eval: false
+#| include: false
+library(gt)
+library(ggplot2)
+library(grDevices)
+library(gtExtras)
+
+.gt_theme_538 <- function(data, ...) {
+  data |>
+    opt_table_font(
+      font = list(
+        google_font('Karla'),
+        default_fonts()
+      )
+    ) |>
+    tab_style(
+      style = cell_borders(
+        sides = 'bottom', color = 'transparent', weight = px(3)
+      ),
+      locations = cells_column_labels(
+        columns = everything()
+      )
+    ) |> 
+    tab_options(
+      column_labels.background.color = 'white',
+      heading.border.bottom.style = 'none',
+      table.border.top.width = px(3),
+      table.border.top.style = 'none',
+      column_labels.font.weight = 'bold',
+      column_labels.border.top.style = 'none',
+      column_labels.border.bottom.width = px(2),
+      column_labels.border.bottom.color = 'black',
+      stub.border.color = 'white',
+      stub.border.width = px(0),
+      data_row.padding = px(0),
+      source_notes.font.size = 10,
+      source_notes.border.lr.style = 'none',
+      table.font.size = 14,
+      heading.title.font.size = 16,
+      heading.subtitle.font.size = 14,
+      heading.align = 'left',
+      heading.title.font.weight = 'italic',
+      footnotes.font.size = 10,
+      footnotes.padding = px(0),
+      row_group.padding = px(3),
+      row_group.border.bottom.color = 'black',
+      table.border.bottom.style = 'none',
+      ...
+    )
+}
+
+add_logo_url <- function(df) {
+  df |> 
+    inner_join(
+      team_mapping |> select(team_understat, url_logo_espn),
+      by = c('team' = 'team_understat')
+    ) |> 
+    relocate(url_logo_espn, .before = team) |> 
+    relocate(season, .after = team)
+}
+
+add_common_gt_styling <- function(tb) {
+  tb |> 
+    text_transform(
+      locations = cells_body(columns = url_logo_espn),
+      fn = function(x) {
+        web_image(
+          url = x,
+          height = 25
+        )
+      }
+    ) |>
+    tab_style(
+      locations = cells_column_labels(),
+      style = list(
+        'padding-bottom: 0px; padding-top: 0px; padding-left: 5px; padding-right: 5px'
+      )
+    )
+}
+
+## Inspiration: https://github.com/jthomasmock/gtExtras/blob/master/R/gt_plt_dist.R
+.gt_plt_col <- function(gt_object, column, fig_dim = c(5, 30)) {
+  
+  col_bare <- select(gt_object[['_data']], {{ column }}) %>% names()
+  
+  # segment data with bare string column name
+  list_data_in <- gt_index(gt_object, col_bare, as_vector = TRUE)
+  
+  data_in <- list_data_in |> map(~pluck(.x, 'xrank')) |> unlist()
+  total_rng <- extendrange(
+    data_in, 
+    r = range(data_in, na.rm = TRUE), 
+    f = 0.02
+  )
+  
+  plot_fn_spark <- function(input_data) {
+    
+    plot_out <- ggplot(input_data) +
+      theme_void() +
+      geom_col(
+        aes(x = .data$xrank, y = .data$n),
+        fill = 'orange'
+      ) +
+      coord_cartesian(
+        clip = 'off',
+        xlim = extendrange(
+          data_in, 
+          r = range(data_in, na.rm = TRUE), 
+          f = 0.02
+        )
+      ) +
+      scale_x_continuous(
+        limits = c(0, 21),
+        expand = expansion(mult = 0.2)
+      )
+    
+    out_name <- file.path(
+      tempfile(pattern = 'file', tmpdir = tempdir(), fileext = '.svg')
+    )
+    
+    ggsave(
+      out_name,
+      plot = plot_out,
+      dpi = 25.4,
+      height = fig_dim[1],
+      width = fig_dim[2],
+      units = 'mm'
+    )
+    
+    img_plot <- out_name %>%
+      readLines() %>%
+      paste0(collapse = '') %>%
+      html()
+    
+    on.exit(file.remove(out_name), add=TRUE)
+    
+    img_plot
+    
+  }
+  
+  text_transform(
+    gt_object,
+    locations = cells_body(columns = {{ column }}),
+    fn = function(x) { map(list_data_in, plot_fn_spark) }
+  )
+}
+
+tb_sim_placings <- understat_sim_placings |> 
+  transmute(
+    season,
+    team,
+    across(xrank, ~21 - .x),
+    n
+  ) |> 
+  nest(data = -c(season, team)) |> 
+  add_logo_url() |> 
+  inner_join(
+    table |> 
+      select(season, team, actual_pts = pts, actual_rank = rank),
+    by = c('season', 'team')
+  ) |> 
+  # inner_join(
+  #   understat_sim_placings_agg |> select(season, team, xpts),
+  #   by = c('season', 'team')
+  # ) |> 
+  filter(season == '2021/22') |> 
+  select(
+    url_logo_espn,
+    team,
+    actual_pts,
+    actual_rank,
+    # xpts,
+    data
+  ) |> 
+  arrange(actual_rank) |> 
+  gt() |>
+  .gt_theme_538() |> 
+  .gt_plt_col(data) |> 
+  cols_label(
+    url_logo_espn = ' ',
+    team = 'Team',
+    actual_pts = 'Points',
+    actual_rank = 'Placing',
+    # xpts = 'Avg. Simulated Points',
+    data = 'Simulated Placings'
+  ) |> 
+  # fmt_number(
+  #   columns = xpts,
+  #   decimals = 1
+  # ) |> 
+  tab_footnote(
+    locations = cells_column_labels(data),
+    footnote = 'Given the team\'s shot-by-shot xG for the entire season, the frequency at which the team finishes at a given spot in the final table in 10k simulations. Further right indicates higher in the table, closer to rank one; further left indicates lower in the table, closer to relegation.'
+  ) |> 
+  tab_header(
+    title = md('**Actual and simulated 2021/22 standings**')
+  ) |> 
+  text_transform(
+    locations = cells_body(columns = url_logo_espn),
+    fn = function(x) {
+      web_image(
+        url = x,
+        height = 25
+      )
+    }
+  ) |>
+  tab_style(
+    locations = cells_column_labels(),
+    style = list(
+      'padding-bottom: 0px; padding-top: 0px; padding-left: 5px; padding-right: 5px'
+    )
+  ) |> 
+  tab_source_note(
+    source_note = md('**Data**: understat, 2021/22 English Premier League')
+  )
+tb_sim_placings
+
+gtsave(
+  tb_sim_placings,
+  vwidth = 500,
+  # zoom = 2,
+  filename = '_post/epl-xpts-simulation-2/sim_placings.png'
+)
+```
+
+While the null result may be discouraging, the simulations are useful in and of themselves. They can be used to understand the distribution of outcomes for team in a given season, as seen in the table below.
+
+![](sim_placings.png)
+
+In fact, we can use the the relative proportion of simulations in which a given team ends up at a given placing (or "rank") to identify which actual end-of-season placings were the most unexpected.
 
 ### 2. Identifying un-expected placings
 
@@ -426,89 +657,23 @@ unexpected_understat_sim_placings <- c('over', 'under') |>
 #| label: unexpected_understat_sim_placings-gt
 #| eval: false
 #| include: false
-library(gt)
-
-.gt_theme_538 <- function(data, ...) {
-  data |>
-    opt_table_font(
-      font = list(
-        google_font('Karla'),
-        default_fonts()
-      )
-    ) |>
-    tab_style(
-      style = cell_borders(
-        sides = 'bottom', color = 'transparent', weight = px(3)
-      ),
-      locations = cells_column_labels(
-        columns = everything()
-      )
-    ) |> 
-    tab_options(
-      column_labels.background.color = 'white',
-      heading.border.bottom.style = 'none',
-      table.border.top.width = px(3),
-      table.border.top.style = 'none',
-      column_labels.font.weight = 'normal',
-      column_labels.border.top.style = 'none',
-      column_labels.border.bottom.width = px(2),
-      column_labels.border.bottom.color = 'black',
-      stub.border.color = 'white',
-      stub.border.width = px(0),
-      data_row.padding = px(0),
-      source_notes.font.size = 10,
-      source_notes.border.lr.style = 'none',
-      table.font.size = 14,
-      heading.title.font.size = 16,
-      heading.subtitle.font.size = 14,
-      heading.align = 'left',
-      heading.title.font.weight = 'italic',
-      footnotes.font.size = 10,
-      footnotes.padding = px(0),
-      row_group.padding = px(3),
-      row_group.border.bottom.color = 'black',
-      table.border.bottom.style = 'none',
-      ...
-    )
-}
-
-prep_tb <- function(df) {
+prep_unexpected_tb <- function(df) {
   df |> 
-    inner_join(
-      team_mapping |> select(team_understat, url_logo_espn),
-      by = c('team' = 'team_understat')
-    ) |> 
-    relocate(url_logo_espn, .before = team) |> 
-    relocate(season, .after = team) |> 
+    add_logo_url() |> 
     mutate(
       across(which, ~ifelse(.x == 'over', 'Over-Performance', 'Under-Performance'))
     )
 }
 
-common_gt_styling <- function(tb) {
+add_common_source_note <- function(tb) {
   tb |> 
-    text_transform(
-      locations = cells_body(columns = url_logo_espn),
-      fn = function(x) {
-        web_image(
-          url = x,
-          height = 25
-        )
-      }
-    ) |>
-    tab_style(
-      locations = cells_column_labels(),
-      style = list(
-        'padding-bottom: 0px; padding-top: 0px; padding-left: 5px; padding-right: 5px'
-      )
-    ) |> 
     tab_source_note(
       source_note = md('**Data**: understat, 2014/15 - 2021/22 English Premier League')
     )
 }
 
 tb <- unexpected_understat_sim_placings |> 
-  prep_tb() |> 
+  prep_unexpected_tb() |> 
   select(
     which,
     unexpected_rank,
@@ -522,7 +687,8 @@ tb <- unexpected_understat_sim_placings |>
   group_by(which) |> 
   gt() |> 
   .gt_theme_538() |> 
-  common_gt_styling() |> 
+  add_common_gt_styling() |> 
+  add_common_source_note() |> 
   cols_label(
     unexpected_rank = ' ',
     url_logo_espn = ' ',
@@ -558,7 +724,7 @@ gtsave(
 
 This table certainly passes the eye test. Brighton's sixteenth place finish in the 2020/21 season was discussed ad nauseum in the analytics sphere. Brighton under-performed historically given their massively positive xGD.
 
-On the other end of the spectrum, it's not hyperbole to say that Manchester United's second place finish in the 2017/18 season was an under-achievement. Although they ended up with the third best goal differential that season, they were closely followed by several teams. And their xGD was sixth in the league that season.
+On the other end of the spectrum, it's not hyperbole to say that Manchester United's second place finish in the 2017/18 season was an over-achievement. Although they ended up with the third best goal differential that season, they were closely followed by several teams. And their xGD was sixth in the league that season.
 
 #### Comparison with a simpler approach
 
@@ -651,7 +817,7 @@ slice_top5_xgd_resids <- function(which) {
 tb_xgd_unexpected <- c('over', 'under') |> 
   set_names() |> 
   map_dfr(slice_top5_xgd_resids, .id = 'which') |> 
-  prep_tb() |> 
+  prep_unexpected_tb() |> 
   select(
     which,
     url_logo_espn,
@@ -665,7 +831,8 @@ tb_xgd_unexpected <- c('over', 'under') |>
   group_by(which) |> 
   gt() |> 
   .gt_theme_538() |> 
-  common_gt_styling() |> 
+  add_common_gt_styling() |> 
+  add_common_source_note() |> 
   cols_label(
     unexpected_rank = ' ',
     url_logo_espn = ' ',
@@ -673,8 +840,12 @@ tb_xgd_unexpected <- c('over', 'under') |>
     season = 'Season',
     actual_rank = 'Placing',
     actual_pts = 'Points',
-    xgd_unexpected_rank = gt::html('Season-ending<br/>xGD Rank'),
-    unexpected_rank = gt::html('Simulated Match<br/>Outcome Rank')
+    xgd_unexpected_rank = 'Season xGD',
+    unexpected_rank = 'Simulated Matches'
+  ) |> 
+  tab_spanner(
+    columns = c(xgd_unexpected_rank, unexpected_rank),
+    label = '"Unexpected" Rank'
   ) |> 
   tab_header(
     title = md('**Which teams had the most unexpected placings?**'),
@@ -719,7 +890,7 @@ slice_xgd_resids_matching_top5_sim_placings <- function(which) {
 tb_matching_unexpected <- c('over', 'under') |> 
   set_names() |> 
   map_dfr(slice_xgd_resids_matching_top5_sim_placings, .id = 'which') |> 
-  prep_tb() |> 
+  prep_unexpected_tb() |> 
   select(
     which,
     url_logo_espn,
@@ -733,7 +904,8 @@ tb_matching_unexpected <- c('over', 'under') |>
   group_by(which) |> 
   gt() |> 
   .gt_theme_538() |> 
-  common_gt_styling() |> 
+  add_common_gt_styling() |> 
+  add_common_source_note() |> 
   cols_label(
     unexpected_rank = ' ',
     url_logo_espn = ' ',
@@ -741,8 +913,12 @@ tb_matching_unexpected <- c('over', 'under') |>
     season = 'Season',
     actual_rank = 'Placing',
     actual_pts = 'Points',
-    unexpected_rank = gt::html('Simulated Match<br/>Outcome Rank'),
-    xgd_unexpected_rank = gt::html('Season-ending<br/>xGD Rank')
+    unexpected_rank = 'Simulated Matches',
+    xgd_unexpected_rank = 'Season xGD'
+  ) |> 
+  tab_spanner(
+    columns = c(unexpected_rank, xgd_unexpected_rank),
+    label = '"Unexpected" Rank'
   ) |> 
   tab_header(
     title = md('**Which teams had the most unexpected placings?**'),
@@ -758,14 +934,18 @@ gtsave(
 )
 ```
 
-We can also look at this from the opposite perspective. Where do the top five over- and under-achievers according to our simulations with match outcome probabilities fall among the season-ending xGD unexpected ranks?
+We can also look at this from the opposite perspective. Where do the top five over- and under-achievers according to our simulations with match outcome probabilities fall among the season-ending xGD ranks for unlikelihood?
 
 ![](xgd_matching_unexpected.png)
 
-As shown by the prior table, three team-season pairs in each group appear in the top five when ranked by the likelihood resulting from match probabilities or by the season-ending xGD regression. Overall, we might say that the two methods produce similar results.
+Outside of the the three team-season pairs appearing in the both of the top five over- and under-achievers that we already saw before, one team-season pair is not too far off from the top five---the 2017/18 Manchester United squad ranked as the sixth biggest over-performers by the season-long xGD regression.[^5] However, the other over-perfomer, 2019/20 Newcastle, and the two remaining under-performers, 2021/22 Crystal Palace and 2021/22 Brentford, have somewhat large ranking discrepancies. So yes, the two methods can lead to somewhat similar results in some cases, but there is some observational evidence to suggest that there are non-trivial differences in other cases.
+
+[^5]: Note that, given the 160 team-season pairs in the data set, we should expect that 80 teams each are ranked as over-performing and under-performing. No team will be labeled as performing exactly as expected, unless they happen to have only one possible placing in the simulation approach, or a residual of exactly 0 in the regression approach.
 
 ```{r}
-# inv_xgd_unexpected_rank
+#| label: find-unexpected-diffs
+#| eval: false
+#| include: false
 xgd_rank_preds |> 
   transmute(
     season,
@@ -803,26 +983,14 @@ xgd_rank_preds |>
   arrange(desc(abs(diff_prop)))
 ```
 
-However, there are some big differences between the two methods once we look outside the top five or so biggest over- and under- achievers. For example, in terms of over-achieving, Arsenal's fifth place finish 2018/19 season is given just a 8.9% chance of occurring given their season-long xGD, ranking them at 16th among 80 team-season pairs considered to have over-achieved from 2014/15.[^5][^6] On the other hand, the match-level simulation approach marks the likelihood of them finishing fourth as 31.9% (38th of 180). The season-long xGD model essentially sees that they finished with an xGD of 7.5---less than any other fifth place finisher from 2014/15 - 2021/22---and penalizes them, while the match-level approach contextualizes them among their competition more robustly.
+In fact, there are some big differences between the two methods once we look outside the top five or so biggest over- and under- achievers. For example, in terms of over-achieving, Arsenal's fifth place finish 2018/19 season is given just a 8.9% chance of occurring given their season-long xGD, ranking them as the 16th biggest over-performer (among 80 team-season pairs considered to have over-achieved from 2014/15).[^6] On the other hand, the match-level simulation approach marks the likelihood of them finishing fourth as 31.9% (38th of 80). The season-long xGD model essentially sees that they finished with an xGD of 7.5---less than any other fifth place finisher from 2014/15 - 2021/22---and penalizes them, while the match-level approach contextualizes them among their competition more robustly.
 
-[^5]: Any team with a residual less than 0 is considered to have over-achieved. Note that there are 160 team-season pairs in the data set, so a split of 80 and 80 teams classified as over- and under-achieving is expected, since a linear regression model cannot perfectly predict a team's placing with just a singular feature.
+[^6]: To quantify the likelihood of a team's placing with the simple regression, we convert the standard residual of the regression to a tail probability.
 
-[^6]: To quantify the likelihood of a team's placing with the simple regresion, we convert the standard residual of the regression to a tail probability.
+As another example, Manchester United's under-achieving sixth place finish in the 2016/17 is given a fairly reasonable 37.3% chance (66th of 80 under-achieving teams) of occurring given their season-long 25.9 xGD, most for any sixth place team in the data set. On the other hand, the match-level simulation approach sees their sixth place finish as more unlikely, at just a 15.4% probability (15th of 80). While one might have their own opinion regarding which approach seems more "correct", I'd say that likelihoods from the simulation approach seem more appropriate for extreme examples such as this one and the 2018/19 Arsenal example
 
-As another example, Manchester United's under-achieving sixth place finish in the 2016/17 is given a fairly reasonable 37.3% chance (66th of 80 under-achieving teams) of occurring given their season-long 25.9 xGD, most for any sixth place team in the data set. On the other hand, the match-level simulation approach sees their sixth place finish as more unlikely, at just a 15.4% probability (15th of 80). While one might have their own opinion regarding which approach seems more "correct", I'd say that likelihoods from the simulation approach seem more appropriate for extreme examples.
-
-Overall, both approaches seem reasonable to use to answer the question "Which teams had the most unlikely placings in the table given the quality of all their shots across the season?" But the approach based on simulations using match probabilities seems more appropriate to use to quantify just how unlikely a team's final placing was. While the simpler regression approach can also be used to quantify likelihood, it is more brittle, dependent on statistical assumptions. Additionally, while it contextualizes a team's xGD with historical xGD, it does not contextualize a team's xGD among the other teams in the league, meaning that it does not do a good job with capturing likelihood when there are strong xGD over- and under-performances among a set of teams in a given season.
+Overall, both approaches seem reasonable to use to answer the question "Which teams had the most unlikely placings in the table given the quality of all their shots across the season?" But the approach based on simulations using match probabilities seems more appropriate to use to quantify exactly how unlikely a team's final placing was. While the simpler regression approach can also be used to quantify likelihood, it is more brittle, dependent on statistical assumptions. Additionally, while it contextualizes a team's xGD with historical xGD, it does not contextualize a team's xGD among the other teams in the league, meaning that it does not do a good job with capturing likelihood when there are strong xGD over- and under-performances among a set of teams in a given season.
 
 ## Conclusion
 
 While aggregating match-level outcome probabilities to try to predict season-ending points does no better than more direct approaches with season-long xGD or xPts, simulating seasons using match-level outcome probabilities can be used in a perhaps more interesting way---to quantify just how unlikely a team's placement in the table is, given xG for all of their shots across the season.
-
-```{r}
-#| label: printout
-#| include: false
-#| eval: false
-qs::qsave(z, 'z.qs')
-
-library(base)
-qs::qread('c:/users/antho/documents/projects/itsmetoeknee/z.qs')
-```

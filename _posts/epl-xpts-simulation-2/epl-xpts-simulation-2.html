@@ -120,7 +120,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   <!--/radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-resource-manifest">
-  {"type":"character","attributes":{},"value":["epl-xpts-simulation-2_files/anchor-4.2.2/anchor.min.js","epl-xpts-simulation-2_files/bowser-1.9.3/bowser.min.js","epl-xpts-simulation-2_files/distill-2.2.21/template.v2.js","epl-xpts-simulation-2_files/header-attrs-2.14/header-attrs.js","epl-xpts-simulation-2_files/jquery-3.6.0/jquery-3.6.0.js","epl-xpts-simulation-2_files/jquery-3.6.0/jquery-3.6.0.min.js","epl-xpts-simulation-2_files/jquery-3.6.0/jquery-3.6.0.min.map","epl-xpts-simulation-2_files/popper-2.6.0/popper.min.js","epl-xpts-simulation-2_files/tippy-6.2.7/tippy-bundle.umd.min.js","epl-xpts-simulation-2_files/tippy-6.2.7/tippy-light-border.css","epl-xpts-simulation-2_files/tippy-6.2.7/tippy.css","epl-xpts-simulation-2_files/tippy-6.2.7/tippy.umd.min.js","epl-xpts-simulation-2_files/webcomponents-2.0.0/webcomponents.js","unexpected.png","xgd_matching_unexpected.png","xgd_unexpected.png"]}
+  {"type":"character","attributes":{},"value":["epl-xpts-simulation-2_files/anchor-4.2.2/anchor.min.js","epl-xpts-simulation-2_files/bowser-1.9.3/bowser.min.js","epl-xpts-simulation-2_files/distill-2.2.21/template.v2.js","epl-xpts-simulation-2_files/header-attrs-2.14/header-attrs.js","epl-xpts-simulation-2_files/jquery-3.6.0/jquery-3.6.0.js","epl-xpts-simulation-2_files/jquery-3.6.0/jquery-3.6.0.min.js","epl-xpts-simulation-2_files/jquery-3.6.0/jquery-3.6.0.min.map","epl-xpts-simulation-2_files/popper-2.6.0/popper.min.js","epl-xpts-simulation-2_files/tippy-6.2.7/tippy-bundle.umd.min.js","epl-xpts-simulation-2_files/tippy-6.2.7/tippy-light-border.css","epl-xpts-simulation-2_files/tippy-6.2.7/tippy.css","epl-xpts-simulation-2_files/tippy-6.2.7/tippy.umd.min.js","epl-xpts-simulation-2_files/webcomponents-2.0.0/webcomponents.js","sim_placings.png","unexpected.png","xgd_matching_unexpected.png","xgd_unexpected.png"]}
   </script>
   <!--radix_placeholder_navigation_in_header-->
   <!--/radix_placeholder_navigation_in_header-->
@@ -1560,9 +1560,10 @@ haven’t already. In this post we’ll do two things:</p>
 <li><p>We’ll compare how well season-level expected goal difference
 (xGD), season-level xPts, and aggregated match-level xPts predict
 season-long points for a given team.</p></li>
-<li><p>We’ll use the match-level probabilites to answer the question
+<li><p>We’ll use the match-level probabilites to answer the questions
 “Which teams had the most unlikely placings in the table given the
-quality of all their shots across the season?”</p></li>
+quality of all their shots across the season?” and “How unlikely were
+such placings?”</p></li>
 </ol>
 <h2 id="analysis">Analysis</h2>
 <h3 id="predicting-season-long-points">1. Predicting season-long
@@ -1817,16 +1818,17 @@ season-long xPts and xGD.</p>
 </div>
 </div>
 <p>Interestingly, the RMSE and R squared values are almost identical to
-those for the season-long xPts. I think this is not too
-surprising—match-level outcome probabilities simulated to get
-season-long xPts should give us something very close to just computing
-season-long xPts directly.</p>
-<p>All that work just to arrive at a null result was not for nothing—we
-may still leverage the match-level probabilities in a useful manner for
-season-long insights. In particular we can use the the relative
-proportion of simulations in which a given team ends up at a given rank
-to identify which actual end-of-season placings were the most
-unexpected.</p>
+those for the season-long xPts. Perhaps this is not too
+surprising—match-level outcome probabilities simulated and averaged to
+arrive at a singular estimate of season-long xPts should give us
+something very close to just computing season-long xPts directly.</p>
+<p>While the null result may be discouraging, the simulations are useful
+in and of themselves. They can be used to understand the distribution of
+outcomes for team in a given season, as seen in the table below.</p>
+<p><img src="sim_placings.png" /></p>
+<p>In fact, we can use the the relative proportion of simulations in
+which a given team ends up at a given placing (or “rank”) to identify
+which actual end-of-season placings were the most unexpected.</p>
 <h3 id="identifying-un-expected-placings">2. Identifying un-expected
 placings</h3>
 <p>First, we need to step back and retrieve data on the actual placings.
@@ -1855,15 +1857,15 @@ class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 
 <span class='va'>table</span> <span class='op'>&lt;-</span> <span class='fu'>bind_rows</span><span class='op'>(</span>
   <span class='va'>init_table</span> |&gt;
-    <span class='fu'>mutate</span><span class='op'>(</span>is_home <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>is_home <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> |&gt; 
     <span class='fu'>rename_home_away_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, goals <span class='op'>=</span> <span class='va'>home_goals</span>, opponent_goals <span class='op'>=</span> <span class='va'>away_goals</span><span class='op'>)</span>,
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, goals <span class='op'>=</span> <span class='va'>home_goals</span>, opponent_goals <span class='op'>=</span> <span class='va'>away_goals</span><span class='op'>)</span>,
   <span class='va'>init_table</span> |&gt; 
-    <span class='fu'>mutate</span><span class='op'>(</span>is_home <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span> |&gt; 
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>is_home <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span> |&gt; 
     <span class='fu'>rename_home_away_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, goals <span class='op'>=</span> <span class='va'>away_goals</span>,opponent_goals <span class='op'>=</span> <span class='va'>home_goals</span><span class='op'>)</span>
+    <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, goals <span class='op'>=</span> <span class='va'>away_goals</span>,opponent_goals <span class='op'>=</span> <span class='va'>home_goals</span><span class='op'>)</span>
 <span class='op'>)</span> |&gt; 
-  <span class='fu'>mutate</span><span class='op'>(</span>
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>
     pts <span class='op'>=</span> <span class='fu'>case_when</span><span class='op'>(</span>
       <span class='va'>goals</span> <span class='op'>&gt;</span> <span class='va'>opponent_goals</span> <span class='op'>~</span> <span class='fl'>3L</span>,
       <span class='va'>goals</span> <span class='op'>&lt;</span> <span class='va'>opponent_goals</span> <span class='op'>~</span> <span class='fl'>0L</span>,
@@ -1873,10 +1875,10 @@ class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span><span class='op'>)</span> |&gt; 
   <span class='fu'>summarize</span><span class='op'>(</span><span class='fu'>across</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>goals</span>, <span class='va'>opponent_goals</span>, <span class='va'>pts</span><span class='op'>)</span>, <span class='va'>sum</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
   <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>mutate</span><span class='op'>(</span>gd <span class='op'>=</span> <span class='va'>goals</span> <span class='op'>-</span> <span class='va'>opponent_goals</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>gd <span class='op'>=</span> <span class='va'>goals</span> <span class='op'>-</span> <span class='va'>opponent_goals</span><span class='op'>)</span> |&gt; 
   <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>season</span>, <span class='fu'>desc</span><span class='op'>(</span><span class='va'>pts</span><span class='op'>)</span>, <span class='fu'>desc</span><span class='op'>(</span><span class='va'>gd</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
   <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>season</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>mutate</span><span class='op'>(</span>rank <span class='op'>=</span> <span class='fu'>row_number</span><span class='op'>(</span><span class='fu'>desc</span><span class='op'>(</span><span class='va'>pts</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/mutate.html'>mutate</a></span><span class='op'>(</span>rank <span class='op'>=</span> <span class='fu'>row_number</span><span class='op'>(</span><span class='fu'>desc</span><span class='op'>(</span><span class='va'>pts</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
   <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
   <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>rank</span><span class='op'>)</span>
 </code></pre>
@@ -1891,12 +1893,12 @@ per team (<code>understat_sim_placings</code> instead of
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>understat_sim_placings_with_actual_ranks</span> <span class='op'>&lt;-</span> <span class='va'>understat_sim_placings</span> |&gt; 
   <span class='fu'>inner_join</span><span class='op'>(</span>
-    <span class='va'>table</span> |&gt; <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, actual_pts <span class='op'>=</span> <span class='va'>pts</span>, actual_rank <span class='op'>=</span> <span class='va'>rank</span><span class='op'>)</span>,
+    <span class='va'>table</span> |&gt; <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, actual_pts <span class='op'>=</span> <span class='va'>pts</span>, actual_rank <span class='op'>=</span> <span class='va'>rank</span><span class='op'>)</span>,
     by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'season'</span>, <span class='st'>'team'</span><span class='op'>)</span>
   <span class='op'>)</span> |&gt; 
   <span class='fu'>inner_join</span><span class='op'>(</span>
     <span class='va'>all_raw_understat_xpts_xgd_by_season</span> |&gt; 
-      <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, actual_xpts <span class='op'>=</span> <span class='va'>xpts</span>, <span class='va'>xgd</span><span class='op'>)</span>,
+      <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, actual_xpts <span class='op'>=</span> <span class='va'>xpts</span>, <span class='va'>xgd</span><span class='op'>)</span>,
     by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'season'</span>, <span class='st'>'team'</span><span class='op'>)</span>
   <span class='op'>)</span>
 </code></pre>
@@ -1915,7 +1917,7 @@ sphere. Brighton under-performed historically given their massively
 positive xGD.</p>
 <p>On the other end of the spectrum, it’s not hyperbole to say that
 Manchester United’s second place finish in the 2017/18 season was an
-under-achievement. Although they ended up with the third best goal
+over-achievement. Although they ended up with the third best goal
 differential that season, they were closely followed by several teams.
 And their xGD was sixth in the league that season.</p>
 <h4 id="comparison-with-a-simpler-approach">Comparison with a simpler
@@ -1927,9 +1929,9 @@ placing on just xGD, which is how most people tend to think of
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>table_with_xgd</span> <span class='op'>&lt;-</span> <span class='va'>table</span> |&gt; 
-  <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, actual_pts <span class='op'>=</span> <span class='va'>pts</span>, actual_rank <span class='op'>=</span> <span class='va'>rank</span><span class='op'>)</span> |&gt; 
+  <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, actual_pts <span class='op'>=</span> <span class='va'>pts</span>, actual_rank <span class='op'>=</span> <span class='va'>rank</span><span class='op'>)</span> |&gt; 
   <span class='fu'>inner_join</span><span class='op'>(</span>
-    <span class='va'>all_raw_understat_xpts_xgd_by_season</span> |&gt; <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>xgd</span><span class='op'>)</span>,
+    <span class='va'>all_raw_understat_xpts_xgd_by_season</span> |&gt; <span class='fu'><a href='https://dplyr.tidyverse.org/reference/select.html'>select</a></span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>xgd</span><span class='op'>)</span>,
     by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'season'</span>, <span class='st'>'team'</span><span class='op'>)</span>
   <span class='op'>)</span>
 
@@ -1945,20 +1947,55 @@ simulations of match probabilities shown before.</p>
 <p><img src="xgd_unexpected.png" /></p>
 <p>We can also look at this from the opposite perspective. Where do the
 top five over- and under-achievers according to our simulations with
-match outcome probabilities fall among the season-ending xGD unexpected
-ranks?</p>
+match outcome probabilities fall among the season-ending xGD ranks for
+unlikelihood?</p>
 <p><img src="xgd_matching_unexpected.png" /></p>
-<p>As shown by the prior table, three team-season pairs in each group
-appear in the top five when ranked by the likelihood resulting from
-match probabilities or by the season-ending xGD regression. Overall, we
-might say that the two methods produce similar results.</p>
-<p>Nonetheless, we might argue in favor of the approach based on
-simulations using match probabilities. It can be used to tell us
-quantitatively how likely a team’s placing was.<a href="#fn5"
-class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>
-(See the “Prob.” column in the first table.) The regression approach can
-also be used to quantify likelihood; however, the approach is more
-brittle, dependent on statistical assumptions.</p>
+<p>Outside of the the three team-season pairs appearing in the both of
+the top five over- and under-achievers that we already saw before, one
+team-season pair is not too far off from the top five—the 2017/18
+Manchester United squad ranked as the sixth biggest over-performers by
+the season-long xGD regression.<a href="#fn5" class="footnote-ref"
+id="fnref5" role="doc-noteref"><sup>5</sup></a> However, the other
+over-perfomer, 2019/20 Newcastle, and the two remaining
+under-performers, 2021/22 Crystal Palace and 2021/22 Brentford, have
+somewhat large ranking discrepancies. So yes, the two methods can lead
+to somewhat similar results in some cases, but there is some
+observational evidence to suggest that there are non-trivial differences
+in other cases.</p>
+<p>In fact, there are some big differences between the two methods once
+we look outside the top five or so biggest over- and under- achievers.
+For example, in terms of over-achieving, Arsenal’s fifth place finish
+2018/19 season is given just a 8.9% chance of occurring given their
+season-long xGD, ranking them as the 16th biggest over-performer (among
+80 team-season pairs considered to have over-achieved from 2014/15).<a
+href="#fn6" class="footnote-ref" id="fnref6"
+role="doc-noteref"><sup>6</sup></a> On the other hand, the match-level
+simulation approach marks the likelihood of them finishing fourth as
+31.9% (38th of 80). The season-long xGD model essentially sees that they
+finished with an xGD of 7.5—less than any other fifth place finisher
+from 2014/15 - 2021/22—and penalizes them, while the match-level
+approach contextualizes them among their competition more robustly.</p>
+<p>As another example, Manchester United’s under-achieving sixth place
+finish in the 2016/17 is given a fairly reasonable 37.3% chance (66th of
+80 under-achieving teams) of occurring given their season-long 25.9 xGD,
+most for any sixth place team in the data set. On the other hand, the
+match-level simulation approach sees their sixth place finish as more
+unlikely, at just a 15.4% probability (15th of 80). While one might have
+their own opinion regarding which approach seems more “correct”, I’d say
+that likelihoods from the simulation approach seem more appropriate for
+extreme examples such as this one and the 2018/19 Arsenal example</p>
+<p>Overall, both approaches seem reasonable to use to answer the
+question “Which teams had the most unlikely placings in the table given
+the quality of all their shots across the season?” But the approach
+based on simulations using match probabilities seems more appropriate to
+use to quantify exactly how unlikely a team’s final placing was. While
+the simpler regression approach can also be used to quantify likelihood,
+it is more brittle, dependent on statistical assumptions. Additionally,
+while it contextualizes a team’s xGD with historical xGD, it does not
+contextualize a team’s xGD among the other teams in the league, meaning
+that it does not do a good job with capturing likelihood when there are
+strong xGD over- and under-performances among a set of teams in a given
+season.</p>
 <h2 id="conclusion">Conclusion</h2>
 <p>While aggregating match-level outcome probabilities to try to predict
 season-ending points does no better than more direct approaches with
@@ -1991,9 +2028,16 @@ role="doc-backlink">↩︎</a></p></li>
 <li id="fn4" role="doc-endnote"><p>Table code is not shown since it’s
 not particularly instructive.<a href="#fnref4" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn5" role="doc-endnote"><p>We’d convert the standard residual of
-the regression to a tail probability. With R, one could use
-<code>pnrom()</code> with the standardized residual.<a href="#fnref5"
+<li id="fn5" role="doc-endnote"><p>Note that, given the 160 team-season
+pairs in the data set, we should expect that 80 teams each are ranked as
+over-performing and under-performing. No team will be labeled as
+performing exactly as expected, unless they happen to have only one
+possible placing in the simulation approach, or a residual of exactly 0
+in the regression approach.<a href="#fnref5" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn6" role="doc-endnote"><p>To quantify the likelihood of a
+team’s placing with the simple regression, we convert the standard
+residual of the regression to a tail probability.<a href="#fnref6"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
