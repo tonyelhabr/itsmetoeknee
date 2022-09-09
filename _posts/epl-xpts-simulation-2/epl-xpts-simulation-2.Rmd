@@ -49,6 +49,58 @@ I'll be picking up where I left off in [my last post](https://tonyelhabr.rbind.i
 
 ## Analysis
 
+Before we start, we need to step back and retrieve data on the actual placings. We could theoretically calculate this from the shot data we already have. However, the logic for handling own goals is a little complicated. We're probably better off using `worldfootballR::understat_league_match_results()`---which returns goals at the match-level---to calculate the table. [^1]
+
+[^1]: Maybe even more simply, we could use `worldfootballR::fb_season_team_stats(..., stat_type = 'league_table')`, although we'd need to add a column for team names for [FBref](https://fbref.com/en/) to our team mapping to corroborate team names.
+
+```{r}
+#| label: table
+#| eval: false
+match_results <- 2014:2021 |> 
+  map_dfr(~understat_league_match_results('EPL', .x)) |> 
+  as_tibble()
+
+init_table <- match_results |> 
+  transmute(
+    match_id,
+    across(season, ~str_replace(.x, '\\/20', '/')),
+    date = strptime(datetime, '%Y-%m-%d %H:%M:%S', tz = 'UTC') |> date(),
+    home_team,
+    home_goals,
+    away_team,
+    away_goals
+  )
+
+table <- bind_rows(
+  init_table |>
+    mutate(is_home = TRUE) |> 
+    rename_home_away_teams() |> 
+    select(season, team, opponent, goals = home_goals, opponent_goals = away_goals),
+  init_table |> 
+    mutate(is_home = FALSE) |> 
+    rename_home_away_teams() |> 
+    select(season, team, opponent, goals = away_goals,opponent_goals = home_goals)
+) |> 
+  mutate(
+    pts = case_when(
+      goals > opponent_goals ~ 3L,
+      goals < opponent_goals ~ 0L,
+      TRUE ~ 1L
+    )
+  ) |> 
+  group_by(season, team) |> 
+  summarize(across(c(goals, opponent_goals, pts), sum)) |> 
+  ungroup() |> 
+  mutate(gd = goals - opponent_goals) |> 
+  arrange(season, desc(pts), desc(gd)) |> 
+  group_by(season) |> 
+  mutate(rank = row_number(desc(pts))) |> 
+  ungroup() |> 
+  arrange(season, rank)
+```
+
+This data will help us contextualize predicted placings with actual placings.
+
 ### 1. Predicting season-long points
 
 #### With season-long xPts and xGD
@@ -131,11 +183,11 @@ all_understat_xpts_by_match <- all_understat_shots |>
   summarize_permuted_xg_by_match()
 ```
 
-Then, before we move on, we need to handle an edge case: some teams do not have any shots in some matches.[^1] We choose to specify that that a probability of 0.9 to losing and 0.1 to drawing for such teams.[^2]
+Then, before we move on, we need to handle an edge case: some teams do not have any shots in some matches.[^2] We choose to specify that that a probability of 0.9 to losing and 0.1 to drawing for such teams.[^3]
 
-[^1]: Theoretically, there is an even more extreme case: when both teams do not have any shots in a match. This does not occur in the data set, so we do not need to correct for this.
+[^2]: Theoretically, there is an even more extreme case: when both teams do not have any shots in a match. This does not occur in the data set, so we do not need to correct for this.
 
-[^2]: These choices are purely based on intuition. We could be more rigorous about this, but I think these defaults should be fine. It's wrong to assign a probability of 1 for losing, and a naive split of 0.5 and 0.5 for losing and drawing is surely too optimistic in favor of drawing.
+[^3]: These choices are purely based on intuition. We could be more rigorous about this, but I think these defaults should be fine. It's wrong to assign a probability of 1 for losing, and a naive split of 0.5 and 0.5 for losing and drawing is surely too optimistic in favor of drawing.
 
 ```{r}
 #| label: all_understat_probs_by_match
@@ -245,6 +297,7 @@ plan(
   workers = cores_for_parallel
 )
 
+## set seed both prior to the future_map_dfr and in .options to guarantee determinstic results
 set.seed(42)
 n_sims <- 10000
 understat_sim_pts_by_season <- set_names(1:n_sims) |> 
@@ -315,67 +368,9 @@ diagnose_season_feature(understat_sim_placings_agg, 'xpts')
 
 Interestingly, the RMSE and R squared values are almost identical to those for the season-long xPts. Perhaps this is not too surprising---match-level outcome probabilities simulated and averaged to arrive at a singular estimate of season-long xPts should give us something very close to just computing season-long xPts directly.
 
-While the null result may be discouraging, the simulations are useful in and of themselves. They can be used to understand the distribution of outcomes for team in a given season, as seen in the table below.[^3]
+While the null result may be discouraging, the simulations are useful in and of themselves. They can be used to understand the distribution of outcomes for team in a given season, as seen in the table below.[^4]
 
-[^3]: Table code is not shown since it's not particularly instructive.
-
-![](sim_placings.png)
-
-We can see that Leicester, Wolves, and Newcastle all placed at the uppper end of their simulated placings, indicating that they over-achieved relative to expectation; on the other hand, Crystal Palace, Brentford, and Leeds placed on the lower end of the distribution of placings, indicating that they under-achieved.
-
-In fact, we can go beyond simple observational judgement of whether teams over- and under-achieved---we can use the relative proportion of simulations where a team ends up at a given placing (or "rank") in the standings to quantify just how unexpected actual end-of-season placings were.
-
-### 2. Identifying un-expected placings
-
-First, we need to step back and retrieve data on the actual placings. We could theoretically calculate this from the shot data we already have. However, the logic for handling own goals is a little complicated. We're probably better off using `worldfootballR::understat_league_match_results()`---which returns goals at the match-level---to calculate the table. [^4]
-
-[^4]: Maybe even more simply, we could use `worldfootballR::fb_season_team_stats(..., stat_type = 'league_table')`, although we'd need to add a column for team names for [FBref](https://fbref.com/en/) to our team mapping to corroborate team names.
-
-```{r}
-#| label: table
-#| eval: false
-match_results <- 2014:2021 |> 
-  map_dfr(~understat_league_match_results('EPL', .x)) |> 
-  as_tibble()
-
-init_table <- match_results |> 
-  transmute(
-    match_id,
-    across(season, ~str_replace(.x, '\\/20', '/')),
-    date = strptime(datetime, '%Y-%m-%d %H:%M:%S', tz = 'UTC') |> date(),
-    home_team,
-    home_goals,
-    away_team,
-    away_goals
-  )
-
-table <- bind_rows(
-  init_table |>
-    mutate(is_home = TRUE) |> 
-    rename_home_away_teams() |> 
-    select(season, team, opponent, goals = home_goals, opponent_goals = away_goals),
-  init_table |> 
-    mutate(is_home = FALSE) |> 
-    rename_home_away_teams() |> 
-    select(season, team, opponent, goals = away_goals,opponent_goals = home_goals)
-) |> 
-  mutate(
-    pts = case_when(
-      goals > opponent_goals ~ 3L,
-      goals < opponent_goals ~ 0L,
-      TRUE ~ 1L
-    )
-  ) |> 
-  group_by(season, team) |> 
-  summarize(across(c(goals, opponent_goals, pts), sum)) |> 
-  ungroup() |> 
-  mutate(gd = goals - opponent_goals) |> 
-  arrange(season, desc(pts), desc(gd)) |> 
-  group_by(season) |> 
-  mutate(rank = row_number(desc(pts))) |> 
-  ungroup() |> 
-  arrange(season, rank)
-```
+[^4]: Table code is not shown since it's not particularly instructive.
 
 ```{r}
 #| label: tb_sim_placings
@@ -611,7 +606,15 @@ gtsave(
 )
 ```
 
-Next, we join the `table` of end-of-season placements (`actual_rank`) to the simulation results that describe the frequency with which a given team places at a given rank (`xrank`).
+![](sim_placings.png)
+
+We can see that Leicester, Wolves, and Newcastle all placed at the uppper end of their simulated placings, indicating that they over-achieved relative to expectation; on the other hand, Crystal Palace, Brentford, and Leeds placed on the lower end of the distribution of placings, indicating that they under-achieved.
+
+In fact, we can go beyond simple observational judgement of whether teams over- and under-achieved---we can use the relative proportion of simulations where a team ends up at a given placing (or "rank") in the standings to quantify just how unexpected actual end-of-season placings were.
+
+### 2. Identifying un-expected placings
+
+First, we join the `table` of end-of-season placements (`actual_rank`) to the simulation results that describe the frequency with which a given team places at a given rank (`xrank`).
 
 ```{r}
 #| label: understat_sim_placings_with_actual_ranks

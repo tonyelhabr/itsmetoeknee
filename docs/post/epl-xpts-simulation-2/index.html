@@ -2365,6 +2365,61 @@ quality of all their shots across the season?” and “How unlikely were
 such placings?”</p></li>
 </ol>
 <h2 id="analysis">Analysis</h2>
+<p>Before we start, we need to step back and retrieve data on the actual
+placings. We could theoretically calculate this from the shot data we
+already have. However, the logic for handling own goals is a little
+complicated. We’re probably better off using
+<code>worldfootballR::understat_league_match_results()</code>—which
+returns goals at the match-level—to calculate the table. <a href="#fn1"
+class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+<div class="layout-chunk" data-layout="l-body">
+<div class="sourceCode">
+<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>match_results</span> <span class='op'>&lt;-</span> <span class='fl'>2014</span><span class='op'>:</span><span class='fl'>2021</span> |&gt; 
+  <span class='fu'>map_dfr</span><span class='op'>(</span><span class='op'>~</span><span class='fu'>understat_league_match_results</span><span class='op'>(</span><span class='st'>'EPL'</span>, <span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>as_tibble</span><span class='op'>(</span><span class='op'>)</span>
+
+<span class='va'>init_table</span> <span class='op'>&lt;-</span> <span class='va'>match_results</span> |&gt; 
+  <span class='fu'>transmute</span><span class='op'>(</span>
+    <span class='va'>match_id</span>,
+    <span class='fu'>across</span><span class='op'>(</span><span class='va'>season</span>, <span class='op'>~</span><span class='fu'>str_replace</span><span class='op'>(</span><span class='va'>.x</span>, <span class='st'>'\\/20'</span>, <span class='st'>'/'</span><span class='op'>)</span><span class='op'>)</span>,
+    date <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/strptime.html'>strptime</a></span><span class='op'>(</span><span class='va'>datetime</span>, <span class='st'>'%Y-%m-%d %H:%M:%S'</span>, tz <span class='op'>=</span> <span class='st'>'UTC'</span><span class='op'>)</span> |&gt; <span class='fu'><a href='https://rdrr.io/r/base/date.html'>date</a></span><span class='op'>(</span><span class='op'>)</span>,
+    <span class='va'>home_team</span>,
+    <span class='va'>home_goals</span>,
+    <span class='va'>away_team</span>,
+    <span class='va'>away_goals</span>
+  <span class='op'>)</span>
+
+<span class='va'>table</span> <span class='op'>&lt;-</span> <span class='fu'>bind_rows</span><span class='op'>(</span>
+  <span class='va'>init_table</span> |&gt;
+    <span class='fu'>mutate</span><span class='op'>(</span>is_home <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> |&gt; 
+    <span class='fu'>rename_home_away_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+    <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, goals <span class='op'>=</span> <span class='va'>home_goals</span>, opponent_goals <span class='op'>=</span> <span class='va'>away_goals</span><span class='op'>)</span>,
+  <span class='va'>init_table</span> |&gt; 
+    <span class='fu'>mutate</span><span class='op'>(</span>is_home <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span> |&gt; 
+    <span class='fu'>rename_home_away_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+    <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, goals <span class='op'>=</span> <span class='va'>away_goals</span>,opponent_goals <span class='op'>=</span> <span class='va'>home_goals</span><span class='op'>)</span>
+<span class='op'>)</span> |&gt; 
+  <span class='fu'>mutate</span><span class='op'>(</span>
+    pts <span class='op'>=</span> <span class='fu'>case_when</span><span class='op'>(</span>
+      <span class='va'>goals</span> <span class='op'>&gt;</span> <span class='va'>opponent_goals</span> <span class='op'>~</span> <span class='fl'>3L</span>,
+      <span class='va'>goals</span> <span class='op'>&lt;</span> <span class='va'>opponent_goals</span> <span class='op'>~</span> <span class='fl'>0L</span>,
+      <span class='cn'>TRUE</span> <span class='op'>~</span> <span class='fl'>1L</span>
+    <span class='op'>)</span>
+  <span class='op'>)</span> |&gt; 
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>summarize</span><span class='op'>(</span><span class='fu'>across</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>goals</span>, <span class='va'>opponent_goals</span>, <span class='va'>pts</span><span class='op'>)</span>, <span class='va'>sum</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>mutate</span><span class='op'>(</span>gd <span class='op'>=</span> <span class='va'>goals</span> <span class='op'>-</span> <span class='va'>opponent_goals</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>season</span>, <span class='fu'>desc</span><span class='op'>(</span><span class='va'>pts</span><span class='op'>)</span>, <span class='fu'>desc</span><span class='op'>(</span><span class='va'>gd</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>season</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>mutate</span><span class='op'>(</span>rank <span class='op'>=</span> <span class='fu'>row_number</span><span class='op'>(</span><span class='fu'>desc</span><span class='op'>(</span><span class='va'>pts</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>rank</span><span class='op'>)</span>
+</code></pre>
+</div>
+</div>
+<p>This data will help us contextualize predicted placings with actual
+placings.</p>
 <h3 id="predicting-season-long-points">1. Predicting season-long
 points</h3>
 <h4 id="with-season-long-xpts-and-xgd">With season-long xPts and
@@ -2450,11 +2505,11 @@ functions from the prior post to calculate xPts by match.</p>
 </div>
 </div>
 <p>Then, before we move on, we need to handle an edge case: some teams
-do not have any shots in some matches.<a href="#fn1"
-class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> We
+do not have any shots in some matches.<a href="#fn2"
+class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> We
 choose to specify that that a probability of 0.9 to losing and 0.1 to
-drawing for such teams.<a href="#fn2" class="footnote-ref" id="fnref2"
-role="doc-noteref"><sup>2</sup></a></p>
+drawing for such teams.<a href="#fn3" class="footnote-ref" id="fnref3"
+role="doc-noteref"><sup>3</sup></a></p>
 <div class="layout-chunk" data-layout="l-body">
 <div class="sourceCode">
 <pre class="sourceCode r"><code class="sourceCode r"><span class='va'>init_all_understat_probs_by_match</span> <span class='op'>&lt;-</span> <span class='va'>all_understat_xpts_by_match</span> |&gt; 
@@ -2563,6 +2618,7 @@ parallelize the calculation.</p>
   workers <span class='op'>=</span> <span class='va'>cores_for_parallel</span>
 <span class='op'>)</span>
 
+<span class='co'>## set seed both prior to the future_map_dfr and in .options to guarantee determinstic results</span>
 <span class='fu'><a href='https://rdrr.io/r/base/Random.html'>set.seed</a></span><span class='op'>(</span><span class='fl'>42</span><span class='op'>)</span>
 <span class='va'>n_sims</span> <span class='op'>&lt;-</span> <span class='fl'>10000</span>
 <span class='va'>understat_sim_pts_by_season</span> <span class='op'>&lt;-</span> <span class='fu'>set_names</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>:</span><span class='va'>n_sims</span><span class='op'>)</span> |&gt; 
@@ -2624,8 +2680,8 @@ something very close to just computing season-long xPts directly.</p>
 <p>While the null result may be discouraging, the simulations are useful
 in and of themselves. They can be used to understand the distribution of
 outcomes for team in a given season, as seen in the table below.<a
-href="#fn3" class="footnote-ref" id="fnref3"
-role="doc-noteref"><sup>3</sup></a></p>
+href="#fn4" class="footnote-ref" id="fnref4"
+role="doc-noteref"><sup>4</sup></a></p>
 <p><img src="sim_placings.png" /></p>
 <p>We can see that Leicester, Wolves, and Newcastle all placed at the
 uppper end of their simulated placings, indicating that they
@@ -2639,60 +2695,7 @@ standings to quantify just how unexpected actual end-of-season placings
 were.</p>
 <h3 id="identifying-un-expected-placings">2. Identifying un-expected
 placings</h3>
-<p>First, we need to step back and retrieve data on the actual placings.
-We could theoretically calculate this from the shot data we already
-have. However, the logic for handling own goals is a little complicated.
-We’re probably better off using
-<code>worldfootballR::understat_league_match_results()</code>—which
-returns goals at the match-level—to calculate the table. <a href="#fn4"
-class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
-<div class="layout-chunk" data-layout="l-body">
-<div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>match_results</span> <span class='op'>&lt;-</span> <span class='fl'>2014</span><span class='op'>:</span><span class='fl'>2021</span> |&gt; 
-  <span class='fu'>map_dfr</span><span class='op'>(</span><span class='op'>~</span><span class='fu'>understat_league_match_results</span><span class='op'>(</span><span class='st'>'EPL'</span>, <span class='va'>.x</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>as_tibble</span><span class='op'>(</span><span class='op'>)</span>
-
-<span class='va'>init_table</span> <span class='op'>&lt;-</span> <span class='va'>match_results</span> |&gt; 
-  <span class='fu'>transmute</span><span class='op'>(</span>
-    <span class='va'>match_id</span>,
-    <span class='fu'>across</span><span class='op'>(</span><span class='va'>season</span>, <span class='op'>~</span><span class='fu'>str_replace</span><span class='op'>(</span><span class='va'>.x</span>, <span class='st'>'\\/20'</span>, <span class='st'>'/'</span><span class='op'>)</span><span class='op'>)</span>,
-    date <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/strptime.html'>strptime</a></span><span class='op'>(</span><span class='va'>datetime</span>, <span class='st'>'%Y-%m-%d %H:%M:%S'</span>, tz <span class='op'>=</span> <span class='st'>'UTC'</span><span class='op'>)</span> |&gt; <span class='fu'><a href='https://rdrr.io/r/base/date.html'>date</a></span><span class='op'>(</span><span class='op'>)</span>,
-    <span class='va'>home_team</span>,
-    <span class='va'>home_goals</span>,
-    <span class='va'>away_team</span>,
-    <span class='va'>away_goals</span>
-  <span class='op'>)</span>
-
-<span class='va'>table</span> <span class='op'>&lt;-</span> <span class='fu'>bind_rows</span><span class='op'>(</span>
-  <span class='va'>init_table</span> |&gt;
-    <span class='fu'>mutate</span><span class='op'>(</span>is_home <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>rename_home_away_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, goals <span class='op'>=</span> <span class='va'>home_goals</span>, opponent_goals <span class='op'>=</span> <span class='va'>away_goals</span><span class='op'>)</span>,
-  <span class='va'>init_table</span> |&gt; 
-    <span class='fu'>mutate</span><span class='op'>(</span>is_home <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>rename_home_away_teams</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-    <span class='fu'>select</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, goals <span class='op'>=</span> <span class='va'>away_goals</span>,opponent_goals <span class='op'>=</span> <span class='va'>home_goals</span><span class='op'>)</span>
-<span class='op'>)</span> |&gt; 
-  <span class='fu'>mutate</span><span class='op'>(</span>
-    pts <span class='op'>=</span> <span class='fu'>case_when</span><span class='op'>(</span>
-      <span class='va'>goals</span> <span class='op'>&gt;</span> <span class='va'>opponent_goals</span> <span class='op'>~</span> <span class='fl'>3L</span>,
-      <span class='va'>goals</span> <span class='op'>&lt;</span> <span class='va'>opponent_goals</span> <span class='op'>~</span> <span class='fl'>0L</span>,
-      <span class='cn'>TRUE</span> <span class='op'>~</span> <span class='fl'>1L</span>
-    <span class='op'>)</span>
-  <span class='op'>)</span> |&gt; 
-  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>summarize</span><span class='op'>(</span><span class='fu'>across</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>goals</span>, <span class='va'>opponent_goals</span>, <span class='va'>pts</span><span class='op'>)</span>, <span class='va'>sum</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>mutate</span><span class='op'>(</span>gd <span class='op'>=</span> <span class='va'>goals</span> <span class='op'>-</span> <span class='va'>opponent_goals</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>season</span>, <span class='fu'>desc</span><span class='op'>(</span><span class='va'>pts</span><span class='op'>)</span>, <span class='fu'>desc</span><span class='op'>(</span><span class='va'>gd</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>season</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>mutate</span><span class='op'>(</span>rank <span class='op'>=</span> <span class='fu'>row_number</span><span class='op'>(</span><span class='fu'>desc</span><span class='op'>(</span><span class='va'>pts</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>rank</span><span class='op'>)</span>
-</code></pre>
-</div>
-</div>
-<p>Next, we join the <code>table</code> of end-of-season placements
+<p>First, we join the <code>table</code> of end-of-season placements
 (<code>actual_rank</code>) to the simulation results that describe the
 frequency with which a given team places at a given rank
 (<code>xrank</code>).</p>
@@ -2815,24 +2818,24 @@ class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"><
 role="doc-endnotes">
 <hr />
 <ol>
-<li id="fn1" role="doc-endnote"><p>Theoretically, there is an even more
-extreme case: when both teams do not have any shots in a match. This
-does not occur in the data set, so we do not need to correct for this.<a
-href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2" role="doc-endnote"><p>These choices are purely based on
-intuition. We could be more rigorous about this, but I think these
-defaults should be fine. It’s wrong to assign a probability of 1 for
-losing, and a naive split of 0.5 and 0.5 for losing and drawing is
-surely too optimistic in favor of drawing.<a href="#fnref2"
-class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn3" role="doc-endnote"><p>Table code is not shown since it’s
-not particularly instructive.<a href="#fnref3" class="footnote-back"
-role="doc-backlink">↩︎</a></p></li>
-<li id="fn4" role="doc-endnote"><p>Maybe even more simply, we could use
+<li id="fn1" role="doc-endnote"><p>Maybe even more simply, we could use
 <code>worldfootballR::fb_season_team_stats(..., stat_type = 'league_table')</code>,
 although we’d need to add a column for team names for <a
 href="https://fbref.com/en/">FBref</a> to our team mapping to
-corroborate team names.<a href="#fnref4" class="footnote-back"
+corroborate team names.<a href="#fnref1" class="footnote-back"
+role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>Theoretically, there is an even more
+extreme case: when both teams do not have any shots in a match. This
+does not occur in the data set, so we do not need to correct for this.<a
+href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>These choices are purely based on
+intuition. We could be more rigorous about this, but I think these
+defaults should be fine. It’s wrong to assign a probability of 1 for
+losing, and a naive split of 0.5 and 0.5 for losing and drawing is
+surely too optimistic in favor of drawing.<a href="#fnref3"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>Table code is not shown since it’s
+not particularly instructive.<a href="#fnref4" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
 <li id="fn5" role="doc-endnote"><p>Note that, given the 160 team-season
 pairs in the data set, we should expect that 80 teams each are ranked as
