@@ -165,8 +165,8 @@ c('xgd', 'xpts') |>
 #> # A tibble: 2 × 3
 #>   feature  rmse    r2
 #>   <chr>   <dbl> <dbl>
-#> 1 xgd      7.31 0.831
-#> 2 xpts     7.19 0.837
+#> 1 xgd      7.33 0.831
+#> 2 xpts     7.20 0.837
 ```
 
 As we should expect, a model using season-long xPts to predict final points outperforms one using season-long xGD as a feature, although maybe the difference between the two is smaller than we might have expected.
@@ -183,62 +183,6 @@ all_understat_xpts_by_match <- all_understat_shots |>
   summarize_permuted_xg_by_match()
 ```
 
-Then, before we move on, we need to handle an edge case: some teams do not have any shots in some matches.[^2] We choose to specify that that a probability of 0.9 to losing and 0.1 to drawing for such teams.[^3]
-
-[^2]: Theoretically, there is an even more extreme case: when both teams do not have any shots in a match. This does not occur in the data set, so we do not need to correct for this.
-
-[^3]: These choices are purely based on intuition. We could be more rigorous about this, but I think these defaults should be fine. It's wrong to assign a probability of 1 for losing, and a naive split of 0.5 and 0.5 for losing and drawing is surely too optimistic in favor of drawing.
-
-```{r}
-#| label: all_understat_probs_by_match
-#| eval: false
-init_all_understat_probs_by_match <- all_understat_xpts_by_match |> 
-  select(match_id, season, team, opponent, is_home, starts_with('prob')) |> 
-  rename_with(~str_remove(.x, '^prob_'), starts_with('prob')) |> 
-  pivot_longer(
-    c(win, lose, draw),
-    names_to = 'result',
-    values_to = 'prob'
-  )
-
-understat_guaranteed_wins <- init_all_understat_probs_by_match |> 
-  group_by(team, match_id) |> 
-  filter(all(prob == 1)) |> 
-  ungroup()
-
-understat_guaranteed_losses <- init_all_understat_probs_by_match |> 
-  group_by(team, match_id) |> 
-  filter(all(prob == 0)) |> 
-  ungroup()
-
-understat_probs_by_match <- init_all_understat_probs_by_match |> 
-  anti_join(
-    understat_guaranteed_losses |> select(team, match_id, result),
-    by = c('team', 'match_id', 'result')
-  ) |> 
-  bind_rows(
-    understat_guaranteed_wins |> 
-      mutate(
-        prob = case_when(
-          result == 'win' ~ 0.9,
-          result == 'lose' ~ 0,
-          result == 'draw' ~ 0.1
-        )
-      )
-  ) |> 
-  bind_rows(
-    understat_guaranteed_losses |> 
-      mutate(
-        prob = case_when(
-          result == 'win' ~ 0,
-          result == 'lose' ~ 0.9,
-          result == 'draw' ~ 0.1
-        )
-      )
-  ) |> 
-  arrange(season, team, match_id)
-```
-
 Next, the fun part: simulating match outcomes using the xG-implied match outcome probabilities. This is computationally intense, so we parallelize the calculation.
 
 ```{r}
@@ -247,6 +191,15 @@ Next, the fun part: simulating match outcomes using the xG-implied match outcome
 library(parallel)
 library(future)
 library(furrr)
+
+understat_probs_by_match <- all_understat_xpts_by_match |> 
+  select(match_id, season, team, opponent, is_home, starts_with('prob')) |> 
+  rename_with(~str_remove(.x, '^prob_'), starts_with('prob')) |> 
+  pivot_longer(
+    c(win, lose, draw),
+    names_to = 'result',
+    values_to = 'prob'
+  )
 
 simulate_season_xpts <- function(...) {
   sim_home_pts_by_match <- understat_probs_by_match |> 
@@ -363,14 +316,14 @@ diagnose_season_feature(understat_sim_placings_agg, 'xpts')
 #> # A tibble: 1 × 2
 #>    rmse    r2
 #>   <dbl> <dbl>
-#> 1  7.14 0.839
+#> 1  7.16 0.839
 ```
 
 Interestingly, the RMSE and R squared values are almost identical to those for the season-long xPts. Perhaps this is not too surprising---match-level outcome probabilities simulated and averaged to arrive at a singular estimate of season-long xPts should give us something very close to just computing season-long xPts directly.
 
-While the null result may be discouraging, the simulations are useful in and of themselves. They can be used to understand the distribution of outcomes for team in a given season, as seen in the table below.[^4]
+While the null result may be discouraging, the simulations are useful in and of themselves. They can be used to understand the distribution of outcomes for team in a given season, as seen in the table below.[^2]
 
-[^4]: Table code is not shown since it's not particularly instructive.
+[^2]: Table code is not shown since it's not particularly instructive.
 
 ```{r}
 #| label: tb_sim_placings
@@ -712,7 +665,7 @@ tb <- unexpected_understat_sim_placings |>
   ) |> 
   fmt_percent(
     columns = tail_prop,
-    decimals = 1
+    decimals = 2
   ) |> 
   tab_footnote(
     locations = cells_column_labels(tail_prop),
@@ -950,15 +903,15 @@ We can also look at this from the opposite perspective. Where do the top five ov
 
 ![](xgd_matching_unexpected.png)
 
-Outside of the the three team-season pairs appearing in the both of the top five over- and under-achievers that we already saw before, one team-season pair is not too far off from the top five---the 2017/18 Manchester United squad ranked as the sixth biggest over-performers by the season-long xGD regression.[^5] However, the other over-perfomer, 2019/20 Newcastle, and the two remaining under-performers, 2021/22 Crystal Palace and 2021/22 Brentford, have somewhat large ranking discrepancies. So yes, the two methods can lead to somewhat similar results in some cases, but there is some observational evidence to suggest that there are non-trivial differences in other cases.
+Outside of the the three team-season pairs appearing in the both of the top five over- and under-achievers that we already saw before, one team-season pair is not too far off from the top five---the 2017/18 Manchester United squad ranked as the sixth biggest over-performers by the season-long xGD regression.[^3] However, the other over-perfomer, 2019/20 Newcastle, and the two remaining under-performers, 2021/22 Crystal Palace and 2021/22 Brentford, have somewhat large ranking discrepancies. So yes, the two methods can lead to somewhat similar results in some cases, but there is some observational evidence to suggest that there are non-trivial differences in other cases.
 
-[^5]: Note that, given the 160 team-season pairs in the data set, we should expect that 80 teams each are ranked as over-performing and under-performing. No team will be labeled as performing exactly as expected, unless they happen to have only one possible placing in the simulation approach, or a residual of exactly 0 in the regression approach.
+[^3]: Note that, given the 160 team-season pairs in the data set, we should expect that 80 teams each are ranked as over-performing and under-performing. No team will be labeled as performing exactly as expected, unless they happen to have only one possible placing in the simulation approach, or a residual of exactly 0 in the regression approach.
 
 ```{r}
 #| label: find-unexpected-diffs
 #| eval: false
 #| include: false
-xgd_rank_preds |> 
+df <- xgd_rank_preds |> 
   transmute(
     season,
     team,
@@ -966,24 +919,25 @@ xgd_rank_preds |>
     actual_pts,
     xgd,
     xpts,
-    xgd_unexpected_rank = inv_xgd_unexpected_rank,
-    xgd_tail_prop = inv_xgd_tail_prop
-  ) |> 
-  filter(
-    xgd_unexpected_rank <= 80
+    xgd_unexpected_rank,
+    inv_xgd_unexpected_rank,
+    xgd_tail_prop,
+    inv_xgd_tail_prop
   ) |> 
   inner_join(
-    understat_sim_placings_with_actual_ranks |> 
+    understat_sim_placings_with_actua l_ranks |> 
       filter(xrank == actual_rank) |> 
-      mutate(tail_prop = .data[[col_sim]]) |> 
       transmute(
         season, 
         team, 
-        tail_prop = inv_cumu_prop ,
-        unexpected_rank = row_number(inv_cumu_prop)
+        cumu_prop,
+        inv_cumu_prop,
+        unexpected_rank = row_number(cumu_prop),
+        inv_unexpected_rank = row_number(inv_cumu_prop)
       ),
     by = c('season', 'team')
-  ) |> 
+  )
+df |> 
   mutate(
     diff_rank = xgd_unexpected_rank - unexpected_rank,
     diff_prop = xgd_tail_prop - tail_prop
@@ -993,13 +947,26 @@ xgd_rank_preds |>
   ) |> 
   slice_max(abs(diff_prop), n = 5, with_ties = FALSE) |> 
   arrange(desc(abs(diff_prop)))
+df |> 
+  filter(season == '2018/19', team == 'Arsenal') |> 
+  glimpse()
+table |> filter(season == '2018/19', team == 'Arsenal')
+table |> filter(season == '2018/19')
+table |> filter(rank == 5)
+
+df |> 
+  filter(season == '2016/17', team == 'Manchester United') |> 
+  glimpse()
+table |> filter(season == '2016/17', team == 'Manchester United')
+table |> filter(season == '2016/17')
+table |> filter(rank == 6)
 ```
 
-In fact, there are some big differences between the two methods once we look outside the top five or so biggest over- and under- achievers. For example, in terms of over-achieving, Arsenal's fifth place finish 2018/19 season is given just a 8.9% chance of occurring given their season-long xGD, ranking them as the 16th biggest over-performer (among 80 team-season pairs considered to have over-achieved from 2014/15).[^6] On the other hand, the match-level simulation approach marks the likelihood of them finishing fourth as 31.9% (38th of 80). The season-long xGD model essentially sees that they finished with an xGD of 7.5---less than any other fifth place finisher from 2014/15 - 2021/22---and penalizes them, while the match-level approach contextualizes them among their competition more robustly.
+In fact, there are some big differences between the two methods once we look outside the top five or so biggest over- and under- achievers. For example, in terms of over-achieving, Arsenal's fifth place finish 2018/19 season is given just a 7.50% chance of occurring given their season-long xGD, ranking them as the 17th biggest over-performer (among 80 team-season pairs considered to have over-achieved from 2014/15).[^4] On the other hand, the match-level simulation approach marks the likelihood of them finishing fourth as 31.63% (37th of 80). The season-long xGD model essentially sees that they finished with an xGD of 7.5---less than any other fifth place finisher from 2014/15 - 2021/22---and penalizes them, while the match-level approach contextualizes them among their competition more robustly.
 
-[^6]: To quantify the likelihood of a team's placing with the simple regression, we convert the standard residual of the regression to a tail probability.
+[^4]: To quantify the likelihood of a team's placing with the simple regression, we convert the standard residual of the regression to a tail probability.
 
-As another example, Manchester United's under-achieving sixth place finish in the 2016/17 is given a fairly reasonable 37.3% chance (66th of 80 under-achieving teams) of occurring given their season-long 25.9 xGD, most for any sixth place team in the data set. On the other hand, the match-level simulation approach sees their sixth place finish as more unlikely, at just a 15.4% probability (15th of 80). While one might have their own opinion regarding which approach seems more "correct", I'd say that likelihoods from the simulation approach seem more appropriate for extreme examples such as this one and the 2018/19 Arsenal example
+As another example, Manchester United's under-achieving sixth place finish in the 2016/17 is given a fairly reasonable 37.36% chance (66th of 80 under-achieving teams) of occurring given their season-long 25.9 xGD, most for any sixth place team in the data set. On the other hand, the match-level simulation approach sees their sixth place finish as more unlikely, at just a 15.88% probability (16th of 80). While one might have their own opinion regarding which approach seems more "correct", I'd say that likelihoods from the simulation approach seem more appropriate for extreme examples such as this one and the 2018/19 Arsenal example
 
 Overall, both approaches seem reasonable to use to answer the question "Which teams had the most unlikely placings in the table given the quality of all their shots across the season?" But the approach based on simulations using match probabilities seems more appropriate to use to quantify exactly how unlikely a team's final placing was. While the simpler regression approach can also be used to quantify likelihood, it is more brittle, dependent on statistical assumptions. Additionally, while it contextualizes a team's xGD with historical xGD, it does not contextualize a team's xGD among the other teams in the league, meaning that it does not do a good job with capturing likelihood when there are strong xGD over- and under-performances among a set of teams in a given season.
 

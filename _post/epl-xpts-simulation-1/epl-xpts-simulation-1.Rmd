@@ -369,8 +369,48 @@ summarize_pivoted_permuted_xg <- function(prob_away, prob_home) {
   )
 }
 
+## Bournemouth 0 - 1 Manchester City on 2019-03-02
+## Huddersfield 0 - 0 Swansea on 2018-03-10
+pad_for_matches_without_shots_from_one_team <- function(df) {
+  n_teams_per_match <- df |> 
+    distinct(match_id, team) |> 
+    count(match_id, sort = TRUE)
+  
+  matches_with_no_shots_from_one_team <- n_teams_per_match |> 
+    filter(n == 1)
+  
+  dummy_opponents <- df |> 
+    distinct(match_id, season, date, team, opponent, is_home) |> 
+    semi_join(
+      matches_with_no_shots_from_one_team,
+      by = 'match_id'
+    ) |> 
+    mutate(
+      z = team
+    ) |> 
+    transmute(
+      match_id, 
+      season, 
+      date, 
+      team = opponent,
+      opponent = z,
+      across(is_home, ~!.x),
+      prob = 1,
+      g = 0L
+    )
+  
+  bind_rows(
+    df,
+    dummy_opponents
+  ) |> 
+  arrange(season, date, team, g)
+}
+
 summarize_permuted_xg_by_match <- function(df) {
-  pivoted <- df |>
+  
+  padded_df <- pad_for_matches_without_shots_from_one_team(df)
+  
+  pivoted <- padded_df |>
     transmute(
       match_id,
       season,
@@ -394,7 +434,7 @@ summarize_permuted_xg_by_match <- function(df) {
     ) |> 
     ungroup() |> 
     inner_join(
-      df |> distinct(match_id, team, opponent, is_home),
+      padded_df |> distinct(match_id, team, opponent, is_home),
       by = 'match_id'
     ) |> 
     mutate(
@@ -714,7 +754,7 @@ c('understat', 'fotmob') |>
 #>   src        rmse    r2
 #>   <chr>     <dbl> <dbl>
 #> 1 understat  1.06 0.374
-#> 2 fotmob     1.10 0.322
+#> 2 fotmob     1.10 0.323
 ```
 
 The understat model proves to be better by both metrics, having a lower RMSE and higher R squared than the fotmob model.

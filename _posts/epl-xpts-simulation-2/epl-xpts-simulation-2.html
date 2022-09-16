@@ -1684,8 +1684,8 @@ post.</p>
 <span class='co'>#&gt; # A tibble: 2 × 3</span>
 <span class='co'>#&gt;   feature  rmse    r2</span>
 <span class='co'>#&gt;   &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;</span>
-<span class='co'>#&gt; 1 xgd      7.31 0.831</span>
-<span class='co'>#&gt; 2 xpts     7.19 0.837</span>
+<span class='co'>#&gt; 1 xgd      7.33 0.831</span>
+<span class='co'>#&gt; 2 xpts     7.20 0.837</span>
 </code></pre>
 </div>
 </div>
@@ -1705,62 +1705,6 @@ functions from the prior post to calculate xPts by match.</p>
 </code></pre>
 </div>
 </div>
-<p>Then, before we move on, we need to handle an edge case: some teams
-do not have any shots in some matches.<a href="#fn2"
-class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> We
-choose to specify that that a probability of 0.9 to losing and 0.1 to
-drawing for such teams.<a href="#fn3" class="footnote-ref" id="fnref3"
-role="doc-noteref"><sup>3</sup></a></p>
-<div class="layout-chunk" data-layout="l-body">
-<div class="sourceCode">
-<pre class="sourceCode r"><code class="sourceCode r"><span class='va'>init_all_understat_probs_by_match</span> <span class='op'>&lt;-</span> <span class='va'>all_understat_xpts_by_match</span> |&gt; 
-  <span class='fu'>select</span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, <span class='va'>is_home</span>, <span class='fu'>starts_with</span><span class='op'>(</span><span class='st'>'prob'</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>rename_with</span><span class='op'>(</span><span class='op'>~</span><span class='fu'>str_remove</span><span class='op'>(</span><span class='va'>.x</span>, <span class='st'>'^prob_'</span><span class='op'>)</span>, <span class='fu'>starts_with</span><span class='op'>(</span><span class='st'>'prob'</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>pivot_longer</span><span class='op'>(</span>
-    <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>win</span>, <span class='va'>lose</span>, <span class='va'>draw</span><span class='op'>)</span>,
-    names_to <span class='op'>=</span> <span class='st'>'result'</span>,
-    values_to <span class='op'>=</span> <span class='st'>'prob'</span>
-  <span class='op'>)</span>
-
-<span class='va'>understat_guaranteed_wins</span> <span class='op'>&lt;-</span> <span class='va'>init_all_understat_probs_by_match</span> |&gt; 
-  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>team</span>, <span class='va'>match_id</span><span class='op'>)</span> |&gt; 
-  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/all.html'>all</a></span><span class='op'>(</span><span class='va'>prob</span> <span class='op'>==</span> <span class='fl'>1</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span>
-
-<span class='va'>understat_guaranteed_losses</span> <span class='op'>&lt;-</span> <span class='va'>init_all_understat_probs_by_match</span> |&gt; 
-  <span class='fu'>group_by</span><span class='op'>(</span><span class='va'>team</span>, <span class='va'>match_id</span><span class='op'>)</span> |&gt; 
-  <span class='fu'><a href='https://rdrr.io/r/stats/filter.html'>filter</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/all.html'>all</a></span><span class='op'>(</span><span class='va'>prob</span> <span class='op'>==</span> <span class='fl'>0</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
-  <span class='fu'>ungroup</span><span class='op'>(</span><span class='op'>)</span>
-
-<span class='va'>understat_probs_by_match</span> <span class='op'>&lt;-</span> <span class='va'>init_all_understat_probs_by_match</span> |&gt; 
-  <span class='fu'>anti_join</span><span class='op'>(</span>
-    <span class='va'>understat_guaranteed_losses</span> |&gt; <span class='fu'>select</span><span class='op'>(</span><span class='va'>team</span>, <span class='va'>match_id</span>, <span class='va'>result</span><span class='op'>)</span>,
-    by <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>'team'</span>, <span class='st'>'match_id'</span>, <span class='st'>'result'</span><span class='op'>)</span>
-  <span class='op'>)</span> |&gt; 
-  <span class='fu'>bind_rows</span><span class='op'>(</span>
-    <span class='va'>understat_guaranteed_wins</span> |&gt; 
-      <span class='fu'>mutate</span><span class='op'>(</span>
-        prob <span class='op'>=</span> <span class='fu'>case_when</span><span class='op'>(</span>
-          <span class='va'>result</span> <span class='op'>==</span> <span class='st'>'win'</span> <span class='op'>~</span> <span class='fl'>0.9</span>,
-          <span class='va'>result</span> <span class='op'>==</span> <span class='st'>'lose'</span> <span class='op'>~</span> <span class='fl'>0</span>,
-          <span class='va'>result</span> <span class='op'>==</span> <span class='st'>'draw'</span> <span class='op'>~</span> <span class='fl'>0.1</span>
-        <span class='op'>)</span>
-      <span class='op'>)</span>
-  <span class='op'>)</span> |&gt; 
-  <span class='fu'>bind_rows</span><span class='op'>(</span>
-    <span class='va'>understat_guaranteed_losses</span> |&gt; 
-      <span class='fu'>mutate</span><span class='op'>(</span>
-        prob <span class='op'>=</span> <span class='fu'>case_when</span><span class='op'>(</span>
-          <span class='va'>result</span> <span class='op'>==</span> <span class='st'>'win'</span> <span class='op'>~</span> <span class='fl'>0</span>,
-          <span class='va'>result</span> <span class='op'>==</span> <span class='st'>'lose'</span> <span class='op'>~</span> <span class='fl'>0.9</span>,
-          <span class='va'>result</span> <span class='op'>==</span> <span class='st'>'draw'</span> <span class='op'>~</span> <span class='fl'>0.1</span>
-        <span class='op'>)</span>
-      <span class='op'>)</span>
-  <span class='op'>)</span> |&gt; 
-  <span class='fu'>arrange</span><span class='op'>(</span><span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>match_id</span><span class='op'>)</span>
-</code></pre>
-</div>
-</div>
 <p>Next, the fun part: simulating match outcomes using the xG-implied
 match outcome probabilities. This is computationally intense, so we
 parallelize the calculation.</p>
@@ -1769,6 +1713,15 @@ parallelize the calculation.</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'>parallel</span><span class='op'>)</span>
 <span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://future.futureverse.org'>future</a></span><span class='op'>)</span>
 <span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/DavisVaughan/furrr'>furrr</a></span><span class='op'>)</span>
+
+<span class='va'>understat_probs_by_match</span> <span class='op'>&lt;-</span> <span class='va'>all_understat_xpts_by_match</span> |&gt; 
+  <span class='fu'>select</span><span class='op'>(</span><span class='va'>match_id</span>, <span class='va'>season</span>, <span class='va'>team</span>, <span class='va'>opponent</span>, <span class='va'>is_home</span>, <span class='fu'>starts_with</span><span class='op'>(</span><span class='st'>'prob'</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>rename_with</span><span class='op'>(</span><span class='op'>~</span><span class='fu'>str_remove</span><span class='op'>(</span><span class='va'>.x</span>, <span class='st'>'^prob_'</span><span class='op'>)</span>, <span class='fu'>starts_with</span><span class='op'>(</span><span class='st'>'prob'</span><span class='op'>)</span><span class='op'>)</span> |&gt; 
+  <span class='fu'>pivot_longer</span><span class='op'>(</span>
+    <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>win</span>, <span class='va'>lose</span>, <span class='va'>draw</span><span class='op'>)</span>,
+    names_to <span class='op'>=</span> <span class='st'>'result'</span>,
+    values_to <span class='op'>=</span> <span class='st'>'prob'</span>
+  <span class='op'>)</span>
 
 <span class='va'>simulate_season_xpts</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>...</span><span class='op'>)</span> <span class='op'>{</span>
   <span class='va'>sim_home_pts_by_match</span> <span class='op'>&lt;-</span> <span class='va'>understat_probs_by_match</span> |&gt; 
@@ -1869,7 +1822,7 @@ season-long xPts and xGD.</p>
 <span class='co'>#&gt; # A tibble: 1 × 2</span>
 <span class='co'>#&gt;    rmse    r2</span>
 <span class='co'>#&gt;   &lt;dbl&gt; &lt;dbl&gt;</span>
-<span class='co'>#&gt; 1  7.14 0.839</span>
+<span class='co'>#&gt; 1  7.16 0.839</span>
 </code></pre>
 </div>
 </div>
@@ -1881,8 +1834,8 @@ something very close to just computing season-long xPts directly.</p>
 <p>While the null result may be discouraging, the simulations are useful
 in and of themselves. They can be used to understand the distribution of
 outcomes for team in a given season, as seen in the table below.<a
-href="#fn4" class="footnote-ref" id="fnref4"
-role="doc-noteref"><sup>4</sup></a></p>
+href="#fn2" class="footnote-ref" id="fnref2"
+role="doc-noteref"><sup>2</sup></a></p>
 <p><img src="sim_placings.png" /></p>
 <p>We can see that Leicester, Wolves, and Newcastle all placed at the
 uppper end of their simulated placings, indicating that they
@@ -1964,8 +1917,8 @@ unlikelihood?</p>
 the top five over- and under-achievers that we already saw before, one
 team-season pair is not too far off from the top five—the 2017/18
 Manchester United squad ranked as the sixth biggest over-performers by
-the season-long xGD regression.<a href="#fn5" class="footnote-ref"
-id="fnref5" role="doc-noteref"><sup>5</sup></a> However, the other
+the season-long xGD regression.<a href="#fn3" class="footnote-ref"
+id="fnref3" role="doc-noteref"><sup>3</sup></a> However, the other
 over-perfomer, 2019/20 Newcastle, and the two remaining
 under-performers, 2021/22 Crystal Palace and 2021/22 Brentford, have
 somewhat large ranking discrepancies. So yes, the two methods can lead
@@ -1975,25 +1928,27 @@ in other cases.</p>
 <p>In fact, there are some big differences between the two methods once
 we look outside the top five or so biggest over- and under- achievers.
 For example, in terms of over-achieving, Arsenal’s fifth place finish
-2018/19 season is given just a 8.9% chance of occurring given their
-season-long xGD, ranking them as the 16th biggest over-performer (among
+2018/19 season is given just a 7.50% chance of occurring given their
+season-long xGD, ranking them as the 17th biggest over-performer (among
 80 team-season pairs considered to have over-achieved from 2014/15).<a
-href="#fn6" class="footnote-ref" id="fnref6"
-role="doc-noteref"><sup>6</sup></a> On the other hand, the match-level
+href="#fn4" class="footnote-ref" id="fnref4"
+role="doc-noteref"><sup>4</sup></a> On the other hand, the match-level
 simulation approach marks the likelihood of them finishing fourth as
-31.9% (38th of 80). The season-long xGD model essentially sees that they
-finished with an xGD of 7.5—less than any other fifth place finisher
-from 2014/15 - 2021/22—and penalizes them, while the match-level
-approach contextualizes them among their competition more robustly.</p>
+31.63% (37th of 80). The season-long xGD model essentially sees that
+they finished with an xGD of 7.5—less than any other fifth place
+finisher from 2014/15 - 2021/22—and penalizes them, while the
+match-level approach contextualizes them among their competition more
+robustly.</p>
 <p>As another example, Manchester United’s under-achieving sixth place
-finish in the 2016/17 is given a fairly reasonable 37.3% chance (66th of
-80 under-achieving teams) of occurring given their season-long 25.9 xGD,
-most for any sixth place team in the data set. On the other hand, the
-match-level simulation approach sees their sixth place finish as more
-unlikely, at just a 15.4% probability (15th of 80). While one might have
-their own opinion regarding which approach seems more “correct”, I’d say
-that likelihoods from the simulation approach seem more appropriate for
-extreme examples such as this one and the 2018/19 Arsenal example</p>
+finish in the 2016/17 is given a fairly reasonable 37.36% chance (66th
+of 80 under-achieving teams) of occurring given their season-long 25.9
+xGD, most for any sixth place team in the data set. On the other hand,
+the match-level simulation approach sees their sixth place finish as
+more unlikely, at just a 15.88% probability (16th of 80). While one
+might have their own opinion regarding which approach seems more
+“correct”, I’d say that likelihoods from the simulation approach seem
+more appropriate for extreme examples such as this one and the 2018/19
+Arsenal example</p>
 <p>Overall, both approaches seem reasonable to use to answer the
 question “Which teams had the most unlikely placings in the table given
 the quality of all their shots across the season?” But the approach
@@ -2025,29 +1980,19 @@ although we’d need to add a column for team names for <a
 href="https://fbref.com/en/">FBref</a> to our team mapping to
 corroborate team names.<a href="#fnref1" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn2" role="doc-endnote"><p>Theoretically, there is an even more
-extreme case: when both teams do not have any shots in a match. This
-does not occur in the data set, so we do not need to correct for this.<a
-href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn3" role="doc-endnote"><p>These choices are purely based on
-intuition. We could be more rigorous about this, but I think these
-defaults should be fine. It’s wrong to assign a probability of 1 for
-losing, and a naive split of 0.5 and 0.5 for losing and drawing is
-surely too optimistic in favor of drawing.<a href="#fnref3"
-class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4" role="doc-endnote"><p>Table code is not shown since it’s
-not particularly instructive.<a href="#fnref4" class="footnote-back"
+<li id="fn2" role="doc-endnote"><p>Table code is not shown since it’s
+not particularly instructive.<a href="#fnref2" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn5" role="doc-endnote"><p>Note that, given the 160 team-season
+<li id="fn3" role="doc-endnote"><p>Note that, given the 160 team-season
 pairs in the data set, we should expect that 80 teams each are ranked as
 over-performing and under-performing. No team will be labeled as
 performing exactly as expected, unless they happen to have only one
 possible placing in the simulation approach, or a residual of exactly 0
-in the regression approach.<a href="#fnref5" class="footnote-back"
+in the regression approach.<a href="#fnref3" class="footnote-back"
 role="doc-backlink">↩︎</a></p></li>
-<li id="fn6" role="doc-endnote"><p>To quantify the likelihood of a
+<li id="fn4" role="doc-endnote"><p>To quantify the likelihood of a
 team’s placing with the simple regression, we convert the standard
-residual of the regression to a tail probability.<a href="#fnref6"
+residual of the regression to a tail probability.<a href="#fnref4"
 class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section>
