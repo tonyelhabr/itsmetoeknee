@@ -131,9 +131,10 @@ update_geom_defaults('point', list(color = 'white'))
 library(tibble)
 library(scales)
 
+x_breaks <- 0L:(pmax(length(probs_a), length(probs_b)) - 1L)
 tibble(
   team = c(rep('A', length(probs_a)), rep('B', length(probs_b))),
-  g = c(seq_along(probs_a), seq_along(probs_b)),
+  g = c(seq_along(probs_a) - 1L, seq_along(probs_b) - 1L),
   prob = c(probs_a, probs_b)
 ) |> 
   ggplot() +
@@ -144,6 +145,7 @@ tibble(
   scale_fill_manual(
     values = c('#ff8200', '#7a5195')
   ) +
+  scale_x_continuous(breaks = x_breaks, labels = x_breaks) +
   scale_y_continuous(labels = percent) +
   theme(
     panel.grid.major.x = element_blank()
