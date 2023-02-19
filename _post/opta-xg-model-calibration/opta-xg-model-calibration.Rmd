@@ -25,8 +25,8 @@ twitter:
 #| include: FALSE
 #| echo: FALSE
 knitr::opts_chunk$set(
-  include = TRUE,
-  echo = TRUE,
+  include = FALSE,
+  echo = FALSE,
   cache = FALSE,
   eval = FALSE,
   cache.lazy = FALSE,
@@ -75,13 +75,9 @@ The FBref/Opta update gave me two ideas:
 
 ```{r}
 #| label: data-pull
-#| eval: false
-#| echo: false
-#| include: false
 library(dplyr) ## 1.0.99.9000
 library(purrr)
 library(worldfootballR)
-library(readr)
 library(tidyr)
 
 params <- bind_rows(
@@ -140,9 +136,6 @@ match_shooting <- params |>
 
 ```{r}
 #| label: data-clean
-#| eval: false
-#| echo: false
-#| include: false
 library(lubridate)
 library(stringr)
 
@@ -254,7 +247,7 @@ updated_shots <- inner_join(
       Tier = tier
     ) |> 
     clean_match_shooting() |> 
-    select(,
+    select(
       match_url, 
       half,
       minute,
@@ -265,55 +258,271 @@ updated_shots <- inner_join(
   by = join_by(match_url, half, minute, team, player),
   multiple = 'first'
 ) |> 
-  mutate(
-    xgd = new_xg - old_xg
-  ) |> 
-  arrange(desc(abs(xgd)))
+  relocate(old_xg, .before = new_xg)
 ```
 
-## 1. Pre- and Post-update xG Differences
+## 1. Pre- and Post-update xG Comparison
+
+```{r}
+#| label: updated_np_shots
+library(readr)
+
+updated_np_shots <- read_rds('../sports_viz/65-opta_xg_calib/data/clean_updated_shots.rds') |> 
+  filter(!is_penalty)
+
+compare_by <- function(shots, ...) {
+  shots |> 
+    group_by(...) |> 
+    summarize(
+      n_shots = n(),
+      n_same_npxg = sum(round(old_xg, 2) == round(new_xg, 2), na.rm = TRUE),
+      n_old_npxg_is_higher = sum(round(old_xg, 2) > round(new_xg, 2), na.rm = TRUE),
+      new_npxg = sum(new_xg, na.rm = TRUE),
+      old_npxg = sum(old_xg, na.rm = TRUE)
+    ) |> 
+    ungroup() |> 
+    transmute(
+      ...,
+      n_shots,
+      n_same_npxg,
+      n_diff_npxg = n_shots - n_same_npxg,
+      n_old_npxg_is_higher,
+      n_new_npxg_is_higher = n_diff_npxg - n_old_npxg_is_higher,
+      prop_diff_npxg = n_diff_npxg / n_shots,
+      prop_old_npxg_is_higher = n_old_npxg_is_higher / n_diff_npxg
+    ) |> 
+    arrange(desc(n_shots))
+}
+
+updated_np_shots |>
+  compare_by() |> 
+  glimpse()
+#> Rows: 1
+#> Columns: 7
+#> $ n_shots                 <int> 44986
+#> $ n_same_npxg             <int> 14750
+#> $ n_diff_npxg             <int> 30236
+#> $ n_old_npxg_is_higher    <int> 23584
+#> $ n_new_npxg_is_higher    <int> 6652
+#> $ prop_diff_npxg          <dbl> 0.6721202
+#> $ prop_old_npxg_is_higher <dbl> 0.7799974
+#> $ prop_old_npxg_is_higher  <dbl> 0.7799974
+```
+
+```{r}
+#| label: discretized_updated_shots
+library(forcats)
+meta_updated_shots_cols <- c(
+  'country',
+  'date',
+  'half',
+  'minute',
+  'team',
+  'player'
+)
+
+discretized_updated_np_shots <- updated_np_shots |> 
+  select(
+    all_of(meta_updated_shots_cols),
+    
+    new_xg,
+    old_xg,
+    is_goal,
+    
+    country,
+    distance,
+    sca1,
+    body_part,
+    is_from_deflection,
+    is_from_volley,
+    is_free_kick,
+    is_open_play,
+    is_primary_foot
+  ) |> 
+  mutate(
+    across(
+      country,
+      factor
+    ),
+    across(
+      distance,
+      ~cut(
+        .x,
+        breaks = c(seq(0, 18, by = 2), 20, 25, 30, 35, Inf)
+      )
+    ),
+    across(sca1, ~na_if(.x, '')),
+    across(
+      sca1, 
+      ~.x |> 
+        str_remove_all( '\\(|\\)') |> 
+        str_replace_all('\\s|[-]', '_') |> 
+        tolower() |> 
+        factor()
+    ),
+    across(
+      c(
+        is_from_deflection,
+        is_from_volley,
+        is_free_kick,
+        is_open_play,
+        is_primary_foot
+      ),
+      ~ifelse(.x, 'yes', 'no') |> 
+        factor()
+    ),
+    across(
+      c(is_primary_foot, body_part, sca1, distance), 
+      ~fct_explicit_na(.x, na_level = 'missing')
+    )
+  )
+```
 
 First, let's take a wholistic look at all of the shots for the 2021/22 seasons played in Big 5 leagues.
 
-Plotting the pre-update shot-level xG (`pre-update xG`) data versus the `pre- minus post-update xG`, we see that the biggest reductions in xG occurred for shots where xG was relatively high (i.e. \>0.5). While there were shots where xG increased post-update---mostly shots where xG \< 0.5---the reductions pull down the overall average difference between the new and old xG data by \~0.01 per shot.
-
 ```{r}
 #| label: post-update-xgd
-#| eval: false
-glimpse(updated_shots)
-#> Rows: 45,566
-#> Columns: 29
-#> $ match_url          <chr> "https://fbref.com/en/matches/3adf2aa7/Brentford-Ar…
-#> $ group              <chr> "big5", "big5", "big5", "big5", "big5", "big5", "bi…
-#> $ country            <chr> "ENG", "ENG", "ENG", "ENG", "ENG", "ENG", "ENG", "E…
-#> $ gender             <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "…
-#> $ tier               <chr> "1st", "1st", "1st", "1st", "1st", "1st", "1st", "1…
-#> $ season_end_year    <dbl> 2022, 2022, 2022, 2022, 2022, 2022, 2022, 2022, 202…
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(ggforce)
+library(ragg)
+
+font <- 'Titillium Web'
+sysfonts::font_add_google(font, font)
+## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = 300)
+
+blackish_background <- '#1c1c1c'
+  
+# extrafont::loadfonts(quiet = TRUE)
+theme_set(theme_minimal())
+theme_update(
+  text = element_text(family = font),
+  title = element_text(size = 20, color = 'white'),
+  plot.title = element_text(face = 'bold', size = 20, color = 'white'),
+  plot.title.position = 'plot',
+  plot.subtitle = element_text(size = 16, color = '#f1f1f1'),
+  axis.text = element_text(color = 'white', size = 14),
+  axis.title = element_text(size = 14, color = 'white', face = 'bold', hjust = 0.99),
+  axis.line = element_blank(),
+  panel.grid.major = element_line(color = '#4d4d4d'),
+  panel.grid.minor = element_line(color = '#4d4d4d'),
+  panel.grid.minor.x = element_blank(),
+  panel.grid.minor.y = element_blank(),
+  plot.margin = margin(10, 10, 10, 10),
+  plot.background = element_rect(fill = blackish_background, color = blackish_background),
+  plot.caption = element_text(color = 'white', hjust = 0, size = 12, face = 'plain'),
+  plot.caption.position = 'plot',
+  panel.background = element_rect(fill = blackish_background, color = blackish_background)
+)
+update_geom_defaults('text', list(color = 'white', size = 12 / .pt))
+update_geom_defaults('point', list(color = 'white'))
+arw_annotate <- arrow(length = unit(5, 'pt'), type = 'closed')
+
+updated_xgd_n <- updated_shots |> 
+  filter(!is_penalty) |> 
+  count(old_xg, xgd = old_xg - new_xg) |>
+  mutate(xgd_is_pos = xgd > 0) |> 
+  arrange(old_xg, xgd)
+
+xgd_miss_color <- '#00b2a9'
+p_old_xg_vs_xgd <- updated_xgd_n |> 
+  ggplot() +
+  aes(x = old_xg, y = xgd) +
+  geom_point(
+    aes(
+      size = n, 
+      alpha = n
+    )
+  ) +
+  scale_alpha_continuous(range = c(0.25, 1)) +
+  guides(
+    size = 'none',
+    alpha = 'none'
+  ) +
+  theme(
+    plot.tag = ggtext::element_markdown(size = 12, color = 'white', hjust = 1),
+    plot.tag.position = c(0.99, 0.01)
+  ) +
+  coord_cartesian(
+    xlim = c(0, 1),
+    ylim = c(-1, 1),
+    expand = TRUE
+  ) +
+  labs(
+    title = 'Comparison of Opta non-penalty expected goals (npxG)',
+    subtitle = 'Pre- and post-FBref update (2023-02-08) for Big 5 leagues, 2021/22 season',
+    x = 'Pre-update npxG',
+    y = 'Pre-update npxG minus post-update npxG',
+    tag = '<span style="font-family:fb";">&#xf099;</span> @TonyElHabr',
+    caption = 'Each point represents a shot.\nLarger, more opaque points means there are more shots with a given x- and y-axis value.'
+  ) +
+  ggforce::geom_mark_hull(
+    data = updated_xgd_n |> filter(xgd_is_pos),
+    aes(
+      label = 'Shots where pre-update\nnpxG was reduced'
+    ),
+    label.family = font,
+    label.fontface = 'bold',
+    label.hjust = 1,
+    label.fontsize = 14,
+    expand = unit(1, 'mm'),
+    label.fill = NA_character_,
+    # label.buffer = unit(5, 'mm'),
+    con.border = 'none',
+    # con.arrow = arw_annotate,
+    con.linetype = 0,
+    concavity = 10,
+    label.colour = xgd_miss_color,  
+    con.colour = xgd_miss_color,
+    colour = xgd_miss_color
+  )
+p_old_xg_vs_xgd
+
+ggsave(
+  p_old_xg_vs_xgd,
+  device = ragg::agg_png,
+  res = 300,
+  filename = '_post/opta-xg-model-calibration/old_xg_vs_xgd.png',
+  width = 2400,
+  height = 2400,
+  units = 'px'
+)
+```
+
+![](old_xg_vs_xgd.png)
+
+Plotting the pre-update non-penalty shot-level xG data versus the difference in pre- and post-update xG, we see that the biggest reductions in xG occurred for shots where xG was relatively high (i.e. \>0.2). While there were shots where xG increased post-update, the reductions pull down the overall average difference between the new and old xG data by \~0.01 per shot.
+
+```{r}
+#| label: discretized_updated_np_shots-glimpse
+#| include: true
+#| echo: true
+glimpse(discretized_updated_np_shots)
+#> Rows: 44,986
+#> Columns: 16
+#> $ country            <fct> ENG, ENG, ENG, ENG, ENG, ENG, ENG, ENG, ENG, ENG, E…
 #> $ date               <date> 2021-08-13, 2021-08-13, 2021-08-13, 2021-08-13, 20…
 #> $ half               <dbl> 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, …
 #> $ minute             <chr> "11", "12", "22", "28", "30", "66", "73", "80", "2"…
 #> $ team               <chr> "Brentford", "Brentford", "Brentford", "Brentford",…
 #> $ player             <chr> "Frank Onyeka", "Bryan Mbeumo", "Sergi Canós", "Ser…
-#> $ old_xg             <dbl> 0.09, 0.14, 0.04, 0.07, 0.31, 0.13, 0.58, 0.27, 0.0…
 #> $ new_xg             <dbl> 0.08, 0.09, 0.02, 0.06, 0.26, 0.06, 0.40, 0.28, 0.0…
-#> $ psxg               <dbl> NA, NA, 0.08, NA, NA, 0.05, 0.87, NA, 0.02, NA, NA,…
-#> $ outcome            <chr> "Off Target", "Woodwork", "Goal", "Off Target", "Of…
-#> $ is_penalty         <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+#> $ old_xg             <dbl> 0.09, 0.14, 0.04, 0.07, 0.31, 0.13, 0.58, 0.27, 0.0…
 #> $ is_goal            <fct> no, no, yes, no, no, no, yes, no, no, no, no, no, n…
-#> $ distance           <int> 10, 14, 17, 22, 13, 15, 4, 3, 33, 19, 10, 22, 23, 1…
-#> $ body_part          <chr> "Head", "Right Foot", "Right Foot", "Right Foot", "…
-#> $ notes              <chr> "", "", "", "", "", "", "", "", "", "Volley", "", "…
-#> $ sca1               <chr> "Pass (Live)", "Pass (Live)", "Pass (Live)", "Pass …
-#> $ sca2               <chr> "Pass (Live)", "Pass (Live)", "", "Pass (Live)", "P…
-#> $ primary_foot       <chr> "right", "left", "right", "right", "left", "right",…
-#> $ is_true_open_play  <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRU…
-#> $ is_from_deflection <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
-#> $ is_from_volley     <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
-#> $ is_free_kick       <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
-#> $ is_open_play       <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRU…
-#> $ is_primary_foot    <lgl> NA, FALSE, TRUE, TRUE, FALSE, TRUE, NA, NA, TRUE, T…
+#> $ distance           <fct> "(8,10]", "(12,14]", "(16,18]", "(20,25]", "(12,14]…
+#> $ sca1               <fct> pass_live, pass_live, pass_live, pass_live, take_on…
+#> $ body_part          <fct> Head, Right Foot, Right Foot, Right Foot, Right Foo…
+#> $ is_from_deflection <fct> no, no, no, no, no, no, no, no, no, no, no, no, no,…
+#> $ is_from_volley     <fct> no, no, no, no, no, no, no, no, no, yes, no, no, no…
+#> $ is_free_kick       <fct> no, no, no, no, no, no, no, no, no, no, no, no, no,…
+#> $ is_primary_foot    <fct> missing, no, yes, yes, no, yes, missing, missing, y…
 
-updated_shots |> 
+discretized_updated_np_shots |> 
   filter(!is_penalty) |> 
   mutate(xgd = old_xg - new_xg) |> 
   pull(xgd) |> 
@@ -321,18 +530,81 @@ updated_shots |>
 #> [1] 0.0095014
 ```
 
-Note that, for a large majority of shots, where xG is in the [0.02, 0.04] range (see the yellow/green points on the plot), xG either did not change at all or only trivially changed. So, while there were certainly changes to shot xG across the whole range of [0,1], let's keep in mind that the data update did not change xG significantly for a large proportion of shots.
+Of the 44,986 shots in the data set, 30,326 (67.2%) had changes to their xG values.[^3] Of those that changed, 23, 584 (78.0%) ended up being reduced, i.e. the pre-update xG value was higher. We can look at changes to xG values grouped by various `feature`s that FBref publishes alongside each shot's xG, including `distance` (yards), `sca1` (direct [shot-creating action](https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/)), `body_part`, `is_from_deflection`, `is_from_volley`, `is_free_kick`, and `is_primary_foot`.[^4]
+
+[^3]: Note that, for a large majority of shots, where xG is in the (0, 0.05] range, xG either did not change at all or only trivially changed. (See the blur of white points on the left-hand side of the plot.)
+
+[^4]: Several of these are not provided directly from the raw FBref tables. For example, `is_from_deflection` is derived from the `Notes` field in the FBref shot table. `is_primary_foot` is derived from collecting player footedness data and checking for a match with `body_part`.
+
+```{r}
+#| label: updated_np_shot_diffs
+library(scales)
+library(knitr)
+updated_np_shot_diffs <- discretized_updated_np_shots |> 
+  select(-all_of(meta_updated_shots_cols)) |> 
+  pivot_longer(
+    -c(is_goal, old_xg, new_xg),
+    names_to = 'feature',
+    values_to = 'group'
+  ) |> 
+  compare_by(feature, group)
+
+slice_and_tabularize_np_shot_diffs <- function(op, n = 5) {
+  updated_np_shot_diffs |> 
+    filter(n_shots >= 100) |> 
+    arrange(op(prop_old_npxg_is_higher)) |> 
+    head(n) |> 
+    transmute(
+      Feature = sprintf('`%s`', feature),
+      Group = sprintf('`%s`', ifelse(feature == "distance", as.character(group), paste0('"', group, '"'))),
+      `# of non-penalty shots` = scales::comma(n_shots),
+      `# of shots with changed npxG` = sprintf('%s (%.1f%%)', scales::comma(n_diff_npxg), 100 * prop_diff_npxg),
+      `# of shots with lower post-update npxG of those that changed` = sprintf('%s (%.1f%%)', scales::comma(n_old_npxg_is_higher), 100 * prop_old_npxg_is_higher),
+    ) |> 
+    knitr::kable()
+}
+
+slice_and_tabularize_np_shot_diffs(`-`, n = 5)
+slice_and_tabularize_np_shot_diffs(`+`, n = 6)
+```
+
+Observe that the reductions in npxG occurred most frequently for longer `distance`s (yards), suggesting that the pre-update xG model was over-predicting xG for longer shots. Interestingly, xG for shots when interceptions led directly to the shot (`sca1`), and xG for shots with `body_part = "other"` (non-foot, non-header) were also frequently reduced, in the cases where xG was changed.
+
+| Feature     | Group            | \# of non-penalty shots | \# of shots with changed npxG | \# of shots with lower post-update npxG of those that changed |
+|:------------|:-----------------|------------------------:|------------------------------:|--------------------------------------------------------------:|
+| `distance`  | `(25,30]`        |                   6,061 |                 3,659 (60.4%) |                                                 3,437 (93.9%) |
+| `distance`  | `(20,25]`        |                   6,760 |                 4,463 (66.0%) |                                                 4,088 (91.6%) |
+| `sca1`      | `"interception"` |                     149 |                    96 (64.4%) |                                                    87 (90.6%) |
+| `distance`  | `(18,20]`        |                   1,889 |                 1,232 (65.2%) |                                                 1,088 (88.3%) |
+| `distance`  | `(30,35]`        |                   2,725 |                 1,267 (46.5%) |                                                 1,117 (88.2%) |
+| `body_part` | `"Other"`        |                     191 |                   153 (80.1%) |                                                   130 (85.0%) |
+
+On the other end of the spectrum, reductions in npxG occurred least frequently for shorter `distance` buckets (`(0,2]`, `(2,4]`, `(4,6]`, `(6,8)`). Reductions still occurred a majority of the time when there was a change---note that each has `>50%` for the last column---for all but the shortest `distance` group, `(0,2]`.
+
+| Feature        | Group      | \# of non-penalty shots | \# of shots with changed npxG | \# of shots with lower post-update npxG of those that changed |
+|:---------------|:-----------|------------------------:|------------------------------:|--------------------------------------------------------------:|
+| `distance`     | `(0,2]`    |                     173 |                   130 (75.1%) |                                                    51 (39.2%) |
+| `distance`     | `(2,4]`    |                   1,087 |                   826 (76.0%) |                                                   428 (51.8%) |
+| `distance`     | `(4,6]`    |                   2,003 |                 1,479 (73.8%) |                                                   831 (56.2%) |
+| `distance`     | `(35,Inf]` |                     539 |                   313 (58.1%) |                                                   177 (56.5%) |
+| `distance`     | `(6,8]`    |                   2,557 |                 1,882 (73.6%) |                                                 1,183 (62.9%) |
+| `is_free_kick` | `"yes"`    |                   1,576 |                   882 (56.0%) |                                                   557 (63.2%) |
 
 ## 2. xG Model Calibration
 
-[I've touched on model calibration before, when discussing xG-implied match outcome probabilities](https://tonyelhabr.rbind.io/post/epl-xpts-simulation-1/#match-predictive-performance7). There, I wrote a function to compute a [calibration plot](https://changhsinlee.com/python-calibration-plot/)
+[I've touched on model calibration before, when discussing xG-implied match outcome probabilities](https://tonyelhabr.rbind.io/post/epl-xpts-simulation-1/#match-predictive-performance7). There, I wrote my own code to create a [calibration plot](https://changhsinlee.com/python-calibration-plot/)
 
-Since then, the [`{tidymodels}` team](https://www.tidymodels.org/) has done some work on the [`{probably}` package](https://probably.tidymodels.org/), adding [functions to generate calibration plots](https://www.tidyverse.org/blog/2022/11/model-calibration/)
+Since then, the [`{tidymodels}` team](https://www.tidymodels.org/) has done some work on the [`{probably}` package](https://probably.tidymodels.org/), adding [functions to generate calibration plots](https://www.tidyverse.org/blog/2022/11/model-calibration/). Let's try some of those out.
+
+Here, we'll use a big sample of data---all 2017/18 - 2021/22 non-penalty shots for the Big 5 leagues and several other first and second tier leagues.[^5]
+
+[^5]: Several leagues don't have data available for all such seasons, which is reflected in the row counts by group.
 
 ```{r}
-#| label: data-pull-output
-#| eval: false
-match_shooting |> count(Country, Tier, Gender)
+#| label: part-2
+match_shooting |> 
+  filter(!is_penalty) |> 
+  count(Country, Tier, Gender, name = 'n_shots')
 #> # A tibble: 13 × 4
 #>    Country Tier  Gender     n
 #>    <chr>   <chr> <chr>  <int>
