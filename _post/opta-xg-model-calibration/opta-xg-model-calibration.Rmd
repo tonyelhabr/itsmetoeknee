@@ -1,0 +1,352 @@
+---
+title: 'xG Model Calibration'
+description: "Evaluating Opta's xG Model performance with Brier Skill Score and Calibration Plots"
+draft: true
+author:
+  - name: Tony ElHabr
+    url: 'https://twitter.com/TonyElHabr'
+date: 2022-02-26
+categories:
+  - r
+  - soccer
+output: 
+  distill::distill_article:
+    toc: true
+    toc_depth: 4
+    self_contained: false
+preview: preview.png
+twitter:
+  site: '@TonyElHabr'
+  creator: '@TonyElHabr'
+---
+
+```{r}
+#| label: setup,
+#| include: FALSE
+#| echo: FALSE
+knitr::opts_chunk$set(
+  include = TRUE,
+  echo = TRUE,
+  cache = FALSE,
+  eval = FALSE,
+  cache.lazy = FALSE,
+  fig.show = 'hide',
+  fig.align = 'center',
+  fig.width = 8,
+  fig.asp = 0.75,
+  fig.retina = 2,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+## Introduction
+
+Recently, [I pointed out](https://twitter.com/TonyElHabr/status/1614288983105617922) what seemed to be a bug with the [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/) data shown on [FBref](https://fbref.com). In particular, the difference between non-penalty goals (npG) and non-penalty xG (npxG)[^1] seemed to be an outlier for the 2021/22 season across [the Big 5 leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats).
+
+[^1]: It's typically better to analyze expected goals after removing penalties since penalties can distort quantities, adding "noise" to an analysis.
+
+<blockquote class="twitter-tweet">
+
+<p lang="en" dir="ltr">
+
+"aLl xG mOdeLs ArE thE sAme"<br><br>my brother in christ wut is this then <a href="https://t.co/7tjp1VFkoc">pic.twitter.com/7tjp1VFkoc</a>
+
+</p>
+
+--- Tony (@TonyElHabr) <a href="https://twitter.com/TonyElHabr/status/1614288983105617922?ref_src=twsrc%5Etfw">January 14, 2023</a>
+
+</blockquote>
+
+```{=html}
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+```
+As it turns out FBref and their data provider, [Opta](https://www.statsperform.com/opta/), agreed! On Feb. 8, 2023, [they posted an update](https://twitter.com/fbref/status/1623358271791722502?s=20) indicating that they adjusted 2021/22 xG such that the difference between npG and npxG is much more in line with other seasons.
+
+### Objectives
+
+The FBref/Opta update gave me two ideas:
+
+1.  **Compare pre- and post-update xG** to identify where/how adjustments were applied.[^2]
+
+2.  **Quantify the [calibration level](https://en.wikipedia.org/wiki/Calibration_(statistics)) of their current xG model.**
+
+[^2]: FBref/Opta didn't specify how they changed their xG model. Given how I observed very only trivial differences in the shot-level xG for prior seasons, it's possible that they didn't even change their model! There could have been some data issue specific to the 2021/22 season, that, when addressed, resulted in more plausible xG.
+
+```{r}
+#| label: data-pull
+#| eval: false
+#| echo: false
+#| include: false
+library(dplyr) ## 1.0.99.9000
+library(purrr)
+library(worldfootballR)
+library(readr)
+library(tidyr)
+
+params <- bind_rows(
+  'big5' = list(
+    country = c('ENG', 'ESP', 'FRA', 'GER', 'ITA'),
+    tier = '1st',
+    gender = 'M'
+  ),
+  'other_1st_M' = list(
+    country = c('POR', 'NED', 'BRA', 'MEX', 'USA'),
+    tier = '1st',
+    gender = 'M'
+  ),
+  '1st_F' = list(
+    ## ESP only starts in season_end_year = 2023
+    country = c('ENG', 'USA'),
+    tier = '1st',
+    gender = 'F'
+  ),
+  '2nd_M' = list(
+    country = c('ENG'),
+    tier = '2nd',
+    gender = 'M'
+  ),
+  .id = 'group'
+)
+
+match_shooting <- params |> 
+  group_by(group, tier, gender) |> 
+  summarize(countries = list(country)) |> 
+  ungroup() |> 
+  mutate(
+    data = pmap(
+      list(
+        countries,
+        tier,
+        gender,
+        group
+      ),
+      ~{
+        first_season_end_year <- ifelse(..4 == 'big5', 2018L, 2019L)
+        res <- load_fb_match_shooting(
+          country = ..1,
+          tier = ..2,
+          gender = ..3,
+          season_end_year = first_season_end_year:2022L
+        )
+        res$Tier <- ..2
+        res
+      }
+    )
+  ) |> 
+  select(group, data) |> 
+  unnest(data)
+```
+
+```{r}
+#| label: data-clean
+#| eval: false
+#| echo: false
+#| include: false
+library(lubridate)
+library(stringr)
+
+## https://github.com/tonyelhabr/sports_viz/blob/master/65-opta_xg_calib/1-pull-footedness.R
+footedness <- read_csv(
+  'https://raw.githubusercontent.com/tonyelhabr/sports_viz/master/65-opta_xg_calib/data/footedness.csv'
+)
+unambiguous_footedness <- footedness |> 
+  semi_join(
+    footedness |> 
+      count(country, tier, gender, season_end_year, player, sort = TRUE) |> 
+      filter(n == 1L),
+    by = join_by(country, tier, gender, season_end_year, player)
+  )
+
+clean_match_shooting <- function(df) {
+  df |> 
+    transmute(
+      match_url = MatchURL,
+      group,
+      country = Country,
+      gender = Gender,
+      tier = Tier,
+      season_end_year = Season_End_Year,
+      date = ymd(Date),
+      half = Match_Half,
+      minute = Minute,
+      team = Squad,
+      player = str_remove(Player, ' \\(.*$'),
+      xg = as.numeric(xG),
+      psxg = as.numeric(PSxG),
+      outcome = Outcome,
+      is_penalty = str_detect(Player, '\\(pen\\)'),
+      is_goal = factor(ifelse(outcome == 'Goal', 'yes', 'no')),
+      distance = as.integer(Distance),
+      body_part = `Body Part`,
+      notes = Notes,
+      ## seems that they started to exclusively use Take-On instead of Dribble in 2022
+      sca1 = ifelse(Event_SCA_1 == 'Dribble', 'Take-On', Event_SCA_1),
+      sca2 = ifelse(Event_SCA_2 == 'Dribble', 'Take-On', Event_SCA_2)
+    ) |> 
+    left_join(
+      unambiguous_footedness |> 
+        select(
+          country,
+          tier,
+          gender,
+          season_end_year,
+          player, 
+          primary_foot = foot
+        ),
+      multiple = 'all',
+      by = join_by(
+        country, 
+        tier, gender, 
+        season_end_year, 
+        player
+      )
+    ) |> 
+    mutate(
+      is_true_open_play = notes == '' & !is_penalty,
+      is_from_deflection = str_detect(notes, 'Deflected'),
+      is_from_volley = str_detect(notes, 'Volley'),
+      is_free_kick = notes == 'Free kick',
+      is_open_play = !is_free_kick & !is_penalty,
+      is_primary_foot = case_when(
+        is.na(body_part) ~ NA,
+        is.na(primary_foot) ~ NA,
+        !(body_part %in% sprintf('%s Foot', c('Left', 'Right'))) ~ NA,
+        primary_foot == tolower(str_remove(body_part, ' Foot')) ~ TRUE,
+        .default = FALSE
+      )
+    )
+}
+
+shots <- clean_match_shooting(match_shooting)
+
+pull_old_fb_match_shooting <- function(country, gender, tier) {
+  url <- sprintf(
+    'https://github.com/JaseZiv/worldfootballR_data/releases/download/old_fb_match_shooting/%s_%s_%s_match_shooting.rds', 
+    country,
+    gender,
+    tier
+  )
+  readRDS(url(url))
+}
+
+old_fb_match_shooting <- params |> 
+  filter(group == 'big5') |> 
+  mutate(
+    data = pmap(
+      list(
+        country,
+        gender,
+        tier
+      ),
+      pull_old_fb_match_shooting
+    )
+  ) |> 
+  unnest(data)
+
+updated_shots <- inner_join(
+  shots |> 
+    filter(group == 'big5', season_end_year == 2022) |> 
+    rename(new_xg = xg),
+  old_fb_match_shooting |> 
+    filter(Season_End_Year == 2022) |> 
+    rename(
+      Tier = tier
+    ) |> 
+    clean_match_shooting() |> 
+    select(,
+      match_url, 
+      half,
+      minute,
+      team,
+      player,
+      old_xg = xg
+    ),
+  by = join_by(match_url, half, minute, team, player),
+  multiple = 'first'
+) |> 
+  mutate(
+    xgd = new_xg - old_xg
+  ) |> 
+  arrange(desc(abs(xgd)))
+```
+
+## 1. Pre- and Post-update xG Differences
+
+First, let's take a wholistic look at all of the shots for the 2021/22 seasons played in Big 5 leagues.
+
+Plotting the pre-update shot-level xG (`pre-update xG`) data versus the `pre- minus post-update xG`, we see that the biggest reductions in xG occurred for shots where xG was relatively high (i.e. \>0.5). While there were shots where xG increased post-update---mostly shots where xG \< 0.5---the reductions pull down the overall average difference between the new and old xG data by \~0.01 per shot.
+
+```{r}
+#| label: post-update-xgd
+#| eval: false
+glimpse(updated_shots)
+#> Rows: 45,566
+#> Columns: 29
+#> $ match_url          <chr> "https://fbref.com/en/matches/3adf2aa7/Brentford-Ar…
+#> $ group              <chr> "big5", "big5", "big5", "big5", "big5", "big5", "bi…
+#> $ country            <chr> "ENG", "ENG", "ENG", "ENG", "ENG", "ENG", "ENG", "E…
+#> $ gender             <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "…
+#> $ tier               <chr> "1st", "1st", "1st", "1st", "1st", "1st", "1st", "1…
+#> $ season_end_year    <dbl> 2022, 2022, 2022, 2022, 2022, 2022, 2022, 2022, 202…
+#> $ date               <date> 2021-08-13, 2021-08-13, 2021-08-13, 2021-08-13, 20…
+#> $ half               <dbl> 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, …
+#> $ minute             <chr> "11", "12", "22", "28", "30", "66", "73", "80", "2"…
+#> $ team               <chr> "Brentford", "Brentford", "Brentford", "Brentford",…
+#> $ player             <chr> "Frank Onyeka", "Bryan Mbeumo", "Sergi Canós", "Ser…
+#> $ old_xg             <dbl> 0.09, 0.14, 0.04, 0.07, 0.31, 0.13, 0.58, 0.27, 0.0…
+#> $ new_xg             <dbl> 0.08, 0.09, 0.02, 0.06, 0.26, 0.06, 0.40, 0.28, 0.0…
+#> $ psxg               <dbl> NA, NA, 0.08, NA, NA, 0.05, 0.87, NA, 0.02, NA, NA,…
+#> $ outcome            <chr> "Off Target", "Woodwork", "Goal", "Off Target", "Of…
+#> $ is_penalty         <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+#> $ is_goal            <fct> no, no, yes, no, no, no, yes, no, no, no, no, no, n…
+#> $ distance           <int> 10, 14, 17, 22, 13, 15, 4, 3, 33, 19, 10, 22, 23, 1…
+#> $ body_part          <chr> "Head", "Right Foot", "Right Foot", "Right Foot", "…
+#> $ notes              <chr> "", "", "", "", "", "", "", "", "", "Volley", "", "…
+#> $ sca1               <chr> "Pass (Live)", "Pass (Live)", "Pass (Live)", "Pass …
+#> $ sca2               <chr> "Pass (Live)", "Pass (Live)", "", "Pass (Live)", "P…
+#> $ primary_foot       <chr> "right", "left", "right", "right", "left", "right",…
+#> $ is_true_open_play  <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRU…
+#> $ is_from_deflection <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+#> $ is_from_volley     <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+#> $ is_free_kick       <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+#> $ is_open_play       <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRU…
+#> $ is_primary_foot    <lgl> NA, FALSE, TRUE, TRUE, FALSE, TRUE, NA, NA, TRUE, T…
+
+updated_shots |> 
+  filter(!is_penalty) |> 
+  mutate(xgd = old_xg - new_xg) |> 
+  pull(xgd) |> 
+  mean()
+#> [1] 0.0095014
+```
+
+Note that, for a large majority of shots, where xG is in the [0.02, 0.04] range (see the yellow/green points on the plot), xG either did not change at all or only trivially changed. So, while there were certainly changes to shot xG across the whole range of [0,1], let's keep in mind that the data update did not change xG significantly for a large proportion of shots.
+
+## 2. xG Model Calibration
+
+[I've touched on model calibration before, when discussing xG-implied match outcome probabilities](https://tonyelhabr.rbind.io/post/epl-xpts-simulation-1/#match-predictive-performance7). There, I wrote a function to compute a [calibration plot](https://changhsinlee.com/python-calibration-plot/)
+
+Since then, the [`{tidymodels}` team](https://www.tidymodels.org/) has done some work on the [`{probably}` package](https://probably.tidymodels.org/), adding [functions to generate calibration plots](https://www.tidyverse.org/blog/2022/11/model-calibration/)
+
+```{r}
+#| label: data-pull-output
+#| eval: false
+match_shooting |> count(Country, Tier, Gender)
+#> # A tibble: 13 × 4
+#>    Country Tier  Gender     n
+#>    <chr>   <chr> <chr>  <int>
+#>  1 BRA     1st   M      39881
+#>  2 ENG     1st   F      11472
+#>  3 ENG     1st   M      47269
+#>  4 ENG     2nd   M      53218
+#>  5 ESP     1st   M      44063
+#>  6 FRA     1st   M      43661
+#>  7 GER     1st   M      39600
+#>  8 ITA     1st   M      50630
+#>  9 MEX     1st   M      33184
+#> 10 NED     1st   M      30176
+#> 11 POR     1st   M      27788
+#> 12 USA     1st   F       9983
+#> 13 USA     1st   M      43858
+```
