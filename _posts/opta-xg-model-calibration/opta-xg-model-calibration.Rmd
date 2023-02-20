@@ -13,7 +13,7 @@ output:
     toc: true
     toc_depth: 4
     self_contained: false
-preview: overall_calibration.png
+preview: footedness_calibration.png
 twitter:
 site: '@TonyElHabr'
 creator: '@TonyElHabr'
@@ -428,14 +428,21 @@ update_geom_defaults('text', list(color = 'white', size = 12 / .pt))
 
 updated_xgd_n <- updated_shots |> 
   filter(!is_penalty) |> 
-  count(old_xg, xgd = old_xg - new_xg) |>
-  mutate(xgd_is_pos = xgd > 0) |> 
-  arrange(old_xg, xgd)
+  count(old_xg, new_xg) |>
+  arrange(old_xg, new_xg)
 
 tag_lab <- '<span style="font-family:fb";">&#xf099;</span> @TonyElHabr'
-p_old_xg_vs_xgd <- updated_xgd_n |> 
+p_old_vs_new_xg <- updated_xgd_n |> 
   ggplot() +
-  aes(x = old_xg, y = xgd) +
+  aes(x = old_xg, y = new_xg) +
+  geom_abline(
+    linetype = 2,
+    color = 'white',
+    aes(
+      slope = 1,
+      intercept = 0
+    )
+  ) +
   geom_point(
     color = 'white',
     aes(
@@ -450,55 +457,35 @@ p_old_xg_vs_xgd <- updated_xgd_n |>
   ) +
   coord_cartesian(
     xlim = c(0, 1),
-    ylim = c(-1, 1),
+    ylim = c(0, 1),
     expand = TRUE
   ) +
   labs(
     title = 'Comparison of Opta non-penalty expected goals (npxG)',
     subtitle = 'Pre- and post-FBref update (2023-02-08) for Big 5 leagues, 2021/22 season',
     x = 'Pre-update npxG',
-    y = 'Pre-update npxG minus post-update npxG',
+    y = 'Post-update npxG',
     tag = tag_lab,
     caption = 'Each point represents a shot.\nLarger, more opaque points means there are more shots with a given x- and y-axis value.'
-  ) +
-  ggforce::geom_mark_hull(
-    data = updated_xgd_n |> filter(xgd_is_pos),
-    aes(
-      label = 'Shots where pre-update\nnpxG was reduced'
-    ),
-    label.family = font,
-    label.fontface = 'bold',
-    label.hjust = 1,
-    label.fontsize = 14,
-    expand = unit(1, 'mm'),
-    label.fill = NA_character_,
-    # label.buffer = unit(5, 'mm'),
-    con.border = 'none',
-    con.linetype = 0,
-    concavity = 10,
-    ## assigning a variable with a hex code currently throws off Rmd formatting
-    label.colour =  '#00b2a9',  
-    con.colour =  '#00b2a9',
-    colour =  '#00b2a9'
   )
-p_old_xg_vs_xgd
+p_old_vs_new_xg
 
 plot_resolution <- 300
-plot_dir <- '_posts/opta-xg-model-calibration'
+plot_dir <- '_post/opta-xg-model-calibration'
 ggsave(
-  p_old_xg_vs_xgd,
+  p_old_vs_new_xg,
   device = ragg::agg_png,
   res = plot_resolution,
-  filename = file.path(plot_dir, 'old_xg_vs_xgd.png'),
+  filename = file.path(plot_dir, 'old_vs_new_xg.png'),
   width = 8 * plot_resolution,
   height = 8 * plot_resolution,
   units = 'px'
 )
 ```
 
-![](old_xg_vs_xgd.png)
+![](old_vs_new_xg.png) Of the 44,986 shots in the data set, 30,326 (67.2%) had changes to their xG values.[^4] Of those that changed, 23, 584 (78.0%) were reduced, i.e. the pre-update xG value was higher. The average change was pretty minimal, just about \~0.01 xG.
 
-Plotting the pre-update non-penalty shot-level xG data (x-axis) versus the difference in pre- and post-update xG (y-aixs), we see that the biggest reductions in xG occurred for shots where xG was relatively high (i.e. \>=0.25). While there were shots where xG increased post-update, the reductions pull down the overall average difference between the new and old xG data by \~0.01 per shot.
+[^4]: Observe that, for a large majority of shots, where xG is in the (0, 0.05] range, xG either did not change at all or only trivially changed. (See the blur of white points on the left-hand side of the plot.)
 
 ```{r}
 #| label: discretized_updated_np_shots-glimpse
@@ -532,9 +519,7 @@ discretized_updated_np_shots |>
 #> [1] 0.0095014
 ```
 
-Of the 44,986 shots in the data set, 30,326 (67.2%) had changes to their xG values.[^4] Of those that changed, 23, 584 (78.0%) were reduced, i.e. the pre-update xG value was higher. We can look at changes to xG values grouped by various `feature`s that FBref publishes alongside each shot's xG, including `distance` (yards), `sca1` (direct [shot-creating action](https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/)), `body_part`, `is_from_deflection`, `is_from_volley`, `is_free_kick`, and `is_primary_foot`.[^5][^6]
-
-[^4]: Observe that, for a large majority of shots, where xG is in the (0, 0.05] range, xG either did not change at all or only trivially changed. (See the blur of white points on the left-hand side of the plot.)
+To get more insight into how/why xG changed, we can look at changes to xG values grouped by various `feature`s that FBref publishes alongside each shot's xG, including `distance` (yards), `sca1` (direct [shot-creating action](https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/)), `body_part`, `is_from_deflection`, `is_from_volley`, `is_free_kick`, and `is_primary_foot`.[^5][^6]
 
 [^5]: Several of these are not provided directly from the raw FBref tables. For example, `is_from_deflection` is derived from the `Notes` field in the FBref shot table. `is_primary_foot` is derived from collecting player footedness data and checking for a match with `body_part`.
 
@@ -577,7 +562,7 @@ slice_and_tabularize_np_shot_diffs(`-`, n = 5)
 slice_and_tabularize_np_shot_diffs(`+`, n = 6)
 ```
 
-The table below shows that the reductions in npxG occurred most frequently for longer `distance`s (yards), suggesting that the pre-update xG model was over-predicting xG for longer shots. Interestingly, xG for shots when interceptions led directly to the shot (`sca1`), and xG for shots with `body_part = "other"` (non-foot, non-header) were also frequently reduced, in the cases where xG was changed.
+The table below shows that the reductions in npxG occurred most frequently for longer `distance`s, suggesting that the pre-update xG model was over-predicting xG for longer shots. Interestingly, xG for shots when interceptions led directly to the shot (`sca1`), and xG for shots with `body_part = "other"` (non-foot, non-header) were also frequently reduced, in the cases where xG was changed.
 
 | Feature     | Group            | \# of non-penalty shots | \# of shots with changed npxG | \# of shots with lower post-update npxG of those that changed |
 |:------------|:-----------------|------------------------:|------------------------------:|--------------------------------------------------------------:|
@@ -781,6 +766,7 @@ One thing that is not provided in the `{tidymodels}` realm (specifically, the `{
 #| include: true
 #| echo: true
 library(yardstick)
+library(rlang)
 brier_score <- function(data, ...) {
   UseMethod('brier_score')
 }
@@ -894,6 +880,7 @@ Now let's take a look at model calibration under specific criteria. Is the model
 
 ```{r}
 #| label: sca1-calibration
+library(forcats)
 generate_bss_labels_layer <- function(df) {
   geom_text(
     inherit.aes = FALSE,
@@ -924,9 +911,17 @@ calculate_then_plot_and_save_calibration <- function(df, group, ...) {
     ungroup() |> 
     transmute(
       !!group, 
-      label = sprintf('BSS: %.2f', 1 - (.estimate / !!np_goal_rate_brier_score))
+      bss =  1 - (.estimate / !!np_goal_rate_brier_score),
+      label = sprintf('BSS: %.2f', bss)
+    ) |> 
+    mutate(
+      across(
+        !!group,
+        ~fct_reorder(.x, -bss)
+      )
     )
   
+  lvls <- bss |> pull(!!group) |> levels()
   labels_layer <- generate_bss_labels_layer(bss)
   
   df |> 
@@ -939,6 +934,9 @@ calculate_then_plot_and_save_calibration <- function(df, group, ...) {
       event_level = 'second'
     ) |> 
     pluck('data') |> 
+    mutate(
+      across(!!group, ~factor(.x, levels = !!lvls))
+    ) |> 
     plot_and_save_calibration(
       ...,
       labels_layer = labels_layer
@@ -946,6 +944,7 @@ calculate_then_plot_and_save_calibration <- function(df, group, ...) {
 }
 
 discretized_np_shots |> 
+  filter(sca1 != 'missing') |> 
   calculate_then_plot_and_save_calibration(
     group = sca1,
     title = 'direct shot-creating action',
@@ -975,9 +974,9 @@ A couple of observations and thoughts:
 
 -   A relatively "jagged" calibration plot may not correspond with a worse (lower) BSS score; and visa versa, a relatively "smooth" calibration plot may not correspond with a better (higher) BSS.
 
-    -   Note that the `fouled` calibration looks jagged for higher predicted xG, but the fact goals are only scored on about 5% shots immediately following a foul means that inprecise probabilities are not "penalized" quite as much. On the other hand, while the `pass_live` calibration looks relatively smooth, the fact that 10% of shots following live ball passes (2x the frequency for shots following fouls) means that it is more penalized for imprecision than an otherwise equivalent post-`fouled` shot. In fact, this is [one of the shortcomings of BSS](https://en.wikipedia.org/wiki/Brier_score#Shortcomings)---it does not do a great job with evaluation of relatively infrequent events, such as goals.
+    -   Note that the `fouled` calibration looks jagged for higher predicted xG, but the fact goals are only scored on about 5% shots immediately following a foul means that inprecise probabilities are not "penalized" quite as much. On the other hand, while the `pass_live` calibration looks relatively smooth, the fact that 10% of shots following live ball passes (2x the frequency for shots following fouls) means that it is more penalized for imprecision than an otherwise equivalent post-`fouled` shot. In fact, this is [one of the shortcomings of BSS](https://en.wikipedia.org/wiki/Brier_score#Shortcomings)---it does not do a great job with evaluation of relatively infrequent events.
 
-Next, let's take a look at calibration off shots coming from deflections (of other shots).
+Next, let's take a look at calibration off shots coming after deflections (of other shots).
 
 ```{r}
 #| label: deflection-calibration
@@ -1000,7 +999,7 @@ discretized_np_shots |>
 ![](deflection_calibration.png)
 
 -   The model doesn't seem to be very well calibrated for shots following deflections! Like shots following other shots in the shot-creating action calibration plot, the BSS for shots after deflections is negative. And, perhaps more interestingly, the model seems to underpredict post-deflection shots, which is the opposite of it's general tendency to overpredict. (See the wholistic calibration plot from before.)
-    -   I'd suspect that there's lots of confounders that might explain the lack of calibration after deflections. For one, it could be the case that there are often zero defenders between the shot-taker and keeper for shots following a deflection. As far as I know, the Opta model doesn't have an explicit feature for this (although perhaps they have a confidential one that does).
+    -   I'd suspect that there's lots of confounders that might explain the lack of calibration after deflections. For one, it could be the case that there are often zero defenders between the shot-taker and keeper for shots following a deflection. As far as I know, the Opta model doesn't have an explicit feature for this.
     -   It might also be the case that Opta's ["big chance" indicator](https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg)---which is not published on FBref but which I suspect take on a value of "yes"/1/true for many post-deflection shots---may have some flaws.
 
 Moving on, let's look at calibration of the xG model by groups of leagues, splitting out by tier and gender.
@@ -1010,10 +1009,10 @@ Moving on, let's look at calibration of the xG model by groups of leagues, split
 discretized_np_shots |> 
   mutate(
     league_group = case_when(
-      league %in% sprintf('%s_1st_M', c('ENG', 'ESP', 'FRA', 'GER', 'ITA')) ~ 'Big 5',
+      league %in% sprintf('%s_1st_M', c('ENG', 'ESP', 'FRA', 'GER', 'ITA')) ~ "Men's 1st tier: ENG, ESP, FRA, GER, ITA (Big 5)",
       league %in% sprintf('%s_1st_F', c('ENG', 'USA')) ~ "Women's 1st tier: USA, ENG",
       league == 'ENG_2nd_M' ~ "Men's 2nd tier: ENG",
-      TRUE ~ "Men's 1st tier: POR, NED, BRA, MEX, USA"
+      TRUE ~ "Men's 1st tier: BRA, MEX, NED, POR, USA"
     ) 
   ) |> 
   calculate_then_plot_and_save_calibration(
@@ -1027,8 +1026,8 @@ discretized_np_shots |>
 
 ![](league_group_calibration.png)
 
--   [StatsBomb has talked](https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/) about how a "gender-aware" model outperformed a baseline model, so one might expect the calibration of Opta's singular model to be weaker for the women's game. It turns out that, yes, the calibration seems to be a bit worse for shots in the women's leagues, although maybe not as bad as one might have guessed.
--   Interestingly, the calibration of the model for non-Big 5 leagues and the English men's Championship league are slightly better according to BSS, although I'd suspect that the differences are not actually statistically significant.
+-   [StatsBomb has talked](https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/) about how a "gender-aware" model outperformed a baseline model, so one might expect the calibration of Opta's singular model to be weaker for the women's game. It turns out that while, yes, the calibration seems to be a bit worse for shots in the women's leagues, the overall difference in model performance for men's and women's leagues seems to be trivial for the sample here.
+-   Interestingly, the calibration of the model for non-Big 5 leagues and the English men's Championship league are slightly better according to BSS, although the differences (both visually, with the calibration curve, and with BSS) are very minimal.
 
 Finally, let's look at how footedness may play a role in model calibration. As far as I know, whether or not a footed shot is take by a player's primary foot is not an input into the Opta model, so it may be particularly interesting to look at.
 
@@ -1067,8 +1066,10 @@ discretized_np_shots |>
 
 ![](footedness_calibration.png)
 
--   Comparing the dominant-footed facets (`right foot shot, right-footed` and `left foot shot, left-footed`) to their weak-footed counterparts (`right foot shot, left-footed` and `left foot shot, right-footed`), the xG for shots take by a player's weak foot have lower BSS! I had suspected that the model might not perform as well for such shots.
-    -   On the other hand, the model seems to be **overpredict**ing xG for weak-footed shots more so that it overpredicts xG for dominant-footed shots. (I would have guessed that it would underpredict xG for such shots.) Without looking more into this, I'd suspect this is due to selection bias---players are more likely to take weak-footed shots when they're closer to the goal, where shots are likely to have higher xG, shots are more likely to be goals, and there is more of a possibility that the model is confidently wrong.
+-   Despite my suspicion that xG for shots taken by a player's weaker foot (`right foot shot, left-footed` and `left foot shot, right-footed`) might be severely overpredicted, this doesn't really seem to be the case. Yes, the model tends to overpredict for these kinds of shots, but the degree to which overprediction occurs doesn't seem out of line with the whole model.
+    -   I can think of least two types of "selection bias" at play here that might explain why the calibration isn't as bad as I might have guessed for weak-footed shots:
+        1.  Players are more likely to take weak-footed shots when they're closer to the goal, where shots are likely to have higher xG, but also where shots are also more likely to go in.
+        2.  Players are less likely to take more difficult shots with their weak foot, so they're not taking as many shots that are unlikely to go in, holding all else equal.
 -   Of the non-footed shots, it's interesting to see that the BSS for headers and shots from `other` body parts are not particularly well calibrated. In fact, the latter has a negative BSS, indicating that we'd better off with a model that predicted the average goal rate for such shots.
 
 ## Conclusion
