@@ -400,6 +400,8 @@ sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
 showtext::showtext_auto()
 showtext::showtext_opts(dpi = 300)
 
+blackish_bakcground <- '#1c1c1c'
+
 theme_set(theme_minimal())
 theme_update(
   text = element_text(family = font),
@@ -426,7 +428,7 @@ theme_update(
 )
 update_geom_defaults('text', list(color = 'white', size = 12 / .pt))
 
-updated_xgd_n <- updated_shots |> 
+updated_xgd_n <- updated_np_shots |> 
   filter(!is_penalty) |> 
   count(old_xg, new_xg) |>
   arrange(old_xg, new_xg)
@@ -466,12 +468,12 @@ p_old_vs_new_xg <- updated_xgd_n |>
     x = 'Pre-update npxG',
     y = 'Post-update npxG',
     tag = tag_lab,
-    caption = 'Each point represents a shot.\nLarger, more opaque points means there are more shots with a given x- and y-axis value.'
+    caption = 'Each point represents a shot.\nLarger, more opaque points = more shots.'
   )
 p_old_vs_new_xg
 
 plot_resolution <- 300
-plot_dir <- '_post/opta-xg-model-calibration'
+plot_dir <- '_posts/opta-xg-model-calibration'
 ggsave(
   p_old_vs_new_xg,
   device = ragg::agg_png,
@@ -483,7 +485,9 @@ ggsave(
 )
 ```
 
-![](old_vs_new_xg.png) Of the 44,986 shots in the data set, 30,326 (67.2%) had changes to their xG values.[^4] Of those that changed, 23, 584 (78.0%) were reduced, i.e. the pre-update xG value was higher. The average change was pretty minimal, just about \~0.01 xG.
+![](old_vs_new_xg.png)
+
+Of the 44,986 shots in the data set, 30,326 (67.2%) had changes to their xG values.[^4] Of those that changed, 23, 584 (78.0%) were reduced, i.e. the pre-update xG value was higher. The average change was pretty minimal, just about \~0.01 xG.
 
 [^4]: Observe that, for a large majority of shots, where xG is in the (0, 0.05] range, xG either did not change at all or only trivially changed. (See the blur of white points on the left-hand side of the plot.)
 
