@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.2.269">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Tony ElHabr">
+<meta name="dcterms.date" content="2020-09-23">
+<meta name="description" content="With S3 Classes and vctrs">
+
+<title>Tony’s Blog - Creating a Soccer Pitch Control Model</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1.6em;
+  vertical-align: middle;
+}
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { color: #008000; } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<link href="../../assets/img/keyboard.png" rel="icon" type="image/png">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark.min.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+
+<script type="text/javascript">
+
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+ga('create', 'UA-79842648-2', 'auto');
+
+ga('send', {
+  hitType: 'pageview',
+  'anonymizeIp': true,
+});
+</script>
+
+
+<link rel="stylesheet" href="../../styles.css">
+<meta name="twitter:title" content="Tony’s Blog - Creating a Soccer Pitch Control Model">
+<meta name="twitter:description" content="With S3 Classes and vctrs">
+<meta name="twitter:image" content="https://itsmetoeknee.netlify.app/posts\soccer-pitch-control-r\viz_pc_823_combined.png">
+<meta name="twitter:site" content="@TonyElHabr">
+<meta name="twitter:image-height" content="642">
+<meta name="twitter:image-width" content="1536">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+
+<body class="floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Tony’s Blog</span>
+    </a>
+  </div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../index.html">
+ <span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html">
+ <span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../projects.html">
+ <span class="menu-text">Projects</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/tonyelhabr"><i class="bi bi-github" role="img" aria-label="github">
+</i> 
+ <span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://twitter.com/TonyElHabr"><i class="bi bi-twitter" role="img" aria-label="twitter">
+</i> 
+ <span class="menu-text"></span></a>
+  </li>  
+</ul>
+              <div class="quarto-toggle-container">
+                  <a href="" class="quarto-color-scheme-toggle nav-link" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+              </div>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#intro" id="toc-intro" class="nav-link active" data-scroll-target="#intro">Intro</a></li>
+  <li><a href="#constructor" id="toc-constructor" class="nav-link" data-scroll-target="#constructor">Constructor</a></li>
+  <li><a href="#validator" id="toc-validator" class="nav-link" data-scroll-target="#validator">Validator</a></li>
+  <li><a href="#helper" id="toc-helper" class="nav-link" data-scroll-target="#helper">Helper</a></li>
+  <li><a href="#aside" id="toc-aside" class="nav-link" data-scroll-target="#aside">Aside</a></li>
+  <li><a href="#printing" id="toc-printing" class="nav-link" data-scroll-target="#printing">Printing</a></li>
+  <li><a href="#basic-usage" id="toc-basic-usage" class="nav-link" data-scroll-target="#basic-usage">Basic Usage</a></li>
+  <li><a href="#pseudo-encapsulation" id="toc-pseudo-encapsulation" class="nav-link" data-scroll-target="#pseudo-encapsulation">Pseudo-Encapsulation</a></li>
+  <li><a href="#advanced-usage" id="toc-advanced-usage" class="nav-link" data-scroll-target="#advanced-usage">Advanced Usage</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  </ul>
+</nav>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Creating a Soccer Pitch Control Model</h1>
+  <div class="quarto-categories">
+    <div class="quarto-category">r</div>
+    <div class="quarto-category">soccer</div>
+  </div>
+  </div>
+
+<div>
+  <div class="description">
+    With S3 Classes and vctrs
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Tony ElHabr </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">September 23, 2020</p>
+    </div>
+  </div>
+  
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">September 24, 2020</p>
+    </div>
+  </div>
+    
+  </div>
+  
+
+</header>
+
+<section id="intro" class="level2">
+<h2 class="anchored" data-anchor-id="intro">Intro</h2>
+<p>There’s never been a better time to be involved in sports analytics. There is a wealth of open-sourced data and code (not to mention well-researched and public analysis) to digest and use. Both people working for teams and people just doing at as a hobby are publishing new and interesting analyses every day.</p>
+<p>In particular, the <a href="https://www.youtube.com/channel/UCUBFJYcag8j2rm_9HkrrA7w">FriendsOfTracking (FOT)</a> group, co-led by Professor and author <a href="ttps://twitter.com/Soccermatics">David Sumpter</a><a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> have put together an awesome series of videos on YouTube discussing modern soccer analytics, along with a collection of repositories on GitHub sharing the code shown in videos.</p>
+<p><a href="https://twitter.com/EightyFivePoint">Laurie Shaw</a> has shared code that implements the <a href="https://www.youtube.com/watch?v=X9PrwPyolyU">pitch control model</a> described in <a href="https://twitter.com/the_spearman">William Spearman</a>’s paper <a href="http://www.sloansportsconference.com/wp-content/uploads/2018/02/2002.pdf">“Beyond Expected Goals”</a> is interesting to me. The model is different than the one that I used <a href="https://twitter.com/TonyElHabr/status/1304766718468857857?s=20">to create some animations on Twitter</a>. Those were based on the pitch control model described by <a href="https://twitter.com/JaviOnData">Javier Fernandez</a> and <a href="https://twitter.com/lukebornn">Luke Bornn</a> in their paper <a href="http://www.sloansportsconference.com/wp-content/uploads/2018/03/1003.pdf">“Wide Open Spaces”</a> (<a href="https://www.robert-hickman.eu/post/fall_back_in_to_space/">code</a> courtesy of <a href="https://twitter.com/robwhickman">Rob Hickman</a>). (Apologies for the onslaught of links!)</p>
+<p>Now, I am not one for language wars—and, in fact, I use python often—but I thought it would be awesome to be able to plot Spearman’s pitch control model directly with <code>{ggplot2}</code> and friends. Thus, I set out to convert Laurie’s code to R, attempting to give it a “native” R feel while I was at it.</p>
+<p>Most of the process of translating python to R was relatively straightforward (slicing and dicing data frames and arrays/vectors is just part of data cleaning), so I won’t detail them here. However, there was one part that was particularly interesting—the conversion of a python class object. This was actually the key (and most challenging part) of the conversion process.</p>
+<p>There are some great resources for describing how to implement <a href="https://en.wikipedia.org/wiki/Object-oriented_programming">object-orientated programming (OOP)</a> in R, including a couple of chapter’s from <a href="https://twitter.com/hadleywickham">Hadley Wickham</a>’s <a href="https://adv-r.hadley.nz/oo.html">Advanced R book</a> and a <a href="https://blog.earo.me/2019/11/03/practical-guide-to-s3/">very practical write-up</a> from <a href="https://twitter.com/earowang">Earo Wang</a>. Every object-oriented task has its unique aspects, so hopefully my discussion here has something to add to what has already been written on the subject matter.</p>
+<p><strong><em>For demonstration purposes, I’m going to walk through my steps for converting the python class object as if I were doing it for the first time.</em></strong></p>
+</section>
+<section id="constructor" class="level2">
+<h2 class="anchored" data-anchor-id="constructor">Constructor</h2>
+<p>Below is a stripped down version of Laurie’s code, showing the “essence” of what we need to replicate.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> player(<span class="bu">object</span>):</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>,player_id,frame):</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.<span class="bu">id</span> <span class="op">=</span> player_id</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.get_position(frame)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.get_velocity(frame)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> get_position(<span class="va">self</span>,frame):</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.position <span class="op">=</span> np.array(frame[<span class="va">self</span>.player_id <span class="op">+</span> <span class="st">'x'</span>, <span class="va">self</span>.player_id <span class="op">+</span> <span class="st">'y'</span>])</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> get_velocity(<span class="va">self</span>,frame):</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.velocity <span class="op">=</span> np.array(frame[<span class="va">self</span>.player_id <span class="op">+</span> <span class="st">'x_v'</span>, <span class="va">self</span>.player_id <span class="op">+</span> <span class="st">'y_v'</span>])</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> tti(<span class="va">self</span>,final_position):</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        reaction_time <span class="op">=</span> <span class="fl">0.7</span> <span class="co"># in s</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        vmax <span class="op">=</span> <span class="dv">5</span> <span class="co"># in m/s</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        reaction_position <span class="op">=</span> <span class="va">self</span>.position <span class="op">+</span> <span class="va">self</span>.velocity <span class="op">*</span> reaction_time</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.tti <span class="op">=</span> reaction_time <span class="op">+</span> np.linalg.norm(final_positon <span class="op">-</span> reaction_position)<span class="op">/</span>vmax</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> p_intercept(<span class="va">self</span>,t):</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        tti_sigma <span class="op">=</span> <span class="fl">0.45</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        den <span class="op">=</span> <span class="dv">1</span> <span class="op">+</span> np.exp(<span class="op">-</span>np.pi<span class="op">/</span>np.sqrt(<span class="fl">3.0</span>)<span class="op">/</span>tti_sigma <span class="op">*</span> (t<span class="op">-</span><span class="va">self</span>.tti)))</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">1</span> <span class="op">/</span> den</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Let’s make some notes and come back to these as we develop our R class.</p>
+<ol type="1">
+<li><p>We need a unique identifier: <code>player_id</code>. This is just a “best practice” thing for object-oriented programming and makes sense given our context. For a sport like soccer, a unique identifier could just be the player’s name, a combination of the team name and the player jersey number, a league unique identifier, etc.</p></li>
+<li><p>A single-row data frame <code>frame</code> is passed to several of the methods, including the constructor <code>__init__</code>. This single row data frame is sourced from a much larger <code>tracking</code> data frame, with rows for every 0.04 second time interval (25 frames per second, or one frame per 0.04 seconds) in the game.</p></li>
+<li><p>The python code stores both the player’s <code>position</code> and <code>velocity</code> as 2x1 arrays. This works well with the <a href="https://www.w3schools.com/python/gloss_python_assign_value_to_multiple_variables.asp">unpacking</a> that is done in other places in Laurie’s code.</p></li>
+<li><p><code>tti</code>, short for “time to intercept (a target location)”, uses the player’s <code>position</code> and <code>velocity</code> to define the attribute <code>tti</code> (not to be confused with the method itself). This implies that <code>position</code> and <code>velocity</code> should be defined before <code>tti()</code> is ever called, as they are in <code>__init__</code>. <code>tti</code> needs the <code>position_final</code> 2x1 array to calculate <code>tti</code> which is not known upon instantiation; rather, <code>tti</code> can only be properly defined when called to do a specific calculation relating the player’s <code>position</code> and <code>velocity</code> (both defined implicitly in the class, without needing user-specification) with a user-supplied <code>position_final</code> pair of x and y values.</p></li>
+<li><p><code>p_intercept</code>, short for “probability to intercept (a target location)” depends on <code>tti</code> and an additional parameter <code>t</code>, a user-specified value representing how much time is allotted to reach the ball. Like <code>tti</code>, <code>p_intercept</code> is only “properly” defined when actually doing a calculation on the player’s attributes. Unlike <code>tti</code>, there is no attribute in the <code>player</code> instance that stores this probability; it’s value must be saved in a variable external to the player class if the user wants to use it for something other than an ephemeral calculation.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p></li>
+</ol>
+<p>Time to intercept a “target” location (<code>tti</code>) may not be intuitive to comprehend immediately. The plot<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> below annotates the <code>tti</code> of a “target” location on the pitch (which does <strong>not</strong> have to be where the ball actually is). <code>tti</code> assumes that the player continues moving at their current speed (annotated by the arrows) for <code>reaction_time</code> seconds before running at <code>vmax</code> (full speed) to the target position. <code>tti</code> for each player is independent of the <code>tti</code> of all other players, which is a relatively reasonable assumption. <a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
+<p><img src="viz_tti_ex.png" class="img-fluid"></p>
+<p>The probability of reaching the “target” location (<code>p_intercept</code>) is directly related to the player’s <code>tti</code>. Uncertainty about how long it will take the player to reach the target location is quantified by the constant <code>tti_sigma</code> in the calculation. (<code>tti</code> is the mean and <code>tti_sigma</code> is the standard deviation of the distribution for a player’s time to arrive at the target location.)</p>
+<p><img src="viz_p_intercept_ex_1.png" class="img-fluid"></p>
+<p>Notably, this probability is independent of all other players’ probabilities (which explains how it is possible that both players are shown to have probabilities greater than 50% when <code>t = 6</code> above). When adjusting for all players’ probabilities (by dividing by the sum of all probabilities), the numbers change. This probability adjustment is key when we calculate pitch control.</p>
+<p><img src="viz_p_intercept_ex_2.png" class="img-fluid"></p>
+<p>Ok, on to the R code. We’ll be using <a href="https://adv-r.hadley.nz/s3.html">S3</a> and the <a href="https://vctrs.r-lib.org/"><code>{vctrs}</code> package</a> to help create our <code>player</code> class. (As with the python class, I’ve simplified the actual implementation for demonstration purposes.)</p>
+<p>First, we start with the constructor <code>new_player()</code>. Note that there is no direct <code>__init__</code> equivalent in R. Here we will make a function that is prefixed with <code>new_</code> and ends with the name of our class (<code>player</code>).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>new_player <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">player_id =</span> <span class="fu">integer</span>(),</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> <span class="fu">double</span>(),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> <span class="fu">double</span>(),</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">x_v =</span> <span class="fu">double</span>(),</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">y_v =</span> <span class="fu">double</span>()</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">new_rcrd</span>(</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      <span class="at">player_id =</span> player_id,</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> x,</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> y,</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>      <span class="at">x_v =</span> x_v,</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">y_v =</span> y_v,</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">tti =</span> <span class="sc">-</span><span class="dv">1</span> <span class="co"># dummy value</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">'player'</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now let’s reflect upon our prior notes.</p>
+<ol type="1">
+<li><p>We have the <code>player_id</code> in this constructor.</p></li>
+<li><p>We don’t pass the data frame <code>tracking</code> here. We’ll do it in our helper function. We might say that our constructor is “low-level”, not intended for the user to call directly.</p></li>
+<li><p>We split the position and velocity vectors into their individual x and y components, resulting in four total variables instead of two. I don’t think a vector (unnamed or named), list, or matrix are particularly compelling data types to use for an x-y pair of values in R. None natively support unpacking (although R vectors do have some form of “broadcasting” with their recycling behavior).</p></li>
+<li><p>We assign a “dummy” value (-1) to <code>tti</code> when initializing the class instance. We will have a method to update <code>tti</code> based on x and y components.</p></li>
+<li><p>Like <code>tti</code>, we will need a separate <code>p_intercept</code> method to be used to calculate the probabililty of intercepting a ball given a player’s position, speed, and the final position of the ball (all fed as inputs to <code>tti</code>), as well as the additional user-specified <code>t</code>, representing how much time is allotted to reach the ball.</p></li>
+</ol>
+</section>
+<section id="validator" class="level2">
+<h2 class="anchored" data-anchor-id="validator">Validator</h2>
+<p>Let’s proceed by creating a validator function to, you guessed it, validate fields in the <code>player</code> class. It is good practice to check the values used to construct the class. The python code did not have any validation like this, but I don’t think it was ever expected to be extremely robust to any user input.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>validate_player <span class="ot">&lt;-</span> <span class="cf">function</span>(player) {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">vec_assert</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'player_id'</span>), <span class="fu">integer</span>())</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">vec_assert</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'x'</span>), <span class="fu">double</span>())</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">vec_assert</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y'</span>), <span class="fu">double</span>())</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">vec_assert</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'tti'</span>), <span class="fu">double</span>())</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  player</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Note that we could have simply done this validation in the constructor function, but I think it makes sense to put the validation in its own function so that the constructor is more direct (especially if the validation checks are complex).</p>
+</section>
+<section id="helper" class="level2">
+<h2 class="anchored" data-anchor-id="helper">Helper</h2>
+<p>Finally, we’ll create a helper <code>player()</code> function, which is our “user-facing” function that we expect/want users to use to instantiate objects.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>player <span class="ot">&lt;-</span> <span class="cf">function</span>(player_id, frame, tracking) {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    player_id <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(player_id)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    frame <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(frame)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    assertthat<span class="sc">::</span><span class="fu">assert_that</span>(<span class="fu">is.data.frame</span>(tracking))</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    nms_req <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">'player_id'</span>, <span class="st">'frame'</span>, <span class="st">'x'</span>, <span class="st">'y'</span>, <span class="st">'x_v'</span>, <span class="st">'y_v'</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    assertthat<span class="sc">::</span><span class="fu">assert_that</span>(<span class="fu">all</span>(nms_req <span class="sc">%in%</span> <span class="fu">names</span>(tracking)))</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># `!!` to make sure that we filter using the integer values, not the column itself.</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    tracking_filt <span class="ot">&lt;-</span> tracking <span class="sc">%&gt;%</span> <span class="fu">filter</span>(player_id <span class="sc">==</span> <span class="sc">!!</span>player_id, frame <span class="sc">==</span> <span class="sc">!!</span>frame)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    assertthat<span class="sc">::</span><span class="fu">assert_that</span>(<span class="fu">nrow</span>(tracking_filt) <span class="sc">==</span> 1L)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    player <span class="ot">&lt;-</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">new_player</span>(</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        <span class="at">player_id =</span> player_id,</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> tracking_filt[[<span class="st">'x'</span>]],</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> tracking_filt[[<span class="st">'y'</span>]],</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>        <span class="at">x_v =</span> tracking_filt[[<span class="st">'x_v'</span>]],</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        <span class="at">y_v =</span> tracking_filt[[<span class="st">'y_v'</span>]]</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">validate_player</span>(player)</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  }</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Note the following:</p>
+<ul>
+<li>We coerce <code>player_id</code> and <code>frame</code> to integers instead of doubles (particularly since they are expected to be integers in the constructor). This ensures that the new <code>player</code> is instantiated properly by the constructor and passes our validation.</li>
+<li>We pass in our entire <code>tracking</code> data frame (that has rows for every 0.04 second interval in the game), as well as the <code>frame</code> to slice out of it. (<code>player_id</code> is also used to filter <code>tracking</code>.) This makes it convenient for user to instantiate new <code>player</code> objects when operating on the <code>tracking</code> data frame. There is no need to extract the singular initial position and velocity components “manually”; instead, the helper function does it for the user.</li>
+</ul>
+</section>
+<section id="aside" class="level2">
+<h2 class="anchored" data-anchor-id="aside">Aside</h2>
+<p>R’s S3 framework is not a formal OOP framework (not even close really). Note that it does not have a reserved keyword to represent the instance of the class like <code>self</code> in python. Also, it is not actually necessary for most of what is done above (with the constructor, validator, and helper).</p>
+<p>For example, we don’t actually have to create a formal-ish constructor prefixed with <code>new_</code>. We don’t even need a constructor function at all in S3. We could do something like <code>class(var) &lt;- 'player'</code> to create a a <code>player</code> object. Of course, this is prone to errors down the line, so we don’t do that. Likewise with the validator and helper functions. The point of these constructs is to add clarity to our class code. They aren’t strictly necessary.</p>
+</section>
+<section id="printing" class="level2">
+<h2 class="anchored" data-anchor-id="printing">Printing</h2>
+<p>Let’s do one more thing for our <code>player</code> class—create a custom print method. (Writing a custom print method is not required whatsoever, but it can be very helpful for debugging.) If we weren’t using <code>{vctrs}</code> and just S3, we would do this by writing a <code>print.player</code> function. However, <code>{vctrs}</code> provides a “pretty” header for us auto-magically (that looks like <code>&lt;player[1]&gt;</code>) if we use it to write our print method.</p>
+<p>To take advantage of the pretty-printing functionality offered by <code>{vctrs}</code>, we write a <code>format.player()</code> method that will be called by a subclass of the generic <code>vctrs::obj_print_data</code> method<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>, which itself is called whenever we print out an object (whether explicitly with <code>print</code> or just by typing the name of the variable representing our <code>player</code> instance). We’ll add the player’s position and velocity components to the print out.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>format.player <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'in_frame'</span>)) {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    suffix <span class="ot">&lt;-</span> </span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>      <span class="fu">sprintf</span>(</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        <span class="st">'with `position = (%.2f, %.2f)` and `velocity = &lt;%.1f, %.1f&gt;`'</span>, </span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'player_id'</span>), </span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y'</span>), </span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'x_v'</span>),</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y_v'</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    suffix <span class="ot">&lt;-</span> <span class="st">'is not on the pitch'</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  prefix <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">'`player_id = %s` '</span>, vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'player_id'</span>))</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>  msg <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">'%s%s'</span>, prefix, suffix)</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">paste</span>(msg, <span class="at">sep =</span> <span class="st">'</span><span class="sc">\n</span><span class="st">'</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>obj_print_data.player <span class="ot">&lt;-</span> <span class="cf">function</span>(player) {</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">format</span>(player), <span class="at">sep =</span> <span class="st">'</span><span class="sc">\n</span><span class="st">'</span>)</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="basic-usage" class="level2">
+<h2 class="anchored" data-anchor-id="basic-usage">Basic Usage</h2>
+<p>Ok, so that is all fine and dandy, but how would we go about instantiating <code>player</code>s in a normal workflow?</p>
+<p>Let’s say that we want to calculate the pitch control for a single <code>frame</code> in the <code>tracking</code> data (called <code>tracking_start</code> below).<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>tracking_start</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 26 x 9</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    frame ball_x ball_y side  player_id     x     y   x_v    y_v</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;     &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 53027  93.71  24.56 home          1 90.72 39.37 5.906 -3.985</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 53027  93.71  24.56 home          2 95.10 27.14 1.5   -2.023</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 53027  93.71  24.56 home          3 96.01 23.32 1.418  2.395</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 53027  93.71  24.56 home          4 92.39 15.64 1.005  3.473</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 53027  93.71  24.56 home          5 83.96 24.69 4.238  1.2  </span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 53027  93.71  24.56 home          6 82.19 35.63 3.893 -0.619</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 53027  93.71  24.56 home          7 85.79 17.34 1.703  1.523</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 53027  93.71  24.56 home          8 76.06 50.16 2.018 -0.493</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 53027  93.71  24.56 home          9 61.22 25.35 0.863 -0.77 </span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 53027  93.71  24.56 home         10 59.69 35.10 0.9   -0.573</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ... with 16 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Let’s convert players with id’s 10 through 12 (on the home team) to <code>player</code> instances and see how they look when printed out.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>10L<span class="sc">:</span>12L <span class="sc">%&gt;%</span> <span class="fu">map</span>(<span class="sc">~</span><span class="fu">player</span>(<span class="at">player_id =</span> .x, <span class="at">frame =</span> 53027L, <span class="at">tracking =</span> tracking_start))</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; &lt;player[1]&gt;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; `player_id = 10` with `position = (10.00, 35.09)` and `velocity = &lt;0.9, -0.6&gt;`</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; &lt;player[1]&gt;</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; `player_id = 11` with `position = (11.00, 32.28)` and `velocity = &lt;-0.3, 0.6&gt;`</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[3]]</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; &lt;player[1]&gt;</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; `player_id = 12` is not on the pitch</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="pseudo-encapsulation" class="level2">
+<h2 class="anchored" data-anchor-id="pseudo-encapsulation">Pseudo-Encapsulation</h2>
+<p>We still need to implement analogues for the <code>tti</code> and <code>p_intercept</code> methods in the python <code>player</code> class. Starting with <code>tti</code>, let’s use <a href="https://www.w3schools.com/java/java_encapsulation.asp">some pseudo-encapsulation (with getters and setters)</a> for a player’s <code>tti</code> value.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Frobenious norm</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>euclidean_norm <span class="ot">&lt;-</span> <span class="cf">function</span>(x1, x2, y1, y2) {</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  m <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(x1, y1)) <span class="sc">-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(x2, y2))</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sqrt</span>(<span class="fu">sum</span>(m<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>.get_tti.player <span class="ot">&lt;-</span> <span class="cf">function</span>(player, x2, y2) {</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  ri <span class="ot">&lt;-</span> <span class="fl">0.7</span> <span class="co"># in s</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  vmax <span class="ot">&lt;-</span> <span class="dv">5</span> <span class="co"># in m/s</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>  x1 <span class="ot">&lt;-</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'x'</span>) <span class="sc">+</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'x_v'</span>) <span class="sc">*</span> ri</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  y1 <span class="ot">&lt;-</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y'</span>) <span class="sc">+</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y_v'</span>) <span class="sc">*</span> ri</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  ri <span class="sc">+</span> <span class="fu">euclidean_norm</span>(x1, x2, y1, y2) <span class="sc">/</span> vmax</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>.msg_cls_err <span class="ot">&lt;-</span> <span class="cf">function</span>(player, f) {</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  cls <span class="ot">&lt;-</span> <span class="fu">class</span>(player)[<span class="dv">1</span>]</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sprintf</span>(<span class="st">'`%s()` doesn</span><span class="sc">\'</span><span class="st">t know how to handle class `%s`!'</span>, f, cls) </span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>.get_tti.default <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="fu">.msg_cls_err</span>(player, <span class="st">'.get_tti'</span>), <span class="at">call. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>.get_tti <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">UseMethod</span>(<span class="st">'.get_tti'</span>)</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a><span class="st">`</span><span class="at">.set_tti&lt;-.player</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="cf">function</span>(player, value) {</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'tti'</span>) <span class="ot">&lt;-</span> value</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>  player</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a><span class="st">`</span><span class="at">.set_tti&lt;-.default</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="fu">.msg_cls_err</span>(player, <span class="st">'.set_tti'</span>), <span class="at">call. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a><span class="st">`</span><span class="at">.set_tti&lt;-</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">UseMethod</span>(<span class="st">'.set_tti&lt;-'</span>)</span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>There’s a couple of things going on here:</p>
+<ul>
+<li>The <code>.get_tti</code> and <code>.set_tti</code> functions that call <code>UseMethod</code> are true S3 generics that perform method dispatch, i.e.&nbsp;find the correct method for the object passed to the generic (based on the class of the object). The <code>.get_tti.player</code> and <code>.set_tti.player</code> with the <code>.player</code> “suffix” so that they only work in their defined manners when passed in a <code>player</code> instance. (They won’t be called with an object that is not of the <code>player</code> class.)</li>
+<li>The ellipses (<code>...</code>) in the S3 generic function signatures may be a bit mysterious since they aren’t passed explicitly to <code>UseMethod</code>. Any non-<code>player</code> arguments are captured in these ellipses and passed to whatever method that is called from the generic (e.g.&nbsp;<code>.get_tti.player</code> method called from the <code>.get_tti</code> generic). For <code>.get_tti</code>, the ellipses is intended to capture <code>x2</code> and <code>y2</code>, and for <code>.set_tti</code>, it captures <code>value</code>.</li>
+<li>We must use the “strange” syntax <code>.set_tti&lt;-.player</code> (instead of just <code>.set_tti.player</code>, which may seem more “natural”) in order to update an attribute in an already instantiated class. <a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></li>
+<li>We define the function <code>euclidean_norm()</code> outside of <code>.get_tti.player</code> simply because it is not something that is specific to the time to intercept calculation for a player; it can work with any two pairs of x and y coordinates.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a></li>
+<li><code>ri</code> and <code>vmax</code>, representing a player’s reaction time and a player’s maximum velocity respectively, are constants defined in the Spearman paper. We could change these if we wanted to, or even make them dynamic (i.e.&nbsp;configurable via other function parameters, or even at instantiation time).</li>
+</ul>
+<p>To really complete our getter and setter methods for <code>tti</code>, we should write methods to handle the case when a non-<code>player</code> object is passed to them. The generic <code>.get_tti</code> and <code>.set_tti</code> methods will dispatch to these functions if the object passed to them (the first argument named <code>player</code>) doesn’t actually inherit from the <code>player</code> class.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>.get_tti.default <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="fu">.msg_cls_err</span>(player, <span class="st">'.get_tti'</span>), <span class="at">call. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>.set_tti.default <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="fu">.msg_cls_err</span>(player, <span class="st">'.get_tti'</span>), <span class="at">call. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Let’s see how our pseudo-encapsulation looks in action.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>players <span class="ot">&lt;-</span> 8L<span class="sc">:</span>10L <span class="sc">%&gt;%</span> <span class="fu">map</span>(<span class="sc">~</span><span class="fu">player</span>(<span class="at">player_id =</span> .x, <span class="at">frame =</span> 53027L, <span class="at">tracking =</span> tracking_start))</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">map</span>(players, <span class="sc">~</span>vctrs<span class="sc">::</span><span class="fu">field</span>(.x, <span class="st">'tti'</span>))</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] -1</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] -1</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[3]]</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] -1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>target_x <span class="ot">&lt;-</span> <span class="dv">94</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>target_y <span class="ot">&lt;-</span> <span class="dv">63</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="fu">seq_along</span>(players)) {</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  value <span class="ot">&lt;-</span> <span class="fu">.get_tti</span>(players[[i]], <span class="at">x2 =</span> target_x, <span class="at">y2 =</span> target_y)</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">.set_tti</span>(players[[i]]) <span class="ot">&lt;-</span> value</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">map</span>(players, <span class="sc">~</span>vctrs<span class="sc">::</span><span class="fu">field</span>(.x, <span class="st">'tti'</span>))</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 4.92839</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 10.6878</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[3]]</span></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 9.49904</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Note how the player <code>tti</code> values changed after we defined them for a specified <code>target_x</code> and <code>target_y</code>.</p>
+<p>Our approach to <code>p_intercept</code> is very similar to that for <code>tti</code>, so I don’t show most of it here. As before, we define getters and setters, as well as generics for the class (the intended target of method dispatch), as well as a default class to handle unexpected inputs. Probably the only interesting part is the calculation itself, as shown below. If you compare it to the <code>p_intercept</code> method in the python object definition, you’ll see it’s basically identical.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>.get_p_intercept.player <span class="ot">&lt;-</span> <span class="cf">function</span>(player, t) {</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  tti_sigma <span class="ot">&lt;-</span> <span class="fl">0.45</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  den <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">+</span> <span class="fu">exp</span>((<span class="sc">-</span>base<span class="sc">::</span>pi <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">3</span>) <span class="sc">/</span> tti_sigma) <span class="sc">*</span> (t <span class="sc">-</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'tti'</span>)))</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="dv">1</span> <span class="sc">/</span> den</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>There is certainly more to show, especially for what is needed to calculate pitch control. (We need to integrate probabilities across all players over time, and do it for the entire pitch.) Nonetheless, the <code>player</code> class and the pseudo-encapsulation that we’ve implemented with S3 and <code>{vctrs}</code> is really the key component underlying the whole pitch control calculation.</p>
+</section>
+<section id="advanced-usage" class="level2">
+<h2 class="anchored" data-anchor-id="advanced-usage">Advanced Usage</h2>
+<p>To really motivate the reader, let’s see what this implementation allows us to do.</p>
+<p>First, let’s emulate the pitch control plot of event 823, which is a pass by the away (blue) team in the home (red) team’s penalty area preceding a successful shot.</p>
+<p><img src="pc_823_r.png" class="img-fluid"></p>
+<p>Compare this to the python version.</p>
+<p><img src="pc_822_python.png" class="img-fluid"></p>
+<p>It’s not a perfect replication, but I think it’s very close overall.</p>
+<p>Second, let’s replicate the <a href="http://www.sloansportsconference.com/wp-content/uploads/2019/02/Decomposing-the-Immeasurable-Sport.pdf">expected possession value (EPV)</a> plot of the same event, including the EPV added by the pass.</p>
+<p><img src="epv_823_r.png" class="img-fluid"></p>
+<p>Again, we can compare this plot to the python equivalent.</p>
+<p><img src="epv_822_python.png" class="img-fluid"></p>
+<p>Cool, my R version seems to be very close to the python original. We do have a small discrepancy in the EPV added calculation. (This EPV is actually an “expected” EPV calculation that uses pitch control to weight the pre-learned EPV grid). I believe this is probably due to discrepancies in the integration done in the pitch control calculation and not due to a significant code issue.</p>
+<p>The code to prepare the data for these plots gets more complex, which is why I have excluded it here.<a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a> However, none of it is unreasonably difficult to understand or implement once we have a properly defined <code>player</code> object.</p>
+</section>
+<section id="conclusion" class="level1">
+<h1>Conclusion</h1>
+<p>Thus, we see that there is a huge payoff to creating a sound and robust <code>player</code> object—we can calculate pitch control and EPV, and feed them into pretty visualizations that can provide insight. I believe that the code here could be easily adapted to fit whatever one would like to study. For example, the valuation grid used here could be easily swapped out with <a href="https://karun.in/blog/expected-threat.html">expected threat (xT)</a>, which is a more modern and probably a better valuation framework than the one used here.<a href="#fn11" class="footnote-ref" id="fnref11" role="doc-noteref"><sup>11</sup></a> Furthermore, one could calculate EPV across the entire game. The possibilities for analyses really open up.</p>
+
+
+</section>
+
+
+<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>author of one of my favorite books <strong>Soccermatics</strong><a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>If you actually browse Laurie’s code, you’ll notice that I’ve changed some of the names of these functions, e.g.&nbsp;<code>tti()</code> here instead of <code>simple_time_to_intercept()</code> there, <code>tracking_df</code> instead of <code>team</code> there. Don’t worry about that. I just wanted to make things as comparable as possible for the diligent reader, and I tried to make variable names that were either (or both) more succinct or more clear.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>One might argue that we should be consistent with <code>tti</code> and <code>p_intercept</code> and store them in the same way—either both as attributes or neither as attributes—given that both are dependent on some user-specified values (<code>final_position</code> for <code>tti</code> and <code>t</code> for <code>p_intercept</code>). I’m just showing how it is done in Laurie’s code. I think it is simple enough as is and there is no compelling functional reason why we should change the implementation.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>Data for this plot and all that follow from post-processed <a href="https://github.com/metrica-sports/sample-data">Metrica Sports sample game 2 data</a>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>author of one of my favorite books <strong>Soccermatics</strong><a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p><code>vctrs::obj_print_data</code> that can also handle <a href="https://home.unicode.org/">Unicode</a> easily, although we are not using any Unicode characters here. Also, it is able to handle extra <code>NULL</code>s and <code>[1]</code> that may be printed out if we just use <code>cat</code> or <code>print</code> directly.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>This is the same data used to generate the first handful of plots.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p><a href="https://adv-r.hadley.nz/r6.html">R6</a> is probably a better OOP system to use for this whole use case. The capability to update instance attributes is more native to that framework.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>It’s best to separate our logic in functions like this where it makes sense to do so. It ultimately makes re-factoring and debugging a lot easier.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn10"><p>Feel free to check out the source the <a href="https://github.com/tonyelhabr/LaurieOnTracking/blob/master/analysis/01-freestyle-blog.R">code</a> used in the full implementation, as well as the code to generate the plots.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn11"><p><a href="https://raw.githubusercontent.com/anenglishgoat/InteractivePitchControl/master/xT.csv">Here</a> is a CSV with the grid for xT.<a href="#fnref11" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section></div></main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const disableStylesheet = (stylesheets) => {
+    for (let i=0; i < stylesheets.length; i++) {
+      const stylesheet = stylesheets[i];
+      stylesheet.rel = 'prefetch';
+    }
+  }
+  const enableStylesheet = (stylesheets) => {
+    for (let i=0; i < stylesheets.length; i++) {
+      const stylesheet = stylesheets[i];
+      stylesheet.rel = 'stylesheet';
+    }
+  }
+  const manageTransitions = (selector, allowTransitions) => {
+    const els = window.document.querySelectorAll(selector);
+    for (let i=0; i < els.length; i++) {
+      const el = els[i];
+      if (allowTransitions) {
+        el.classList.remove('notransition');
+      } else {
+        el.classList.add('notransition');
+      }
+    }
+  }
+  const toggleColorMode = (alternate) => {
+    // Switch the stylesheets
+    const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+    manageTransitions('#quarto-margin-sidebar .nav-link', false);
+    if (alternate) {
+      enableStylesheet(alternateStylesheets);
+      for (const sheetNode of alternateStylesheets) {
+        if (sheetNode.id === "quarto-bootstrap") {
+          toggleBodyColorMode(sheetNode);
+        }
+      }
+    } else {
+      disableStylesheet(alternateStylesheets);
+      toggleBodyColorPrimary();
+    }
+    manageTransitions('#quarto-margin-sidebar .nav-link', true);
+    // Switch the toggles
+    const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+    for (let i=0; i < toggles.length; i++) {
+      const toggle = toggles[i];
+      if (toggle) {
+        if (alternate) {
+          toggle.classList.add("alternate");     
+        } else {
+          toggle.classList.remove("alternate");
+        }
+      }
+    }
+    // Hack to workaround the fact that safari doesn't
+    // properly recolor the scrollbar when toggling (#1455)
+    if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+      manageTransitions("body", false);
+      window.scrollTo(0, 1);
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        manageTransitions("body", true);
+      }, 40);  
+    }
+  }
+  const isFileUrl = () => { 
+    return window.location.protocol === 'file:';
+  }
+  const hasAlternateSentinel = () => {  
+    let styleSentinel = getColorSchemeSentinel();
+    if (styleSentinel !== null) {
+      return styleSentinel === "alternate";
+    } else {
+      return false;
+    }
+  }
+  const setStyleSentinel = (alternate) => {
+    const value = alternate ? "alternate" : "default";
+    if (!isFileUrl()) {
+      window.localStorage.setItem("quarto-color-scheme", value);
+    } else {
+      localAlternateSentinel = value;
+    }
+  }
+  const getColorSchemeSentinel = () => {
+    if (!isFileUrl()) {
+      const storageValue = window.localStorage.getItem("quarto-color-scheme");
+      return storageValue != null ? storageValue : localAlternateSentinel;
+    } else {
+      return localAlternateSentinel;
+    }
+  }
+  let localAlternateSentinel = 'default';
+  // Dark / light mode switch
+  window.quartoToggleColorScheme = () => {
+    // Read the current dark / light value 
+    let toAlternate = !hasAlternateSentinel();
+    toggleColorMode(toAlternate);
+    setStyleSentinel(toAlternate);
+  };
+  // Ensure there is a toggle, if there isn't float one in the top right
+  if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+    const a = window.document.createElement('a');
+    a.classList.add('top-right');
+    a.classList.add('quarto-color-scheme-toggle');
+    a.href = "";
+    a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+    const i = window.document.createElement("i");
+    i.classList.add('bi');
+    a.appendChild(i);
+    window.document.body.appendChild(a);
+  }
+  // Switch to dark mode if need be
+  if (hasAlternateSentinel()) {
+    toggleColorMode(true);
+  } else {
+    toggleColorMode(false);
+  }
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
