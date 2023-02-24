@@ -8,7 +8,7 @@
 
 <meta name="author" content="Tony ElHabr">
 <meta name="dcterms.date" content="2023-02-20">
-<meta name="description" content="Evaluating Opta’s xG Model performance with Brier Skill Score and Calibration Plots">
+<meta name="description" content="Evaluating Opta’s xG model performance with Brier skill score (BSS) and calibration curves">
 
 <title>Tony’s Blog - xG Model Calibration</title>
 <style>
@@ -97,6 +97,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <script src="../../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../../">
 <link href="../../assets/img/keyboard.png" rel="icon" type="image/png">
+<script src="../../site_libs/quarto-listing/list.min.js"></script>
+<script src="../../site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="../../site_libs/quarto-html/quarto.js"></script>
 <script src="../../site_libs/quarto-html/popper.min.js"></script>
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -127,6 +129,35 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
     "search-submit-button-title": "Submit"
   }
 }</script>
+<script>
+
+  window.document.addEventListener("DOMContentLoaded", function (_event) {
+    const listingTargetEl = window.document.querySelector('#listing-listing .list');
+    if (!listingTargetEl) {
+      // No listing discovered, do not attach.
+      return; 
+    }
+
+    const options = {
+      valueNames: [{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] },{ data: ['listing-file-modified-sort'] }],
+      
+      searchColumns: [],
+    };
+
+    window['quarto-listings'] = window['quarto-listings'] || {};
+    window['quarto-listings']['listing-listing'] = new List('listing-listing', options);
+
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  });
+
+  window.addEventListener('hashchange',() => {
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  })
+  </script>
 
 <script type="text/javascript">
 
@@ -142,9 +173,10 @@ ga('send', {
 });
 </script>
 
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
-<meta name="twitter:title" content="Tony’s Blog - xG Model Calibration">
-<meta name="twitter:description" content="Evaluating Opta's xG Model performance with Brier Skill Score and Calibration Plots">
+<link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - xG Model Calibration">
+<meta name="twitter:description" content="Evaluating Opta's xG model performance with Brier skill score (BSS) and calibration curves">
 <meta name="twitter:image" content="https://itsmetoeknee.netlify.app/posts\opta-xg-model-calibration\footedness_calibration.png">
 <meta name="twitter:site" content="@TonyElHabr">
 <meta name="twitter:image-height" content="2100">
@@ -238,7 +270,7 @@ ga('send', {
 
 <div>
   <div class="description">
-    Evaluating Opta’s xG Model performance with Brier Skill Score and Calibration Plots
+    Evaluating Opta’s xG model performance with Brier skill score (BSS) and calibration curves
   </div>
 </div>
 
@@ -259,6 +291,12 @@ ga('send', {
     </div>
   </div>
   
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">February 24, 2023</p>
+    </div>
+  </div>
     
   </div>
   
@@ -275,11 +313,11 @@ ga('send', {
 <p>— Tony (<span class="citation" data-cites="TonyElHabr">@TonyElHabr</span>) <a href="https://twitter.com/TonyElHabr/status/1614288983105617922?ref_src=twsrc%5Etfw">January 14, 2023</a></p>
 </blockquote>
 <script async="" src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-<p>As it turns out FBref and their data provider, <a href="https://www.statsperform.com/opta/">Opta</a>, agreed! On Feb.&nbsp;8, 2023, <a href="https://twitter.com/fbref/status/1623358271791722502?s=20">they posted an update</a> indicating that they adjusted 2021/22 xG such that the difference between npG and npxG is much more in line with other seasons.</p>
+<p>As it turns out FBref and their data provider, <a href="https://www.statsperform.com/opta/">Opta</a>, agreed! On Feb.&nbsp;8, 2023, <a href="https://twitter.com/fbref/status/1623358271791722502?s=20">they posted an update</a> indicating that they adjusted their 2021/22 xG such that the difference between npG and npxG is much more in line with other seasons.</p>
 <p>The FBref/Opta update gave me two ideas:</p>
 <ol type="1">
-<li><p><strong>Compare pre- and post-update xG</strong> to identify where/how adjustments were applied.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p></li>
-<li><p><strong>Quantify the <a href="https://en.wikipedia.org/wiki/Calibration_(statistics)">calibration</a> of their xG model.</strong></p></li>
+<li><p><strong>Compare pre- and post-update xG</strong> to identify where/how adjustments were applied. Where were the “blind spot(s)”?<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p></li>
+<li><p><strong>Quantify the <a href="https://en.wikipedia.org/wiki/Calibration_(statistics)">calibration</a> of their xG model.</strong> Are there obvious weak points with the model?</p></li>
 </ol>
 <div class="cell">
 
@@ -326,18 +364,17 @@ ga('send', {
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ is_primary_foot    &lt;fct&gt; missing, no, yes, yes, no, yes, missing, missing, y…</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>discretized_updated_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span>is_penalty) <span class="sc">|&gt;</span> </span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">xgd =</span> old_xg <span class="sc">-</span> new_xg) <span class="sc">|&gt;</span> </span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(xgd) <span class="sc">|&gt;</span> </span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>()</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.0095014</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">xgd =</span> old_xg <span class="sc">-</span> new_xg) <span class="sc">|&gt;</span> </span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(xgd) <span class="sc">|&gt;</span> </span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>()</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.0095014</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>To get more insight into how/why xG changed, we can look at changes to xG values grouped by various <code>feature</code>s that FBref publishes alongside each shot’s xG, including <code>distance</code> (yards), <code>sca1</code> (direct <a href="https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/">shot-creating action</a>), <code>body_part</code>, <code>is_from_deflection</code>, <code>is_from_volley</code>, <code>is_free_kick</code>, and <code>is_primary_foot</code>.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a><a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
+<p>To get more insight into how/why xG changed, we can look at changes to xG values grouped by various <code>feature</code>s that we can derive from data that FBref publishes alongside each shot’s xG, including <code>distance</code> (yards), <code>sca1</code> (first <a href="https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/">shot-creating action</a>), <code>body_part</code>, <code>is_from_deflection</code>, <code>is_from_volley</code>, <code>is_free_kick</code>, and <code>is_primary_foot</code>.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a><a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
 <div class="cell">
 
 </div>
-<p>The table below shows that the reductions in npxG occurred most frequently for longer <code>distance</code>s, suggesting that the pre-update xG model was over-predicting xG for longer shots. Interestingly, xG for shots when interceptions led directly to the shot (<code>sca1</code>), and xG for shots with <code>body_part = "other"</code> (non-foot, non-header) were also frequently reduced, in the cases where xG was changed.</p>
+<p>The table below shows that the reductions in npxG occurred most frequently for longer <code>distance</code>s, suggesting that the pre-update xG model was over-predicting xG for longer shots. Interestingly, xG for shots when interceptions were the shot-creating action that led directly to the shot, and xG for shots with <code>body_part = "other"</code> (non-foot, non-header) were also frequently reduced, in the cases where xG was changed.</p>
 <table class="table">
 <colgroup>
 <col style="width: 8%">
@@ -495,7 +532,7 @@ ga('send', {
 </div>
 <section id="calibration-plot" class="level3">
 <h3 class="anchored" data-anchor-id="calibration-plot">Calibration plot</h3>
-<p>We can use <code>probably::cal_plot_breaks()</code> to visually assess whether the observed rate of non-penalty goals (y-axis) is close to the predicted probably of goals (npxG, x-axis).<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> If the xG model’s predictions are “well calibrated”, the calibration points will align with the “ideal” line having slope 1 and intercept 0. Points at which the curve is below the diagonal line indicate where the model is more likelty to overpredict; and, likewise, points where the curve is above the diagonal line indicate where the model is underpredicting.</p>
+<p>We can use <code>probably::cal_plot_breaks()</code> to visually assess whether the observed rate of non-penalty goals (y-axis) is close to the predicted probability of goals (npxG, x-axis).<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> If the xG model’s predictions are “well calibrated”, the calibration points will align with the “ideal” line having slope 1 and intercept 0. Points at which the curve is below the diagonal line indicate where the model is more likelty to overpredict; and, likewise, points where the curve is above the diagonal line indicate where the model is underpredicting.</p>
 <div class="cell">
 <details open="">
 <summary>Code</summary>
@@ -611,18 +648,11 @@ ga('send', {
 <div class="cell">
 <details open="">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>npxg_brier_score <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">brier_score</span>(</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> is_goal,</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> xg,</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> <span class="st">'second'</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(.estimate)</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">-</span> (npxg_brier_score <span class="sc">/</span> np_goal_rate_brier_score)</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.176328</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="sc">-</span> (npxg_brier_score <span class="sc">/</span> np_goal_rate_brier_score)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 0.176328</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>A BSS of ~0.18 is not bad! This is better than <a href="https://projects.fivethirtyeight.com/checking-our-work/">FiveThirtyEight’s BSS</a> for predicting the results for men’s World Cup matches (~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (~0.18).</p>
+<p>A BSS of ~0.18 is not bad! This is better than <a href="https://projects.fivethirtyeight.com/checking-our-work/">FiveThirtyEight’s BSS</a> for predicting the results for men’s World Cup matches (~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (~0.18).<a href="#fn11" class="footnote-ref" id="fnref11" role="doc-noteref"><sup>11</sup></a></p>
 </section>
 <section id="grouped-calibration-and-bss" class="level3">
 <h3 class="anchored" data-anchor-id="grouped-calibration-and-bss">Grouped Calibration and BSS</h3>
@@ -631,18 +661,15 @@ ga('send', {
 
 </div>
 <p><img src="sca1_calibration.png" class="img-fluid"></p>
-<div class="cell">
-
-</div>
 <p>A couple of observations and thoughts:</p>
 <ul>
 <li><p>xG of shots following another shot are over-predicted so much that it causes the BSS to be negative. This means that the model is actually doing worse in its xG assignment than simply predicting naive goal rate for shots after another shot!</p></li>
 <li><p>A relatively “jagged” calibration plot may not correspond with a worse (lower) BSS score; and visa versa, a relatively “smooth” calibration plot may not correspond with a better (higher) BSS.</p>
 <ul>
-<li>Note that the <code>fouled</code> calibration looks jagged for higher predicted xG, but the fact goals are only scored on about 5% shots immediately following a foul means that inprecise probabilities are not “penalized” quite as much. On the other hand, while the <code>pass_live</code> calibration looks relatively smooth, the fact that 10% of shots following live ball passes (2x the frequency for shots following fouls) means that it is more penalized for imprecision than an otherwise equivalent post-<code>fouled</code> shot. In fact, this is <a href="https://en.wikipedia.org/wiki/Brier_score#Shortcomings">one of the shortcomings of BSS</a>—it does not do a great job with evaluation of relatively infrequent events.</li>
+<li>Note that the <code>fouled</code> calibration looks jagged for higher predicted xG, but the fact that goals are only scored on about 5% shots immediately following a foul means that inprecise probabilities are not “penalized” quite as much. On the other hand, while the <code>pass_live</code> calibration looks relatively smooth, the 10% goal rate following live ball passes (2x the frequency for shots following fouls) means that it is more penalized for imprecision than an otherwise equivalent post-<code>fouled</code> shot. In fact, this is <a href="https://en.wikipedia.org/wiki/Brier_score#Shortcomings">one of the shortcomings of BSS</a>—it does not do a great job with evaluation of relatively infrequent events.</li>
 </ul></li>
 </ul>
-<p>Next, let’s take a look at calibration off shots coming after deflections (of other shots).</p>
+<p>Next, let’s take a look at calibration of shots coming after deflections (of other shots).</p>
 <div class="cell">
 
 </div>
@@ -652,6 +679,7 @@ ga('send', {
 <ul>
 <li>I’d suspect that there’s lots of confounders that might explain the lack of calibration after deflections. For one, it could be the case that there are often zero defenders between the shot-taker and keeper for shots following a deflection. As far as I know, the Opta model doesn’t have an explicit feature for this.</li>
 <li>It might also be the case that Opta’s <a href="https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg">“big chance” indicator</a>—which is not published on FBref but which I suspect take on a value of “yes”/1/true for many post-deflection shots—may have some flaws.</li>
+<li>The high goal rate on shots after deflections relative to the goal rate on all other shots certainly contributes to the negative BSS, as we saw earlier with shots following other shots.</li>
 </ul></li>
 </ul>
 <p>Moving on, let’s look at calibration of the xG model by groups of leagues, splitting out by tier and gender.</p>
@@ -677,20 +705,31 @@ ga('send', {
 <li>Players are less likely to take more difficult shots with their weak foot, so they’re not taking as many shots that are unlikely to go in, holding all else equal.</li>
 </ol></li>
 </ul></li>
-<li>Of the non-footed shots, it’s interesting to see that the BSS for headers and shots from <code>other</code> body parts are not particularly well calibrated. In fact, the latter has a negative BSS, indicating that we’d better off with a model that predicted the average goal rate for such shots.</li>
+<li>Of the non-footed shots, it’s interesting to see that the BSS for headers and shots from <code>other</code> body parts are not particularly well calibrated. In fact, the latter has a negative BSS, indicating that we’d better off with a model that predicted the average goal rate for such shots.
+<ul>
+<li>A high goal rate on such shots compared to other types of shots seems to, once again, be the reason that BSS looks particularly bad here.</li>
+</ul></li>
 </ul>
 </section>
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
 <p>We’ve explored the wonderful world of model calibration, making friends with BSS and calibration curves in our investigation of a public xG model. Are BSS and calibration curves the be-all and end-all when it comes to model evaluation? Of course not! But they’re useful tools that may or may not be appropriate for your use case.</p>
-<p>When it comes to the Opta xG model specifically, am I implying that the model is bad? Of course not! Yes, faceted calibration curves and feature-specific BSS can make a model look bad, but we must keep in mind that there are trade-offs to be made with modeling. Fine-tuning a model to be more well calibrated under certain conditions, e.g.&nbsp;shots after deflections, may make other parts of the model worse! It’s all about trade-offs.</p>
+<p>When it comes to the Opta xG model specifically, am I implying that the model is bad? Of course not (again)! Yes, faceted calibration curves and feature-specific BSS can make a model look bad, but we must keep in mind that there are trade-offs to be made with modeling. Fine-tuning a model to be more well calibrated under certain conditions, e.g.&nbsp;shots after deflections, may make other parts of the model worse! It’s all about trade-offs.</p>
+
 
 
 </section>
 
 
-<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+<div class="quarto-listing quarto-listing-container-default" id="listing-listing">
+<div class="list quarto-listing-default">
+
+</div>
+<div class="listing-no-matching d-none">
+No matching items
+</div>
+</div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
 <li id="fn1"><p>It’s typically better to analyze expected goals after removing penalties since penalties can distort quantities, adding “noise” to an analysis.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
@@ -699,10 +738,11 @@ ga('send', {
 <li id="fn4"><p>Observe that, for a large majority of shots, where xG is in the (0, 0.05] range, xG either did not change at all or only trivially changed. (See the blur of white points on the left-hand side of the plot.)<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>Several of these are not provided directly from the raw FBref tables. For example, <code>is_from_deflection</code> is derived from the <code>Notes</code> field in the FBref shot table. <code>is_primary_foot</code> is derived from collecting player footedness data and checking for a match with <code>body_part</code>.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn6"><p>Note that I use the term “feature” here, although this set of fields does not quite match the actual <a href="https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg">inputs to the</a> <a href="https://fbref.com/en/expected-goals-model-explained/">Opta xG model</a>. While things like <code>distance</code> and <code>body_part</code> certainly are inputs to the model, we don’t have angle of the shot to the goal, and <code>is_primary_foot</code>—a field that I’ve added the feature set myself—isn’t one of the model inputs, as far as I’m aware.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn7"><p>Several leagues don’t have data available for all such seasons, which is reflected in the row counts by group.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>Several leagues don’t have data available for all such seasons, which is reflected in the number of shots per league in <code>np_shots</code>.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn8"><p>I’ve written my own code to plot the calibration, but I imagine most users will be satisfied with the plot that <code>{probably}</code> will generate for you.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn9"><p>Brier score for a binary classification task is equivalent to mean squared error.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn10"><p>Personally, I like to use BSS over other classification metrics like <a href="https://en.wikipedia.org/wiki/Receiver_operating_characteristic">ROC AUC</a> or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that it forces one to choose a reference with which to compare, which is a good principle in general, I think.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn10"><p>Personally, I like to use BSS over other classification metrics like <a href="https://en.wikipedia.org/wiki/Receiver_operating_characteristic">ROC AUC</a> or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that you have to specify a reference with which to compare, which seems like good principle in general.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn11"><p>I’m perhaps comparing apples to oranges here for the sake of providing some additional context that might help interpretability. The truth is that BSS is only comparable among different tasks to the extent that the reference choice in each task is “uninformed” to the same degree. For example, I could have said that the baseline for goals per shot is 50% instead of the actual goal rate (about 10%). This would change the baseline brier score to 0.25, and would inflate the BSS to 0.71. On the other hand, a 50/50 baseline makes sense in other settings. In fact, that’s what FiveThirtyEight uses for match outcome BSS for various sports.<a href="#fnref11" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

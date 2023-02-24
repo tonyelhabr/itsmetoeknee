@@ -18,7 +18,7 @@ posts <- list.dirs(
 )
 
 # extract the slugs
-slugs <- gsub('^.*_', '', posts)
-redirects <- paste0('/posts', slugs, ' ', '/post/', posts)
+existing_posts <- paste0('/posts', gsub('^.*_', '', posts))
+redirects <- paste0(existing_posts, ' /post/', posts)
 writeLines(redirects, file.path('_site', '_redirects'))
 ```

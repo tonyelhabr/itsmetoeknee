@@ -1,7 +1,8 @@
 ---
 title: xG Model Calibration
-description: Evaluating Opta's xG Model performance with Brier Skill Score and Calibration Plots
+description: Evaluating Opta's xG model performance with Brier skill score (BSS) and calibration curves
 date: 2023-02-20
+date-modified: 2023-02-24
 categories:
   - r
   - soccer
@@ -31,13 +32,13 @@ Recently, [I pointed out](https://twitter.com/TonyElHabr/status/1614288983105617
 ```{=html}
 <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 ```
-As it turns out FBref and their data provider, [Opta](https://www.statsperform.com/opta/), agreed! On Feb. 8, 2023, [they posted an update](https://twitter.com/fbref/status/1623358271791722502?s=20) indicating that they adjusted 2021/22 xG such that the difference between npG and npxG is much more in line with other seasons.
+As it turns out FBref and their data provider, [Opta](https://www.statsperform.com/opta/), agreed! On Feb. 8, 2023, [they posted an update](https://twitter.com/fbref/status/1623358271791722502?s=20) indicating that they adjusted their 2021/22 xG such that the difference between npG and npxG is much more in line with other seasons.
 
 The FBref/Opta update gave me two ideas:
 
-1.  **Compare pre- and post-update xG** to identify where/how adjustments were applied.[^2]
+1.  **Compare pre- and post-update xG** to identify where/how adjustments were applied. Where were the "blind spot(s)"?[^2]
 
-2.  **Quantify the [calibration](https://en.wikipedia.org/wiki/Calibration_(statistics)) of their xG model.**
+2.  **Quantify the [calibration](https://en.wikipedia.org/wiki/Calibration_(statistics)) of their xG model.** Are there obvious weak points with the model?
 
 [^2]: FBref/Opta didn't specify how they changed their xG model. Given how I observed very only trivial differences in the shot-level xG for prior seasons, it's possible that they didn't even change their model! There could have been some data issue specific to the 2021/22 season, that, when addressed, resulted in more plausible xG.
 
@@ -488,14 +489,13 @@ glimpse(discretized_updated_np_shots)
 #> $ is_primary_foot    <fct> missing, no, yes, yes, no, yes, missing, missing, y…
 
 discretized_updated_np_shots |> 
-  filter(!is_penalty) |> 
   mutate(xgd = old_xg - new_xg) |> 
   pull(xgd) |> 
   mean()
 #> [1] 0.0095014
 ```
 
-To get more insight into how/why xG changed, we can look at changes to xG values grouped by various `feature`s that FBref publishes alongside each shot's xG, including `distance` (yards), `sca1` (direct [shot-creating action](https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/)), `body_part`, `is_from_deflection`, `is_from_volley`, `is_free_kick`, and `is_primary_foot`.[^5][^6]
+To get more insight into how/why xG changed, we can look at changes to xG values grouped by various `feature`s that we can derive from data that FBref publishes alongside each shot's xG, including `distance` (yards), `sca1` (first [shot-creating action](https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/)), `body_part`, `is_from_deflection`, `is_from_volley`, `is_free_kick`, and `is_primary_foot`.[^5][^6]
 
 [^5]: Several of these are not provided directly from the raw FBref tables. For example, `is_from_deflection` is derived from the `Notes` field in the FBref shot table. `is_primary_foot` is derived from collecting player footedness data and checking for a match with `body_part`.
 
@@ -519,7 +519,7 @@ updated_np_shot_diffs <- discretized_updated_np_shots |>
   pivot_discretized_cols() |> 
   compare_by(feature, group)
 
-slice_and_tabularize_np_shot_diffs <- function(op, n = 5) {
+slice_and_tabularize_np_shot_diffs <- function(op, n = 6) {
   updated_np_shot_diffs |> 
     filter(n_shots >= 100) |> 
     arrange(op(prop_old_npxg_is_higher)) |> 
@@ -534,11 +534,11 @@ slice_and_tabularize_np_shot_diffs <- function(op, n = 5) {
     knitr::kable()
 }
 
-slice_and_tabularize_np_shot_diffs(`-`, n = 5)
-slice_and_tabularize_np_shot_diffs(`+`, n = 6)
+slice_and_tabularize_np_shot_diffs(`-`)
+slice_and_tabularize_np_shot_diffs(`+`)
 ```
 
-The table below shows that the reductions in npxG occurred most frequently for longer `distance`s, suggesting that the pre-update xG model was over-predicting xG for longer shots. Interestingly, xG for shots when interceptions led directly to the shot (`sca1`), and xG for shots with `body_part = "other"` (non-foot, non-header) were also frequently reduced, in the cases where xG was changed.
+The table below shows that the reductions in npxG occurred most frequently for longer `distance`s, suggesting that the pre-update xG model was over-predicting xG for longer shots. Interestingly, xG for shots when interceptions were the shot-creating action that led directly to the shot, and xG for shots with `body_part = "other"` (non-foot, non-header) were also frequently reduced, in the cases where xG was changed.
 
 | Feature     | Group            | \# of non-penalty shots | \# of shots with changed npxG | \# of shots with lower post-update npxG of those that changed |
 |:------------|:-----------------|------------------------:|------------------------------:|--------------------------------------------------------------:|
@@ -566,7 +566,7 @@ On the other end of the spectrum, reductions in npxG occurred least frequently f
 
 Here, we'll use a big sample of data---all 2017/18 - 2021/22 non-penalty shots for the Big 5 leagues and several other first and second tier leagues.[^7]
 
-[^7]: Several leagues don't have data available for all such seasons, which is reflected in the row counts by group.
+[^7]: Several leagues don't have data available for all such seasons, which is reflected in the number of shots per league in `np_shots`.
 
 ```{r}
 #| label: np_shots
@@ -597,7 +597,6 @@ discretized_np_shots <- discretize_cols(np_shots)
 np_shot_diffs <- discretized_np_shots |> 
   pivot_discretized_cols() |> 
   npxg_by(feature, group)
-
 ```
 
 ```{r}
@@ -626,7 +625,7 @@ np_shots |> count(league, name = 'n_shots')
 
 ### Calibration plot
 
-We can use `probably::cal_plot_breaks()` to visually assess whether the observed rate of non-penalty goals (y-axis) is close to the predicted probably of goals (npxG, x-axis).[^8] If the xG model's predictions are "well calibrated", the calibration points will align with the "ideal" line having slope 1 and intercept 0. Points at which the curve is below the diagonal line indicate where the model is more likelty to overpredict; and, likewise, points where the curve is above the diagonal line indicate where the model is underpredicting.
+We can use `probably::cal_plot_breaks()` to visually assess whether the observed rate of non-penalty goals (y-axis) is close to the predicted probability of goals (npxG, x-axis).[^8] If the xG model's predictions are "well calibrated", the calibration points will align with the "ideal" line having slope 1 and intercept 0. Points at which the curve is below the diagonal line indicate where the model is more likelty to overpredict; and, likewise, points where the curve is above the diagonal line indicate where the model is underpredicting.
 
 [^8]: I've written my own code to plot the calibration, but I imagine most users will be satisfied with the plot that `{probably}` will generate for you.
 
@@ -699,7 +698,12 @@ plot_and_save_calibration <- function(
     )
   
   if (isTRUE(has_group_cols)) {
-    p <- p + facet_wrap(vars(!!!rlang::syms(group_cols)))
+    p <- p + 
+      theme(
+        panel.grid.major = element_blank(),
+        panel.background = element_rect(color = 'white')
+      ) + 
+      facet_wrap(vars(!!!rlang::syms(group_cols)))
   }
   
   if (!missing(labels_layer)) {
@@ -830,25 +834,20 @@ npxg_brier_score
 
 Now we can go on to compute [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)) using an appropriate reference Brier score.[^10] In this context, the average goal rate seems to be a good choice for a baseline. In contrast to the Brier score, a higher BSS is ideal. (A perfect model would have a BSS of 1.)
 
-[^10]: Personally, I like to use BSS over other classification metrics like [ROC AUC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that it forces one to choose a reference with which to compare, which is a good principle in general, I think.
+[^10]: Personally, I like to use BSS over other classification metrics like [ROC AUC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that you have to specify a reference with which to compare, which seems like good principle in general.
 
 ```{r}
 #| label: npxg_brier_score
 #| include: true
 #| echo: true
 #| code-fold: show
-npxg_brier_score <- np_shots |> 
-  brier_score(
-    truth = is_goal,
-    estimate = xg,
-    event_level = 'second'
-  ) |> 
-  pull(.estimate)
 1 - (npxg_brier_score / np_goal_rate_brier_score)
 #> [1] 0.176328
 ```
 
-A BSS of \~0.18 is not bad! This is better than [FiveThirtyEight's BSS](https://projects.fivethirtyeight.com/checking-our-work/) for predicting the results for men's World Cup matches (\~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (\~0.18).
+A BSS of \~0.18 is not bad! This is better than [FiveThirtyEight's BSS](https://projects.fivethirtyeight.com/checking-our-work/) for predicting the results for men's World Cup matches (\~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (\~0.18).[^11]
+
+[^11]: I'm perhaps comparing apples to oranges here for the sake of providing some additional context that might help interpretability. The truth is that BSS is only comparable among different tasks to the extent that the reference choice in each task is "uninformed" to the same degree. For example, I could have said that the baseline for goals per shot is 50% instead of the actual goal rate (about 10%). This would change the baseline brier score to 0.25, and would inflate the BSS to 0.71. On the other hand, a 50/50 baseline makes sense in other settings. In fact, that's what FiveThirtyEight uses for match outcome BSS for various sports.
 
 ### Grouped Calibration and BSS
 
@@ -857,7 +856,8 @@ Now let's take a look at model calibration under specific criteria. Is the model
 ```{r}
 #| label: sca1-calibration
 library(forcats)
-generate_bss_labels_layer <- function(df) {
+library(scales)
+generate_labels_layer <- function(df) {
   geom_text(
     inherit.aes = FALSE,
     data = df,
@@ -865,10 +865,11 @@ generate_bss_labels_layer <- function(df) {
     fontface = 'italic',
     size = 12 / .pt,
     hjust = 0,
-    vjust = 0.5,
+    vjust = 1,
+    lineheight = 1,
     aes(
       x = 0.01,
-      y = 0.9,
+      y = 0.99,
       label = label
     )
   )
@@ -887,8 +888,25 @@ calculate_then_plot_and_save_calibration <- function(df, group, ...) {
     ungroup() |> 
     transmute(
       !!group, 
-      bss =  1 - (.estimate / !!np_goal_rate_brier_score),
-      label = sprintf('BSS: %.2f', bss)
+      bss =  1 - (.estimate / !!np_goal_rate_brier_score)
+    ) |> 
+    inner_join(
+      df |> 
+        group_by(!!group) |> 
+        summarize(
+          n_shots = n(), 
+          n_goals = sum(is_goal == 'yes')
+        ) |> 
+        ungroup() |> 
+        mutate(goal_rate = n_goals / n_shots)
+    ) |> 
+    mutate(
+      label = sprintf(
+        'BSS: %.2f\nShots: %s\nGoal rate: %s', 
+        bss, 
+        scales::number(n_shots, scale = 0.001, accuracy = 0.1, suffix = 'k', big.mark = ','), 
+        scales::percent(goal_rate, accuracy = 0.1)
+      )
     ) |> 
     mutate(
       across(
@@ -898,7 +916,7 @@ calculate_then_plot_and_save_calibration <- function(df, group, ...) {
     )
   
   lvls <- bss |> pull(!!group) |> levels()
-  labels_layer <- generate_bss_labels_layer(bss)
+  labels_layer <- generate_labels_layer(bss)
   
   df |> 
     cal_plot_breaks(
@@ -920,7 +938,7 @@ calculate_then_plot_and_save_calibration <- function(df, group, ...) {
 }
 
 discretized_np_shots |> 
-  filter(sca1 != 'missing') |> 
+  filter(!(sca1 %in% c('missing', 'pass_dead'))) |> 
   calculate_then_plot_and_save_calibration(
     group = sca1,
     title = 'direct shot-creating action',
@@ -931,28 +949,15 @@ discretized_np_shots |>
 
 ![](sca1_calibration.png)
 
-```{r}
-#| label: sca1-calibration-notes
-discretized_np_shots |> 
-  filter(sca1 == 'fouled') |> 
-  count(g = as.integer(is_goal) - 1) |> 
-  mutate(prop = n / sum(n))
-
-discretized_np_shots |> 
-  filter(sca1 == 'pass_live') |> 
-  count(g = as.integer(is_goal) - 1) |> 
-  mutate(prop = n / sum(n))
-```
-
 A couple of observations and thoughts:
 
 -   xG of shots following another shot are over-predicted so much that it causes the BSS to be negative. This means that the model is actually doing worse in its xG assignment than simply predicting naive goal rate for shots after another shot!
 
 -   A relatively "jagged" calibration plot may not correspond with a worse (lower) BSS score; and visa versa, a relatively "smooth" calibration plot may not correspond with a better (higher) BSS.
 
-    -   Note that the `fouled` calibration looks jagged for higher predicted xG, but the fact goals are only scored on about 5% shots immediately following a foul means that inprecise probabilities are not "penalized" quite as much. On the other hand, while the `pass_live` calibration looks relatively smooth, the fact that 10% of shots following live ball passes (2x the frequency for shots following fouls) means that it is more penalized for imprecision than an otherwise equivalent post-`fouled` shot. In fact, this is [one of the shortcomings of BSS](https://en.wikipedia.org/wiki/Brier_score#Shortcomings)---it does not do a great job with evaluation of relatively infrequent events.
+    -   Note that the `fouled` calibration looks jagged for higher predicted xG, but the fact that goals are only scored on about 5% shots immediately following a foul means that inprecise probabilities are not "penalized" quite as much. On the other hand, while the `pass_live` calibration looks relatively smooth, the 10% goal rate following live ball passes (2x the frequency for shots following fouls) means that it is more penalized for imprecision than an otherwise equivalent post-`fouled` shot. In fact, this is [one of the shortcomings of BSS](https://en.wikipedia.org/wiki/Brier_score#Shortcomings)---it does not do a great job with evaluation of relatively infrequent events.
 
-Next, let's take a look at calibration off shots coming after deflections (of other shots).
+Next, let's take a look at calibration of shots coming after deflections (of other shots).
 
 ```{r}
 #| label: deflection-calibration
@@ -977,6 +982,7 @@ discretized_np_shots |>
 -   The model doesn't seem to be very well calibrated for shots following deflections! Like shots following other shots in the shot-creating action calibration plot, the BSS for shots after deflections is negative. And, perhaps more interestingly, the model seems to underpredict post-deflection shots, which is the opposite of it's general tendency to overpredict. (See the wholistic calibration plot from before.)
     -   I'd suspect that there's lots of confounders that might explain the lack of calibration after deflections. For one, it could be the case that there are often zero defenders between the shot-taker and keeper for shots following a deflection. As far as I know, the Opta model doesn't have an explicit feature for this.
     -   It might also be the case that Opta's ["big chance" indicator](https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg)---which is not published on FBref but which I suspect take on a value of "yes"/1/true for many post-deflection shots---may have some flaws.
+    -   The high goal rate on shots after deflections relative to the goal rate on all other shots certainly contributes to the negative BSS, as we saw earlier with shots following other shots.
 
 Moving on, let's look at calibration of the xG model by groups of leagues, splitting out by tier and gender.
 
@@ -1047,9 +1053,10 @@ discretized_np_shots |>
         1.  Players are more likely to take weak-footed shots when they're closer to the goal, where shots are likely to have higher xG, but also where shots are also more likely to go in.
         2.  Players are less likely to take more difficult shots with their weak foot, so they're not taking as many shots that are unlikely to go in, holding all else equal.
 -   Of the non-footed shots, it's interesting to see that the BSS for headers and shots from `other` body parts are not particularly well calibrated. In fact, the latter has a negative BSS, indicating that we'd better off with a model that predicted the average goal rate for such shots.
+    -   A high goal rate on such shots compared to other types of shots seems to, once again, be the reason that BSS looks particularly bad here.
 
 ## Conclusion
 
 We've explored the wonderful world of model calibration, making friends with BSS and calibration curves in our investigation of a public xG model. Are BSS and calibration curves the be-all and end-all when it comes to model evaluation? Of course not! But they're useful tools that may or may not be appropriate for your use case.
 
-When it comes to the Opta xG model specifically, am I implying that the model is bad? Of course not! Yes, faceted calibration curves and feature-specific BSS can make a model look bad, but we must keep in mind that there are trade-offs to be made with modeling. Fine-tuning a model to be more well calibrated under certain conditions, e.g. shots after deflections, may make other parts of the model worse! It's all about trade-offs.
+When it comes to the Opta xG model specifically, am I implying that the model is bad? Of course not (again)! Yes, faceted calibration curves and feature-specific BSS can make a model look bad, but we must keep in mind that there are trade-offs to be made with modeling. Fine-tuning a model to be more well calibrated under certain conditions, e.g. shots after deflections, may make other parts of the model worse! It's all about trade-offs.
