@@ -212,6 +212,10 @@ ga('send', {
     <a class="nav-link" href="../../projects.html">
  <span class="menu-text">Projects</span></a>
   </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../../gallery.html">
+ <span class="menu-text">Data Viz</span></a>
+  </li>  
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item compact">
@@ -262,7 +266,7 @@ ga('send', {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Creating a Soccer Pitch Control Model</h1>
+<div class="quarto-title-block"><div><h1 class="title">Creating a Soccer Pitch Control Model</h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">View Source</a></li></ul></div></div>
   <div class="quarto-categories">
     <div class="quarto-category">r</div>
     <div class="quarto-category">soccer</div>
@@ -665,6 +669,8 @@ ga('send', {
 
 
 
+<!-- -->
+
 </section>
 
 
@@ -871,6 +877,57 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     // clear code selection
     e.clearSelection();
   });
+  const viewSource = window.document.getElementById('quarto-view-source') ||
+                     window.document.getElementById('quarto-code-tools-source');
+  if (viewSource) {
+    const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+    viewSource.addEventListener("click", function(e) {
+      if (sourceUrl) {
+        // rstudio viewer pane
+        if (/\bcapabilities=\b/.test(window.location)) {
+          window.open(sourceUrl);
+        } else {
+          window.location.href = sourceUrl;
+        }
+      } else {
+        const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+        modal.show();
+      }
+      return false;
+    });
+  }
+  function toggleCodeHandler(show) {
+    return function(e) {
+      const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+      for (let i=0; i<detailsSrc.length; i++) {
+        const details = detailsSrc[i].parentElement;
+        if (show) {
+          details.open = true;
+        } else {
+          details.removeAttribute("open");
+        }
+      }
+      const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+      const fromCls = show ? "hidden" : "unhidden";
+      const toCls = show ? "unhidden" : "hidden";
+      for (let i=0; i<cellCodeDivs.length; i++) {
+        const codeDiv = cellCodeDivs[i];
+        if (codeDiv.classList.contains(fromCls)) {
+          codeDiv.classList.remove(fromCls);
+          codeDiv.classList.add(toCls);
+        } 
+      }
+      return false;
+    }
+  }
+  const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+  if (hideAllCode) {
+    hideAllCode.addEventListener("click", toggleCodeHandler(false));
+  }
+  const showAllCode = window.document.getElementById("quarto-show-all-code");
+  if (showAllCode) {
+    showAllCode.addEventListener("click", toggleCodeHandler(true));
+  }
   function tippyHover(el, contentFn) {
     const config = {
       allowHTML: true,
@@ -938,7 +995,468 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
     }
   }
 });
-</script>
+</script><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">Source Code</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="sourceCode" id="cb13" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> Creating a Soccer Pitch Control Model</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="an">description:</span><span class="co"> With S3 Classes and vctrs</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> 2020-09-23</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="an">date-modified:</span><span class="co"> 2020-09-24</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="an">categories:</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="co">  - r</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co">  - soccer</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="an">image:</span><span class="co"> viz_pc_823_combined.png</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="fu">## Intro</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>There's never been a better time to be involved in sports analytics. There is a wealth of open-sourced data and code (not to mention well-researched and public analysis) to digest and use. Both people working for teams and people just doing at as a hobby are publishing new and interesting analyses every day.</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>In particular, the <span class="co">[</span><span class="ot">FriendsOfTracking (FOT)</span><span class="co">](https://www.youtube.com/channel/UCUBFJYcag8j2rm_9HkrrA7w)</span> group, co-led by Professor and author <span class="co">[</span><span class="ot">David Sumpter</span><span class="co">](ttps://twitter.com/Soccermatics)</span><span class="ot">[^1]</span> have put together an awesome series of videos on YouTube discussing modern soccer analytics, along with a collection of repositories on GitHub sharing the code shown in videos.</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a><span class="ot">[^1]: </span>author of one of my favorite books **Soccermatics**</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a><span class="co">[</span><span class="ot">Laurie Shaw</span><span class="co">](https://twitter.com/EightyFivePoint)</span> has shared code that implements the <span class="co">[</span><span class="ot">pitch control model</span><span class="co">](https://www.youtube.com/watch?v=X9PrwPyolyU)</span> described in <span class="co">[</span><span class="ot">William Spearman</span><span class="co">](https://twitter.com/the_spearman)</span>'s paper <span class="co">[</span><span class="ot">"Beyond Expected Goals"</span><span class="co">](http://www.sloansportsconference.com/wp-content/uploads/2018/02/2002.pdf)</span> is interesting to me. The model is different than the one that I used <span class="co">[</span><span class="ot">to create some animations on Twitter</span><span class="co">](https://twitter.com/TonyElHabr/status/1304766718468857857?s=20)</span>. Those were based on the pitch control model described by <span class="co">[</span><span class="ot">Javier Fernandez</span><span class="co">](https://twitter.com/JaviOnData)</span> and <span class="co">[</span><span class="ot">Luke Bornn</span><span class="co">](https://twitter.com/lukebornn)</span> in their paper <span class="co">[</span><span class="ot">"Wide Open Spaces"</span><span class="co">](http://www.sloansportsconference.com/wp-content/uploads/2018/03/1003.pdf)</span> (<span class="co">[</span><span class="ot">code</span><span class="co">](https://www.robert-hickman.eu/post/fall_back_in_to_space/)</span> courtesy of <span class="co">[</span><span class="ot">Rob Hickman</span><span class="co">](https://twitter.com/robwhickman)</span>). (Apologies for the onslaught of links!)</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>Now, I am not one for language wars---and, in fact, I use python often---but I thought it would be awesome to be able to plot Spearman's pitch control model directly with <span class="in">`{ggplot2}`</span> and friends. Thus, I set out to convert Laurie's code to R, attempting to give it a "native" R feel while I was at it.</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>Most of the process of translating python to R was relatively straightforward (slicing and dicing data frames and arrays/vectors is just part of data cleaning), so I won't detail them here. However, there was one part that was particularly interesting---the conversion of a python class object. This was actually the key (and most challenging part) of the conversion process.</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>There are some great resources for describing how to implement <span class="co">[</span><span class="ot">object-orientated programming (OOP)</span><span class="co">](https://en.wikipedia.org/wiki/Object-oriented_programming)</span> in R, including a couple of chapter's from <span class="co">[</span><span class="ot">Hadley Wickham</span><span class="co">](https://twitter.com/hadleywickham)</span>'s <span class="co">[</span><span class="ot">Advanced R book</span><span class="co">](https://adv-r.hadley.nz/oo.html)</span> and a <span class="co">[</span><span class="ot">very practical write-up</span><span class="co">](https://blog.earo.me/2019/11/03/practical-guide-to-s3/)</span> from <span class="co">[</span><span class="ot">Earo Wang</span><span class="co">](https://twitter.com/earowang)</span>. Every object-oriented task has its unique aspects, so hopefully my discussion here has something to add to what has already been written on the subject matter.</span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>***For demonstration purposes, I'm going to walk through my steps for converting the python class object as if I were doing it for the first time.***</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a><span class="fu">## Constructor</span></span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>Below is a stripped down version of Laurie's code, showing the "essence" of what we need to replicate.<span class="ot">[^2]</span></span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a><span class="ot">[^2]: </span>If you actually browse Laurie's code, you'll notice that I've changed some of the names of these functions, e.g. <span class="in">`tti()`</span> here instead of <span class="in">`simple_time_to_intercept()`</span> there, <span class="in">`tracking_df`</span> instead of <span class="in">`team`</span> there. Don't worry about that. I just wanted to make things as comparable as possible for the diligent reader, and I tried to make variable names that were either (or both) more succinct or more clear.</span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a><span class="in">```{python}</span></span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: player-python</span></span>
+<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-43"><a href="#cb13-43" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> player(<span class="bu">object</span>):</span>
+<span id="cb13-44"><a href="#cb13-44" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>,player_id,frame):</span>
+<span id="cb13-45"><a href="#cb13-45" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.<span class="bu">id</span> <span class="op">=</span> player_id</span>
+<span id="cb13-46"><a href="#cb13-46" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.get_position(frame)</span>
+<span id="cb13-47"><a href="#cb13-47" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.get_velocity(frame)</span>
+<span id="cb13-48"><a href="#cb13-48" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb13-49"><a href="#cb13-49" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> get_position(<span class="va">self</span>,frame):</span>
+<span id="cb13-50"><a href="#cb13-50" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.position <span class="op">=</span> np.array(frame[<span class="va">self</span>.player_id <span class="op">+</span> <span class="st">'x'</span>, <span class="va">self</span>.player_id <span class="op">+</span> <span class="st">'y'</span>])</span>
+<span id="cb13-51"><a href="#cb13-51" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb13-52"><a href="#cb13-52" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> get_velocity(<span class="va">self</span>,frame):</span>
+<span id="cb13-53"><a href="#cb13-53" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.velocity <span class="op">=</span> np.array(frame[<span class="va">self</span>.player_id <span class="op">+</span> <span class="st">'x_v'</span>, <span class="va">self</span>.player_id <span class="op">+</span> <span class="st">'y_v'</span>])</span>
+<span id="cb13-54"><a href="#cb13-54" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-55"><a href="#cb13-55" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> tti(<span class="va">self</span>,final_position):</span>
+<span id="cb13-56"><a href="#cb13-56" aria-hidden="true" tabindex="-1"></a>        reaction_time <span class="op">=</span> <span class="fl">0.7</span> <span class="co"># in s</span></span>
+<span id="cb13-57"><a href="#cb13-57" aria-hidden="true" tabindex="-1"></a>        vmax <span class="op">=</span> <span class="dv">5</span> <span class="co"># in m/s</span></span>
+<span id="cb13-58"><a href="#cb13-58" aria-hidden="true" tabindex="-1"></a>        reaction_position <span class="op">=</span> <span class="va">self</span>.position <span class="op">+</span> <span class="va">self</span>.velocity <span class="op">*</span> reaction_time</span>
+<span id="cb13-59"><a href="#cb13-59" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.tti <span class="op">=</span> reaction_time <span class="op">+</span> np.linalg.norm(final_positon <span class="op">-</span> reaction_position)<span class="op">/</span>vmax</span>
+<span id="cb13-60"><a href="#cb13-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-61"><a href="#cb13-61" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> p_intercept(<span class="va">self</span>,t):</span>
+<span id="cb13-62"><a href="#cb13-62" aria-hidden="true" tabindex="-1"></a>        tti_sigma <span class="op">=</span> <span class="fl">0.45</span></span>
+<span id="cb13-63"><a href="#cb13-63" aria-hidden="true" tabindex="-1"></a>        den <span class="op">=</span> <span class="dv">1</span> <span class="op">+</span> np.exp(<span class="op">-</span>np.pi<span class="op">/</span>np.sqrt(<span class="fl">3.0</span>)<span class="op">/</span>tti_sigma <span class="op">*</span> (t<span class="op">-</span><span class="va">self</span>.tti)))</span>
+<span id="cb13-64"><a href="#cb13-64" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">1</span> <span class="op">/</span> den</span>
+<span id="cb13-65"><a href="#cb13-65" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb13-66"><a href="#cb13-66" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-67"><a href="#cb13-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-68"><a href="#cb13-68" aria-hidden="true" tabindex="-1"></a>Let's make some notes and come back to these as we develop our R class.</span>
+<span id="cb13-69"><a href="#cb13-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-70"><a href="#cb13-70" aria-hidden="true" tabindex="-1"></a><span class="ss">1.  </span>We need a unique identifier: <span class="in">`player_id`</span>. This is just a "best practice" thing for object-oriented programming and makes sense given our context. For a sport like soccer, a unique identifier could just be the player's name, a combination of the team name and the player jersey number, a league unique identifier, etc.</span>
+<span id="cb13-71"><a href="#cb13-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-72"><a href="#cb13-72" aria-hidden="true" tabindex="-1"></a><span class="ss">2.  </span>A single-row data frame <span class="in">`frame`</span> is passed to several of the methods, including the constructor <span class="in">`__init__`</span>. This single row data frame is sourced from a much larger <span class="in">`tracking`</span> data frame, with rows for every 0.04 second time interval (25 frames per second, or one frame per 0.04 seconds) in the game.</span>
+<span id="cb13-73"><a href="#cb13-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-74"><a href="#cb13-74" aria-hidden="true" tabindex="-1"></a><span class="ss">3.  </span>The python code stores both the player's <span class="in">`position`</span> and <span class="in">`velocity`</span> as 2x1 arrays. This works well with the <span class="co">[</span><span class="ot">unpacking</span><span class="co">](https://www.w3schools.com/python/gloss_python_assign_value_to_multiple_variables.asp)</span> that is done in other places in Laurie's code.</span>
+<span id="cb13-75"><a href="#cb13-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-76"><a href="#cb13-76" aria-hidden="true" tabindex="-1"></a><span class="ss">4.  </span><span class="in">`tti`</span>, short for "time to intercept (a target location)", uses the player's <span class="in">`position`</span> and <span class="in">`velocity`</span> to define the attribute <span class="in">`tti`</span> (not to be confused with the method itself). This implies that <span class="in">`position`</span> and <span class="in">`velocity`</span> should be defined before <span class="in">`tti()`</span> is ever called, as they are in <span class="in">`__init__`</span>. <span class="in">`tti`</span> needs the <span class="in">`position_final`</span> 2x1 array to calculate <span class="in">`tti`</span> which is not known upon instantiation; rather, <span class="in">`tti`</span> can only be properly defined when called to do a specific calculation relating the player's <span class="in">`position`</span> and <span class="in">`velocity`</span> (both defined implicitly in the class, without needing user-specification) with a user-supplied <span class="in">`position_final`</span> pair of x and y values.</span>
+<span id="cb13-77"><a href="#cb13-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-78"><a href="#cb13-78" aria-hidden="true" tabindex="-1"></a><span class="ss">5.  </span><span class="in">`p_intercept`</span>, short for "probability to intercept (a target location)" depends on <span class="in">`tti`</span> and an additional parameter <span class="in">`t`</span>, a user-specified value representing how much time is allotted to reach the ball. Like <span class="in">`tti`</span>, <span class="in">`p_intercept`</span> is only "properly" defined when actually doing a calculation on the player's attributes. Unlike <span class="in">`tti`</span>, there is no attribute in the <span class="in">`player`</span> instance that stores this probability; it's value must be saved in a variable external to the player class if the user wants to use it for something other than an ephemeral calculation.<span class="ot">[^3]</span></span>
+<span id="cb13-79"><a href="#cb13-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-80"><a href="#cb13-80" aria-hidden="true" tabindex="-1"></a><span class="ot">[^3]: </span>One might argue that we should be consistent with <span class="in">`tti`</span> and <span class="in">`p_intercept`</span> and store them in the same way---either both as attributes or neither as attributes---given that both are dependent on some user-specified values (<span class="in">`final_position`</span> for <span class="in">`tti`</span> and <span class="in">`t`</span> for <span class="in">`p_intercept`</span>). I'm just showing how it is done in Laurie's code. I think it is simple enough as is and there is no compelling functional reason why we should change the implementation.</span>
+<span id="cb13-81"><a href="#cb13-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-82"><a href="#cb13-82" aria-hidden="true" tabindex="-1"></a>Time to intercept a "target" location (<span class="in">`tti`</span>) may not be intuitive to comprehend immediately. The plot<span class="ot">[^4]</span> below annotates the <span class="in">`tti`</span> of a "target" location on the pitch (which does **not** have to be where the ball actually is). <span class="in">`tti`</span> assumes that the player continues moving at their current speed (annotated by the arrows) for <span class="in">`reaction_time`</span> seconds before running at <span class="in">`vmax`</span> (full speed) to the target position. <span class="in">`tti`</span> for each player is independent of the <span class="in">`tti`</span> of all other players, which is a relatively reasonable assumption. <span class="ot">[^5]</span></span>
+<span id="cb13-83"><a href="#cb13-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-84"><a href="#cb13-84" aria-hidden="true" tabindex="-1"></a><span class="ot">[^4]: </span>Data for this plot and all that follow from post-processed <span class="co">[</span><span class="ot">Metrica Sports sample game 2 data</span><span class="co">](https://github.com/metrica-sports/sample-data)</span>.</span>
+<span id="cb13-85"><a href="#cb13-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-86"><a href="#cb13-86" aria-hidden="true" tabindex="-1"></a><span class="ot">[^5]: </span>author of one of my favorite books **Soccermatics**</span>
+<span id="cb13-87"><a href="#cb13-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-88"><a href="#cb13-88" aria-hidden="true" tabindex="-1"></a><span class="al">![](viz_tti_ex.png)</span></span>
+<span id="cb13-89"><a href="#cb13-89" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-90"><a href="#cb13-90" aria-hidden="true" tabindex="-1"></a>The probability of reaching the "target" location (<span class="in">`p_intercept`</span>) is directly related to the player's <span class="in">`tti`</span>. Uncertainty about how long it will take the player to reach the target location is quantified by the constant <span class="in">`tti_sigma`</span> in the calculation. (<span class="in">`tti`</span> is the mean and <span class="in">`tti_sigma`</span> is the standard deviation of the distribution for a player's time to arrive at the target location.)</span>
+<span id="cb13-91"><a href="#cb13-91" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-92"><a href="#cb13-92" aria-hidden="true" tabindex="-1"></a><span class="al">![](viz_p_intercept_ex_1.png)</span></span>
+<span id="cb13-93"><a href="#cb13-93" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-94"><a href="#cb13-94" aria-hidden="true" tabindex="-1"></a>Notably, this probability is independent of all other players' probabilities (which explains how it is possible that both players are shown to have probabilities greater than 50% when <span class="in">`t = 6`</span> above). When adjusting for all players' probabilities (by dividing by the sum of all probabilities), the numbers change. This probability adjustment is key when we calculate pitch control.</span>
+<span id="cb13-95"><a href="#cb13-95" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-96"><a href="#cb13-96" aria-hidden="true" tabindex="-1"></a><span class="al">![](viz_p_intercept_ex_2.png)</span></span>
+<span id="cb13-97"><a href="#cb13-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-98"><a href="#cb13-98" aria-hidden="true" tabindex="-1"></a>Ok, on to the R code. We'll be using <span class="co">[</span><span class="ot">S3</span><span class="co">](https://adv-r.hadley.nz/s3.html)</span> and the <span class="co">[</span><span class="ot">`{vctrs}` package</span><span class="co">](https://vctrs.r-lib.org/)</span> to help create our <span class="in">`player`</span> class. (As with the python class, I've simplified the actual implementation for demonstration purposes.)</span>
+<span id="cb13-99"><a href="#cb13-99" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-100"><a href="#cb13-100" aria-hidden="true" tabindex="-1"></a>First, we start with the constructor <span class="in">`new_player()`</span>. Note that there is no direct <span class="in">`__init__`</span> equivalent in R. Here we will make a function that is prefixed with <span class="in">`new_`</span> and ends with the name of our class (<span class="in">`player`</span>).</span>
+<span id="cb13-101"><a href="#cb13-101" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-104"><a href="#cb13-104" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-105"><a href="#cb13-105" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: new-player</span></span>
+<span id="cb13-106"><a href="#cb13-106" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-107"><a href="#cb13-107" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-108"><a href="#cb13-108" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-109"><a href="#cb13-109" aria-hidden="true" tabindex="-1"></a>new_player <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb13-110"><a href="#cb13-110" aria-hidden="true" tabindex="-1"></a>  <span class="at">player_id =</span> <span class="fu">integer</span>(),</span>
+<span id="cb13-111"><a href="#cb13-111" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> <span class="fu">double</span>(),</span>
+<span id="cb13-112"><a href="#cb13-112" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> <span class="fu">double</span>(),</span>
+<span id="cb13-113"><a href="#cb13-113" aria-hidden="true" tabindex="-1"></a>  <span class="at">x_v =</span> <span class="fu">double</span>(),</span>
+<span id="cb13-114"><a href="#cb13-114" aria-hidden="true" tabindex="-1"></a>  <span class="at">y_v =</span> <span class="fu">double</span>()</span>
+<span id="cb13-115"><a href="#cb13-115" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb13-116"><a href="#cb13-116" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">new_rcrd</span>(</span>
+<span id="cb13-117"><a href="#cb13-117" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb13-118"><a href="#cb13-118" aria-hidden="true" tabindex="-1"></a>      <span class="at">player_id =</span> player_id,</span>
+<span id="cb13-119"><a href="#cb13-119" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> x,</span>
+<span id="cb13-120"><a href="#cb13-120" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> y,</span>
+<span id="cb13-121"><a href="#cb13-121" aria-hidden="true" tabindex="-1"></a>      <span class="at">x_v =</span> x_v,</span>
+<span id="cb13-122"><a href="#cb13-122" aria-hidden="true" tabindex="-1"></a>      <span class="at">y_v =</span> y_v,</span>
+<span id="cb13-123"><a href="#cb13-123" aria-hidden="true" tabindex="-1"></a>      <span class="at">tti =</span> <span class="sc">-</span><span class="dv">1</span> <span class="co"># dummy value</span></span>
+<span id="cb13-124"><a href="#cb13-124" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb13-125"><a href="#cb13-125" aria-hidden="true" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">'player'</span></span>
+<span id="cb13-126"><a href="#cb13-126" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb13-127"><a href="#cb13-127" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-128"><a href="#cb13-128" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-129"><a href="#cb13-129" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-130"><a href="#cb13-130" aria-hidden="true" tabindex="-1"></a>Now let's reflect upon our prior notes.</span>
+<span id="cb13-131"><a href="#cb13-131" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-132"><a href="#cb13-132" aria-hidden="true" tabindex="-1"></a><span class="ss">1.  </span>We have the <span class="in">`player_id`</span> in this constructor.</span>
+<span id="cb13-133"><a href="#cb13-133" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-134"><a href="#cb13-134" aria-hidden="true" tabindex="-1"></a><span class="ss">2.  </span>We don't pass the data frame <span class="in">`tracking`</span> here. We'll do it in our helper function. We might say that our constructor is "low-level", not intended for the user to call directly.</span>
+<span id="cb13-135"><a href="#cb13-135" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-136"><a href="#cb13-136" aria-hidden="true" tabindex="-1"></a><span class="ss">3.  </span>We split the position and velocity vectors into their individual x and y components, resulting in four total variables instead of two. I don't think a vector (unnamed or named), list, or matrix are particularly compelling data types to use for an x-y pair of values in R. None natively support unpacking (although R vectors do have some form of "broadcasting" with their recycling behavior).</span>
+<span id="cb13-137"><a href="#cb13-137" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-138"><a href="#cb13-138" aria-hidden="true" tabindex="-1"></a><span class="ss">4.  </span>We assign a "dummy" value (-1) to <span class="in">`tti`</span> when initializing the class instance. We will have a method to update <span class="in">`tti`</span> based on x and y components.</span>
+<span id="cb13-139"><a href="#cb13-139" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-140"><a href="#cb13-140" aria-hidden="true" tabindex="-1"></a><span class="ss">5.  </span>Like <span class="in">`tti`</span>, we will need a separate <span class="in">`p_intercept`</span> method to be used to calculate the probabililty of intercepting a ball given a player's position, speed, and the final position of the ball (all fed as inputs to <span class="in">`tti`</span>), as well as the additional user-specified <span class="in">`t`</span>, representing how much time is allotted to reach the ball.</span>
+<span id="cb13-141"><a href="#cb13-141" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-142"><a href="#cb13-142" aria-hidden="true" tabindex="-1"></a><span class="fu">## Validator</span></span>
+<span id="cb13-143"><a href="#cb13-143" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-144"><a href="#cb13-144" aria-hidden="true" tabindex="-1"></a>Let's proceed by creating a validator function to, you guessed it, validate fields in the <span class="in">`player`</span> class. It is good practice to check the values used to construct the class. The python code did not have any validation like this, but I don't think it was ever expected to be extremely robust to any user input.</span>
+<span id="cb13-145"><a href="#cb13-145" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-148"><a href="#cb13-148" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-149"><a href="#cb13-149" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: validate_player</span></span>
+<span id="cb13-150"><a href="#cb13-150" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-151"><a href="#cb13-151" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-152"><a href="#cb13-152" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-153"><a href="#cb13-153" aria-hidden="true" tabindex="-1"></a>validate_player <span class="ot">&lt;-</span> <span class="cf">function</span>(player) {</span>
+<span id="cb13-154"><a href="#cb13-154" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">vec_assert</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'player_id'</span>), <span class="fu">integer</span>())</span>
+<span id="cb13-155"><a href="#cb13-155" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">vec_assert</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'x'</span>), <span class="fu">double</span>())</span>
+<span id="cb13-156"><a href="#cb13-156" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">vec_assert</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y'</span>), <span class="fu">double</span>())</span>
+<span id="cb13-157"><a href="#cb13-157" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">vec_assert</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'tti'</span>), <span class="fu">double</span>())</span>
+<span id="cb13-158"><a href="#cb13-158" aria-hidden="true" tabindex="-1"></a>  player</span>
+<span id="cb13-159"><a href="#cb13-159" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-160"><a href="#cb13-160" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-161"><a href="#cb13-161" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-162"><a href="#cb13-162" aria-hidden="true" tabindex="-1"></a>Note that we could have simply done this validation in the constructor function, but I think it makes sense to put the validation in its own function so that the constructor is more direct (especially if the validation checks are complex).</span>
+<span id="cb13-163"><a href="#cb13-163" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-164"><a href="#cb13-164" aria-hidden="true" tabindex="-1"></a><span class="fu">## Helper</span></span>
+<span id="cb13-165"><a href="#cb13-165" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-166"><a href="#cb13-166" aria-hidden="true" tabindex="-1"></a>Finally, we'll create a helper <span class="in">`player()`</span> function, which is our "user-facing" function that we expect/want users to use to instantiate objects.</span>
+<span id="cb13-167"><a href="#cb13-167" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-170"><a href="#cb13-170" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-171"><a href="#cb13-171" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: player</span></span>
+<span id="cb13-172"><a href="#cb13-172" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-173"><a href="#cb13-173" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-174"><a href="#cb13-174" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-175"><a href="#cb13-175" aria-hidden="true" tabindex="-1"></a>player <span class="ot">&lt;-</span> <span class="cf">function</span>(player_id, frame, tracking) {</span>
+<span id="cb13-176"><a href="#cb13-176" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-177"><a href="#cb13-177" aria-hidden="true" tabindex="-1"></a>    player_id <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(player_id)</span>
+<span id="cb13-178"><a href="#cb13-178" aria-hidden="true" tabindex="-1"></a>    frame <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(frame)</span>
+<span id="cb13-179"><a href="#cb13-179" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-180"><a href="#cb13-180" aria-hidden="true" tabindex="-1"></a>    assertthat<span class="sc">::</span><span class="fu">assert_that</span>(<span class="fu">is.data.frame</span>(tracking))</span>
+<span id="cb13-181"><a href="#cb13-181" aria-hidden="true" tabindex="-1"></a>    nms_req <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">'player_id'</span>, <span class="st">'frame'</span>, <span class="st">'x'</span>, <span class="st">'y'</span>, <span class="st">'x_v'</span>, <span class="st">'y_v'</span>)</span>
+<span id="cb13-182"><a href="#cb13-182" aria-hidden="true" tabindex="-1"></a>    assertthat<span class="sc">::</span><span class="fu">assert_that</span>(<span class="fu">all</span>(nms_req <span class="sc">%in%</span> <span class="fu">names</span>(tracking)))</span>
+<span id="cb13-183"><a href="#cb13-183" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-184"><a href="#cb13-184" aria-hidden="true" tabindex="-1"></a>    <span class="co"># `!!` to make sure that we filter using the integer values, not the column itself.</span></span>
+<span id="cb13-185"><a href="#cb13-185" aria-hidden="true" tabindex="-1"></a>    tracking_filt <span class="ot">&lt;-</span> tracking <span class="sc">%&gt;%</span> <span class="fu">filter</span>(player_id <span class="sc">==</span> <span class="sc">!!</span>player_id, frame <span class="sc">==</span> <span class="sc">!!</span>frame)</span>
+<span id="cb13-186"><a href="#cb13-186" aria-hidden="true" tabindex="-1"></a>    assertthat<span class="sc">::</span><span class="fu">assert_that</span>(<span class="fu">nrow</span>(tracking_filt) <span class="sc">==</span> 1L)</span>
+<span id="cb13-187"><a href="#cb13-187" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb13-188"><a href="#cb13-188" aria-hidden="true" tabindex="-1"></a>    player <span class="ot">&lt;-</span></span>
+<span id="cb13-189"><a href="#cb13-189" aria-hidden="true" tabindex="-1"></a>      <span class="fu">new_player</span>(</span>
+<span id="cb13-190"><a href="#cb13-190" aria-hidden="true" tabindex="-1"></a>        <span class="at">player_id =</span> player_id,</span>
+<span id="cb13-191"><a href="#cb13-191" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> tracking_filt[[<span class="st">'x'</span>]],</span>
+<span id="cb13-192"><a href="#cb13-192" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> tracking_filt[[<span class="st">'y'</span>]],</span>
+<span id="cb13-193"><a href="#cb13-193" aria-hidden="true" tabindex="-1"></a>        <span class="at">x_v =</span> tracking_filt[[<span class="st">'x_v'</span>]],</span>
+<span id="cb13-194"><a href="#cb13-194" aria-hidden="true" tabindex="-1"></a>        <span class="at">y_v =</span> tracking_filt[[<span class="st">'y_v'</span>]]</span>
+<span id="cb13-195"><a href="#cb13-195" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb13-196"><a href="#cb13-196" aria-hidden="true" tabindex="-1"></a>    <span class="fu">validate_player</span>(player)</span>
+<span id="cb13-197"><a href="#cb13-197" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb13-198"><a href="#cb13-198" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-199"><a href="#cb13-199" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-200"><a href="#cb13-200" aria-hidden="true" tabindex="-1"></a>Note the following:</span>
+<span id="cb13-201"><a href="#cb13-201" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-202"><a href="#cb13-202" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>We coerce <span class="in">`player_id`</span> and <span class="in">`frame`</span> to integers instead of doubles (particularly since they are expected to be integers in the constructor). This ensures that the new <span class="in">`player`</span> is instantiated properly by the constructor and passes our validation.</span>
+<span id="cb13-203"><a href="#cb13-203" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>We pass in our entire <span class="in">`tracking`</span> data frame (that has rows for every 0.04 second interval in the game), as well as the <span class="in">`frame`</span> to slice out of it. (<span class="in">`player_id`</span> is also used to filter <span class="in">`tracking`</span>.) This makes it convenient for user to instantiate new <span class="in">`player`</span> objects when operating on the <span class="in">`tracking`</span> data frame. There is no need to extract the singular initial position and velocity components "manually"; instead, the helper function does it for the user.</span>
+<span id="cb13-204"><a href="#cb13-204" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-205"><a href="#cb13-205" aria-hidden="true" tabindex="-1"></a><span class="fu">## Aside</span></span>
+<span id="cb13-206"><a href="#cb13-206" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-207"><a href="#cb13-207" aria-hidden="true" tabindex="-1"></a>R's S3 framework is not a formal OOP framework (not even close really). Note that it does not have a reserved keyword to represent the instance of the class like <span class="in">`self`</span> in python. Also, it is not actually necessary for most of what is done above (with the constructor, validator, and helper).</span>
+<span id="cb13-208"><a href="#cb13-208" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-209"><a href="#cb13-209" aria-hidden="true" tabindex="-1"></a>For example, we don't actually have to create a formal-ish constructor prefixed with <span class="in">`new_`</span>. We don't even need a constructor function at all in S3. We could do something like <span class="in">`class(var) &lt;- 'player'`</span> to create a a <span class="in">`player`</span> object. Of course, this is prone to errors down the line, so we don't do that. Likewise with the validator and helper functions. The point of these constructs is to add clarity to our class code. They aren't strictly necessary.</span>
+<span id="cb13-210"><a href="#cb13-210" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-211"><a href="#cb13-211" aria-hidden="true" tabindex="-1"></a><span class="fu">## Printing</span></span>
+<span id="cb13-212"><a href="#cb13-212" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-213"><a href="#cb13-213" aria-hidden="true" tabindex="-1"></a>Let's do one more thing for our <span class="in">`player`</span> class---create a custom print method. (Writing a custom print method is not required whatsoever, but it can be very helpful for debugging.) If we weren't using <span class="in">`{vctrs}`</span> and just S3, we would do this by writing a <span class="in">`print.player`</span> function. However, <span class="in">`{vctrs}`</span> provides a "pretty" header for us auto-magically (that looks like <span class="in">`&lt;player[1]&gt;`</span>) if we use it to write our print method.</span>
+<span id="cb13-214"><a href="#cb13-214" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-215"><a href="#cb13-215" aria-hidden="true" tabindex="-1"></a>To take advantage of the pretty-printing functionality offered by <span class="in">`{vctrs}`</span>, we write a <span class="in">`format.player()`</span> method that will be called by a subclass of the generic <span class="in">`vctrs::obj_print_data`</span> method<span class="ot">[^6]</span>, which itself is called whenever we print out an object (whether explicitly with <span class="in">`print`</span> or just by typing the name of the variable representing our <span class="in">`player`</span> instance). We'll add the player's position and velocity components to the print out.</span>
+<span id="cb13-216"><a href="#cb13-216" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-217"><a href="#cb13-217" aria-hidden="true" tabindex="-1"></a><span class="ot">[^6]: </span><span class="in">`vctrs::obj_print_data`</span> that can also handle <span class="co">[</span><span class="ot">Unicode</span><span class="co">](https://home.unicode.org/)</span> easily, although we are not using any Unicode characters here. Also, it is able to handle extra <span class="in">`NULL`</span>s and <span class="in">`[1]`</span> that may be printed out if we just use <span class="in">`cat`</span> or <span class="in">`print`</span> directly.</span>
+<span id="cb13-218"><a href="#cb13-218" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-221"><a href="#cb13-221" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-222"><a href="#cb13-222" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: players-print</span></span>
+<span id="cb13-223"><a href="#cb13-223" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-224"><a href="#cb13-224" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-225"><a href="#cb13-225" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-226"><a href="#cb13-226" aria-hidden="true" tabindex="-1"></a>format.player <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb13-227"><a href="#cb13-227" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'in_frame'</span>)) {</span>
+<span id="cb13-228"><a href="#cb13-228" aria-hidden="true" tabindex="-1"></a>    suffix <span class="ot">&lt;-</span> </span>
+<span id="cb13-229"><a href="#cb13-229" aria-hidden="true" tabindex="-1"></a>      <span class="fu">sprintf</span>(</span>
+<span id="cb13-230"><a href="#cb13-230" aria-hidden="true" tabindex="-1"></a>        <span class="st">'with `position = (%.2f, %.2f)` and `velocity = &lt;%.1f, %.1f&gt;`'</span>, </span>
+<span id="cb13-231"><a href="#cb13-231" aria-hidden="true" tabindex="-1"></a>        vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'player_id'</span>), </span>
+<span id="cb13-232"><a href="#cb13-232" aria-hidden="true" tabindex="-1"></a>        vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y'</span>), </span>
+<span id="cb13-233"><a href="#cb13-233" aria-hidden="true" tabindex="-1"></a>        vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'x_v'</span>),</span>
+<span id="cb13-234"><a href="#cb13-234" aria-hidden="true" tabindex="-1"></a>        vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y_v'</span>)</span>
+<span id="cb13-235"><a href="#cb13-235" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb13-236"><a href="#cb13-236" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb13-237"><a href="#cb13-237" aria-hidden="true" tabindex="-1"></a>    suffix <span class="ot">&lt;-</span> <span class="st">'is not on the pitch'</span></span>
+<span id="cb13-238"><a href="#cb13-238" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb13-239"><a href="#cb13-239" aria-hidden="true" tabindex="-1"></a>  prefix <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">'`player_id = %s` '</span>, vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'player_id'</span>))</span>
+<span id="cb13-240"><a href="#cb13-240" aria-hidden="true" tabindex="-1"></a>  msg <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">'%s%s'</span>, prefix, suffix)</span>
+<span id="cb13-241"><a href="#cb13-241" aria-hidden="true" tabindex="-1"></a>  <span class="fu">paste</span>(msg, <span class="at">sep =</span> <span class="st">'</span><span class="sc">\n</span><span class="st">'</span>)</span>
+<span id="cb13-242"><a href="#cb13-242" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-243"><a href="#cb13-243" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-244"><a href="#cb13-244" aria-hidden="true" tabindex="-1"></a>obj_print_data.player <span class="ot">&lt;-</span> <span class="cf">function</span>(player) {</span>
+<span id="cb13-245"><a href="#cb13-245" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">format</span>(player), <span class="at">sep =</span> <span class="st">'</span><span class="sc">\n</span><span class="st">'</span>)</span>
+<span id="cb13-246"><a href="#cb13-246" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-247"><a href="#cb13-247" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-248"><a href="#cb13-248" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-249"><a href="#cb13-249" aria-hidden="true" tabindex="-1"></a><span class="fu">## Basic Usage</span></span>
+<span id="cb13-250"><a href="#cb13-250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-251"><a href="#cb13-251" aria-hidden="true" tabindex="-1"></a>Ok, so that is all fine and dandy, but how would we go about instantiating <span class="in">`player`</span>s in a normal workflow?</span>
+<span id="cb13-252"><a href="#cb13-252" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-253"><a href="#cb13-253" aria-hidden="true" tabindex="-1"></a>Let's say that we want to calculate the pitch control for a single <span class="in">`frame`</span> in the <span class="in">`tracking`</span> data (called <span class="in">`tracking_start`</span> below).<span class="ot">[^7]</span></span>
+<span id="cb13-254"><a href="#cb13-254" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-255"><a href="#cb13-255" aria-hidden="true" tabindex="-1"></a><span class="ot">[^7]: </span>This is the same data used to generate the first handful of plots.</span>
+<span id="cb13-256"><a href="#cb13-256" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-259"><a href="#cb13-259" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-260"><a href="#cb13-260" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tracking_start</span></span>
+<span id="cb13-261"><a href="#cb13-261" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-262"><a href="#cb13-262" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-263"><a href="#cb13-263" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-264"><a href="#cb13-264" aria-hidden="true" tabindex="-1"></a>tracking_start</span>
+<span id="cb13-265"><a href="#cb13-265" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 26 x 9</span></span>
+<span id="cb13-266"><a href="#cb13-266" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    frame ball_x ball_y side  player_id     x     y   x_v    y_v</span></span>
+<span id="cb13-267"><a href="#cb13-267" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;     &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;</span></span>
+<span id="cb13-268"><a href="#cb13-268" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 53027  93.71  24.56 home          1 90.72 39.37 5.906 -3.985</span></span>
+<span id="cb13-269"><a href="#cb13-269" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 53027  93.71  24.56 home          2 95.10 27.14 1.5   -2.023</span></span>
+<span id="cb13-270"><a href="#cb13-270" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 53027  93.71  24.56 home          3 96.01 23.32 1.418  2.395</span></span>
+<span id="cb13-271"><a href="#cb13-271" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 53027  93.71  24.56 home          4 92.39 15.64 1.005  3.473</span></span>
+<span id="cb13-272"><a href="#cb13-272" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 53027  93.71  24.56 home          5 83.96 24.69 4.238  1.2  </span></span>
+<span id="cb13-273"><a href="#cb13-273" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 53027  93.71  24.56 home          6 82.19 35.63 3.893 -0.619</span></span>
+<span id="cb13-274"><a href="#cb13-274" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 53027  93.71  24.56 home          7 85.79 17.34 1.703  1.523</span></span>
+<span id="cb13-275"><a href="#cb13-275" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 53027  93.71  24.56 home          8 76.06 50.16 2.018 -0.493</span></span>
+<span id="cb13-276"><a href="#cb13-276" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 53027  93.71  24.56 home          9 61.22 25.35 0.863 -0.77 </span></span>
+<span id="cb13-277"><a href="#cb13-277" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 53027  93.71  24.56 home         10 59.69 35.10 0.9   -0.573</span></span>
+<span id="cb13-278"><a href="#cb13-278" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ... with 16 more rows</span></span>
+<span id="cb13-279"><a href="#cb13-279" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-280"><a href="#cb13-280" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-281"><a href="#cb13-281" aria-hidden="true" tabindex="-1"></a>Let's convert players with id's 10 through 12 (on the home team) to <span class="in">`player`</span> instances and see how they look when printed out.</span>
+<span id="cb13-282"><a href="#cb13-282" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-285"><a href="#cb13-285" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-286"><a href="#cb13-286" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: players-init</span></span>
+<span id="cb13-287"><a href="#cb13-287" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-288"><a href="#cb13-288" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-289"><a href="#cb13-289" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-290"><a href="#cb13-290" aria-hidden="true" tabindex="-1"></a>10L<span class="sc">:</span>12L <span class="sc">%&gt;%</span> <span class="fu">map</span>(<span class="sc">~</span><span class="fu">player</span>(<span class="at">player_id =</span> .x, <span class="at">frame =</span> 53027L, <span class="at">tracking =</span> tracking_start))</span>
+<span id="cb13-291"><a href="#cb13-291" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb13-292"><a href="#cb13-292" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; &lt;player[1]&gt;</span></span>
+<span id="cb13-293"><a href="#cb13-293" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; `player_id = 10` with `position = (10.00, 35.09)` and `velocity = &lt;0.9, -0.6&gt;`</span></span>
+<span id="cb13-294"><a href="#cb13-294" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-295"><a href="#cb13-295" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb13-296"><a href="#cb13-296" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; &lt;player[1]&gt;</span></span>
+<span id="cb13-297"><a href="#cb13-297" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; `player_id = 11` with `position = (11.00, 32.28)` and `velocity = &lt;-0.3, 0.6&gt;`</span></span>
+<span id="cb13-298"><a href="#cb13-298" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-299"><a href="#cb13-299" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[3]]</span></span>
+<span id="cb13-300"><a href="#cb13-300" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; &lt;player[1]&gt;</span></span>
+<span id="cb13-301"><a href="#cb13-301" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; `player_id = 12` is not on the pitch</span></span>
+<span id="cb13-302"><a href="#cb13-302" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-303"><a href="#cb13-303" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-304"><a href="#cb13-304" aria-hidden="true" tabindex="-1"></a><span class="fu">## Pseudo-Encapsulation</span></span>
+<span id="cb13-305"><a href="#cb13-305" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-306"><a href="#cb13-306" aria-hidden="true" tabindex="-1"></a>We still need to implement analogues for the <span class="in">`tti`</span> and <span class="in">`p_intercept`</span> methods in the python <span class="in">`player`</span> class. Starting with <span class="in">`tti`</span>, let's use <span class="co">[</span><span class="ot">some pseudo-encapsulation (with getters and setters)</span><span class="co">](https://www.w3schools.com/java/java_encapsulation.asp)</span> for a player's <span class="in">`tti`</span> value.</span>
+<span id="cb13-307"><a href="#cb13-307" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-310"><a href="#cb13-310" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-311"><a href="#cb13-311" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tti</span></span>
+<span id="cb13-312"><a href="#cb13-312" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-313"><a href="#cb13-313" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-314"><a href="#cb13-314" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-315"><a href="#cb13-315" aria-hidden="true" tabindex="-1"></a><span class="co"># Frobenious norm</span></span>
+<span id="cb13-316"><a href="#cb13-316" aria-hidden="true" tabindex="-1"></a>euclidean_norm <span class="ot">&lt;-</span> <span class="cf">function</span>(x1, x2, y1, y2) {</span>
+<span id="cb13-317"><a href="#cb13-317" aria-hidden="true" tabindex="-1"></a>  m <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(x1, y1)) <span class="sc">-</span> <span class="fu">matrix</span>(<span class="fu">c</span>(x2, y2))</span>
+<span id="cb13-318"><a href="#cb13-318" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sqrt</span>(<span class="fu">sum</span>(m<span class="sc">^</span><span class="dv">2</span>))</span>
+<span id="cb13-319"><a href="#cb13-319" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-320"><a href="#cb13-320" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-321"><a href="#cb13-321" aria-hidden="true" tabindex="-1"></a>.get_tti.player <span class="ot">&lt;-</span> <span class="cf">function</span>(player, x2, y2) {</span>
+<span id="cb13-322"><a href="#cb13-322" aria-hidden="true" tabindex="-1"></a>  ri <span class="ot">&lt;-</span> <span class="fl">0.7</span> <span class="co"># in s</span></span>
+<span id="cb13-323"><a href="#cb13-323" aria-hidden="true" tabindex="-1"></a>  vmax <span class="ot">&lt;-</span> <span class="dv">5</span> <span class="co"># in m/s</span></span>
+<span id="cb13-324"><a href="#cb13-324" aria-hidden="true" tabindex="-1"></a>  x1 <span class="ot">&lt;-</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'x'</span>) <span class="sc">+</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'x_v'</span>) <span class="sc">*</span> ri</span>
+<span id="cb13-325"><a href="#cb13-325" aria-hidden="true" tabindex="-1"></a>  y1 <span class="ot">&lt;-</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y'</span>) <span class="sc">+</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'y_v'</span>) <span class="sc">*</span> ri</span>
+<span id="cb13-326"><a href="#cb13-326" aria-hidden="true" tabindex="-1"></a>  ri <span class="sc">+</span> <span class="fu">euclidean_norm</span>(x1, x2, y1, y2) <span class="sc">/</span> vmax</span>
+<span id="cb13-327"><a href="#cb13-327" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-328"><a href="#cb13-328" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-329"><a href="#cb13-329" aria-hidden="true" tabindex="-1"></a>.msg_cls_err <span class="ot">&lt;-</span> <span class="cf">function</span>(player, f) {</span>
+<span id="cb13-330"><a href="#cb13-330" aria-hidden="true" tabindex="-1"></a>  cls <span class="ot">&lt;-</span> <span class="fu">class</span>(player)[<span class="dv">1</span>]</span>
+<span id="cb13-331"><a href="#cb13-331" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sprintf</span>(<span class="st">'`%s()` doesn</span><span class="sc">\'</span><span class="st">t know how to handle class `%s`!'</span>, f, cls) </span>
+<span id="cb13-332"><a href="#cb13-332" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-333"><a href="#cb13-333" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-334"><a href="#cb13-334" aria-hidden="true" tabindex="-1"></a>.get_tti.default <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb13-335"><a href="#cb13-335" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="fu">.msg_cls_err</span>(player, <span class="st">'.get_tti'</span>), <span class="at">call. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb13-336"><a href="#cb13-336" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-337"><a href="#cb13-337" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-338"><a href="#cb13-338" aria-hidden="true" tabindex="-1"></a>.get_tti <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb13-339"><a href="#cb13-339" aria-hidden="true" tabindex="-1"></a>  <span class="fu">UseMethod</span>(<span class="st">'.get_tti'</span>)</span>
+<span id="cb13-340"><a href="#cb13-340" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-341"><a href="#cb13-341" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-342"><a href="#cb13-342" aria-hidden="true" tabindex="-1"></a><span class="st">`</span><span class="at">.set_tti&lt;-.player</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="cf">function</span>(player, value) {</span>
+<span id="cb13-343"><a href="#cb13-343" aria-hidden="true" tabindex="-1"></a>  vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'tti'</span>) <span class="ot">&lt;-</span> value</span>
+<span id="cb13-344"><a href="#cb13-344" aria-hidden="true" tabindex="-1"></a>  player</span>
+<span id="cb13-345"><a href="#cb13-345" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-346"><a href="#cb13-346" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-347"><a href="#cb13-347" aria-hidden="true" tabindex="-1"></a><span class="st">`</span><span class="at">.set_tti&lt;-.default</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb13-348"><a href="#cb13-348" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="fu">.msg_cls_err</span>(player, <span class="st">'.set_tti'</span>), <span class="at">call. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb13-349"><a href="#cb13-349" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-350"><a href="#cb13-350" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-351"><a href="#cb13-351" aria-hidden="true" tabindex="-1"></a><span class="st">`</span><span class="at">.set_tti&lt;-</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb13-352"><a href="#cb13-352" aria-hidden="true" tabindex="-1"></a>  <span class="fu">UseMethod</span>(<span class="st">'.set_tti&lt;-'</span>)</span>
+<span id="cb13-353"><a href="#cb13-353" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-354"><a href="#cb13-354" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-355"><a href="#cb13-355" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-356"><a href="#cb13-356" aria-hidden="true" tabindex="-1"></a>There's a couple of things going on here:</span>
+<span id="cb13-357"><a href="#cb13-357" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-358"><a href="#cb13-358" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>The <span class="in">`.get_tti`</span> and <span class="in">`.set_tti`</span> functions that call <span class="in">`UseMethod`</span> are true S3 generics that perform method dispatch, i.e. find the correct method for the object passed to the generic (based on the class of the object). The <span class="in">`.get_tti.player`</span> and <span class="in">`.set_tti.player`</span> with the <span class="in">`.player`</span> "suffix" so that they only work in their defined manners when passed in a <span class="in">`player`</span> instance. (They won't be called with an object that is not of the <span class="in">`player`</span> class.)</span>
+<span id="cb13-359"><a href="#cb13-359" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>The ellipses (<span class="in">`...`</span>) in the S3 generic function signatures may be a bit mysterious since they aren't passed explicitly to <span class="in">`UseMethod`</span>. Any non-<span class="in">`player`</span> arguments are captured in these ellipses and passed to whatever method that is called from the generic (e.g. <span class="in">`.get_tti.player`</span> method called from the <span class="in">`.get_tti`</span> generic). For <span class="in">`.get_tti`</span>, the ellipses is intended to capture <span class="in">`x2`</span> and <span class="in">`y2`</span>, and for <span class="in">`.set_tti`</span>, it captures <span class="in">`value`</span>.</span>
+<span id="cb13-360"><a href="#cb13-360" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>We must use the "strange" syntax <span class="in">`.set_tti&lt;-.player`</span> (instead of just <span class="in">`.set_tti.player`</span>, which may seem more "natural") in order to update an attribute in an already instantiated class. <span class="ot">[^8]</span></span>
+<span id="cb13-361"><a href="#cb13-361" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span>We define the function <span class="in">`euclidean_norm()`</span> outside of <span class="in">`.get_tti.player`</span> simply because it is not something that is specific to the time to intercept calculation for a player; it can work with any two pairs of x and y coordinates.<span class="ot">[^9]</span></span>
+<span id="cb13-362"><a href="#cb13-362" aria-hidden="true" tabindex="-1"></a><span class="ss">-   </span><span class="in">`ri`</span> and <span class="in">`vmax`</span>, representing a player's reaction time and a player's maximum velocity respectively, are constants defined in the Spearman paper. We could change these if we wanted to, or even make them dynamic (i.e. configurable via other function parameters, or even at instantiation time).</span>
+<span id="cb13-363"><a href="#cb13-363" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-364"><a href="#cb13-364" aria-hidden="true" tabindex="-1"></a><span class="ot">[^8]: </span><span class="co">[</span><span class="ot">R6</span><span class="co">](https://adv-r.hadley.nz/r6.html)</span> is probably a better OOP system to use for this whole use case. The capability to update instance attributes is more native to that framework.</span>
+<span id="cb13-365"><a href="#cb13-365" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-366"><a href="#cb13-366" aria-hidden="true" tabindex="-1"></a><span class="ot">[^9]: </span>It's best to separate our logic in functions like this where it makes sense to do so. It ultimately makes re-factoring and debugging a lot easier.</span>
+<span id="cb13-367"><a href="#cb13-367" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-368"><a href="#cb13-368" aria-hidden="true" tabindex="-1"></a>To really complete our getter and setter methods for <span class="in">`tti`</span>, we should write methods to handle the case when a non-<span class="in">`player`</span> object is passed to them. The generic <span class="in">`.get_tti`</span> and <span class="in">`.set_tti`</span> methods will dispatch to these functions if the object passed to them (the first argument named <span class="in">`player`</span>) doesn't actually inherit from the <span class="in">`player`</span> class.</span>
+<span id="cb13-369"><a href="#cb13-369" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-372"><a href="#cb13-372" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-373"><a href="#cb13-373" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tti-2-fake</span></span>
+<span id="cb13-374"><a href="#cb13-374" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-375"><a href="#cb13-375" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-376"><a href="#cb13-376" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-377"><a href="#cb13-377" aria-hidden="true" tabindex="-1"></a>.get_tti.default <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb13-378"><a href="#cb13-378" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="fu">.msg_cls_err</span>(player, <span class="st">'.get_tti'</span>), <span class="at">call. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb13-379"><a href="#cb13-379" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-380"><a href="#cb13-380" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-381"><a href="#cb13-381" aria-hidden="true" tabindex="-1"></a>.set_tti.default <span class="ot">&lt;-</span> <span class="cf">function</span>(player, ...) {</span>
+<span id="cb13-382"><a href="#cb13-382" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="fu">.msg_cls_err</span>(player, <span class="st">'.get_tti'</span>), <span class="at">call. =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb13-383"><a href="#cb13-383" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-384"><a href="#cb13-384" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-385"><a href="#cb13-385" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-386"><a href="#cb13-386" aria-hidden="true" tabindex="-1"></a>Let's see how our pseudo-encapsulation looks in action.</span>
+<span id="cb13-387"><a href="#cb13-387" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-390"><a href="#cb13-390" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-391"><a href="#cb13-391" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: players-fake-2</span></span>
+<span id="cb13-392"><a href="#cb13-392" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-393"><a href="#cb13-393" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-394"><a href="#cb13-394" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-395"><a href="#cb13-395" aria-hidden="true" tabindex="-1"></a>players <span class="ot">&lt;-</span> 8L<span class="sc">:</span>10L <span class="sc">%&gt;%</span> <span class="fu">map</span>(<span class="sc">~</span><span class="fu">player</span>(<span class="at">player_id =</span> .x, <span class="at">frame =</span> 53027L, <span class="at">tracking =</span> tracking_start))</span>
+<span id="cb13-396"><a href="#cb13-396" aria-hidden="true" tabindex="-1"></a><span class="fu">map</span>(players, <span class="sc">~</span>vctrs<span class="sc">::</span><span class="fu">field</span>(.x, <span class="st">'tti'</span>))</span>
+<span id="cb13-397"><a href="#cb13-397" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb13-398"><a href="#cb13-398" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] -1</span></span>
+<span id="cb13-399"><a href="#cb13-399" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-400"><a href="#cb13-400" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb13-401"><a href="#cb13-401" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] -1</span></span>
+<span id="cb13-402"><a href="#cb13-402" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-403"><a href="#cb13-403" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[3]]</span></span>
+<span id="cb13-404"><a href="#cb13-404" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] -1</span></span>
+<span id="cb13-405"><a href="#cb13-405" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-406"><a href="#cb13-406" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-409"><a href="#cb13-409" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-410"><a href="#cb13-410" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: tti-demo</span></span>
+<span id="cb13-411"><a href="#cb13-411" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-412"><a href="#cb13-412" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-413"><a href="#cb13-413" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-414"><a href="#cb13-414" aria-hidden="true" tabindex="-1"></a>target_x <span class="ot">&lt;-</span> <span class="dv">94</span></span>
+<span id="cb13-415"><a href="#cb13-415" aria-hidden="true" tabindex="-1"></a>target_y <span class="ot">&lt;-</span> <span class="dv">63</span></span>
+<span id="cb13-416"><a href="#cb13-416" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="fu">seq_along</span>(players)) {</span>
+<span id="cb13-417"><a href="#cb13-417" aria-hidden="true" tabindex="-1"></a>  value <span class="ot">&lt;-</span> <span class="fu">.get_tti</span>(players[[i]], <span class="at">x2 =</span> target_x, <span class="at">y2 =</span> target_y)</span>
+<span id="cb13-418"><a href="#cb13-418" aria-hidden="true" tabindex="-1"></a>  <span class="fu">.set_tti</span>(players[[i]]) <span class="ot">&lt;-</span> value</span>
+<span id="cb13-419"><a href="#cb13-419" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-420"><a href="#cb13-420" aria-hidden="true" tabindex="-1"></a><span class="fu">map</span>(players, <span class="sc">~</span>vctrs<span class="sc">::</span><span class="fu">field</span>(.x, <span class="st">'tti'</span>))</span>
+<span id="cb13-421"><a href="#cb13-421" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb13-422"><a href="#cb13-422" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 4.92839</span></span>
+<span id="cb13-423"><a href="#cb13-423" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-424"><a href="#cb13-424" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb13-425"><a href="#cb13-425" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 10.6878</span></span>
+<span id="cb13-426"><a href="#cb13-426" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb13-427"><a href="#cb13-427" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [[3]]</span></span>
+<span id="cb13-428"><a href="#cb13-428" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 9.49904</span></span>
+<span id="cb13-429"><a href="#cb13-429" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-430"><a href="#cb13-430" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-431"><a href="#cb13-431" aria-hidden="true" tabindex="-1"></a>Note how the player <span class="in">`tti`</span> values changed after we defined them for a specified <span class="in">`target_x`</span> and <span class="in">`target_y`</span>.</span>
+<span id="cb13-432"><a href="#cb13-432" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-433"><a href="#cb13-433" aria-hidden="true" tabindex="-1"></a>Our approach to <span class="in">`p_intercept`</span> is very similar to that for <span class="in">`tti`</span>, so I don't show most of it here. As before, we define getters and setters, as well as generics for the class (the intended target of method dispatch), as well as a default class to handle unexpected inputs. Probably the only interesting part is the calculation itself, as shown below. If you compare it to the <span class="in">`p_intercept`</span> method in the python object definition, you'll see it's basically identical.</span>
+<span id="cb13-434"><a href="#cb13-434" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-437"><a href="#cb13-437" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb13-438"><a href="#cb13-438" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: p_intercept</span></span>
+<span id="cb13-439"><a href="#cb13-439" aria-hidden="true" tabindex="-1"></a><span class="co">#| include: true</span></span>
+<span id="cb13-440"><a href="#cb13-440" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: true</span></span>
+<span id="cb13-441"><a href="#cb13-441" aria-hidden="true" tabindex="-1"></a><span class="co">#| code-fold: show</span></span>
+<span id="cb13-442"><a href="#cb13-442" aria-hidden="true" tabindex="-1"></a>.get_p_intercept.player <span class="ot">&lt;-</span> <span class="cf">function</span>(player, t) {</span>
+<span id="cb13-443"><a href="#cb13-443" aria-hidden="true" tabindex="-1"></a>  tti_sigma <span class="ot">&lt;-</span> <span class="fl">0.45</span></span>
+<span id="cb13-444"><a href="#cb13-444" aria-hidden="true" tabindex="-1"></a>  den <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">+</span> <span class="fu">exp</span>((<span class="sc">-</span>base<span class="sc">::</span>pi <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">3</span>) <span class="sc">/</span> tti_sigma) <span class="sc">*</span> (t <span class="sc">-</span> vctrs<span class="sc">::</span><span class="fu">field</span>(player, <span class="st">'tti'</span>)))</span>
+<span id="cb13-445"><a href="#cb13-445" aria-hidden="true" tabindex="-1"></a>  <span class="dv">1</span> <span class="sc">/</span> den</span>
+<span id="cb13-446"><a href="#cb13-446" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-447"><a href="#cb13-447" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb13-448"><a href="#cb13-448" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-449"><a href="#cb13-449" aria-hidden="true" tabindex="-1"></a>There is certainly more to show, especially for what is needed to calculate pitch control. (We need to integrate probabilities across all players over time, and do it for the entire pitch.) Nonetheless, the <span class="in">`player`</span> class and the pseudo-encapsulation that we've implemented with S3 and <span class="in">`{vctrs}`</span> is really the key component underlying the whole pitch control calculation.</span>
+<span id="cb13-450"><a href="#cb13-450" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-451"><a href="#cb13-451" aria-hidden="true" tabindex="-1"></a><span class="fu">## Advanced Usage</span></span>
+<span id="cb13-452"><a href="#cb13-452" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-453"><a href="#cb13-453" aria-hidden="true" tabindex="-1"></a>To really motivate the reader, let's see what this implementation allows us to do.</span>
+<span id="cb13-454"><a href="#cb13-454" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-455"><a href="#cb13-455" aria-hidden="true" tabindex="-1"></a>First, let's emulate the pitch control plot of event 823, which is a pass by the away (blue) team in the home (red) team's penalty area preceding a successful shot.</span>
+<span id="cb13-456"><a href="#cb13-456" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-457"><a href="#cb13-457" aria-hidden="true" tabindex="-1"></a><span class="al">![](pc_823_r.png)</span></span>
+<span id="cb13-458"><a href="#cb13-458" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-459"><a href="#cb13-459" aria-hidden="true" tabindex="-1"></a>Compare this to the python version.</span>
+<span id="cb13-460"><a href="#cb13-460" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-461"><a href="#cb13-461" aria-hidden="true" tabindex="-1"></a><span class="al">![](pc_822_python.png)</span></span>
+<span id="cb13-462"><a href="#cb13-462" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-463"><a href="#cb13-463" aria-hidden="true" tabindex="-1"></a>It's not a perfect replication, but I think it's very close overall.</span>
+<span id="cb13-464"><a href="#cb13-464" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-465"><a href="#cb13-465" aria-hidden="true" tabindex="-1"></a>Second, let's replicate the <span class="co">[</span><span class="ot">expected possession value (EPV)</span><span class="co">](http://www.sloansportsconference.com/wp-content/uploads/2019/02/Decomposing-the-Immeasurable-Sport.pdf)</span> plot of the same event, including the EPV added by the pass.</span>
+<span id="cb13-466"><a href="#cb13-466" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-467"><a href="#cb13-467" aria-hidden="true" tabindex="-1"></a><span class="al">![](epv_823_r.png)</span></span>
+<span id="cb13-468"><a href="#cb13-468" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-469"><a href="#cb13-469" aria-hidden="true" tabindex="-1"></a>Again, we can compare this plot to the python equivalent.</span>
+<span id="cb13-470"><a href="#cb13-470" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-471"><a href="#cb13-471" aria-hidden="true" tabindex="-1"></a><span class="al">![](epv_822_python.png)</span></span>
+<span id="cb13-472"><a href="#cb13-472" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-473"><a href="#cb13-473" aria-hidden="true" tabindex="-1"></a>Cool, my R version seems to be very close to the python original. We do have a small discrepancy in the EPV added calculation. (This EPV is actually an "expected" EPV calculation that uses pitch control to weight the pre-learned EPV grid). I believe this is probably due to discrepancies in the integration done in the pitch control calculation and not due to a significant code issue.</span>
+<span id="cb13-474"><a href="#cb13-474" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-475"><a href="#cb13-475" aria-hidden="true" tabindex="-1"></a>The code to prepare the data for these plots gets more complex, which is why I have excluded it here.<span class="ot">[^10]</span> However, none of it is unreasonably difficult to understand or implement once we have a properly defined <span class="in">`player`</span> object.</span>
+<span id="cb13-476"><a href="#cb13-476" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-477"><a href="#cb13-477" aria-hidden="true" tabindex="-1"></a><span class="ot">[^10]: </span>Feel free to check out the source the <span class="co">[</span><span class="ot">code</span><span class="co">](https://github.com/tonyelhabr/LaurieOnTracking/blob/master/analysis/01-freestyle-blog.R)</span> used in the full implementation, as well as the code to generate the plots.</span>
+<span id="cb13-478"><a href="#cb13-478" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-479"><a href="#cb13-479" aria-hidden="true" tabindex="-1"></a><span class="fu"># Conclusion</span></span>
+<span id="cb13-480"><a href="#cb13-480" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-481"><a href="#cb13-481" aria-hidden="true" tabindex="-1"></a>Thus, we see that there is a huge payoff to creating a sound and robust <span class="in">`player`</span> object---we can calculate pitch control and EPV, and feed them into pretty visualizations that can provide insight. I believe that the code here could be easily adapted to fit whatever one would like to study. For example, the valuation grid used here could be easily swapped out with <span class="co">[</span><span class="ot">expected threat (xT)</span><span class="co">](https://karun.in/blog/expected-threat.html)</span>, which is a more modern and probably a better valuation framework than the one used here.<span class="ot">[^11]</span> Furthermore, one could calculate EPV across the entire game. The possibilities for analyses really open up.</span>
+<span id="cb13-482"><a href="#cb13-482" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-483"><a href="#cb13-483" aria-hidden="true" tabindex="-1"></a><span class="ot">[^11]: </span><span class="co">[</span><span class="ot">Here</span><span class="co">](https://raw.githubusercontent.com/anenglishgoat/InteractivePitchControl/master/xT.csv)</span> is a CSV with the grid for xT.</span>
+</code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div></div></div></div></div>
 </div> <!-- /content -->
 
 
