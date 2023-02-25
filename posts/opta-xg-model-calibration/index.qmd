@@ -352,9 +352,7 @@ discretize_cols <- function(shots) {
 discretized_updated_np_shots <- discretize_cols(updated_np_shots)
 ```
 
-First, let's take a wholistic look at all of the shots for the 2021/22 seasons played in Big 5 leagues.[^3]
-
-[^3]: All code available [on GitHub](https://github.com/tonyelhabr/itsmetoeknee).
+First, let's take a wholistic look at all of the shots for the 2021/22 seasons played in Big 5 leagues.
 
 ```{r}
 #| label: post-update-xgd
@@ -459,9 +457,9 @@ ggsave(
 
 ![](old_vs_new_xg.png)
 
-Of the 44,986 shots in the data set, 30,326 (67.2%) had changes to their xG values.[^4] Of those that changed, 23, 584 (78.0%) were reduced, i.e. the pre-update xG value was higher. The average change was pretty minimal, just about \~0.01 xG.
+Of the 44,986 shots in the data set, 30,326 (67.2%) had changes to their xG values.[^3] Of those that changed, 23, 584 (78.0%) were reduced, i.e. the pre-update xG value was higher. The average change was pretty minimal, just about \~0.01 xG.
 
-[^4]: Observe that, for a large majority of shots, where xG is in the (0, 0.05\] range, xG either did not change at all or only trivially changed. (See the blur of white points on the left-hand side of the plot.)
+[^3]: Observe that, for a large majority of shots, where xG is in the (0, 0.05\] range, xG either did not change at all or only trivially changed. (See the blur of white points on the left-hand side of the plot.)
 
 ```{r}
 #| label: discretized_updated_np_shots-glimpse
@@ -495,11 +493,11 @@ discretized_updated_np_shots |>
 #> [1] 0.0095014
 ```
 
-To get more insight into how/why xG changed, we can look at changes to xG values grouped by various `feature`s that we can derive from data that FBref publishes alongside each shot's xG, including `distance` (yards), `sca1` (first [shot-creating action](https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/)), `body_part`, `is_from_deflection`, `is_from_volley`, `is_free_kick`, and `is_primary_foot`.[^5][^6]
+To get more insight into how/why xG changed, we can look at changes to xG values grouped by various `feature`s that we can derive from data that FBref publishes alongside each shot's xG, including `distance` (yards), `sca1` (first [shot-creating action](https://www.sports-reference.com/blog/2020/04/goal-creation-possession-passing-and-more-advanced-stats-on-fbref/)), `body_part`, `is_from_deflection`, `is_from_volley`, `is_free_kick`, and `is_primary_foot`.[^4][^5]
 
-[^5]: Several of these are not provided directly from the raw FBref tables. For example, `is_from_deflection` is derived from the `Notes` field in the FBref shot table. `is_primary_foot` is derived from collecting player footedness data and checking for a match with `body_part`.
+[^4]: Several of these are not provided directly from the raw FBref tables. For example, `is_from_deflection` is derived from the `Notes` field in the FBref shot table. `is_primary_foot` is derived from collecting player footedness data and checking for a match with `body_part`.
 
-[^6]: Note that I use the term "feature" here, although this set of fields does not quite match the actual [inputs to the](https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg) [Opta xG model](https://fbref.com/en/expected-goals-model-explained/). While things like `distance` and `body_part` certainly are inputs to the model, we don't have angle of the shot to the goal, and `is_primary_foot`---a field that I've added the feature set myself---isn't one of the model inputs, as far as I'm aware.
+[^5]: Note that I use the term "feature" here, although this set of fields does not quite match the actual [inputs to the](https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg) [Opta xG model](https://fbref.com/en/expected-goals-model-explained/). While things like `distance` and `body_part` certainly are inputs to the model, we don't have angle of the shot to the goal, and `is_primary_foot`---a field that I've added the feature set myself---isn't one of the model inputs, as far as I'm aware.
 
 ```{r}
 #| label: updated_np_shot_diffs
@@ -564,9 +562,9 @@ On the other end of the spectrum, reductions in npxG occurred least frequently f
 
 [I've touched on model calibration before](/posts/epl-xpts-simulation-1/#match-predictive-performance7), when discussing xG-implied match outcome probabilities. There, I wrote my own code to create a [calibration plot](https://changhsinlee.com/python-calibration-plot/). Since then, the [`{tidymodels}` team](https://www.tidymodels.org/) has added [calibration plot functionality](https://www.tidyverse.org/blog/2022/11/model-calibration/) to the [`{probably}` package](https://probably.tidymodels.org/). Let's try it out.
 
-Here, we'll use a big sample of data---all 2017/18 - 2021/22 non-penalty shots for the Big 5 leagues and several other first and second tier leagues.[^7]
+Here, we'll use a big sample of data---all 2017/18 - 2021/22 non-penalty shots for the Big 5 leagues and several other first and second tier leagues.[^6]
 
-[^7]: Several leagues don't have data available for all such seasons, which is reflected in the number of shots per league in `np_shots`.
+[^6]: Several leagues don't have data available for all such seasons, which is reflected in the number of shots per league in `np_shots`.
 
 ```{r}
 #| label: np_shots
@@ -625,9 +623,9 @@ np_shots |> count(league, name = 'n_shots')
 
 ### Calibration plot
 
-We can use `probably::cal_plot_breaks()` to visually assess whether the observed rate of non-penalty goals (y-axis) is close to the predicted probability of goals (npxG, x-axis).[^8] If the xG model's predictions are "well calibrated", the calibration points will align with the "ideal" line having slope 1 and intercept 0. Points at which the curve is below the diagonal line indicate where the model is more likelty to overpredict; and, likewise, points where the curve is above the diagonal line indicate where the model is underpredicting.
+We can use `probably::cal_plot_breaks()` to visually assess whether the observed rate of non-penalty goals (y-axis) is close to the predicted probability of goals (npxG, x-axis).[^7] If the xG model's predictions are "well calibrated", the calibration points will align with the "ideal" line having slope 1 and intercept 0. Points at which the curve is below the diagonal line indicate where the model is more likelty to overpredict; and, likewise, points where the curve is above the diagonal line indicate where the model is underpredicting.
 
-[^8]: I've written my own code to plot the calibration, but I imagine most users will be satisfied with the plot that `{probably}` will generate for you.
+[^7]: I've written my own code to plot the calibration, but I imagine most users will be satisfied with the plot that `{probably}` will generate for you.
 
 ```{r}
 #| label: overall_calibration
@@ -736,9 +734,9 @@ We can see that the model is pretty well calibrated on the lower end of the spec
 
 ### Brier Skill Score (BSS)
 
-One thing that is not provided in the `{tidymodels}` realm (specifically, the `{yardstick}` package) is a function to compute [Brier score](https://en.wikipedia.org/wiki/Brier_score). Nonetheless, we can define a Brier score function ourselves by closely following [the mean squared error custom metric example](https://www.tidymodels.org/learn/develop/metrics/) provided by the `{tidymodels}` team.[^9]
+One thing that is not provided in the `{tidymodels}` realm (specifically, the `{yardstick}` package) is a function to compute [Brier score](https://en.wikipedia.org/wiki/Brier_score). Nonetheless, we can define a Brier score function ourselves by closely following [the mean squared error custom metric example](https://www.tidymodels.org/learn/develop/metrics/) provided by the `{tidymodels}` team.[^8]
 
-[^9]: Brier score for a binary classification task is equivalent to mean squared error.
+[^8]: Brier score for a binary classification task is equivalent to mean squared error.
 
 ```{r}
 #| label: bss
@@ -832,9 +830,9 @@ npxg_brier_score
 #> [1] 0.07150071
 ```
 
-Now we can go on to compute [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)) using an appropriate reference Brier score.[^10] In this context, the average goal rate seems to be a good choice for a baseline. In contrast to the Brier score, a higher BSS is ideal. (A perfect model would have a BSS of 1.)
+Now we can go on to compute [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)) using an appropriate reference Brier score.[^9] In this context, the average goal rate seems to be a good choice for a baseline. In contrast to the Brier score, a higher BSS is ideal. (A perfect model would have a BSS of 1.)
 
-[^10]: Personally, I like to use BSS over other classification metrics like [ROC AUC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that you have to specify a reference with which to compare, which seems like good principle in general.
+[^9]: Personally, I like to use BSS over other classification metrics like [ROC AUC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that you have to specify a reference with which to compare, which seems like good principle in general.
 
 ```{r}
 #| label: npxg_brier_score
@@ -845,9 +843,9 @@ Now we can go on to compute [Brier skill score (BSS)](https://en.wikipedia.org/w
 #> [1] 0.176328
 ```
 
-A BSS of \~0.18 is not bad! This is better than [FiveThirtyEight's BSS](https://projects.fivethirtyeight.com/checking-our-work/) for predicting the results for men's World Cup matches (\~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (\~0.18).[^11]
+A BSS of \~0.18 is not bad! This is better than [FiveThirtyEight's BSS](https://projects.fivethirtyeight.com/checking-our-work/) for predicting the results for men's World Cup matches (\~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (\~0.18).[^10]
 
-[^11]: I'm perhaps comparing apples to oranges here for the sake of providing some additional context that might help interpretability. The truth is that BSS is only comparable among different tasks to the extent that the reference choice in each task is "uninformed" to the same degree. For example, I could have said that the baseline for goals per shot is 50% instead of the actual goal rate (about 10%). This would change the baseline brier score to 0.25, and would inflate the BSS to 0.71. On the other hand, a 50/50 baseline makes sense in other settings. In fact, that's what FiveThirtyEight uses for match outcome BSS for various sports.
+[^10]: I'm perhaps comparing apples to oranges here for the sake of providing some additional context that might help interpretability. The truth is that BSS is only comparable among different tasks to the extent that the reference choice in each task is "uninformed" to the same degree. For example, I could have said that the baseline for goals per shot is 50% instead of the actual goal rate (about 10%). This would change the baseline brier score to 0.25, and would inflate the BSS to 0.71. On the other hand, a 50/50 baseline makes sense in other settings. In fact, that's what FiveThirtyEight uses for match outcome BSS for various sports.
 
 ### Grouped Calibration and BSS
 
