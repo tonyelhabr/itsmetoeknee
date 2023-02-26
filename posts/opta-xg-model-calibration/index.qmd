@@ -2,7 +2,7 @@
 title: xG Model Calibration
 description: Evaluating Opta's xG model performance with Brier skill score (BSS) and calibration curves
 date: 2023-02-20
-date-modified: 2023-02-24
+date-modified: 2023-02-26
 categories:
   - r
   - soccer
@@ -732,11 +732,15 @@ overall_calibration$data |>
 
 We can see that the model is pretty well calibrated on the lower end of the spectrum, when xG \< 0.25. This makes up a larger majority of the shots (\~90%). However, the model is not as well calibrated for higher xG values, tending to overpredict. For example, at the calibration point where npxG is `0.675`, the actual goal rate is `0.6`.
 
+Observing the miscalibration for shots with xG \> 0.25, one has to wonder whether [the removal of the "big chance" feature](https://theanalyst.com/na/2022/04/evolving-expected-goals-xg/) in favor of other contextual features---an update that Opta made sometime in the first half of 2022---may have (unintentionally) made the model worse in some ways.[^8] Unfortunately, I didn't have accessed to Opta xG data prior to that update, so I can't evaluate this hypothesis. (For all we know, the model calibration for high xG shots might have been worse before!)
+
+[^8]: Thanks to a handful of people who reached out and made me aware of this, after I initially published this post. I've gone back and updated some wording.
+
 ### Brier Skill Score (BSS)
 
-One thing that is not provided in the `{tidymodels}` realm (specifically, the `{yardstick}` package) is a function to compute [Brier score](https://en.wikipedia.org/wiki/Brier_score). Nonetheless, we can define a Brier score function ourselves by closely following [the mean squared error custom metric example](https://www.tidymodels.org/learn/develop/metrics/) provided by the `{tidymodels}` team.[^8]
+One thing that is not provided in the `{tidymodels}` realm (specifically, the `{yardstick}` package) is a function to compute [Brier score](https://en.wikipedia.org/wiki/Brier_score). Nonetheless, we can define a Brier score function ourselves by closely following [the mean squared error custom metric example](https://www.tidymodels.org/learn/develop/metrics/) provided by the `{tidymodels}` team.[^9]
 
-[^8]: Brier score for a binary classification task is equivalent to mean squared error.
+[^9]: Brier score for a binary classification task is equivalent to mean squared error.
 
 ```{r}
 #| label: bss
@@ -830,9 +834,9 @@ npxg_brier_score
 #> [1] 0.07150071
 ```
 
-Now we can go on to compute [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)) using an appropriate reference Brier score.[^9] In this context, the average goal rate seems to be a good choice for a baseline. In contrast to the Brier score, a higher BSS is ideal. (A perfect model would have a BSS of 1.)
+Now we can go on to compute [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)) using an appropriate reference Brier score.[^10] In this context, the average goal rate seems to be a good choice for a baseline. In contrast to the Brier score, a higher BSS is ideal. (A perfect model would have a BSS of 1.)
 
-[^9]: Personally, I like to use BSS over other classification metrics like [ROC AUC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that you have to specify a reference with which to compare, which seems like good principle in general.
+[^10]: Personally, I like to use BSS over other classification metrics like [ROC AUC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that you have to specify a reference with which to compare, which seems like good principle in general.
 
 ```{r}
 #| label: npxg_brier_score
@@ -843,9 +847,9 @@ Now we can go on to compute [Brier skill score (BSS)](https://en.wikipedia.org/w
 #> [1] 0.176328
 ```
 
-A BSS of \~0.18 is not bad! This is better than [FiveThirtyEight's BSS](https://projects.fivethirtyeight.com/checking-our-work/) for predicting the results for men's World Cup matches (\~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (\~0.18).[^10]
+A BSS of \~0.18 is not bad! This is better than [FiveThirtyEight's BSS](https://projects.fivethirtyeight.com/checking-our-work/) for predicting the results for men's World Cup matches (\~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (\~0.18).[^11]
 
-[^10]: I'm perhaps comparing apples to oranges here for the sake of providing some additional context that might help interpretability. The truth is that BSS is only comparable among different tasks to the extent that the reference choice in each task is "uninformed" to the same degree. For example, I could have said that the baseline for goals per shot is 50% instead of the actual goal rate (about 10%). This would change the baseline brier score to 0.25, and would inflate the BSS to 0.71. On the other hand, a 50/50 baseline makes sense in other settings. In fact, that's what FiveThirtyEight uses for match outcome BSS for various sports.
+[^11]: I'm perhaps comparing apples to oranges here for the sake of providing some additional context that might help interpretability. The truth is that BSS is only comparable among different tasks to the extent that the reference choice in each task is "uninformed" to the same degree. For example, I could have said that the baseline for goals per shot is 50% instead of the actual goal rate (about 10%). This would change the baseline brier score to 0.25, and would inflate the BSS to 0.71. On the other hand, a 50/50 baseline makes sense in other settings. In fact, that's what FiveThirtyEight uses for match outcome BSS for various sports.
 
 ### Grouped Calibration and BSS
 
@@ -949,11 +953,13 @@ discretized_np_shots |>
 
 A couple of observations and thoughts:
 
--   xG of shots following another shot are over-predicted so much that it causes the BSS to be negative. This means that the model is actually doing worse in its xG assignment than simply predicting naive goal rate for shots after another shot!
+-   xG of shots following another shot are over-predicted so much that it causes the BSS to be negative.[^12] This means that the model is actually doing worse in its xG assignment than simply predicting naive goal rate for shots after another shot!
 
 -   A relatively "jagged" calibration plot may not correspond with a worse (lower) BSS score; and visa versa, a relatively "smooth" calibration plot may not correspond with a better (higher) BSS.
 
     -   Note that the `fouled` calibration looks jagged for higher predicted xG, but the fact that goals are only scored on about 5% shots immediately following a foul means that inprecise probabilities are not "penalized" quite as much. On the other hand, while the `pass_live` calibration looks relatively smooth, the 10% goal rate following live ball passes (2x the frequency for shots following fouls) means that it is more penalized for imprecision than an otherwise equivalent post-`fouled` shot. In fact, this is [one of the shortcomings of BSS](https://en.wikipedia.org/wiki/Brier_score#Shortcomings)---it does not do a great job with evaluation of relatively infrequent events.
+
+[^12]: The reader may be wondering what the BSS would look like if I had used the Brier score of the goal rate grouped by each feature as the baseline for BSS, instead of the overall goal rate. In that case, all BSS's would be positive, and the `fouled` BSS would actually be the lowest, as opposed to the highest! Perhaps this would better match intuition, given how the calibration curve for `fouled` looks like one of the worst here. I'm not strongly opposed to choosing the grouped goal rate as the baseline instead of the overall goal rate, if that's what one so happens to believe is a better choice.
 
 Next, let's take a look at calibration of shots coming after deflections (of other shots).
 
@@ -979,7 +985,7 @@ discretized_np_shots |>
 
 -   The model doesn't seem to be very well calibrated for shots following deflections! Like shots following other shots in the shot-creating action calibration plot, the BSS for shots after deflections is negative. And, perhaps more interestingly, the model seems to underpredict post-deflection shots, which is the opposite of it's general tendency to overpredict. (See the wholistic calibration plot from before.)
     -   I'd suspect that there's lots of confounders that might explain the lack of calibration after deflections. For one, it could be the case that there are often zero defenders between the shot-taker and keeper for shots following a deflection. As far as I know, the Opta model doesn't have an explicit feature for this.
-    -   It might also be the case that Opta's ["big chance" indicator](https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg)---which is not published on FBref but which I suspect take on a value of "yes"/1/true for many post-deflection shots---may have some flaws.
+    -   As with the overall model calibration, one has to wonder whether the model may have performed better on shots following deflections with the binary big chance feature.
     -   The high goal rate on shots after deflections relative to the goal rate on all other shots certainly contributes to the negative BSS, as we saw earlier with shots following other shots.
 
 Moving on, let's look at calibration of the xG model by groups of leagues, splitting out by tier and gender.

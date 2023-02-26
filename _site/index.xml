@@ -6,15 +6,15 @@
       version="2.0">
 <channel>
 <title>Tony&#39;s Blog</title>
-<link>https://itsmetoeknee.netlify.app/index.html</link>
-<atom:link href="https://itsmetoeknee.netlify.app/index.xml" rel="self" type="application/rss+xml"/>
+<link>https://tonyelhabr.rbind.io/index.html</link>
+<atom:link href="https://tonyelhabr.rbind.io/index.xml" rel="self" type="application/rss+xml"/>
 <description></description>
 <generator>quarto-1.2.335</generator>
 <lastBuildDate>Mon, 20 Feb 2023 06:00:00 GMT</lastBuildDate>
 <item>
   <title>xG Model Calibration</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/index.html</link>
   <description><![CDATA[ 
 
 
@@ -54,7 +54,7 @@
 <div class="cell">
 
 </div>
-<p><img src="https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/old_vs_new_xg.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/old_vs_new_xg.png" class="img-fluid"></p>
 <p>Of the 44,986 shots in the data set, 30,326 (67.2%) had changes to their xG values.<sup>3</sup> Of those that changed, 23, 584 (78.0%) were reduced, i.e.&nbsp;the pre-update xG value was higher. The average change was pretty minimal, just about ~0.01 xG.</p>
 <div class="cell">
 <details open="">
@@ -268,12 +268,13 @@ font-style: italic;">## 0.1.0.9007</span></span>
 <div class="cell">
 
 </div>
-<p><img src="https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/overall_calibration.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/overall_calibration.png" class="img-fluid"></p>
 <p>We can see that the model is pretty well calibrated on the lower end of the spectrum, when xG &lt; 0.25. This makes up a larger majority of the shots (~90%). However, the model is not as well calibrated for higher xG values, tending to overpredict. For example, at the calibration point where npxG is <code>0.675</code>, the actual goal rate is <code>0.6</code>.</p>
+<p>Observing the miscalibration for shots with xG &gt; 0.25, one has to wonder whether <a href="https://theanalyst.com/na/2022/04/evolving-expected-goals-xg/">the removal of the “big chance” feature</a> in favor of other contextual features—an update that Opta made sometime in the first half of 2022—may have (unintentionally) made the model worse in some ways.<sup>8</sup> Unfortunately, I didn’t have accessed to Opta xG data prior to that update, so I can’t evaluate this hypothesis. (For all we know, the model calibration for high xG shots might have been worse before!)</p>
 </section>
 <section id="brier-skill-score-bss" class="level3">
 <h3 class="anchored" data-anchor-id="brier-skill-score-bss">Brier Skill Score (BSS)</h3>
-<p>One thing that is not provided in the <code>{tidymodels}</code> realm (specifically, the <code>{yardstick}</code> package) is a function to compute <a href="https://en.wikipedia.org/wiki/Brier_score">Brier score</a>. Nonetheless, we can define a Brier score function ourselves by closely following <a href="https://www.tidymodels.org/learn/develop/metrics/">the mean squared error custom metric example</a> provided by the <code>{tidymodels}</code> team.<sup>8</sup></p>
+<p>One thing that is not provided in the <code>{tidymodels}</code> realm (specifically, the <code>{yardstick}</code> package) is a function to compute <a href="https://en.wikipedia.org/wiki/Brier_score">Brier score</a>. Nonetheless, we can define a Brier score function ourselves by closely following <a href="https://www.tidymodels.org/learn/develop/metrics/">the mean squared error custom metric example</a> provided by the <code>{tidymodels}</code> team.<sup>9</sup></p>
 <div class="cell">
 <details open="">
 <summary>Code</summary>
@@ -362,7 +363,7 @@ font-style: italic;">## Recycle the estimate value if it's scalar-ish.</span></s
 <span id="cb5-27"><span class="co" style="color: #5E5E5E;">#&gt; [1] 0.07150071</span></span></code></pre></div>
 </details>
 </div>
-<p>Now we can go on to compute <a href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">Brier skill score (BSS)</a> using an appropriate reference Brier score.<sup>9</sup> In this context, the average goal rate seems to be a good choice for a baseline. In contrast to the Brier score, a higher BSS is ideal. (A perfect model would have a BSS of 1.)</p>
+<p>Now we can go on to compute <a href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">Brier skill score (BSS)</a> using an appropriate reference Brier score.<sup>10</sup> In this context, the average goal rate seems to be a good choice for a baseline. In contrast to the Brier score, a higher BSS is ideal. (A perfect model would have a BSS of 1.)</p>
 <div class="cell">
 <details open="">
 <summary>Code</summary>
@@ -370,7 +371,7 @@ font-style: italic;">## Recycle the estimate value if it's scalar-ish.</span></s
 <span id="cb6-2"><span class="co" style="color: #5E5E5E;">#&gt; [1] 0.176328</span></span></code></pre></div>
 </details>
 </div>
-<p>A BSS of ~0.18 is not bad! This is better than <a href="https://projects.fivethirtyeight.com/checking-our-work/">FiveThirtyEight’s BSS</a> for predicting the results for men’s World Cup matches (~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (~0.18).<sup>10</sup></p>
+<p>A BSS of ~0.18 is not bad! This is better than <a href="https://projects.fivethirtyeight.com/checking-our-work/">FiveThirtyEight’s BSS</a> for predicting the results for men’s World Cup matches (~0.12 at time of writing) and right around their BSS for predicting WNBA playoff game outcomes (~0.18).<sup>11</sup></p>
 </section>
 <section id="grouped-calibration-and-bss" class="level3">
 <h3 class="anchored" data-anchor-id="grouped-calibration-and-bss">Grouped Calibration and BSS</h3>
@@ -378,10 +379,10 @@ font-style: italic;">## Recycle the estimate value if it's scalar-ish.</span></s
 <div class="cell">
 
 </div>
-<p><img src="https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/sca1_calibration.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/sca1_calibration.png" class="img-fluid"></p>
 <p>A couple of observations and thoughts:</p>
 <ul>
-<li><p>xG of shots following another shot are over-predicted so much that it causes the BSS to be negative. This means that the model is actually doing worse in its xG assignment than simply predicting naive goal rate for shots after another shot!</p></li>
+<li><p>xG of shots following another shot are over-predicted so much that it causes the BSS to be negative.<sup>12</sup> This means that the model is actually doing worse in its xG assignment than simply predicting naive goal rate for shots after another shot!</p></li>
 <li><p>A relatively “jagged” calibration plot may not correspond with a worse (lower) BSS score; and visa versa, a relatively “smooth” calibration plot may not correspond with a better (higher) BSS.</p>
 <ul>
 <li>Note that the <code>fouled</code> calibration looks jagged for higher predicted xG, but the fact that goals are only scored on about 5% shots immediately following a foul means that inprecise probabilities are not “penalized” quite as much. On the other hand, while the <code>pass_live</code> calibration looks relatively smooth, the 10% goal rate following live ball passes (2x the frequency for shots following fouls) means that it is more penalized for imprecision than an otherwise equivalent post-<code>fouled</code> shot. In fact, this is <a href="https://en.wikipedia.org/wiki/Brier_score#Shortcomings">one of the shortcomings of BSS</a>—it does not do a great job with evaluation of relatively infrequent events.</li>
@@ -391,12 +392,12 @@ font-style: italic;">## Recycle the estimate value if it's scalar-ish.</span></s
 <div class="cell">
 
 </div>
-<p><img src="https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/deflection_calibration.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/deflection_calibration.png" class="img-fluid"></p>
 <ul>
 <li>The model doesn’t seem to be very well calibrated for shots following deflections! Like shots following other shots in the shot-creating action calibration plot, the BSS for shots after deflections is negative. And, perhaps more interestingly, the model seems to underpredict post-deflection shots, which is the opposite of it’s general tendency to overpredict. (See the wholistic calibration plot from before.)
 <ul>
 <li>I’d suspect that there’s lots of confounders that might explain the lack of calibration after deflections. For one, it could be the case that there are often zero defenders between the shot-taker and keeper for shots following a deflection. As far as I know, the Opta model doesn’t have an explicit feature for this.</li>
-<li>It might also be the case that Opta’s <a href="https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg">“big chance” indicator</a>—which is not published on FBref but which I suspect take on a value of “yes”/1/true for many post-deflection shots—may have some flaws.</li>
+<li>As with the overall model calibration, one has to wonder whether the model may have performed better on shots following deflections with the binary big chance feature.</li>
 <li>The high goal rate on shots after deflections relative to the goal rate on all other shots certainly contributes to the negative BSS, as we saw earlier with shots following other shots.</li>
 </ul></li>
 </ul>
@@ -404,7 +405,7 @@ font-style: italic;">## Recycle the estimate value if it's scalar-ish.</span></s
 <div class="cell">
 
 </div>
-<p><img src="https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/league_group_calibration.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/league_group_calibration.png" class="img-fluid"></p>
 <ul>
 <li><a href="https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/">StatsBomb has talked</a> about how a “gender-aware” model outperformed a baseline model, so one might expect the calibration of Opta’s singular model to be weaker for the women’s game. It turns out that while, yes, the calibration seems to be a bit worse for shots in the women’s leagues, the overall difference in model performance for men’s and women’s leagues seems to be trivial for the sample here.</li>
 <li>Interestingly, the calibration of the model for non-Big 5 leagues and the English men’s Championship league are slightly better according to BSS, although the differences (both visually, with the calibration curve, and with BSS) are very minimal.</li>
@@ -413,7 +414,7 @@ font-style: italic;">## Recycle the estimate value if it's scalar-ish.</span></s
 <div class="cell">
 
 </div>
-<p><img src="https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/footedness_calibration.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/footedness_calibration.png" class="img-fluid"></p>
 <ul>
 <li>Despite my suspicion that xG for shots taken by a player’s weaker foot (<code>right foot shot, left-footed</code> and <code>left foot shot, right-footed</code>) might be severely overpredicted, this doesn’t really seem to be the case. Yes, the model tends to overpredict for these kinds of shots, but the degree to which overprediction occurs doesn’t seem out of line with the whole model.
 <ul>
@@ -457,21 +458,23 @@ No matching items
 <li id="fn5"><p>Note that I use the term “feature” here, although this set of fields does not quite match the actual <a href="https://theanalyst.com/eu/2021/07/what-are-expected-goals-xg">inputs to the</a> <a href="https://fbref.com/en/expected-goals-model-explained/">Opta xG model</a>. While things like <code>distance</code> and <code>body_part</code> certainly are inputs to the model, we don’t have angle of the shot to the goal, and <code>is_primary_foot</code>—a field that I’ve added the feature set myself—isn’t one of the model inputs, as far as I’m aware.↩︎</p></li>
 <li id="fn6"><p>Several leagues don’t have data available for all such seasons, which is reflected in the number of shots per league in <code>np_shots</code>.↩︎</p></li>
 <li id="fn7"><p>I’ve written my own code to plot the calibration, but I imagine most users will be satisfied with the plot that <code>{probably}</code> will generate for you.↩︎</p></li>
-<li id="fn8"><p>Brier score for a binary classification task is equivalent to mean squared error.↩︎</p></li>
-<li id="fn9"><p>Personally, I like to use BSS over other classification metrics like <a href="https://en.wikipedia.org/wiki/Receiver_operating_characteristic">ROC AUC</a> or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that you have to specify a reference with which to compare, which seems like good principle in general.↩︎</p></li>
-<li id="fn10"><p>I’m perhaps comparing apples to oranges here for the sake of providing some additional context that might help interpretability. The truth is that BSS is only comparable among different tasks to the extent that the reference choice in each task is “uninformed” to the same degree. For example, I could have said that the baseline for goals per shot is 50% instead of the actual goal rate (about 10%). This would change the baseline brier score to 0.25, and would inflate the BSS to 0.71. On the other hand, a 50/50 baseline makes sense in other settings. In fact, that’s what FiveThirtyEight uses for match outcome BSS for various sports.↩︎</p></li>
+<li id="fn8"><p>Thanks to a handful of people who reached out and made me aware of this, after I initially published this post. I’ve gone back and updated some wording.↩︎</p></li>
+<li id="fn9"><p>Brier score for a binary classification task is equivalent to mean squared error.↩︎</p></li>
+<li id="fn10"><p>Personally, I like to use BSS over other classification metrics like <a href="https://en.wikipedia.org/wiki/Receiver_operating_characteristic">ROC AUC</a> or Brier score alone. BSS is arguably the most interpretable probabilistic classification measure. Also, I like that you have to specify a reference with which to compare, which seems like good principle in general.↩︎</p></li>
+<li id="fn11"><p>I’m perhaps comparing apples to oranges here for the sake of providing some additional context that might help interpretability. The truth is that BSS is only comparable among different tasks to the extent that the reference choice in each task is “uninformed” to the same degree. For example, I could have said that the baseline for goals per shot is 50% instead of the actual goal rate (about 10%). This would change the baseline brier score to 0.25, and would inflate the BSS to 0.71. On the other hand, a 50/50 baseline makes sense in other settings. In fact, that’s what FiveThirtyEight uses for match outcome BSS for various sports.↩︎</p></li>
+<li id="fn12"><p>The reader may be wondering what the BSS would look like if I had used the Brier score of the goal rate grouped by each feature as the baseline for BSS, instead of the overall goal rate. In that case, all BSS’s would be positive, and the <code>fouled</code> BSS would actually be the lowest, as opposed to the highest! Perhaps this would better match intuition, given how the calibration curve for <code>fouled</code> looks like one of the worst here. I’m not strongly opposed to choosing the grouped goal rate as the baseline instead of the overall goal rate, if that’s what one so happens to believe is a better choice.↩︎</p></li>
 </ol>
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/index.html</guid>
   <pubDate>Mon, 20 Feb 2023 06:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/opta-xg-model-calibration/footedness_calibration.png" medium="image" type="image/png" height="101" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration/footedness_calibration.png" medium="image" type="image/png" height="101" width="144"/>
 </item>
 <item>
   <title>What exactly is an “expected point”? (part 2)</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-2/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-2/index.html</link>
   <description><![CDATA[ 
 
 
@@ -733,7 +736,7 @@ font-style: italic;">## back to normal processing</span></span>
 </div>
 <p>Interestingly, the RMSE and R squared values are almost identical to those for the season-long xPts. Perhaps this is not too surprising—match-level outcome probabilities simulated and averaged to arrive at a singular estimate of season-long xPts should give us something very close to just computing season-long xPts directly.</p>
 <p>While the null result may be discouraging, the simulations are useful in and of themselves. They can be used to understand the distribution of outcomes for team in a given season, as seen in the table below.<sup>2</sup></p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-2/sim_placings.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-2/sim_placings.png" class="img-fluid"></p>
 <p>We can see that Leicester, Wolves, and Newcastle all placed at the uppper end of their simulated placings, indicating that they over-achieved relative to expectation; on the other hand, Crystal Palace, Brentford, and Leeds placed on the lower end of the distribution of placings, indicating that they under-achieved.</p>
 <p>In fact, we can go beyond simple observational judgement of whether teams over- and under-achieved—we can use the relative proportion of simulations where a team ends up at a given placing (or “rank”) in the standings to quantify just how unexpected actual end-of-season placings were.</p>
 </section>
@@ -757,7 +760,7 @@ font-style: italic;">## back to normal processing</span></span>
 </details>
 </div>
 <p>Finally, to identify over-achieving teams, we find the teams that had the lowest cumulative probability of placing at their actual placing or better; and to identify under-achieving teams, we find the teams with the lowest cumulative probability of placing at their actual placing or worse.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-2/unexpected.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-2/unexpected.png" class="img-fluid"></p>
 <p>This table certainly passes the eye test. Brighton’s sixteenth place finish in the 2020/21 season was discussed ad nauseum in the analytics sphere. Brighton under-performed historically given their massively positive xGD.</p>
 <p>On the other end of the spectrum, it’s not hyperbole to say that Manchester United’s second place finish in the 2017/18 season was an over-achievement. Although they ended up with the third best goal differential that season, they were closely followed by several teams. And their xGD was sixth in the league that season.</p>
 <section id="comparison-with-a-simpler-approach" class="level4">
@@ -777,9 +780,9 @@ font-style: italic;">## back to normal processing</span></span>
 </details>
 </div>
 <p>The table below shows the top five over- and under-achieving teams according to our regression explaining season-ending placing with season-ending xGD. Three of the top five over- and under-performing teams appear in the respective top fives according to the ranks from the simulations of match probabilities shown before.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-2/xgd_unexpected.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-2/xgd_unexpected.png" class="img-fluid"></p>
 <p>We can also look at this from the opposite perspective. Where do the top five over- and under-achievers according to our simulations with match outcome probabilities fall among the season-ending xGD ranks for unlikelihood?</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-2/xgd_matching_unexpected.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-2/xgd_matching_unexpected.png" class="img-fluid"></p>
 <p>Outside of the the three team-season pairs appearing in the both of the top five over- and under-achievers that we already saw before, one team-season pair is not too far off from the top five—the 2017/18 Manchester United squad ranked as the sixth biggest over-performers by the season-long xGD regression.<sup>3</sup> However, the other over-perfomer, 2019/20 Newcastle, and the two remaining under-performers, 2021/22 Crystal Palace and 2021/22 Brentford, have somewhat large ranking discrepancies. So yes, the two methods can lead to somewhat similar results in some cases, but there is some observational evidence to suggest that there are non-trivial differences in other cases.</p>
 <p>In fact, there are some big differences between the two methods once we look outside the top five or so biggest over- and under- achievers. For example, in terms of over-achieving, Arsenal’s fifth place finish 2018/19 season is given just a 7.50% chance of occurring given their season-long xGD, ranking them as the 17th biggest over-performer (among 80 team-season pairs considered to have over-achieved from 2014/15).<sup>4</sup> On the other hand, the match-level simulation approach marks the likelihood of them finishing fourth as 31.63% (37th of 80). The season-long xGD model essentially sees that they finished with an xGD of 7.5—less than any other fifth place finisher from 2014/15 - 2021/22—and penalizes them, while the match-level approach contextualizes them among their competition more robustly.</p>
 <p>As another example, Manchester United’s under-achieving sixth place finish in the 2016/17 is given a fairly reasonable 37.36% chance (66th of 80 under-achieving teams) of occurring given their season-long 25.9 xGD, most for any sixth place team in the data set. On the other hand, the match-level simulation approach sees their sixth place finish as more unlikely, at just a 15.88% probability (16th of 80). While one might have their own opinion regarding which approach seems more “correct”, I’d say that likelihoods from the simulation approach seem more appropriate for extreme examples such as this one and the 2018/19 Arsenal example</p>
@@ -814,14 +817,14 @@ No matching items
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-2/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-2/index.html</guid>
   <pubDate>Mon, 05 Sep 2022 05:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-2/unexpected.png" medium="image" type="image/png" height="143" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-2/unexpected.png" medium="image" type="image/png" height="143" width="144"/>
 </item>
 <item>
   <title>What exactly is an “expected point”? (part 1)</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-1/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-1/index.html</link>
   <description><![CDATA[ 
 
 
@@ -854,7 +857,7 @@ No matching items
 <span id="cb1-10"><span class="co" style="color: #5E5E5E;">#&gt; [1] 0.50 0.40 0.09 0.01</span></span></code></pre></div>
 </details>
 </div>
-<p><img src="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-1/ex.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-1/ex.png" class="img-fluid"></p>
 <p>Second, we convert the goal probabilities to singular probabilities for each team winning the match, as well as the probability of a draw.<sup>4</sup></p>
 <div class="cell">
 <details open="">
@@ -1155,7 +1158,7 @@ font-style: italic;">## Huddersfield 0 - 0 Swansea on 2018-03-10</span></span>
 </details>
 </div>
 <p>Let’s take a quick peak at the distributions of xG and xPts, both as a sanity check and to enhance our understanding of the relationship between the two. When plotting xPts as a function xG, we should expect to see a monotonically increasing relationship where xPts bottoms out at zero and tops out at three.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-1/xg_vs_xpts.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-1/xg_vs_xpts.png" class="img-fluid"></p>
 <p>Further, if there is any doubt about the expected points calculation, note that understat offers xPts directly in their data. The mean absolute error of our calculation of xPts with theirs is ~0.02.</p>
 <div class="cell">
 <details open="">
@@ -1325,7 +1328,7 @@ font-style: italic;">## Jeffreys' prior</span></span>
 </div>
 <p>The MSE (where lower is “better”) and the BSS (where higher is “better”) lead us to the same conclusion—the models based on understat’s xG slightly outperform the one based on fotmob’s xG.</p>
 <p>Moreover, looking at the calibration plot, the understat model predictions seem to stick closer to the 45 degree slope representing perfect calibration.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-1/calib.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-1/calib.png" class="img-fluid"></p>
 </section>
 <section id="predicting-points-with-linear-regression" class="level4">
 <h4 class="anchored" data-anchor-id="predicting-points-with-linear-regression">Predicting points with linear regression</h4>
@@ -1474,14 +1477,14 @@ No matching items
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-1/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-1/index.html</guid>
   <pubDate>Sun, 04 Sep 2022 05:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/epl-xpts-simulation-1/calib.png" medium="image" type="image/png" height="108" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/epl-xpts-simulation-1/calib.png" medium="image" type="image/png" height="108" width="144"/>
 </item>
 <item>
   <title>Yet Another (Advanced?) Soccer Statistic</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/index.html</link>
   <description><![CDATA[ 
 
 
@@ -1489,7 +1492,7 @@ No matching items
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
 <p><a href="https://www.datofutbol.cl/passing-networks-r/">Pass networks</a> are a common visualization form used to summarize a team’s behavior in a soccer match. Nodes represent average player position on passes that they are involved with, and edges represent passes between players. Most pass networks also weight node size and edge width by the total number of passes.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/betweentheposts-example-pass-network.jpg" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/betweentheposts-example-pass-network.jpg" class="img-fluid"></p>
 <p>While pass networks provide a nice visual tool for providing insight that can (and should) be supplemented by more detailed analysis, they’re often just that—purely a visual tool. In order to gain meaning beyond just anecdotal insight (“Look at how far the wingbacks were up the field!”), practitioners may leverage graph theory concepts such as <a href="https://en.wikipedia.org/wiki/Centrality">centrality</a> to quantify relationships.<sup>1</sup></p>
 <p>Inspired by the findings of Eliakim et al.&nbsp;in <a href="https://www.tandfonline.com/doi/abs/10.1080/24733938.2021.1919747">“The development of metrics for measuring the level of symmetry in team formation and ball movement flow, and their association with performance”</a>, I wanted to evaluate a graph theory concept that has not been explored in relation to soccer pass networks (except for by Eliakim et al.): <a href="https://en.wikipedia.org/wiki/Maximum_cut">maximum cuts</a>.</p>
 <p>To do so, I’ll be using data from the 2017/18 - 2020/21 Premier League seasons, along with the games up through Boxing Day of the 2021/22 season. Passes and other events are only considered up through the first substitution or red card of each match.</p>
@@ -1499,7 +1502,7 @@ No matching items
 <section id="simple" class="level3">
 <h3 class="anchored" data-anchor-id="simple">Simple</h3>
 <p>What is a maximum cut? Visually, it’s an arbitrary line that you can draw through the edges of a network that maximizes the sum of the edge weights.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/example_max_cut.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/example_max_cut.png" class="img-fluid"></p>
 <p>For this example, 15 is actually a <em>weighted</em> max cut, since edges are treated differently, according to their assigned value. (An unweighted max cut would assign each edge a value of 1.)</p>
 <p>On the other side of things, the min cut would be 2+4=6 for this example.</p>
 </section>
@@ -1507,9 +1510,9 @@ No matching items
 <h3 class="anchored" data-anchor-id="in-soccer">In Soccer</h3>
 <p>A 4-node, 5-edge network is nice for illustration, but how does this bear out in soccer?</p>
 <p>To give a soccer example, Here’s the pass network and weighted max cut numbers for <a href="https://www.fotmob.com/match/3609994/matchfacts/liverpool-vs-manchester-city">the match between Liverpool and Manchester City on October 3, 2021</a>. <sup>2</sup></p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/network-game_id=1549604-max_cut_weighted_norm_w_logo.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/network-game_id=1549604-max_cut_weighted_norm_w_logo.png" class="img-fluid"></p>
 <p>Zooming out from a single example to all games in our data set, the distribution of weighted max cuts per 90 minutes looks relatively normal, perhaps log-normal. <em>Note: It’s important to adjust for time since not all games have the same number of minutes played due to variance in the occurrence of the first formation change.</em></p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/game_mc_hist_w_logo.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/game_mc_hist_w_logo.png" class="img-fluid"></p>
 </section>
 </section>
 <section id="but-is-max-cut-useful" class="level2">
@@ -1529,24 +1532,24 @@ No matching items
 </ol>
 <p>Given that we’ll be making our two quality-of-play stats—xG and xT—relative to the opponent, I prefer to opponent-adjust weighted max cut in the same manner. I’d argue that weighted max cut differential is more informative than just the weighted max cut of one side or the other. Suppressing your opponent’s weighted max cut is reflective of limiting their pass volume, and, consequently, makes it more likely that your weighted max cut is higher.</p>
 <p>The relationship between weighted max cut and weighted max cut differential is very linear, so, ultimately, it shouldn’t matter too much if we look at opponent-adjust weighted max cut versus just raw weighted max cut.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/game_mc_scatter_diff_w_logo.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/game_mc_scatter_diff_w_logo.png" class="img-fluid"></p>
 <p>Differencing has the added benefit of making our distributions look more “normal”, by making them symmetric about 0. This generally is beneficial for regression analysis, which we go on to conduct.</p>
 </section>
 <section id="correlations" class="level3">
 <h3 class="anchored" data-anchor-id="correlations">Correlations</h3>
 <p>A first step in looking at the relationship between weighted max cut with xG and xT is a <a href="https://en.wikipedia.org/wiki/Correlation">correlation</a>.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/game_x_cors_table.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/game_x_cors_table.png" class="img-fluid"></p>
 <p>Weighted max cut compares favorably to other network stats for summarizing (pass) networks. Perhaps this isn’t too surprising; Eliakim et al.&nbsp;argue that, in relation to soccer, maximum cut surmises what is captured separately by various measures of centrality (<a href="https://en.wikipedia.org/wiki/Betweenness_centrality">betweenness</a>, <a href="https://en.wikipedia.org/wiki/Directed_graph#Indegree_and_outdegree">indegree and outdegree</a>, etc.).</p>
 <p>Weighted max cut has a similar correlation to traditional pass metrics such as relative percentage of passes, but not as strong as counting stats for shots. We really shouldn’t expect any metric to have as strong a relation with xG and xT (especially xG) as shot-based metrics since these are derived from shots and their outcomes.</p>
 <p>Overall, the game-level correlations are not super strong, indicating that we can’t read too much into them for individual games. The correlations are much stronger at the season-level, showing the same ordinality in magnitude of correlation.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/season_x_cors_table.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/season_x_cors_table.png" class="img-fluid"></p>
 <p>Observing the difference in the game-level and season-level correlations should be a good reminder that single-game stats should not be scrutinized too heavily when evaluating a team’s performance over the course of a season. The same is true for max cuts!</p>
 </section>
 <section id="accounting-for-confounders" class="level3">
 <h3 class="anchored" data-anchor-id="accounting-for-confounders">Accounting for Confounders</h3>
 <p>The correlation approach for quantifying the descriptive role of max cuts in quality of play is a bit naive. Single-variable regressions, i.e.&nbsp;correlations, overstate the impact of the “treatment” variables.</p>
 <p>If we regress max cut on xG and xT with z-score normalized counts of shots and passes as <a href="https://en.wikipedia.org/wiki/Confounding">confounders</a>, we see that the influence of max cut is negated.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/team_stat_coefs_w_logo.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/team_stat_coefs_w_logo.png" class="img-fluid"></p>
 <p>In the case of xG, the coefficient estimate for weighted max cut is offset by the coefficient for the passing term. This is due to their <a href="https://en.wikipedia.org/wiki/Collinearity">collinearity</a> (over 90%) and their lack of explanatory value in the presence of shot counts, which directly informs xG. For xT, the weighted max cut coefficient is completely suppressed, likely due to collinearity with passing.</p>
 <p>Of course, we could be a little more sophisticated here, drawing out <a href="https://en.wikipedia.org/wiki/Directed_acyclic_graph">directed acyclic graphs (DAG)</a> and running a more formal <a href="https://en.wikipedia.org/wiki/Causal_inference">causal analysis</a>. But my intuition is that we would come to the same general conclusion: in the face of more traditional metrics like shot and pass counts, possibly the most robust pass-network-derived statistic—weighted max cut—provides minimal additional descriptive power for quantifying quality of play.</p>
 </section>
@@ -1630,14 +1633,14 @@ No matching items
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/index.html</guid>
   <pubDate>Mon, 31 Jan 2022 06:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/soccer-pass-network-max-cut/network-game_id=1549604-max_cut_weighted_norm_w_logo.png" medium="image" type="image/png" height="111" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/soccer-pass-network-max-cut/network-game_id=1549604-max_cut_weighted_norm_w_logo.png" medium="image" type="image/png" height="111" width="144"/>
 </item>
 <item>
   <title>Tired: PCA + kmeans, Wired: UMAP + GMM</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/index.html</link>
   <description><![CDATA[ 
 
 
@@ -1670,17 +1673,17 @@ font-style: italic;">## [1] 1626  128</span></span></code></pre></div>
 </details>
 </div>
 <p>Trying to infer something from the correlation matrix doesn’t get you very far, so one can see why dimensionality reduction will be useful.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_cors.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_cors.png" class="img-fluid"></p>
 <p>Also, we don’t really have “labels” here (more on this later), so clustering can be useful for learning something from our data.</p>
 </section>
 <section id="unsupervised-evaluation" class="level2">
 <h2 class="anchored" data-anchor-id="unsupervised-evaluation">Unsupervised Evaluation</h2>
 <p>We’ll be feeding in the results from the dimensionality reduction—either PCA or UMAP—to a clustering method—either kmeans or GMM. So, since clustering comes last, all we need to do is figure out how to judge the clustering; this will tell us something about how “good” the combination of dimensionality reduction and clustering is overall.</p>
 <p>I’ll save you from google-ing and just tell you that <a href="https://en.wikipedia.org/wiki/Total_sum_of_squares">within-cluster sum of squares (WSS)</a> is typically used for kmeans, and <a href="https://en.wikipedia.org/wiki/Bayesian_information_criterion">Bayesian Information Criteria (BIC)</a> is the go-to metric for GMM. WSS and BIC are not on the same scale, so we can’t directly compare kmeans and GMM at this point. Nonetheless, we can experiment with different numbers of components—the one major <a href="https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)">“hyperparameter”</a> for dimensionality reduction—prior to the clustering to identify if more or less components is “better”, given the clustering method. Oh, and why not also vary the number of clusters—the one notable hyperparameter for clustering—while we’re at it?</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_kmeans_wss.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_kmeans_wss.png" class="img-fluid"></p>
 <p>For kmeans, we see that WSS decreases with increasing number of clusters, which is typically what we see in <a href="https://en.wikipedia.org/wiki/Elbow_method_(clustering)">“elbow” plots</a> like this. Additionally, we see that WSS decreases with increasing number of components. This makes sense—additional components means more data is accounted for.<sup>2</sup> There is definitely a point of “diminishing returns”, somewhere around 3 clusters, after which WSS barely improves.<sup>3</sup> Overall, we observe that the kmeans models using UMAP pre-processing do better, compared to those using PCA.</p>
 <p>Moving on to GMM, we observe that BIC generally increases with the number of clusters as well. (Note that, due to the way <a href="https://stats.stackexchange.com/questions/237220/mclust-model-selection">the <code>{mclust}</code> package defines its objective function, higher BIC is “better”</a>.)</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_gmm_bic.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_gmm_bic.png" class="img-fluid"></p>
 <p>Regarding number of components, we see that the GMM models using more UMAP components do better, as we should have expected. On the other hand, we observe that GMM models using less PCA components do better than those with more components. This is a bit of an odd finding that I don’t have a great explanation for. (Someone please math-splain to me.) Nonetheless, we see that UMAP does better than PCA overall, as we observed with kmeans.</p>
 <p>For those interested in the code, I <code>map</code>-ed a function across a grid of parameters to generate the data for these plots.<sup>4</sup></p>
 <div class="cell">
@@ -1777,9 +1780,9 @@ font-style: italic;">## [1] 1626  128</span></span></code></pre></div>
 <p>So now let’s do the same as before—evaluate different combinations of PCA and UMAP with kmeans and GMM. But now we can use some supervised evaluation metrics: (1) <a href="https://en.wikipedia.org/wiki/Accuracy_and_precision">accuracy</a> and (2) mean <a href="https://en.wikipedia.org/wiki/Cross_entropy">log loss</a>. While the former is based on the “hard” predictions, the latter is based on probabilities for each class. kmeans returns just hard cluster assignments, so computing accuracy is straightforward; since it doesn’t return probabilities, we’ll treat the hard assignments as having a probability of 1 to compute log loss.<sup>5</sup></p>
 <p>We can compare the two clustering methods more directly now using these two metrics. Since we know that there are 6 position groups, we’ll keep the number of clusters constant at 6. (Note that number of <strong>clusters</strong> was shown on the x-axis before; but since we have fixed number of components at 6, now we show the number of <strong>components</strong> on the x-axis.)</p>
 <p>Looking at accuracy first, we see that the best combo depends on our choice for number of components. Overall, we might say that the UMAP combos are better.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_acc.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_acc.png" class="img-fluid"></p>
 <p>Next, looking at average log loss, we see that the GMM clustering methods seem to do better overall (although this may be due to the fact that log loss is not typically used for supervised kmeans). The PCA + GMM does the best across all number of components, with the exception of 7. Note that we get a mean log loss around 28 when we predict the majority class (defender) with a probability of 1 for all observations. (This is a good “baseline” to contextualize our numbers.)</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_ll.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_ll.png" class="img-fluid"></p>
 <p>UMAP shines relative to PCA according to accuracy, and GMM beats out kmeans in terms of log loss. Despite these conclusions, we still don’t have clear evidence that UMAP + GMM is the best 1-2 combo; nonetheless, we can at least feel good about its general strength.</p>
 <section id="aside-re-coding-clusters" class="level3">
 <h3 class="anchored" data-anchor-id="aside-re-coding-clusters">Aside: Re-coding Clusters</h3>
@@ -1859,7 +1862,7 @@ font-style: italic;">## [1] 1626  128</span></span></code></pre></div>
 <p>Let’s step back from the clustering techniques and focus on dimensionality reduction for a moment. One of the ways that dimensionality reduction can be leveraged in sports like soccer is for player similarity metrics.<sup>6</sup> Let’s take a look at how this can be done, comparing the PCA and UMAP results while we’re at it.</p>
 <p>Direct comparison of the similarity “scores” we’ll compute—based on Euclidean distance between a chosen player’s components and other players’ components—is not wise given the different ranges of our PCA and UMAP components, so we’ll rely on rankings based on these scores.<sup>7</sup> Additionally, <a href="https://fbref.com/">fbref</a> provides a “baseline” that we can use to judge our similarity rankings.<sup>8</sup></p>
 <p>We’ll start with <a href="https://fbref.com/en/players/dbf053da/Jadon-Sancho">Jadon Sancho</a>, a highly discussed player at the moment (as a potential transfer).</p>
-<span style="max-width:100%; height:auto"><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/jadon-sancho-fbref.PNG"></span>
+<span style="max-width:100%; height:auto"><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/jadon-sancho-fbref.PNG"></span>
 <p>We first need to set up our data into the following format. (This is for 2-component, 6-cluster UMAP + GMM.)</p>
 <div class="cell">
 <details open="">
@@ -1912,7 +1915,7 @@ font-style: italic;">## [1] 1626  128</span></span></code></pre></div>
 </details>
 </div>
 <p>Doing the same for PCA and combining all results, we get the following set of rankings.</p>
-<span style="max-width:80%; height:auto"><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/gt_similarity_jadon_sancho.png"></span>
+<span style="max-width:80%; height:auto"><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/gt_similarity_jadon_sancho.png"></span>
 <p>We see that the UMAP rankings are “closer” overall to the fbref rankings. Of course, there are some caveats:</p>
 <ol type="1">
 <li>This is just one player.</li>
@@ -1925,15 +1928,15 @@ font-style: italic;">## [1] 1626  128</span></span></code></pre></div>
 <h2 class="anchored" data-anchor-id="case-study-umap-gmm">Case Study: UMAP + GMM</h2>
 <p>Finally, let’s bring clustering back into the conversation. We’re going to focus on how the heralded UMAP + GMM combo can be visualized to provide insight that supports (or debunks) our prior understanding.</p>
 <p>With a 2-component UMAP + 6-cluster GMM, we can see how the 6 position groups can be identified in a 2-D space.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_uncertainty_umap_full.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_uncertainty_umap_full.png" class="img-fluid"></p>
 <p>For those curious, using PCA instead of UMAP also leads to an identifiable set of clusters. However, uncertainties are generally higher across the board (larger point sizes, more overlap between covariance ellipsoids).</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_uncertainty_pca_full.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_uncertainty_pca_full.png" class="img-fluid"></p>
 <p>If we exclude keepers (G) and defenders (D) to focus on the other 4 positions with our UMAP + GMM approach, we can better see how some individual points —at the edges or outside of covariance ellipsoids—are classified with a higher degree of uncertainty.<sup>9</sup></p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_uncertainty_umap_filt.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_uncertainty_umap_filt.png" class="img-fluid"></p>
 <p>Now, highlighting incorrect classifications, we can see how the defensive midfielder (DM) position group (upper left) seems to be a blind spot in our approach.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_misclassified_umap.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_misclassified_umap.png" class="img-fluid"></p>
 <p>A more traditional confusion matrix<sup>10</sup> also illustrates the inaccuracy with classifying DMs. (Note the lack of dark grey fill in the DM column.)</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/viz_cm_umap.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/viz_cm_umap.png" class="img-fluid"></p>
 <p>DMs are often classified as defenders instead. I think this poor result has is more so due to my lazy grouping of players with <code>"MF,DF"</code> or <code>"DF,MF"</code> positions in the original data set than a fault in our approach.</p>
 </section>
 <section id="conclusion" class="level2">
@@ -1970,14 +1973,14 @@ No matching items
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/index.html</guid>
   <pubDate>Wed, 30 Jun 2021 05:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/dimensionality-reduction-and-clustering/featured.png" medium="image" type="image/png" height="144" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/dimensionality-reduction-and-clustering/featured.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 <item>
   <title>Quantifying Relative Soccer League Strength</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/soccer-league-strength/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/soccer-league-strength/index.html</link>
   <description><![CDATA[ 
 
 
@@ -1996,7 +1999,7 @@ No matching items
 <p>Why VAEP? Theoretically it should capture more about in-game actions (including defense) than other stats such as <a href="https://fbref.com/en/expected-goals-model-explained/">xG</a>, which is biased in favor of attacking players. VAEP is not perfect by any means (e.g.&nbsp;it does not capture off-ball actions), but, in theory, it should be a better measure of overall performance. <sup>2</sup></p>
 <p>Notably, we give up a little in interpretability in using VAEP, since it’s not directly translatable to goals. <sup>3</sup> The following table of top season-long xG totals since 2012 to contextualize the magnitudes of xG and VAEP.</p>
 <p>And a scatter plot, because who doesn’t love a graph.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-league-strength/viz_xg_v_vaep.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-league-strength/viz_xg_v_vaep.png" class="img-fluid"></p>
 <ol start="2" type="1">
 <li>Convert the player-level VAEP/90 differences to z-scores by position and age group.</li>
 </ol>
@@ -2019,7 +2022,7 @@ No matching items
 </ol>
 <p>Interpretation after this transformation can be a little tricky. The differences between a specified pair of these post-transformed coefficients represents the expected change in an “average” player’s VAEP/90 (<code>Diff. (VAEP/90)</code>) when moving between the specified leagues.</p>
 <p>To interpret these differences as a percentage (so that we can “scale” the properly for a player with a VAEP/90 of 1.5, compared to a player with a lower VAEP/90 rate), we use the median VAEP/90 across all leagues as a “baseline”. For example, for Bundesliga -&gt; Premier League, since the overall median VAEP/90 is 0.305 and the <code>Diff. (VAEP/90)</code> between league A and league B is 0.0509, the <code>% Difference</code> is 0.0509/0.305 = 17%.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-league-strength/viz_relative_p_vaep_direct2z.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-league-strength/viz_relative_p_vaep_direct2z.png" class="img-fluid"></p>
 </section>
 <section id="improvements-further-work" class="level2">
 <h2 class="anchored" data-anchor-id="improvements-further-work">Improvements &amp; Further Work</h2>
@@ -2029,11 +2032,11 @@ No matching items
 <li><p>I would be hesitant to use my results to directly infer how a specific player will translate going from one league to another. My approach focuses on leagues and is more about the “average” player. One aught to include additional features about play style (e.g.&nbsp;touches, progressive passes, team role) if interested in predicting individual player performance with a high degree of accuracy.</p></li>
 <li><p>One can swap out the response variable with other reasonable metrics of player performance, such as xG (which is more readily available than atomic VAEP). In fact, I did this myself and came up with the result below (showing in units of xG/90 instead of as a percentage, since most fans are accustomed to seeing xG and are used to its relative magnitude).</p></li>
 </ul>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-league-strength/viz_relative_vp_xg_direct2z.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-league-strength/viz_relative_vp_xg_direct2z.png" class="img-fluid"></p>
 <ul>
 <li>One could stay in the realm of just purely “power rankings” and focus more on the estimates and error. For example, in an earlier iteration of this methodology, I used a Bradley-Terry approach to come up with a distribution of estimates for each league.<sup>9</sup> Here, the x-axis could be loosely interpreted as the log odds of one league winning in a match versus another league, although it’s not clear exactly what that means. (An “average” team from both leagues? A matchup of teams composed of “average” players from any team in each league?)</li>
 </ul>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-league-strength/coefs_bt.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-league-strength/coefs_bt.png" class="img-fluid"></p>
 <ul>
 <li>Notably, I’m not using match results at all! Certainly a model could learn something from international and tournament matches. However, using match-level data would require a whole new approach. Also, most would agree that tournament data can be biased by atypical lineups. For example, a manager on one side may opt to rest their best players, saving them for domestic league games, while the other manager may play their side at full strength.<sup>10</sup></li>
 </ul>
@@ -2043,7 +2046,7 @@ No matching items
 </ul>
 <p>Regarding (1), one could expand the data set by including all seasons played by a player that has played in more than one league, taking all combinations of seasons in different leagues (i.e.&nbsp;relaxing the the same-season or subsequent-season criteria). I actually did attempt this and found that overall the results were somewhat similar, but there were more questionable results overall. (Brazil’s Serie A was found to be the second strongest league overall with this approach.).</p>
 <p>Regarding (2), one has to make a choice to drop players with low minutes played to prevent outliers affecting the results of the model. However, in some cases, a loaned player coming in at the end of the season and making a huge impact can tell us a lot about the difference in strength of two leagues, so we may not want to drop some of the records after all. An empirical bayes adjustment to VAEP/90, not unlike <a href="http://varianceexplained.org/r/empirical_bayes_baseball/">the one described here</a> by <a href="https://twitter.com/drob">David Robinson</a>, can help overcome this. Below shows how such an adjustment slightly “shrinks” VAEP/90 numbers, especially for those who played less.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-league-strength/viz_vaep_adj.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-league-strength/viz_vaep_adj.png" class="img-fluid"></p>
 <p>On the topic of “shrinking”, we could have used ridge regression (regression with some penalty) to get more robust league estimates overall. However, there is a downside to ridge regression—we give up some level of interpretability.<sup>11</sup> Nonetheless, the relative ranking of leagues would be more reliable with ridge regression.</p>
 </section>
 <section id="ancillary-take-away" class="level2">
@@ -2080,14 +2083,14 @@ No matching items
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/soccer-league-strength/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/soccer-league-strength/index.html</guid>
   <pubDate>Sat, 26 Jun 2021 05:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/soccer-league-strength/featured.png" medium="image" type="image/png" height="72" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/soccer-league-strength/featured.png" medium="image" type="image/png" height="72" width="144"/>
 </item>
 <item>
   <title>Fantasy Football and the Classical Scheduling Problem</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/fantasy-football-schedule-problem/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/fantasy-football-schedule-problem/index.html</link>
   <description><![CDATA[ 
 
 
@@ -2498,10 +2501,10 @@ No matching items
 <section id="application" class="level2">
 <h2 class="anchored" data-anchor-id="application">Application</h2>
 <p>Since generating unique schedules is something I’d like to be able to do every year for my fantasy football leagues, I <a href="https://github.com/tonyelhabr/ffsched">wrote a package for it, called <code>{ffsched}</code></a>. The package includes functionality to retrieve your league’s fantasy scores from <a href="https://www.espn.com/fantasy/">ESPN</a>, which you can combine with the simulated schedules to generate a plot such as the following.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/fantasy-football-schedule-problem/viz_standings_tile_2020.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/fantasy-football-schedule-problem/viz_standings_tile_2020.png" class="img-fluid"></p>
 <p>It’s immediately evident how un-lucky I (“Tony El Tigre”) was. In the 100,000 simulations, I never finished below 7th, and I only finished 7th 1.1% of the time!</p>
 <p>In the previous year I scored the most points and finished first. “The Juggernaut” got the short end of the stick in 2019, finishing 7th. He only finished 7th or lower in 6.6% of schedules.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/fantasy-football-schedule-problem/viz_standings_tile_2019.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/fantasy-football-schedule-problem/viz_standings_tile_2019.png" class="img-fluid"></p>
 </section>
 <section id="take-away" class="level2">
 <h2 class="anchored" data-anchor-id="take-away">Take-away</h2>
@@ -2529,14 +2532,14 @@ No matching items
   <category>r</category>
   <category>python</category>
   <category>football (american)</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/fantasy-football-schedule-problem/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/fantasy-football-schedule-problem/index.html</guid>
   <pubDate>Mon, 11 Jan 2021 06:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/fantasy-football-schedule-problem/viz_standings_tile_2020.png" medium="image" type="image/png" height="96" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/fantasy-football-schedule-problem/viz_standings_tile_2020.png" medium="image" type="image/png" height="96" width="144"/>
 </item>
 <item>
   <title>Decomposing and Smoothing Soccer Spatial Tendencies</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/decomposition-smoothing-soccer/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/decomposition-smoothing-soccer/index.html</link>
   <description><![CDATA[ 
 
 
@@ -2628,7 +2631,7 @@ No matching items
 <p>So, going forward with data frames and joins, it’s quickly apparent that we’ll have to do some non-equi joining. <code>{fuzzyjoin}</code> and <a href="https://cran.r-project.org/web/packages/sqldf/index.html"><code>{sqldf}</code></a> offer functionality for such an approach, but <code>{data.table}</code> is really the best option. The only minor inconvenience here is that we have to explicitly coerce our <code>events</code> data frame to a data.table.</p>
 <p>We’ll also need a helper, grid-like data frame to assist with the binning. The 600-row <code>grid_xy_yards</code> data frame (30 <code>x</code> bins * 20 <code>y</code> bins) below is essentially a tidy definition of the cells of the grid upon which we are binning the <code>events</code> data. (One can use whatever flavor of <code>crossing()</code>, <code>expand.grid()</code>, <code>seq()</code>, etc. that you prefer to create a data frame like this.)</p>
 <p>Visually, this grid looks like this.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/decomposition-smoothing-soccer/viz_grid_nnmf.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/decomposition-smoothing-soccer/viz_grid_nnmf.png" class="img-fluid"></p>
 <p>And if you prefer numbers instead of a chart, see the first 10 rows below.</p>
 <div class="cell">
 <details open="">
@@ -2732,7 +2735,7 @@ No matching items
 </details>
 </div>
 <p>To make this a little bit more tangible, let’s plot Messi’s heatmap. (Is this really a blog post about soccer if it doesn’t mention Messi 😆?)</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/decomposition-smoothing-soccer/viz_43_messi_binned.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/decomposition-smoothing-soccer/viz_43_messi_binned.png" class="img-fluid"></p>
 </section>
 <section id="non-negative-matrix-factorization-nnmf-with-reticulate-and-sklearn" class="level2">
 <h2 class="anchored" data-anchor-id="non-negative-matrix-factorization-nnmf-with-reticulate-and-sklearn">Non-Negative Matrix Factorization (NNMF) with <code>{reticulate}</code> and <code>sklearn</code></h2>
@@ -2793,7 +2796,7 @@ No matching items
 </details>
 </div>
 <p>The first 9 smoothed component matrices come out looking like this. <sup>8</sup></p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_py.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_py.png" class="img-fluid"></p>
 <p>There’s a couple of steps involved to do the same thing in R.</p>
 <ol type="1">
 <li><p>First, we’ll convert the components matrices to a tidy format, <code>decomp_tidy</code></p></li>
@@ -2883,9 +2886,9 @@ font-style: italic;">## 3</span></span>
 </details>
 </div>
 <p>With the data in the proper format, the plotting is pretty straightforward <code>{ggplot2}</code> code.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_smooth.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_smooth.png" class="img-fluid"></p>
 <p>Viola! I would say that our R version of the python plot is very comparable (just by visual inspection). Note that we could achieve a similar visual profile without the smoothing—see below—but the smoothing undoubtedly makes pattern detection a little less ambiguous.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_unsmooth.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_unsmooth.png" class="img-fluid"></p>
 <p>From the smoothed contours, we can discern several different player profiles (in terms of positioning).</p>
 <ul>
 <li>Components 1, 5, 9: left back</li>
@@ -2929,14 +2932,14 @@ No matching items
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/decomposition-smoothing-soccer/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/decomposition-smoothing-soccer/index.html</guid>
   <pubDate>Wed, 14 Oct 2020 05:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_smooth.png" medium="image" type="image/png" height="96" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/decomposition-smoothing-soccer/viz_nnmf_dimensions_1to9_r_smooth.png" medium="image" type="image/png" height="96" width="144"/>
 </item>
 <item>
   <title>Creating a Soccer Pitch Control Model</title>
   <dc:creator>Tony ElHabr</dc:creator>
-  <link>https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/index.html</link>
+  <link>https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/index.html</link>
   <description><![CDATA[ 
 
 
@@ -2990,11 +2993,11 @@ No matching items
 <li><p><code>p_intercept</code>, short for “probability to intercept (a target location)” depends on <code>tti</code> and an additional parameter <code>t</code>, a user-specified value representing how much time is allotted to reach the ball. Like <code>tti</code>, <code>p_intercept</code> is only “properly” defined when actually doing a calculation on the player’s attributes. Unlike <code>tti</code>, there is no attribute in the <code>player</code> instance that stores this probability; it’s value must be saved in a variable external to the player class if the user wants to use it for something other than an ephemeral calculation.<sup>3</sup></p></li>
 </ol>
 <p>Time to intercept a “target” location (<code>tti</code>) may not be intuitive to comprehend immediately. The plot<sup>4</sup> below annotates the <code>tti</code> of a “target” location on the pitch (which does <strong>not</strong> have to be where the ball actually is). <code>tti</code> assumes that the player continues moving at their current speed (annotated by the arrows) for <code>reaction_time</code> seconds before running at <code>vmax</code> (full speed) to the target position. <code>tti</code> for each player is independent of the <code>tti</code> of all other players, which is a relatively reasonable assumption. <sup>5</sup></p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/viz_tti_ex.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/viz_tti_ex.png" class="img-fluid"></p>
 <p>The probability of reaching the “target” location (<code>p_intercept</code>) is directly related to the player’s <code>tti</code>. Uncertainty about how long it will take the player to reach the target location is quantified by the constant <code>tti_sigma</code> in the calculation. (<code>tti</code> is the mean and <code>tti_sigma</code> is the standard deviation of the distribution for a player’s time to arrive at the target location.)</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/viz_p_intercept_ex_1.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/viz_p_intercept_ex_1.png" class="img-fluid"></p>
 <p>Notably, this probability is independent of all other players’ probabilities (which explains how it is possible that both players are shown to have probabilities greater than 50% when <code>t = 6</code> above). When adjusting for all players’ probabilities (by dividing by the sum of all probabilities), the numbers change. This probability adjustment is key when we calculate pitch control.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/viz_p_intercept_ex_2.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/viz_p_intercept_ex_2.png" class="img-fluid"></p>
 <p>Ok, on to the R code. We’ll be using <a href="https://adv-r.hadley.nz/s3.html">S3</a> and the <a href="https://vctrs.r-lib.org/"><code>{vctrs}</code> package</a> to help create our <code>player</code> class. (As with the python class, I’ve simplified the actual implementation for demonstration purposes.)</p>
 <p>First, we start with the constructor <code>new_player()</code>. Note that there is no direct <code>__init__</code> equivalent in R. Here we will make a function that is prefixed with <code>new_</code> and ends with the name of our class (<code>player</code>).</p>
 <div class="cell">
@@ -3285,14 +3288,14 @@ No matching items
 <h2 class="anchored" data-anchor-id="advanced-usage">Advanced Usage</h2>
 <p>To really motivate the reader, let’s see what this implementation allows us to do.</p>
 <p>First, let’s emulate the pitch control plot of event 823, which is a pass by the away (blue) team in the home (red) team’s penalty area preceding a successful shot.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/pc_823_r.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/pc_823_r.png" class="img-fluid"></p>
 <p>Compare this to the python version.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/pc_822_python.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/pc_822_python.png" class="img-fluid"></p>
 <p>It’s not a perfect replication, but I think it’s very close overall.</p>
 <p>Second, let’s replicate the <a href="http://www.sloansportsconference.com/wp-content/uploads/2019/02/Decomposing-the-Immeasurable-Sport.pdf">expected possession value (EPV)</a> plot of the same event, including the EPV added by the pass.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/epv_823_r.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/epv_823_r.png" class="img-fluid"></p>
 <p>Again, we can compare this plot to the python equivalent.</p>
-<p><img src="https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/epv_822_python.png" class="img-fluid"></p>
+<p><img src="https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/epv_822_python.png" class="img-fluid"></p>
 <p>Cool, my R version seems to be very close to the python original. We do have a small discrepancy in the EPV added calculation. (This EPV is actually an “expected” EPV calculation that uses pitch control to weight the pre-learned EPV grid). I believe this is probably due to discrepancies in the integration done in the pitch control calculation and not due to a significant code issue.</p>
 <p>The code to prepare the data for these plots gets more complex, which is why I have excluded it here.<sup>10</sup> However, none of it is unreasonably difficult to understand or implement once we have a properly defined <code>player</code> object.</p>
 </section>
@@ -3330,9 +3333,9 @@ No matching items
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
-  <guid>https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/index.html</guid>
+  <guid>https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/index.html</guid>
   <pubDate>Wed, 23 Sep 2020 05:00:00 GMT</pubDate>
-  <media:content url="https://itsmetoeknee.netlify.app/posts/soccer-pitch-control-r/viz_pc_823_combined.png" medium="image" type="image/png" height="60" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/soccer-pitch-control-r/viz_pc_823_combined.png" medium="image" type="image/png" height="60" width="144"/>
 </item>
 </channel>
 </rss>
