@@ -1,0 +1,25 @@
+---
+listing:
+  feed: true
+  contents: posts
+  sort: 'date desc'
+  categories: true
+page-layout: full
+---
+
+```{r}
+#| label: redirects
+#| eval: true
+#| echo: false
+#| include: false
+posts <- list.dirs(
+  path = 'posts',
+  full.names = FALSE,
+  recursive = FALSE
+)
+
+# extract the slugs
+existing_posts <- paste0('/posts/', gsub('^.*_', '', posts))
+redirects <- paste0('/post/', posts, ' ', existing_posts)
+writeLines(redirects, file.path('_site', '_redirects'))
+```
