@@ -1,0 +1,49 @@
+---
+title: Shooting Overperformance in Soccer
+description: Using the Gamma-Poisson conjugate family to quantify overperformance
+date: 2023-09-05
+draft: true
+categories:
+  - r
+  - soccer
+image: shaw-replication.png
+execute: 
+  include: true
+---
+
+## Introduction
+
+This blog post is my attempt to replicate the results in Laurie Shaw's 2018 blog post ["Exceeding Expected Goals"](http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html). Specifically, I want to shed light on how to implement [Gamma-Poisson](https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model) [empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) estimation (to the best of my knowledge)
+
+### What Is emperical Bayes estimation?
+
+**Emperical Bayes** estimation. Wow, just typing that out makes me feel smart. But what is it, really? To put in a few words, I'd describe it as sort of a mix of Bayesian and Frequentist methods in statistics. It provides a relatively simple alternative to a full Bayesian analysis, which can feel daunting, or simply be the best thing to do when you don't have much existing data for your problem.
+
+In regular Bayesian analysis, you start with your initial "guess" (prior distribution) about something, and as you gather data, you tweak that "guess" using Bayes' theorem to get a final view (posterior distribution). We combine what we thought about the data beforehand with how likely the data matches (likelihood).
+
+Empirical Bayes puts a twist on this. Instead of having a prior guess, you figure out that initial guess from the same data you're analyzing. This can make things simpler, especially when you're dealing with tons of guesses but not much initial info.
+
+### Beta-Binomial Emperical Bayes Estimation
+
+[David Robinson](https://github.com/dgrtwo) wrote [a wonderful blog post](http://varianceexplained.org/r/empirical_bayes_baseball/) about empirical Bayes estimation for estimating batting averages in baseball. I'd consider this **must read** material prior to going through this blog post.
+
+In his post, he uses [a Beta prior](https://en.wikipedia.org/wiki/Beta_distribution) and [a binomial posterior](https://en.wikipedia.org/wiki/Binomial_distribution) together, i.e. a [Beta-binomial Bayesian model](https://www.bayesrulesbook.com/chapter-3))[^1]
+
+[^1]: This [conjugate distribution table](https://en.wikipedia.org/wiki/Conjugate_prior) might be handy for those curious to know which distributions are typically paired together for empirical Bayes estimation.
+
+## Calibration
+
+First, let's pull some data. I'll be using [understat](https://understat.com/)'s xG data since it's a fairly reliable source of data and is easy to retrieve data from via the [`{worldfootballR}` package](https://jaseziv.github.io/worldfootballR/). Note that Shaw uses paywalled data from a provider, [Stratagem](https://www.linkedin.com/company/stratagem-ltd/about/), that no long provides data, as far as I can tell. For at least this reason, I won't be able to exactly match his reason. The other major reason why I may not be able to match his results is if I've implemented the Gamma-Poisson adjustment in a different (hopefully, not incorrect) manner.
+
+```{r}
+#| label: data-pull
+library(worldfootballR)
+
+```
+
+[Gamma-Poisson](https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family)
+
+Note that I've used Beta-Binomial empirical Bayes a few times for public projects in the past:
+
+1.  [to estimate the proportion of direct free kick shots on target (soccer), grouped by league](https://twitter.com/TonyElHabr/status/1457377069957107715?s=20)
+2.  [to adjust Whataburger Yelp reviews for small sample sizes](https://twitter.com/TonyElHabr/status/1429610210964955137?s=20)
