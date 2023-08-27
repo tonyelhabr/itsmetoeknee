@@ -1,12 +1,11 @@
 ---
 title: Measuring Shooting Overperformance in Soccer
 description: Using empirical Bayes and the Gamma-Poisson conjugate pair
-date: 2023-09-05
-draft: true
+date: 2023-08-28
 categories:
   - r
   - soccer
-image: shaw-figure-1-replication-w-tony-logo.png
+image: beyond-replication.png
 execute: 
   eval: false
   include: true
@@ -81,13 +80,15 @@ Ok, so with all of that context provided, now let's do the replication of Shaw's
 
 ### Data
 
-First, let's pull the data we'll need--2016/17 and 2017/18 [English Premier League](https://www.premierleague.com) shots, goals, and [xG](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) by player. I'm using [understat](https://understat.com/)'s xG data since it's a fairly reliable source of data and is easy to retrieve data from via the [`{worldfootballR}` package](https://jaseziv.github.io/worldfootballR/).[^3]
+First, let's pull the data we'll need--2016/17 and 2017/18 [English Premier League](https://www.premierleague.com) goals and [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) by player. I'm using [understat](https://understat.com/) since it is a reliable source of data[^3] and is easy to retrieve data from via the [`{worldfootballR}` package](https://jaseziv.github.io/worldfootballR/).[^4]
 
-[^3]: [FBRef](https://fbref.com/en/expected-goals-model-explained/) only provides expected goals dating back to the 2017/18 season, so unfortunately it's not viable for this analysis.
+[^3]: Note that understat maintains its own xG model, so the xG on understat won't exactly match what you might get from [Opta](https://www.statsperform.com/opta/) or [StatsBomb](https://statsbomb.com/).
 
-Note that Shaw used data from a provider, [Stratagem](https://www.linkedin.com/company/stratagem-ltd/about/), that no long provides data, as far as I can tell. For at least this reason, I won't be able to exactly match his reason.[^4]
+[^4]: [FBRef](https://fbref.com/en/expected-goals-model-explained/) only provides expected goals dating back to the 2017/18 season, so unfortunately it's not viable for this analysis.
 
-[^4]: The other major reason why I may not be able to match his results is if I've implemented the Gamma-Poisson adjustment in a different (hopefully, not incorrect 😅) manner.
+Note that Shaw used data from a provider, [Stratagem](https://www.linkedin.com/company/stratagem-ltd/about/), that no long provides data, as far as I can tell. For at least this reason, I won't be able to exactly match his reason.[^5]
+
+[^5]: The other major reason why I may not be able to match his results is if I've implemented the Gamma-Poisson adjustment in a different (hopefully, not incorrect 😅) manner.
 
 ```{r}
 #| label: shots
@@ -167,11 +168,11 @@ shots_by_player
 
 ### EB step 1: estimate prior hyperparameters
 
-Next, we estimate hyperparameters for our prior gamma distribution using MLE. (With R's `dgamma`, the hyperparameters are `shape` and `rate`[^5]). I subset the data down to players having taken at least 50 shots for estimating these hyperparameters, as this is what Shaw does. In general, you'd want to filter your data here to records that provide good "signal", and, therefore, will provide reliable estimates of your hyperparameters.[^6]
+Next, we estimate hyperparameters for our prior gamma distribution using MLE. (With R's `dgamma`, the hyperparameters are `shape` and `rate`[^6]). I subset the data down to players having taken at least 50 shots for estimating these hyperparameters, as this is what Shaw does. In general, you'd want to filter your data here to records that provide good "signal", and, therefore, will provide reliable estimates of your hyperparameters.[^7]
 
-[^5]: In [the wild](https://en.wikipedia.org/wiki/Gamma_distribution), you'll see `alpha` and `beta` used to describe the hyperparameters. `shape` and `rate` are different ways of framing these parameters.
+[^6]: In [the wild](https://en.wikipedia.org/wiki/Gamma_distribution), you'll see `alpha` and `beta` used to describe the hyperparameters. `shape` and `rate` are different ways of framing these parameters.
 
-[^6]: Note that this process of selecting priors is the "twist" I mentioned in the introduction that really separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.
+[^7]: Note that this process of selecting priors is the "twist" I mentioned in the introduction that really separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.
 
 ```{r}
 #| label: prior_distr
@@ -201,7 +202,7 @@ list(prior_shape = round(prior_shape, 2), prior_rate = round(prior_rate, 2))
 
 ### EB step 2: Use prior distribution to sample the posterior
 
-Now we start with our prior distribution hyperparameters and update all players' $O$ ratio based on their individual evidence, i.e. their exact volume of goals and xG.
+Now we use our prior distribution's hyperparameters to update all players' $O$ ratio based on their individual volume of evidence, i.e. their goals and xG.
 
 ```{r}
 #| data-label: adj_ratio_by_player
@@ -259,7 +260,7 @@ adj_ratio_by_player
 #> # ℹ 578 more rows
 ```
 
-Now let's plot our results, plotting our adjusted mean estimates of $O_p$, ±1 standard deviation about the adjusted mean. As noted earlier, we won't achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we've achieved results reasonably close to his.
+Finally, let's plot our results, plotting our adjusted mean estimates of $O_p$, ±1 standard deviation about the adjusted mean. As noted earlier, we won't achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we've achieved results reasonably close to his.
 
 ```{r}
 #| label: plot
@@ -387,6 +388,154 @@ magick::image_write(
 ```
 
 ![](shaw-figure-1-compared-w-tony-logo.png)
+
+### Beyond Replication
+
+For the sake of having a pretty plot that's not just an attempt to replicate the original, let's run it all back, this time with EPL 2021/22 and 2022/23 data.
+
+```{r}
+#| label: beyond-replication
+#| code-fold: true
+raw_shots <- worldfootballR::load_understat_league_shots(league = 'EPL')
+shots <- raw_shots |> 
+  tibble::as_tibble() |> 
+  dplyr::filter(
+    season %in% c(2021L, 2022L),
+    situation != 'DirectFreeKick'
+  ) |> 
+  dplyr::arrange(id) |> 
+  dplyr::transmute(
+    id,
+    player,
+    ## since 2022/23, xG is filled out, not x_g
+    xg = dplyr::coalesce(x_g, xG),
+    g = as.integer(result == 'Goal')
+  )
+
+shots_by_player <- shots |> 
+  dplyr::group_by(player) |> 
+  dplyr::summarize(
+    shots = dplyr::n(),
+    dplyr::across(c(g, xg), sum)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(raw_ratio = g / xg) |> 
+  dplyr::arrange(dplyr::desc(shots))
+shots_by_player
+
+shots_by_player$adj_ratio <- purrr::map2(
+  shots_by_player$g, shots_by_player$xg,
+  function(g, xg) {
+    simulate_gamma_posterior(
+      successes = g,
+      trials = xg,
+      prior_shape = prior_shape,
+      prior_rate = prior_rate
+    )
+  }
+)
+
+adj_ratio_by_player <- shots_by_player |> 
+  tidyr::unnest_wider(
+    adj_ratio, 
+    names_sep = '_'
+  ) |> 
+  dplyr::arrange(dplyr::desc(adj_ratio_mean))
+
+ordinal_adj_ratio_by_player <- adj_ratio_by_player |>
+  dplyr::filter(
+    player %in% names(shaw_players)
+  ) |> 
+  dplyr::mutate(
+    player = forcats::fct_reorder(shaw_players[player], adj_ratio_mean)
+  )
+
+library(htmltools)
+library(sysfonts)
+library(showtext)
+
+blackish_background <- '#1f1f1f'
+font <- 'Titillium Web'
+sysfonts::font_add_google(font, font)
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+plot_resolution <- 300
+showtext::showtext_opts(dpi = plot_resolution)
+## https://github.com/tashapiro/tanya-data-viz/blob/1dfad735bca1a7f335969f0eafc94cf971345075/nba-shot-chart/nba-shots.R#L64
+
+tag_lab <- htmltools::tagList(
+  htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style='font-family:fb'),
+  htmltools::tags$span("@TonyElHabr"),
+)
+
+beyond_replication_adj_ratio_plot <- ordinal_adj_ratio_by_player |>
+  ggplot2::ggplot() +
+  ggplot2::aes(y = player) +
+  ggplot2::geom_vline(
+    ggplot2::aes(xintercept = 1), 
+    linewidth = 1.5,
+    linetype = 2,
+    color = 'white'
+  ) +
+  ggplot2::geom_errorbarh(
+    ggplot2::aes(
+      xmin = adj_ratio_mean - adj_ratio_sd,
+      xmax = adj_ratio_mean + adj_ratio_sd
+    ),
+    color = 'white',
+    height = 0.5
+  ) +
+  ggplot2::geom_point(
+    ggplot2::aes(x = adj_ratio_mean, size = shots),
+    color = 'white'
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    text = ggplot2::element_text(family = font, color = 'white'),
+    title = ggplot2::element_text(size = 14, color = 'white'),
+    plot.title = ggplot2::element_text(face = 'bold', size = 16, color = 'white', hjust = 0),
+    plot.title.position = 'plot',
+    plot.subtitle = ggplot2::element_text(size = 14, color = 'white', hjust = 0),
+    plot.margin = ggplot2::margin(10, 20, 10, 20),
+    plot.caption = ggtext::element_markdown(color = 'white', hjust = 0, size = 10, face = 'plain', lineheight = 1.1),
+    plot.caption.position = 'plot',
+    plot.tag = ggtext::element_markdown(size = 10, color = 'white', hjust = 1),
+    plot.tag.position = c(0.99, 0.01),
+    panel.grid.major.y = ggplot2::element_blank(),
+    panel.grid.minor.x = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_line(linewidth = 0.1),
+    plot.background = ggplot2::element_rect(fill = blackish_background, color = blackish_background),
+    panel.background = ggplot2::element_rect(fill = blackish_background, color = blackish_background),
+    axis.title = ggplot2::element_text(color = 'white', size = 14, face = 'bold', hjust = 0.99),
+    axis.line = ggplot2::element_blank(),
+    axis.text = ggplot2::element_text(color = 'white', size = 12),
+    axis.text.y = ggtext::element_markdown(),
+    legend.text = ggplot2::element_text(color = 'white', size = 12),
+    legend.position = 'top'
+  ) +
+  ggplot2::labs(
+    title = 'Top 20 shooting overperformers in the EPL',
+    subtitle = 'EPL 2021/22 and 2022/23 seasons. ',
+    caption = 'Players sorted according to descending adjusted G/xG ratio. Minimum 100 shots<br/>**Source**: understat ',
+    y = NULL,
+    x = 'Adjusted G/xG Ratio',
+    tag = tag_lab
+  )
+
+beyond_replication_plot_path <- file.path(proj_dir, 'beyond-replication.png')
+ggplot2::ggsave(
+  beyond_replication_adj_ratio_plot,
+  filename = beyond_replication_plot_path,
+  width = 7,
+  height = 7
+)
+```
+
+![](beyond-replication.png)
+
+For those who follow the EPL, The usual suspects, like Heung-Min Son, show up among the best of the best HERE. The adjusted mean minus one standard deviation value exceeds zero for Son, so one might say that he was a significantly skilled shooter over the past two season.[^8]
+
+[^8]: A more strict and, arguably, correct measure is a 90 or 95% credible interval to ascertain "significance". Nonetheless, for the purpose of maintaining consistency with Shaw, I'm showing standard deviation.
 
 ## Conclusion
 

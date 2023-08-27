@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Tony ElHabr">
-<meta name="dcterms.date" content="2023-09-05">
+<meta name="dcterms.date" content="2023-08-28">
 <meta name="description" content="Using empirical Bayes and the Gamma-Poisson conjugate pair">
 
 <title>Tony’s Blog - Measuring Shooting Overperformance in Soccer</title>
@@ -190,10 +190,10 @@ cookieconsent.run({
 
 <link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - Measuring Shooting Overperformance in Soccer">
 <meta name="twitter:description" content="Using empirical Bayes and the Gamma-Poisson conjugate pair">
-<meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts\xg-ratio-empirical-bayes\shaw-figure-1-replication-w-tony-logo.png">
+<meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts\xg-ratio-empirical-bayes\beyond-replication.png">
 <meta name="twitter:site" content="@TonyElHabr">
-<meta name="twitter:image-height" content="640">
-<meta name="twitter:image-width" content="549">
+<meta name="twitter:image-height" content="2100">
+<meta name="twitter:image-width" content="2100">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 
@@ -270,6 +270,7 @@ cookieconsent.run({
   <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a></li>
   <li><a href="#eb-step-1-estimate-prior-hyperparameters" id="toc-eb-step-1-estimate-prior-hyperparameters" class="nav-link" data-scroll-target="#eb-step-1-estimate-prior-hyperparameters">EB step 1: estimate prior hyperparameters</a></li>
   <li><a href="#eb-step-2-use-prior-distribution-to-sample-the-posterior" id="toc-eb-step-2-use-prior-distribution-to-sample-the-posterior" class="nav-link" data-scroll-target="#eb-step-2-use-prior-distribution-to-sample-the-posterior">EB step 2: Use prior distribution to sample the posterior</a></li>
+  <li><a href="#beyond-replication" id="toc-beyond-replication" class="nav-link" data-scroll-target="#beyond-replication">Beyond Replication</a></li>
   </ul></li>
   <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
   </ul>
@@ -309,7 +310,7 @@ cookieconsent.run({
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">September 5, 2023</p>
+      <p class="date">August 28, 2023</p>
     </div>
   </div>
   
@@ -374,8 +375,8 @@ O_p = \frac{G_p}{xG_p}
 <p>Ok, so with all of that context provided, now let’s do the replication of Shaw’s findings.</p>
 <section id="data" class="level3">
 <h3 class="anchored" data-anchor-id="data">Data</h3>
-<p>First, let’s pull the data we’ll need–2016/17 and 2017/18 <a href="https://www.premierleague.com">English Premier League</a> shots, goals, and <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">xG</a> by player. I’m using <a href="https://understat.com/">understat</a>’s xG data since it’s a fairly reliable source of data and is easy to retrieve data from via the <a href="https://jaseziv.github.io/worldfootballR/"><code>{worldfootballR}</code> package</a>.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
-<p>Note that Shaw used data from a provider, <a href="https://www.linkedin.com/company/stratagem-ltd/about/">Stratagem</a>, that no long provides data, as far as I can tell. For at least this reason, I won’t be able to exactly match his reason.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
+<p>First, let’s pull the data we’ll need–2016/17 and 2017/18 <a href="https://www.premierleague.com">English Premier League</a> goals and <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">expected goals (xG)</a> by player. I’m using <a href="https://understat.com/">understat</a> since it is a reliable source of data<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> and is easy to retrieve data from via the <a href="https://jaseziv.github.io/worldfootballR/"><code>{worldfootballR}</code> package</a>.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
+<p>Note that Shaw used data from a provider, <a href="https://www.linkedin.com/company/stratagem-ltd/about/">Stratagem</a>, that no long provides data, as far as I can tell. For at least this reason, I won’t be able to exactly match his reason.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## data wrangling</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(worldfootballR)</span>
@@ -448,7 +449,7 @@ O_p = \frac{G_p}{xG_p}
 </section>
 <section id="eb-step-1-estimate-prior-hyperparameters" class="level3">
 <h3 class="anchored" data-anchor-id="eb-step-1-estimate-prior-hyperparameters">EB step 1: estimate prior hyperparameters</h3>
-<p>Next, we estimate hyperparameters for our prior gamma distribution using MLE. (With R’s <code>dgamma</code>, the hyperparameters are <code>shape</code> and <code>rate</code><a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>). I subset the data down to players having taken at least 50 shots for estimating these hyperparameters, as this is what Shaw does. In general, you’d want to filter your data here to records that provide good “signal”, and, therefore, will provide reliable estimates of your hyperparameters.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
+<p>Next, we estimate hyperparameters for our prior gamma distribution using MLE. (With R’s <code>dgamma</code>, the hyperparameters are <code>shape</code> and <code>rate</code><a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>). I subset the data down to players having taken at least 50 shots for estimating these hyperparameters, as this is what Shaw does. In general, you’d want to filter your data here to records that provide good “signal”, and, therefore, will provide reliable estimates of your hyperparameters.<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>prior_shots_by_player <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  shots_by_player, </span>
@@ -475,7 +476,7 @@ O_p = \frac{G_p}{xG_p}
 </section>
 <section id="eb-step-2-use-prior-distribution-to-sample-the-posterior" class="level3">
 <h3 class="anchored" data-anchor-id="eb-step-2-use-prior-distribution-to-sample-the-posterior">EB step 2: Use prior distribution to sample the posterior</h3>
-<p>Now we start with our prior distribution hyperparameters and update all players’ <span class="math inline">\(O\)</span> ratio based on their individual evidence, i.e.&nbsp;their exact volume of goals and xG.</p>
+<p>Now we use our prior distribution’s hyperparameters to update all players’ <span class="math inline">\(O\)</span> ratio based on their individual volume of evidence, i.e.&nbsp;their goals and xG.</p>
 <div class="cell" data-label="adj_ratio_by_player">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>simulate_gamma_posterior <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    successes, </span>
@@ -529,7 +530,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Andy Carroll         67    10  6.09      1.64           1.29        0.296</span></span>
 <span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 578 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Now let’s plot our results, plotting our adjusted mean estimates of <span class="math inline">\(O_p\)</span>, ±1 standard deviation about the adjusted mean. As noted earlier, we won’t achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we’ve achieved results reasonably close to his.</p>
+<p>Finally, let’s plot our results, plotting our adjusted mean estimates of <span class="math inline">\(O_p\)</span>, ±1 standard deviation about the adjusted mean. As noted earlier, we won’t achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we’ve achieved results reasonably close to his.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -657,6 +658,150 @@ O_p = \frac{G_p}{xG_p}
 </div>
 <p><img src="shaw-figure-1-compared-w-tony-logo.png" class="img-fluid"></p>
 </section>
+<section id="beyond-replication" class="level3">
+<h3 class="anchored" data-anchor-id="beyond-replication">Beyond Replication</h3>
+<p>For the sake of having a pretty plot that’s not just an attempt to replicate the original, let’s run it all back, this time with EPL 2021/22 and 2022/23 data.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>raw_shots <span class="ot">&lt;-</span> worldfootballR<span class="sc">::</span><span class="fu">load_understat_league_shots</span>(<span class="at">league =</span> <span class="st">'EPL'</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>shots <span class="ot">&lt;-</span> raw_shots <span class="sc">|&gt;</span> </span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  tibble<span class="sc">::</span><span class="fu">as_tibble</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    season <span class="sc">%in%</span> <span class="fu">c</span>(2021L, 2022L),</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    situation <span class="sc">!=</span> <span class="st">'DirectFreeKick'</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(id) <span class="sc">|&gt;</span> </span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    id,</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    player,</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="do">## since 2022/23, xG is filled out, not x_g</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">xg =</span> dplyr<span class="sc">::</span><span class="fu">coalesce</span>(x_g, xG),</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">g =</span> <span class="fu">as.integer</span>(result <span class="sc">==</span> <span class="st">'Goal'</span>)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>shots_by_player <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(player) <span class="sc">|&gt;</span> </span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">shots =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(),</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">across</span>(<span class="fu">c</span>(g, xg), sum)</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">raw_ratio =</span> g <span class="sc">/</span> xg) <span class="sc">|&gt;</span> </span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(dplyr<span class="sc">::</span><span class="fu">desc</span>(shots))</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>shots_by_player</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>shots_by_player<span class="sc">$</span>adj_ratio <span class="ot">&lt;-</span> purrr<span class="sc">::</span><span class="fu">map2</span>(</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  shots_by_player<span class="sc">$</span>g, shots_by_player<span class="sc">$</span>xg,</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(g, xg) {</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>    <span class="fu">simulate_gamma_posterior</span>(</span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>      <span class="at">successes =</span> g,</span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>      <span class="at">trials =</span> xg,</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>      <span class="at">prior_shape =</span> prior_shape,</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>      <span class="at">prior_rate =</span> prior_rate</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>adj_ratio_by_player <span class="ot">&lt;-</span> shots_by_player <span class="sc">|&gt;</span> </span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(</span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>    adj_ratio, </span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_sep =</span> <span class="st">'_'</span></span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(dplyr<span class="sc">::</span><span class="fu">desc</span>(adj_ratio_mean))</span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>ordinal_adj_ratio_by_player <span class="ot">&lt;-</span> adj_ratio_by_player <span class="sc">|&gt;</span></span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>    player <span class="sc">%in%</span> <span class="fu">names</span>(shaw_players)</span>
+<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>    <span class="at">player =</span> forcats<span class="sc">::</span><span class="fu">fct_reorder</span>(shaw_players[player], adj_ratio_mean)</span>
+<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(htmltools)</span>
+<span id="cb6-56"><a href="#cb6-56" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sysfonts)</span>
+<span id="cb6-57"><a href="#cb6-57" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(showtext)</span>
+<span id="cb6-58"><a href="#cb6-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-59"><a href="#cb6-59" aria-hidden="true" tabindex="-1"></a>blackish_background <span class="ot">&lt;-</span> <span class="st">'#1f1f1f'</span></span>
+<span id="cb6-60"><a href="#cb6-60" aria-hidden="true" tabindex="-1"></a>font <span class="ot">&lt;-</span> <span class="st">'Titillium Web'</span></span>
+<span id="cb6-61"><a href="#cb6-61" aria-hidden="true" tabindex="-1"></a>sysfonts<span class="sc">::</span><span class="fu">font_add_google</span>(font, font)</span>
+<span id="cb6-62"><a href="#cb6-62" aria-hidden="true" tabindex="-1"></a>sysfonts<span class="sc">::</span><span class="fu">font_add</span>(<span class="st">'fb'</span>, <span class="st">'Font Awesome 6 Brands-Regular-400.otf'</span>)</span>
+<span id="cb6-63"><a href="#cb6-63" aria-hidden="true" tabindex="-1"></a>showtext<span class="sc">::</span><span class="fu">showtext_auto</span>()</span>
+<span id="cb6-64"><a href="#cb6-64" aria-hidden="true" tabindex="-1"></a>plot_resolution <span class="ot">&lt;-</span> <span class="dv">300</span></span>
+<span id="cb6-65"><a href="#cb6-65" aria-hidden="true" tabindex="-1"></a>showtext<span class="sc">::</span><span class="fu">showtext_opts</span>(<span class="at">dpi =</span> plot_resolution)</span>
+<span id="cb6-66"><a href="#cb6-66" aria-hidden="true" tabindex="-1"></a><span class="do">## https://github.com/tashapiro/tanya-data-viz/blob/1dfad735bca1a7f335969f0eafc94cf971345075/nba-shot-chart/nba-shots.R#L64</span></span>
+<span id="cb6-67"><a href="#cb6-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-68"><a href="#cb6-68" aria-hidden="true" tabindex="-1"></a>tag_lab <span class="ot">&lt;-</span> htmltools<span class="sc">::</span><span class="fu">tagList</span>(</span>
+<span id="cb6-69"><a href="#cb6-69" aria-hidden="true" tabindex="-1"></a>  htmltools<span class="sc">::</span>tags<span class="sc">$</span><span class="fu">span</span>(htmltools<span class="sc">::</span><span class="fu">HTML</span>(<span class="fu">enc2utf8</span>(<span class="st">"&amp;#xf099;"</span>)), <span class="at">style=</span><span class="st">'font-family:fb'</span>),</span>
+<span id="cb6-70"><a href="#cb6-70" aria-hidden="true" tabindex="-1"></a>  htmltools<span class="sc">::</span>tags<span class="sc">$</span><span class="fu">span</span>(<span class="st">"@TonyElHabr"</span>),</span>
+<span id="cb6-71"><a href="#cb6-71" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-72"><a href="#cb6-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-73"><a href="#cb6-73" aria-hidden="true" tabindex="-1"></a>beyond_replication_adj_ratio_plot <span class="ot">&lt;-</span> ordinal_adj_ratio_by_player <span class="sc">|&gt;</span></span>
+<span id="cb6-74"><a href="#cb6-74" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb6-75"><a href="#cb6-75" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">y =</span> player) <span class="sc">+</span></span>
+<span id="cb6-76"><a href="#cb6-76" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_vline</span>(</span>
+<span id="cb6-77"><a href="#cb6-77" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">xintercept =</span> <span class="dv">1</span>), </span>
+<span id="cb6-78"><a href="#cb6-78" aria-hidden="true" tabindex="-1"></a>    <span class="at">linewidth =</span> <span class="fl">1.5</span>,</span>
+<span id="cb6-79"><a href="#cb6-79" aria-hidden="true" tabindex="-1"></a>    <span class="at">linetype =</span> <span class="dv">2</span>,</span>
+<span id="cb6-80"><a href="#cb6-80" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">'white'</span></span>
+<span id="cb6-81"><a href="#cb6-81" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-82"><a href="#cb6-82" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_errorbarh</span>(</span>
+<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
+<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>      <span class="at">xmin =</span> adj_ratio_mean <span class="sc">-</span> adj_ratio_sd,</span>
+<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>      <span class="at">xmax =</span> adj_ratio_mean <span class="sc">+</span> adj_ratio_sd</span>
+<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">'white'</span>,</span>
+<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>    <span class="at">height =</span> <span class="fl">0.5</span></span>
+<span id="cb6-89"><a href="#cb6-89" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-90"><a href="#cb6-90" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_point</span>(</span>
+<span id="cb6-91"><a href="#cb6-91" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">x =</span> adj_ratio_mean, <span class="at">size =</span> shots),</span>
+<span id="cb6-92"><a href="#cb6-92" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">'white'</span></span>
+<span id="cb6-93"><a href="#cb6-93" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-94"><a href="#cb6-94" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb6-95"><a href="#cb6-95" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">theme</span>(</span>
+<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>    <span class="at">text =</span> ggplot2<span class="sc">::</span><span class="fu">element_text</span>(<span class="at">family =</span> font, <span class="at">color =</span> <span class="st">'white'</span>),</span>
+<span id="cb6-97"><a href="#cb6-97" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> ggplot2<span class="sc">::</span><span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">color =</span> <span class="st">'white'</span>),</span>
+<span id="cb6-98"><a href="#cb6-98" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> ggplot2<span class="sc">::</span><span class="fu">element_text</span>(<span class="at">face =</span> <span class="st">'bold'</span>, <span class="at">size =</span> <span class="dv">16</span>, <span class="at">color =</span> <span class="st">'white'</span>, <span class="at">hjust =</span> <span class="dv">0</span>),</span>
+<span id="cb6-99"><a href="#cb6-99" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title.position =</span> <span class="st">'plot'</span>,</span>
+<span id="cb6-100"><a href="#cb6-100" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.subtitle =</span> ggplot2<span class="sc">::</span><span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">14</span>, <span class="at">color =</span> <span class="st">'white'</span>, <span class="at">hjust =</span> <span class="dv">0</span>),</span>
+<span id="cb6-101"><a href="#cb6-101" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.margin =</span> ggplot2<span class="sc">::</span><span class="fu">margin</span>(<span class="dv">10</span>, <span class="dv">20</span>, <span class="dv">10</span>, <span class="dv">20</span>),</span>
+<span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.caption =</span> ggtext<span class="sc">::</span><span class="fu">element_markdown</span>(<span class="at">color =</span> <span class="st">'white'</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">size =</span> <span class="dv">10</span>, <span class="at">face =</span> <span class="st">'plain'</span>, <span class="at">lineheight =</span> <span class="fl">1.1</span>),</span>
+<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.caption.position =</span> <span class="st">'plot'</span>,</span>
+<span id="cb6-104"><a href="#cb6-104" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.tag =</span> ggtext<span class="sc">::</span><span class="fu">element_markdown</span>(<span class="at">size =</span> <span class="dv">10</span>, <span class="at">color =</span> <span class="st">'white'</span>, <span class="at">hjust =</span> <span class="dv">1</span>),</span>
+<span id="cb6-105"><a href="#cb6-105" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.tag.position =</span> <span class="fu">c</span>(<span class="fl">0.99</span>, <span class="fl">0.01</span>),</span>
+<span id="cb6-106"><a href="#cb6-106" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.major.y =</span> ggplot2<span class="sc">::</span><span class="fu">element_blank</span>(),</span>
+<span id="cb6-107"><a href="#cb6-107" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.minor.x =</span> ggplot2<span class="sc">::</span><span class="fu">element_blank</span>(),</span>
+<span id="cb6-108"><a href="#cb6-108" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.major.x =</span> ggplot2<span class="sc">::</span><span class="fu">element_line</span>(<span class="at">linewidth =</span> <span class="fl">0.1</span>),</span>
+<span id="cb6-109"><a href="#cb6-109" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.background =</span> ggplot2<span class="sc">::</span><span class="fu">element_rect</span>(<span class="at">fill =</span> blackish_background, <span class="at">color =</span> blackish_background),</span>
+<span id="cb6-110"><a href="#cb6-110" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.background =</span> ggplot2<span class="sc">::</span><span class="fu">element_rect</span>(<span class="at">fill =</span> blackish_background, <span class="at">color =</span> blackish_background),</span>
+<span id="cb6-111"><a href="#cb6-111" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title =</span> ggplot2<span class="sc">::</span><span class="fu">element_text</span>(<span class="at">color =</span> <span class="st">'white'</span>, <span class="at">size =</span> <span class="dv">14</span>, <span class="at">face =</span> <span class="st">'bold'</span>, <span class="at">hjust =</span> <span class="fl">0.99</span>),</span>
+<span id="cb6-112"><a href="#cb6-112" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.line =</span> ggplot2<span class="sc">::</span><span class="fu">element_blank</span>(),</span>
+<span id="cb6-113"><a href="#cb6-113" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text =</span> ggplot2<span class="sc">::</span><span class="fu">element_text</span>(<span class="at">color =</span> <span class="st">'white'</span>, <span class="at">size =</span> <span class="dv">12</span>),</span>
+<span id="cb6-114"><a href="#cb6-114" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.y =</span> ggtext<span class="sc">::</span><span class="fu">element_markdown</span>(),</span>
+<span id="cb6-115"><a href="#cb6-115" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.text =</span> ggplot2<span class="sc">::</span><span class="fu">element_text</span>(<span class="at">color =</span> <span class="st">'white'</span>, <span class="at">size =</span> <span class="dv">12</span>),</span>
+<span id="cb6-116"><a href="#cb6-116" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">'top'</span></span>
+<span id="cb6-117"><a href="#cb6-117" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb6-118"><a href="#cb6-118" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">labs</span>(</span>
+<span id="cb6-119"><a href="#cb6-119" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">'Top 20 shooting overperformers in the EPL'</span>,</span>
+<span id="cb6-120"><a href="#cb6-120" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">'EPL 2021/22 and 2022/23 seasons. '</span>,</span>
+<span id="cb6-121"><a href="#cb6-121" aria-hidden="true" tabindex="-1"></a>    <span class="at">caption =</span> <span class="st">'Players sorted according to descending adjusted G/xG ratio. Minimum 100 shots&lt;br/&gt;**Source**: understat '</span>,</span>
+<span id="cb6-122"><a href="#cb6-122" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="cn">NULL</span>,</span>
+<span id="cb6-123"><a href="#cb6-123" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">'Adjusted G/xG Ratio'</span>,</span>
+<span id="cb6-124"><a href="#cb6-124" aria-hidden="true" tabindex="-1"></a>    <span class="at">tag =</span> tag_lab</span>
+<span id="cb6-125"><a href="#cb6-125" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-126"><a href="#cb6-126" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-127"><a href="#cb6-127" aria-hidden="true" tabindex="-1"></a>beyond_replication_plot_path <span class="ot">&lt;-</span> <span class="fu">file.path</span>(proj_dir, <span class="st">'beyond-replication.png'</span>)</span>
+<span id="cb6-128"><a href="#cb6-128" aria-hidden="true" tabindex="-1"></a>ggplot2<span class="sc">::</span><span class="fu">ggsave</span>(</span>
+<span id="cb6-129"><a href="#cb6-129" aria-hidden="true" tabindex="-1"></a>  beyond_replication_adj_ratio_plot,</span>
+<span id="cb6-130"><a href="#cb6-130" aria-hidden="true" tabindex="-1"></a>  <span class="at">filename =</span> beyond_replication_plot_path,</span>
+<span id="cb6-131"><a href="#cb6-131" aria-hidden="true" tabindex="-1"></a>  <span class="at">width =</span> <span class="dv">7</span>,</span>
+<span id="cb6-132"><a href="#cb6-132" aria-hidden="true" tabindex="-1"></a>  <span class="at">height =</span> <span class="dv">7</span></span>
+<span id="cb6-133"><a href="#cb6-133" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><img src="beyond-replication.png" class="img-fluid"></p>
+<p>For those who follow the EPL, The usual suspects, like Heung-Min Son, show up among the best of the best HERE. The adjusted mean minus one standard deviation value exceeds zero for Son, so one might say that he was a significantly skilled shooter over the past two season.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></p>
+</section>
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
@@ -686,10 +831,12 @@ No matching items
 <li><a href="https://twitter.com/TonyElHabr/status/1429610210964955137?s=20">to adjust Whataburger Yelp reviews for small sample sizes</a></li>
 </ol>
 <a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></li>
-<li id="fn3"><p><a href="https://fbref.com/en/expected-goals-model-explained/">FBRef</a> only provides expected goals dating back to the 2017/18 season, so unfortunately it’s not viable for this analysis.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>The other major reason why I may not be able to match his results is if I’ve implemented the Gamma-Poisson adjustment in a different (hopefully, not incorrect 😅) manner.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn5"><p>In <a href="https://en.wikipedia.org/wiki/Gamma_distribution">the wild</a>, you’ll see <code>alpha</code> and <code>beta</code> used to describe the hyperparameters. <code>shape</code> and <code>rate</code> are different ways of framing these parameters.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>Note that this process of selecting priors is the “twist” I mentioned in the introduction that really separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>Note that understat maintains its own xG model, so the xG on understat won’t exactly match what you might get from <a href="https://www.statsperform.com/opta/">Opta</a> or <a href="https://statsbomb.com/">StatsBomb</a>.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p><a href="https://fbref.com/en/expected-goals-model-explained/">FBRef</a> only provides expected goals dating back to the 2017/18 season, so unfortunately it’s not viable for this analysis.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>The other major reason why I may not be able to match his results is if I’ve implemented the Gamma-Poisson adjustment in a different (hopefully, not incorrect 😅) manner.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>In <a href="https://en.wikipedia.org/wiki/Gamma_distribution">the wild</a>, you’ll see <code>alpha</code> and <code>beta</code> used to describe the hyperparameters. <code>shape</code> and <code>rate</code> are different ways of framing these parameters.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>Note that this process of selecting priors is the “twist” I mentioned in the introduction that really separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>A more strict and, arguably, correct measure is a 90 or 95% credible interval to ascertain “significance”. Nonetheless, for the purpose of maintaining consistency with Shaw, I’m showing standard deviation.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
