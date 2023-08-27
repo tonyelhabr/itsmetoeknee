@@ -261,7 +261,7 @@ cookieconsent.run({
   <ul>
   <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a>
   <ul>
-  <li><a href="#what-is-empirical-bayes-eb-estimation" id="toc-what-is-empirical-bayes-eb-estimation" class="nav-link" data-scroll-target="#what-is-empirical-bayes-eb-estimation">What Is empirical Bayes (EB) estimation?</a></li>
+  <li><a href="#what-is-empirical-bayes-eb-estimation" id="toc-what-is-empirical-bayes-eb-estimation" class="nav-link" data-scroll-target="#what-is-empirical-bayes-eb-estimation">What Is Empirical Bayes (EB) estimation?</a></li>
   <li><a href="#a-canonical-example-of-eb-estimation-beta-binomial" id="toc-a-canonical-example-of-eb-estimation-beta-binomial" class="nav-link" data-scroll-target="#a-canonical-example-of-eb-estimation-beta-binomial">A canonical example of EB estimation (Beta-Binomial)</a></li>
   <li><a href="#gamma-poisson-eb-estimation" id="toc-gamma-poisson-eb-estimation" class="nav-link" data-scroll-target="#gamma-poisson-eb-estimation">Gamma-Poisson EB estimation</a></li>
   </ul></li>
@@ -324,14 +324,14 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
 <p>This blog post is my attempt to replicate the results in Laurie Shaw’s 2018 blog post <a href="http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html">“Exceeding Expected Goals”</a>. Specifically, I want to shed light on how to implement <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model">Gamma-Poisson</a> <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method">empirical Bayes</a> (EB) estimation. If you don’t care at all about the theory behind EB and its application to this context, then go ahead and skip ahead to the “Implementation” section.</p>
 <section id="what-is-empirical-bayes-eb-estimation" class="level3">
-<h3 class="anchored" data-anchor-id="what-is-empirical-bayes-eb-estimation">What Is empirical Bayes (EB) estimation?</h3>
+<h3 class="anchored" data-anchor-id="what-is-empirical-bayes-eb-estimation">What Is Empirical Bayes (EB) estimation?</h3>
 <p><strong>Empirical Bayes</strong> (EB) estimation. Wow, just typing that out makes me feel smart. But what is it, really? In short, I’d describe it as a mix of <a href="https://en.wikipedia.org/wiki/Bayesian_inference">Bayesian</a> and <a href="https://en.wikipedia.org/wiki/Frequentist_inference">Frequentist</a> inference. We lean into the observed frequencies of the data (Frequentist) while simultaneously refining our initial data assumptions through Bayesian updating. In practice, one might use EB as a (relatively) simple alternative to a full Bayesian analysis, which can feel daunting.</p>
 <p>In regular Bayesian analysis, you start with your initial “guess” (prior distribution) about something, and as you gather data, you tweak that “guess” using Bayes’ theorem to get a final view (posterior distribution). We combine what we thought about the data beforehand with how likely the data matches (likelihood).</p>
 <p>Empirical Bayes puts a twist on this. Instead of having a prior guess, you figure out that initial guess from the same data you’re analyzing. This can make things simpler, especially when you’re dealing with tons of guesses but not much initial info.</p>
 </section>
 <section id="a-canonical-example-of-eb-estimation-beta-binomial" class="level3">
 <h3 class="anchored" data-anchor-id="a-canonical-example-of-eb-estimation-beta-binomial">A canonical example of EB estimation (Beta-Binomial)</h3>
-<p><a href="https://github.com/dgrtwo">David Robinson</a> wrote <a href="http://varianceexplained.org/r/empirical_bayes_baseball/">a wonderful blog post</a> about empirical Bayes estimation for estimating <a href="https://en.wikipedia.org/wiki/Batting_average_(baseball)">batting averages in baseball</a>, notably “shrinking” the battering average sof those with relatively few at bats closer to some “prior” estimate derived from a choice of hyperparameters. For context, batting average, <span class="math inline">\(BA\)</span>, is defined as a player’s count of hits, <span class="math inline">\(H\)</span>, divided by the count of their at-bats, <span class="math inline">\(AB\)</span>.</p>
+<p><a href="https://github.com/dgrtwo">David Robinson</a> wrote <a href="http://varianceexplained.org/r/empirical_bayes_baseball/">a wonderful blog post</a> about empirical Bayes estimation for estimating <a href="https://en.wikipedia.org/wiki/Batting_average_(baseball)">batting averages in baseball</a>, notably “shrinking” the battering averages of those with relatively few at bats closer to some “prior” estimate derived from a choice of hyperparameters. For context, batting average, <span class="math inline">\(BA\)</span>, is defined as a player’s count of hits, <span class="math inline">\(H\)</span>, divided by the count of their at bats, <span class="math inline">\(AB\)</span>.</p>
 <p><span id="eq-ba"><span class="math display">\[
 BA = H / AB
 \tag{1}\]</span></span></p>
@@ -345,14 +345,14 @@ Note
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>I’d David’s post <strong>must read</strong> material prior to going through this blog post.</p>
+<p>I’d David’s post <strong>must read</strong> material before going through this blog post.</p>
 </div>
 </div>
-<p>In his post, David uses <a href="https://en.wikipedia.org/wiki/Beta_distribution">a Beta prior</a> and <a href="https://en.wikipedia.org/wiki/Binomial_distribution">a binomial posterior</a> together, i.e.&nbsp;a <a href="https://www.bayesrulesbook.com/chapter-3">Beta-binomial Bayesian model</a>)<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a><a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, since this tandem is suitable for proportions and probabilities. The gist of his approach: we add some fixed number of hits, <span class="math inline">\(\alpha_0\)</span>, and a fixed number of at-bats, <span class="math inline">\(\beta_0\)</span>, to the numerator and denominator of the battering average equation as so.</p>
+<p>In his post, David uses <a href="https://en.wikipedia.org/wiki/Beta_distribution">a Beta prior</a> and <a href="https://en.wikipedia.org/wiki/Binomial_distribution">a binomial posterior</a> together, i.e.&nbsp;a <a href="https://www.bayesrulesbook.com/chapter-3">Beta-binomial Bayesian model</a>)<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a><a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, since this tandem is suitable for proportions and probabilities. The gist of his approach: we add some fixed number of hits, <span class="math inline">\(\alpha_0\)</span>, and a fixed number of at bats, <span class="math inline">\(\beta_0\)</span>, to the numerator and denominator of the battering average equation as so.</p>
 <p><span id="eq-adj-ba"><span class="math display">\[
 (H + \alpha_0) / (AB + \alpha_0 + \beta_0)
 \tag{2}\]</span></span></p>
-<p>Specifically, the “prior” estimate of batting average is found from isolating the <span class="math inline">\(\alpha_0\)</span> and <span class="math inline">\(\beta_0\)</span> elements:</p>
+<p>Specifically, the “prior” estimate of batting average is found by isolating the <span class="math inline">\(\alpha_0\)</span> and <span class="math inline">\(\beta_0\)</span> elements:</p>
 <p><span id="eq-ba-prior"><span class="math display">\[
 \alpha_0 / (\alpha_0 + \beta_0)
 \tag{3}\]</span></span></p>
@@ -360,13 +360,13 @@ Note
 </section>
 <section id="gamma-poisson-eb-estimation" class="level3">
 <h3 class="anchored" data-anchor-id="gamma-poisson-eb-estimation">Gamma-Poisson EB estimation</h3>
-<p>Now, for my replication of Shaw’s analysis, we’re going to be focusing on the ratio of a player’s goals, <span class="math inline">\(G\)</span>, divided by their <a href="../../posts/epl-xpts-simulation-1">expected goals</a>), <span class="math inline">\(xG\)</span>, summed up over a fixed time period. Shaw refers to this as “overperformance” <span class="math inline">\(O\)</span> for a player <span class="math inline">\(p\)</span>:</p>
+<p>Now, for my replication of Shaw’s analysis, we’re going to be focusing on the ratio of a player’s goals, <span class="math inline">\(G\)</span>, divided by their <a href="../../posts/epl-xpts-simulation-1">expected goals</a>), <span class="math inline">\(xG\)</span>, summed up over a fixed period. Shaw refers to this as “overperformance” <span class="math inline">\(O\)</span> for a player <span class="math inline">\(p\)</span>:</p>
 <p><span id="eq-o"><span class="math display">\[
 O_p = \frac{G_p}{xG_p}
 \tag{4}\]</span></span></p>
 <p>While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in <a href="#eq-ba">Equation&nbsp;1</a>, Shaw used a <a href="https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family">Gamma-Poisson</a> EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts <em>and</em> what you’re trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, batting average is bounded between 0 and 1.</p>
-<p>Now, despite the naming of conjugate prior pairs–e.g.&nbsp;“Beta-Binomial” and “Gamma-Poisson”, where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second–let’s not forget that there are actually a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the “kernel” (i.e.&nbsp;the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)</p>
-<p>In practice, this means that we’ll be using the Gamma distribution for both estimating hyperparameters and posterior sampling. Perhaps surprising to the reader, you won’t actually need any Poisson functions in the code implementation. Rather, the Poisson distribution is pertinent to implementation only to the extent that the Gamma distribution happens to be the most reasonable distribution to pair with it.</p>
+<p>Now, despite the naming of conjugate prior pairs–e.g.&nbsp;“Beta-Binomial” and “Gamma-Poisson”, where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second–let’s not forget that there is a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the “kernel” (i.e.&nbsp;the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)</p>
+<p>In practice, this means that we’ll be using the Gamma distribution for both estimating hyperparameters and posterior sampling. Perhaps surprising to the reader, you won’t need any Poisson functions in the code implementation. Rather, the Poisson distribution is pertinent to implementation only to the extent that the Gamma distribution happens to be the most reasonable distribution to pair with it.</p>
 <p>I’ve woefully explained away a lot of details here, but hopefully this all makes sense to those with a basic understanding of the Gamma and Poisson distributions themselves.</p>
 </section>
 </section>
@@ -419,7 +419,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 112097 Roberto Firmino 0.0241      0</span></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 19,037 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Above was pulling in every record of shots, with 1 row per shot. Now we aggregate to the player-level, such that we have one row per player.</p>
+<p>Above was pulling in every record of shots, with 1 row per shot. Now we aggregate to the player level, such that we have one row per player.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>shots_by_player <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(player) <span class="sc">|&gt;</span> </span>
@@ -530,7 +530,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Andy Carroll         67    10  6.09      1.64           1.29        0.296</span></span>
 <span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 578 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Finally, let’s plot our results, plotting our adjusted mean estimates of <span class="math inline">\(O_p\)</span>, ±1 standard deviation about the adjusted mean. As noted earlier, we won’t achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we’ve achieved results reasonably close to his.</p>
+<p>Finally, let’s plot our results, plotting our adjusted mean estimates of <span class="math inline">\(O_p\)</span>, ±1 standard deviation about the adjusted mean.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> As noted earlier, we won’t achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we’ve achieved results reasonably close to his.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -784,7 +784,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb6-118"><a href="#cb6-118" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">labs</span>(</span>
 <span id="cb6-119"><a href="#cb6-119" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">'Top 20 shooting overperformers in the EPL'</span>,</span>
 <span id="cb6-120"><a href="#cb6-120" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">'EPL 2021/22 and 2022/23 seasons. '</span>,</span>
-<span id="cb6-121"><a href="#cb6-121" aria-hidden="true" tabindex="-1"></a>    <span class="at">caption =</span> <span class="st">'Players sorted according to descending adjusted G/xG ratio. Minimum 100 shots&lt;br/&gt;**Source**: understat '</span>,</span>
+<span id="cb6-121"><a href="#cb6-121" aria-hidden="true" tabindex="-1"></a>    <span class="at">caption =</span> <span class="st">'Players sorted according to descending adjusted G/xG ratio. Minimum 100 shots.&lt;br/&gt;**Source**: understat.'</span>,</span>
 <span id="cb6-122"><a href="#cb6-122" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="cn">NULL</span>,</span>
 <span id="cb6-123"><a href="#cb6-123" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">'Adjusted G/xG Ratio'</span>,</span>
 <span id="cb6-124"><a href="#cb6-124" aria-hidden="true" tabindex="-1"></a>    <span class="at">tag =</span> tag_lab</span>
@@ -800,14 +800,14 @@ O_p = \frac{G_p}{xG_p}
 </details>
 </div>
 <p><img src="beyond-replication.png" class="img-fluid"></p>
-<p>For those who follow the EPL, The usual suspects, like Heung-Min Son, show up among the best of the best HERE. The adjusted mean minus one standard deviation value exceeds zero for Son, so one might say that he was a significantly skilled shooter over the past two season.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></p>
+<p>For those who follow the EPL, The usual suspects, like Heung-Min Son, show up among the best of the best HERE. The adjusted mean minus one standard deviation value exceeds zero for Son, so one might say that he was a significantly skilled shooter over the past two season.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a></p>
 </section>
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
 <p>Having not seen a very clear example of Gamma-Prior EB implementation on the internet–although there are several good explanations with toy examples such as <a href="https://vioshyvo.github.io/Bayesian_inference/conjugate-distributions.html">this e-book chapter from Hyvönen and Topias Tolonen</a>–I hope I’ve perhaps un-muddied the waters for at least one interested reader.</p>
-<p>As for the actual application of <span class="math inline">\(G / xG\)</span> for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has basically zero year-over-year stability, i.e.&nbsp;one shouldn’t use a player’s raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of <span class="math inline">\(O_p\)</span> certainly is an improvement over raw <span class="math inline">\(G / xG\)</span> itself.</p>
-<p>Comparing hypothetical player A with 6 goals on 2 xG (<span class="math inline">\(O_p = 3\)</span>) vs.&nbsp;player B with 120 goals on 100 xG directly (<span class="math inline">\(O_p = 1.2\)</span>) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A’s <span class="math inline">\(O_p\)</span> would be shrunken back towards 1, and player B’s adjustment would be basically nothing, indicating that player B’s shooting performance is stronger, on average.</p>
+<p>As for the actual application of <span class="math inline">\(G / xG\)</span> for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has zero year-over-year stability, i.e.&nbsp;one shouldn’t use a player’s raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of <span class="math inline">\(O_p\)</span> certainly is an improvement over raw <span class="math inline">\(G / xG\)</span> itself.</p>
+<p>Comparing hypothetical player A with 6 goals on 2 xG (<span class="math inline">\(O_p = 3\)</span>) vs.&nbsp;player B with 120 goals on 100 xG directly (<span class="math inline">\(O_p = 1.2\)</span>) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A’s <span class="math inline">\(O_p\)</span> would be shrunken back towards 1, and player B’s adjustment would be effectively nothing, indicating that player B’s shooting performance is stronger, on average.</p>
 
 
 
@@ -836,7 +836,8 @@ No matching items
 <li id="fn5"><p>The other major reason why I may not be able to match his results is if I’ve implemented the Gamma-Poisson adjustment in a different (hopefully, not incorrect 😅) manner.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn6"><p>In <a href="https://en.wikipedia.org/wiki/Gamma_distribution">the wild</a>, you’ll see <code>alpha</code> and <code>beta</code> used to describe the hyperparameters. <code>shape</code> and <code>rate</code> are different ways of framing these parameters.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn7"><p>Note that this process of selecting priors is the “twist” I mentioned in the introduction that really separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn8"><p>A more strict and, arguably, correct measure is a 90 or 95% credible interval to ascertain “significance”. Nonetheless, for the purpose of maintaining consistency with Shaw, I’m showing standard deviation.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>This post isn’t meant to be about uncertainty and credible intervals for EB adjusted means, so I won’t go into it here. Loosely, one can read the interval as quantifying the bound about which we can be confident that the true estimate lands. Uncertainty intervals that overlap with 1 broadly suggest that, even though the mean estimate may look to be much greater or less than 1, we cannot say the difference is significant from the “average” (of 1).<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>A more strict and, arguably, correct measure is a 90 or 95% credible interval to ascertain “significance”. Nonetheless, to maintain consistency with Shaw, I’m showing standard deviation.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

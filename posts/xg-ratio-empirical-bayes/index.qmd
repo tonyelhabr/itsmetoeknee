@@ -17,7 +17,7 @@ execute:
 
 This blog post is my attempt to replicate the results in Laurie Shaw's 2018 blog post ["Exceeding Expected Goals"](http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html). Specifically, I want to shed light on how to implement [Gamma-Poisson](https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model) [empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) (EB) estimation. If you don't care at all about the theory behind EB and its application to this context, then go ahead and skip ahead to the "Implementation" section.
 
-### What Is empirical Bayes (EB) estimation?
+### What Is Empirical Bayes (EB) estimation?
 
 **Empirical Bayes** (EB) estimation. Wow, just typing that out makes me feel smart. But what is it, really? In short, I'd describe it as a mix of [Bayesian](https://en.wikipedia.org/wiki/Bayesian_inference) and [Frequentist](https://en.wikipedia.org/wiki/Frequentist_inference) inference. We lean into the observed frequencies of the data (Frequentist) while simultaneously refining our initial data assumptions through Bayesian updating. In practice, one might use EB as a (relatively) simple alternative to a full Bayesian analysis, which can feel daunting.
 
@@ -27,17 +27,17 @@ Empirical Bayes puts a twist on this. Instead of having a prior guess, you figur
 
 ### A canonical example of EB estimation (Beta-Binomial)
 
-[David Robinson](https://github.com/dgrtwo) wrote [a wonderful blog post](http://varianceexplained.org/r/empirical_bayes_baseball/) about empirical Bayes estimation for estimating [batting averages in baseball](https://en.wikipedia.org/wiki/Batting_average_(baseball)), notably "shrinking" the battering average sof those with relatively few at bats closer to some "prior" estimate derived from a choice of hyperparameters. For context, batting average, $BA$, is defined as a player's count of hits, $H$, divided by the count of their at-bats, $AB$.
+[David Robinson](https://github.com/dgrtwo) wrote [a wonderful blog post](http://varianceexplained.org/r/empirical_bayes_baseball/) about empirical Bayes estimation for estimating [batting averages in baseball](https://en.wikipedia.org/wiki/Batting_average_(baseball)), notably "shrinking" the battering averages of those with relatively few at bats closer to some "prior" estimate derived from a choice of hyperparameters. For context, batting average, $BA$, is defined as a player's count of hits, $H$, divided by the count of their at bats, $AB$.
 
 $$
 BA = H / AB
 $$ {#eq-ba}
 
 ::: callout-note
-I'd David's post **must read** material prior to going through this blog post.
+I'd David's post **must read** material before going through this blog post.
 :::
 
-In his post, David uses [a Beta prior](https://en.wikipedia.org/wiki/Beta_distribution) and [a binomial posterior](https://en.wikipedia.org/wiki/Binomial_distribution) together, i.e. a [Beta-binomial Bayesian model](https://www.bayesrulesbook.com/chapter-3))[^1][^2], since this tandem is suitable for proportions and probabilities. The gist of his approach: we add some fixed number of hits, $\alpha_0$, and a fixed number of at-bats, $\beta_0$, to the numerator and denominator of the battering average equation as so.
+In his post, David uses [a Beta prior](https://en.wikipedia.org/wiki/Beta_distribution) and [a binomial posterior](https://en.wikipedia.org/wiki/Binomial_distribution) together, i.e. a [Beta-binomial Bayesian model](https://www.bayesrulesbook.com/chapter-3))[^1][^2], since this tandem is suitable for proportions and probabilities. The gist of his approach: we add some fixed number of hits, $\alpha_0$, and a fixed number of at bats, $\beta_0$, to the numerator and denominator of the battering average equation as so.
 
 [^1]: This [conjugate distribution table](https://en.wikipedia.org/wiki/Conjugate_prior) might be handy for those curious to know which distributions are typically paired together for empirical Bayes estimation.
 
@@ -50,7 +50,7 @@ $$
 (H + \alpha_0) / (AB + \alpha_0 + \beta_0)
 $$ {#eq-adj-ba}
 
-Specifically, the "prior" estimate of batting average is found from isolating the $\alpha_0$ and $\beta_0$ elements:
+Specifically, the "prior" estimate of batting average is found by isolating the $\alpha_0$ and $\beta_0$ elements:
 
 $$
 \alpha_0 / (\alpha_0 + \beta_0)
@@ -60,7 +60,7 @@ If, for example, `alpha0 = 70` and `beta0 = 230`, then the prior estimate of bat
 
 ### Gamma-Poisson EB estimation
 
-Now, for my replication of Shaw's analysis, we're going to be focusing on the ratio of a player's goals, $G$, divided by their [expected goals](/posts/epl-xpts-simulation-1)), $xG$, summed up over a fixed time period. Shaw refers to this as "overperformance" $O$ for a player $p$:
+Now, for my replication of Shaw's analysis, we're going to be focusing on the ratio of a player's goals, $G$, divided by their [expected goals](/posts/epl-xpts-simulation-1)), $xG$, summed up over a fixed period. Shaw refers to this as "overperformance" $O$ for a player $p$:
 
 $$
 O_p = \frac{G_p}{xG_p}
@@ -68,9 +68,9 @@ $$ {#eq-o}
 
 While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in @eq-ba, Shaw used a [Gamma-Poisson](https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family) EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts *and* what you're trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, batting average is bounded between 0 and 1.
 
-Now, despite the naming of conjugate prior pairs--e.g. "Beta-Binomial" and "Gamma-Poisson", where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second--let's not forget that there are actually a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the "kernel" (i.e. the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)
+Now, despite the naming of conjugate prior pairs--e.g. "Beta-Binomial" and "Gamma-Poisson", where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second--let's not forget that there is a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the "kernel" (i.e. the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)
 
-In practice, this means that we'll be using the Gamma distribution for both estimating hyperparameters and posterior sampling. Perhaps surprising to the reader, you won't actually need any Poisson functions in the code implementation. Rather, the Poisson distribution is pertinent to implementation only to the extent that the Gamma distribution happens to be the most reasonable distribution to pair with it.
+In practice, this means that we'll be using the Gamma distribution for both estimating hyperparameters and posterior sampling. Perhaps surprising to the reader, you won't need any Poisson functions in the code implementation. Rather, the Poisson distribution is pertinent to implementation only to the extent that the Gamma distribution happens to be the most reasonable distribution to pair with it.
 
 I've woefully explained away a lot of details here, but hopefully this all makes sense to those with a basic understanding of the Gamma and Poisson distributions themselves.
 
@@ -135,7 +135,7 @@ shots
 #> # ℹ 19,037 more rows
 ```
 
-Above was pulling in every record of shots, with 1 row per shot. Now we aggregate to the player-level, such that we have one row per player.
+Above was pulling in every record of shots, with 1 row per shot. Now we aggregate to the player level, such that we have one row per player.
 
 ```{r}
 #| label: shots_by_player
@@ -260,7 +260,9 @@ adj_ratio_by_player
 #> # ℹ 578 more rows
 ```
 
-Finally, let's plot our results, plotting our adjusted mean estimates of $O_p$, ±1 standard deviation about the adjusted mean. As noted earlier, we won't achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we've achieved results reasonably close to his.
+Finally, let's plot our results, plotting our adjusted mean estimates of $O_p$, ±1 standard deviation about the adjusted mean.[^8] As noted earlier, we won't achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we've achieved results reasonably close to his.
+
+[^8]: This post isn't meant to be about uncertainty and credible intervals for EB adjusted means, so I won't go into it here. Loosely, one can read the interval as quantifying the bound about which we can be confident that the true estimate lands. Uncertainty intervals that overlap with 1 broadly suggest that, even though the mean estimate may look to be much greater or less than 1, we cannot say the difference is significant from the "average" (of 1).
 
 ```{r}
 #| label: plot
@@ -516,7 +518,7 @@ beyond_replication_adj_ratio_plot <- ordinal_adj_ratio_by_player |>
   ggplot2::labs(
     title = 'Top 20 shooting overperformers in the EPL',
     subtitle = 'EPL 2021/22 and 2022/23 seasons. ',
-    caption = 'Players sorted according to descending adjusted G/xG ratio. Minimum 100 shots<br/>**Source**: understat ',
+    caption = 'Players sorted according to descending adjusted G/xG ratio. Minimum 100 shots.<br/>**Source**: understat.',
     y = NULL,
     x = 'Adjusted G/xG Ratio',
     tag = tag_lab
@@ -533,14 +535,14 @@ ggplot2::ggsave(
 
 ![](beyond-replication.png)
 
-For those who follow the EPL, The usual suspects, like Heung-Min Son, show up among the best of the best HERE. The adjusted mean minus one standard deviation value exceeds zero for Son, so one might say that he was a significantly skilled shooter over the past two season.[^8]
+For those who follow the EPL, The usual suspects, like Heung-Min Son, show up among the best of the best HERE. The adjusted mean minus one standard deviation value exceeds zero for Son, so one might say that he was a significantly skilled shooter over the past two season.[^9]
 
-[^8]: A more strict and, arguably, correct measure is a 90 or 95% credible interval to ascertain "significance". Nonetheless, for the purpose of maintaining consistency with Shaw, I'm showing standard deviation.
+[^9]: A more strict and, arguably, correct measure is a 90 or 95% credible interval to ascertain "significance". Nonetheless, to maintain consistency with Shaw, I'm showing standard deviation.
 
 ## Conclusion
 
 Having not seen a very clear example of Gamma-Prior EB implementation on the internet--although there are several good explanations with toy examples such as [this e-book chapter from Hyvönen and Topias Tolonen](https://vioshyvo.github.io/Bayesian_inference/conjugate-distributions.html)--I hope I've perhaps un-muddied the waters for at least one interested reader.
 
-As for the actual application of $G / xG$ for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has basically zero year-over-year stability, i.e. one shouldn't use a player's raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of $O_p$ certainly is an improvement over raw $G / xG$ itself.
+As for the actual application of $G / xG$ for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has zero year-over-year stability, i.e. one shouldn't use a player's raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of $O_p$ certainly is an improvement over raw $G / xG$ itself.
 
-Comparing hypothetical player A with 6 goals on 2 xG ($O_p = 3$) vs. player B with 120 goals on 100 xG directly ($O_p = 1.2$) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A's $O_p$ would be shrunken back towards 1, and player B's adjustment would be basically nothing, indicating that player B's shooting performance is stronger, on average.
+Comparing hypothetical player A with 6 goals on 2 xG ($O_p = 3$) vs. player B with 120 goals on 100 xG directly ($O_p = 1.2$) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A's $O_p$ would be shrunken back towards 1, and player B's adjustment would be effectively nothing, indicating that player B's shooting performance is stronger, on average.
