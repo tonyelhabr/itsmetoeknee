@@ -1,0 +1,379 @@
+---
+title: Measuring Shooting Overperformance in Soccer
+description: Using empirical Bayes and the Gamma-Poisson conjugate pair
+date: 2023-09-05
+draft: true
+categories:
+  - r
+  - soccer
+image: shaw-figure-1-replication-w-tony-logo.png
+execute: 
+  eval: false
+  include: true
+  echo: true
+  code-fold: false
+---
+
+## Introduction
+
+This blog post is my attempt to replicate the results in Laurie Shaw's 2018 blog post ["Exceeding Expected Goals"](http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html). Specifically, I want to shed light on how to implement [Gamma-Poisson](https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model) [empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) (EB) estimation.
+
+### What Is empirical Bayes (EB) estimation?
+
+**Empirical Bayes** (EB) estimation. Wow, just typing that out makes me feel smart. But what is it, really? In short, I'd describe it as a mix of [Bayesian](https://en.wikipedia.org/wiki/Bayesian_inference) and [Frequentist](https://en.wikipedia.org/wiki/Frequentist_inference) inference. We lean into the observed frequencies of the data (Frequentist) while simultaneously refining our initial data assumptions through Bayesian updating. In practice, one might use EB as a (relatively) simple alternative to a full Bayesian analysis, which can feel daunting.
+
+In regular Bayesian analysis, you start with your initial "guess" (prior distribution) about something, and as you gather data, you tweak that "guess" using Bayes' theorem to get a final view (posterior distribution). We combine what we thought about the data beforehand with how likely the data matches (likelihood).
+
+Empirical Bayes puts a twist on this. Instead of having a prior guess, you figure out that initial guess from the same data you're analyzing. This can make things simpler, especially when you're dealing with tons of guesses but not much initial info.
+
+### A canonical example of EB estimation (Beta-Binomial)
+
+[David Robinson](https://github.com/dgrtwo) wrote [a wonderful blog post](http://varianceexplained.org/r/empirical_bayes_baseball/) about empirical Bayes estimation for estimating [batting averages in baseball](https://en.wikipedia.org/wiki/Batting_average_(baseball)), notably "shrinking" the battering average sof those with relatively few at bats closer to some "prior" estimate derived from a choice of hyperparameters. For context, batting average, $BA$, is defined as a player's count of hits, $H$, divided by the count of their at-bats, $AB$.
+
+$$
+BA = H / AB
+$$ {#eq-ba}
+
+::: callout-note
+I'd David's post **must read** material prior to going through this blog post.
+:::
+
+In his post, David uses [a Beta prior](https://en.wikipedia.org/wiki/Beta_distribution) and [a binomial posterior](https://en.wikipedia.org/wiki/Binomial_distribution) together, i.e. a [Beta-binomial Bayesian model](https://www.bayesrulesbook.com/chapter-3))[^1][^2], since this tandem is suitable for proportions and probabilities. The gist of his approach: we add some fixed number of hits, $\alpha_0$, and a fixed number of at-bats, $\beta_0$, to the numerator and denominator of the battering average equation as so.
+
+[^1]: This [conjugate distribution table](https://en.wikipedia.org/wiki/Conjugate_prior) might be handy for those curious to know which distributions are typically paired together for empirical Bayes estimation.
+
+[^2]: If you've seen my work, you might have noticed that I've used Beta-Binomial EB a few times for public projects in the past:
+
+    1.  [to estimate the proportion of direct free kick shots on target (soccer), grouped by league](https://twitter.com/TonyElHabr/status/1457377069957107715?s=20)
+    2.  [to adjust Whataburger Yelp reviews for small sample sizes](https://twitter.com/TonyElHabr/status/1429610210964955137?s=20)
+
+$$
+(H + \alpha_0) / (AB + \alpha_0 + \beta_0)
+$$ {#eq-adj-ba}
+
+Specifically, the "prior" estimate of batting average is found from isolating the $\alpha_0$ and $\beta_0$ elements:
+
+$$
+\alpha_0 / (\alpha_0 + \beta_0)
+$$ {#eq-ba-prior}
+
+If, for example, `alpha0 = 70` and `beta0 = 230`, then the prior estimate of batting average is effectively `70 / (70 + 230) = 0.3`. Note that `alpha0` and `beta0` are learned from the data using [maximum likelihood estimation (MLE)](https://en.wikipedia.org/wiki/Maximum_likelihood_estimation), although other approaches, such as ["method of moments"](https://en.wikipedia.org/wiki/Method_of_moments_(statistics)) could be used. (Heck, you could even defensibly choose these "hyperparameters" yourself, without any fancy statistics, if you feel that you have enough knowledge of the data.)
+
+### Gamma-Poisson EB estimation
+
+Now, for my replication of Shaw's analysis, we're going to be focusing on the ratio of a player's goals, $G$, divided by their [expected goals](/posts/epl-xpts-simulation-1)), $xG$, summed up over a fixed time period. Shaw refers to this as "overperformance" $O$ for a player $p$:
+
+$$
+O_p = \frac{G_p}{xG_p}
+$$ {#eq-o}
+
+While one might be tempted to use Beta-Binomial EB--shrinking the raw estimate for those with a relatively low volume of shots--Shaw used a \[Gamma-Poisson\]( [Gamma-Poisson](https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family) EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts *and* what you're trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, with @eq-ba, batting average is bounded between 0 and 1.
+
+## Implementation
+
+Ok, so with all of that context provided, now let's do the replication of Shaw's findings.
+
+### Data
+
+First, let's pull the data we'll need--2016/17 and 2017/18 [English Premier League](https://www.premierleague.com) shots, goals, and [xG](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) by player. I'm using [understat](https://understat.com/)'s xG data since it's a fairly reliable source of data and is easy to retrieve data from via the [`{worldfootballR}` package](https://jaseziv.github.io/worldfootballR/).[^3]
+
+[^3]: [FBRef](https://fbref.com/en/expected-goals-model-explained/) only provides expected goals dating back to the 2017/18 season, so unfortunately it's not viable for this analysis.
+
+Note that Shaw used data from a provider, [Stratagem](https://www.linkedin.com/company/stratagem-ltd/about/), that no long provides data, as far as I can tell. For at least this reason, I won't be able to exactly match his reason.[^4]
+
+[^4]: The other major reason why I may not be able to match his results is if I've implemented the Gamma-Poisson adjustment in a different (hopefully, not incorrect 😅) manner.
+
+```{r}
+#| label: shots
+#| code-fold: false
+## data wrangling
+library(worldfootballR)
+library(dplyr)
+library(tibble)
+
+## distribution fitting and wrangling
+library(MASS, include.only = 'fitdistr') ## to avoid `select` name conflict with dplyr
+library(withr)
+library(purrr)
+library(tidyr)
+
+raw_shots <- worldfootballR::load_understat_league_shots(league = 'EPL')
+shots <- raw_shots |> 
+  tibble::as_tibble() |> 
+  dplyr::filter(
+    season %in% c(2016L, 2017L), ## 2016/17 and 2017/18 seasons
+    ## "excluding free-kicks" in the blog post
+    situation != 'DirectFreeKick'
+  ) |> 
+  dplyr::arrange(id) |> 
+  dplyr::transmute(
+    id,
+    player,
+    xg = x_g,
+    g = as.integer(result == 'Goal')
+  )
+shots
+#> # A tibble: 19,047 × 4
+#>        id player               xg     g
+#>     <dbl> <chr>             <dbl> <int>
+#>  1 112088 Aaron Ramsey    0.0695      0
+#>  2 112089 Nathaniel Clyne 0.0293      0
+#>  3 112090 Aaron Ramsey    0.00734     0
+#>  4 112091 Roberto Firmino 0.0856      0
+#>  5 112092 Roberto Firmino 0.0441      0
+#>  6 112093 Sadio Mané      0.0607      0
+#>  7 112094 Ragnar Klavan   0.0742      0
+#>  8 112095 Theo Walcott    0.761       0
+#>  9 112096 Theo Walcott    0.0721      1
+#> 10 112097 Roberto Firmino 0.0241      0
+#> # ℹ 19,037 more rows
+```
+
+Above was pulling in every record of shots, with 1 row per shot. Now we aggregate to the player-level, such that we have one row per player.
+
+```{r}
+#| label: shots_by_player
+#| code-fold: false
+shots_by_player <- shots |> 
+  dplyr::group_by(player) |> 
+  dplyr::summarize(
+    shots = dplyr::n(),
+    dplyr::across(c(g, xg), sum)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(raw_g_xg_ratio = g / xg) |> 
+  dplyr::arrange(dplyr::desc(shots))
+shots_by_player
+#> # A tibble: 588 × 5
+#>    player            shots     g    xg raw_g_xg_ratio
+#>    <chr>             <int> <int> <dbl>          <dbl>
+#>  1 Harry Kane          293    59  46.7          1.26 
+#>  2 Sergio Agüero       234    41  41.2          0.994
+#>  3 Christian Eriksen   229    18  16.1          1.12 
+#>  4 Alexis Sánchez      217    33  29.1          1.13 
+#>  5 Romelu Lukaku       196    41  32.1          1.28 
+#>  6 Roberto Firmino     184    26  21.1          1.23 
+#>  7 Kevin De Bruyne     179    14  12.2          1.15 
+#>  8 Salomón Rondón      171    15  16.2          0.924
+#>  9 Paul Pogba          168    11  14.3          0.768
+#> 10 Christian Benteke   164    18  28.5          0.631
+#> # ℹ 578 more rows
+```
+
+Next, we estimate hyperparameters for our prior gamma distribution (with `dgamma`, these are the `shape` and `rate` parameters[^5]) using MLE. I choose to include players having taken at least 50 shots for estimating these hyperparameters. In general, you want to subset your data here to records that provide good "signal", and, therefore, will provide reliable estimates of your hyperparameters.
+
+[^5]: In [the wild](https://en.wikipedia.org/wiki/Gamma_distribution), you'll see `alpha` and `beta` used to describe the hyperparameters. `shape` and `rate` are different ways of framing these parameters.
+
+Note that this process of selecting priors using a subset of your data is one thing that separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.
+
+```{r}
+#| label: prior_distr
+#| code-fold: false
+prior_shots_by_player <- dplyr::filter(
+  shots_by_player, 
+  shots >= 50,
+  g > 0 ## prevent error with fitting prior distribution
+)
+
+prior_distr <- MASS::fitdistr(
+  prior_shots_by_player$raw_g_xg_ratio,
+  dgamma,
+  start = list(shape = 1, rate = 1)
+)
+prior_shape <- prior_distr$estimate[1]
+prior_rate <- prior_distr$estimate[2]
+list(prior_shape = round(prior_shape, 2), prior_rate = round(prior_rate, 2))
+#> $prior_shape
+#> shape 
+#>  9.39 
+#> 
+#> $prior_rate
+#> rate 
+#> 8.93
+```
+
+Now we simulate
+
+```{r}
+#| data-label: adj_shots_by_player
+#| code-fold: false
+simulate_gamma_posterior <- function(
+    successes, 
+    trials, 
+    prior_shape, 
+    prior_rate, 
+    n_sims = 10000,
+    seed = 42
+) {
+  posterior_shape <- prior_shape + successes
+  posterior_rate <- prior_rate + trials
+  withr::local_seed(seed)
+  posterior_sample <- rgamma(n = n_sims, shape = posterior_shape, rate = posterior_rate)
+  list(
+    mean = mean(posterior_sample),
+    sd = sd(posterior_sample)
+  )
+}
+
+shots_by_player$adj_g_xg_ratio <- purrr::map2(
+  shots_by_player$g, shots_by_player$xg,
+  function(g, xg) {
+    simulate_gamma_posterior(
+      successes = g,
+      trials = xg,
+      prior_shape = prior_shape,
+      prior_rate = prior_rate
+    )
+  }
+)
+
+adj_shots_by_player <- shots_by_player |> 
+  tidyr::unnest_wider(
+    adj_g_xg_ratio, 
+    names_sep = '_'
+  ) |> 
+  dplyr::arrange(dplyr::desc(adj_g_xg_ratio_mean))
+adj_shots_by_player
+#> # A tibble: 588 × 7
+#>    player            shots     g    xg raw_g_xg_ratio adj_g_xg_ratio_mean adj_g_xg_ratio_sd
+#>    <chr>             <int> <int> <dbl>          <dbl>               <dbl>             <dbl>
+#>  1 Fernando Llorente    57    16  9.19           1.74                1.40             0.281
+#>  2 Philippe Coutinho   160    20 12.5            1.60                1.37             0.256
+#>  3 Shkodran Mustafi     37     5  1.82           2.75                1.34             0.357
+#>  4 Pascal Groß          43     7  3.34           2.10                1.34             0.334
+#>  5 Ryan Fraser          55     8  4.09           1.95                1.34             0.324
+#>  6 Eden Hazard         148    28 19.2            1.45                1.33             0.219
+#>  7 James McArthur       53    10  5.93           1.69                1.31             0.299
+#>  8 Charlie Daniels      39     5  2.18           2.30                1.30             0.346
+#>  9 Xherdan Shaqiri     117    12  7.61           1.58                1.29             0.282
+#> 10 Andy Carroll         67    10  6.09           1.64                1.29             0.296
+```
+
+Now we can plot our results
+
+```{r}
+#| label: plot
+#| code-fold: true
+library(ggplot2)
+library(forcats)
+library(ggh4x)
+library(magick)
+
+shaw_players <- c(
+  'Eden Hazard' = 'E. Hazard',
+  'Mohamed Salah' = 'Mohamed Salah',
+  'Son Heung-Min' = 'Heung-Min Son',
+  'Joshua King' = 'J. King',
+  'Romelu Lukaku' = 'R. Lukaku',
+  'Harry Kane' = 'H. Kane',
+  'Sadio Mané' = 'S. Mane',
+  'Dele Alli' = 'D. Ali',
+  'Riyad Mahrez' = 'R. Mahrez',
+  'Christian Eriksen' = 'C. Eriksen',
+  'Pedro' = 'Pedro',
+  'Alexis Sánchez' = 'A. Sanchez',
+  'Roberto Firmino' = 'Roberto Firmino',
+  'Jamie Vardy' = 'J. Vardy',
+  'Xherdan Shaqiri' = 'X. Shaqiri',
+  'Wilfried Zaha' = 'W. Zaha',
+  'Nathan Redmond' = 'N. Redmond',
+  'Gylfi Sigurdsson' = 'G. Sigurdsson',
+  'Kevin De Bruyne' = 'K. De Bruyne',
+  'Andros Townsend' = 'A. Townsend',
+  'Sergio Agüero' = 'S. Aguero',
+  'Marcus Rashford' = 'M. Rashford',
+  'Jermain Defoe' = 'J. Defoe',
+  'Raheem Sterling' = 'R. Sterling',
+  'Marko Arnautovic' = 'M. Arnautovic',
+  'Paul Pogba' = 'P. Pogba',
+  'Salomón Rondón' = 'S. Rondon',
+  'Christian Benteke' = 'C. Benteke'
+)
+
+ordinal_adj_shots_by_player <- adj_shots_by_player |>
+  dplyr::filter(
+    player %in% names(shaw_players)
+  ) |> 
+  dplyr::mutate(
+    player = forcats::fct_reorder(shaw_players[player], adj_g_xg_ratio_mean)
+  )
+
+adj_ratio_plot <- ordinal_adj_shots_by_player |>
+  ggplot2::ggplot() +
+  ggplot2::aes(y = player) +
+  ggplot2::geom_errorbarh(
+    aes(
+      xmin = adj_g_xg_ratio_mean - adj_g_xg_ratio_sd,
+      xmax = adj_g_xg_ratio_mean + adj_g_xg_ratio_sd
+    ),
+    color = 'blue',
+    linewidth = 0.1,
+    height = 0.3
+  ) +
+  ggplot2::geom_point(
+    ggplot2::aes(x = adj_g_xg_ratio_mean),
+    shape = 23,
+    size = 0.75,
+    stroke = 0.15,
+    fill = 'red',
+    color = 'black'
+  ) +
+  ggplot2::geom_vline(
+    ggplot2::aes(xintercept = 1), 
+    linewidth = 0.1, 
+    linetype = 2
+  ) +
+  ## add duplicate axis for ticks: https://stackoverflow.com/questions/56247205/r-ggplot2-add-ticks-on-top-and-right-sides-of-all-facets
+  ggplot2::scale_x_continuous(sec.axis = ggplot2::dup_axis()) +
+  ## ggplot2 doesn't support duplicated and creatinga  second axis for discrete variables:
+  ##   https://github.com/tidyverse/ggplot2/issues/3171.
+  ##   using ggh4x is a workaround.
+  ggplot2::guides(
+    y.sec = ggh4x::guide_axis_manual(
+      breaks = ordinal_adj_shots_by_player$player,
+      labels = ordinal_adj_shots_by_player$player
+    )
+  ) +
+  ggplot2::theme_linedraw(base_family = 'DejaVu Sans', base_size = 4) +
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(hjust = 0.5, size = 4.25, face = 'plain'),
+    axis.ticks.length = ggplot2::unit(-1, 'pt'),
+    axis.ticks = ggplot2::element_line(linewidth = 0.05),
+    panel.grid.major.y = ggplot2::element_blank(),
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_line(linetype = 2),
+    axis.text.x.top = ggplot2::element_blank(),
+    axis.text.y.right = ggplot2::element_blank(),
+    axis.title.x.top = ggplot2::element_blank(),
+    axis.title.y.right = ggplot2::element_blank()
+  ) +
+  ggplot2::labs(
+    title = 'Shots from 2016/17 & 2017/18 seasons',
+    y = NULL,
+    x = 'Outperformance (= G/xG)'
+  )
+
+proj_dir <- 'posts/xg-ratio-empirical-bayes'
+plot_path <- file.path(proj_dir, 'shaw-figure-1-replication.png')
+ggplot2::ggsave(
+  adj_ratio_plot,
+  filename = plot_path,
+  units = 'px',
+  width = 549,
+  height = 640
+)
+
+orig_image <- magick::image_read(file.path(proj_dir, 'shaw-figure-1.png'))
+replicated_image_with_asa_logo <- magick::image_read(plot_with_asa_logo_path)
+combined_image_with_tony_logo <- magick::image_append(
+  c(orig_image, replicated_image_with_tony_logo), 
+  stack = TRUE
+)
+
+magick::image_write(
+  combined_image_with_tony_logo, 
+  path = file.path(proj_dir, 'shaw-figure-1-compared-w-tony-logo.png')
+)
+```
+
+![](shaw-figure-1-compared-w-tony-logo.png)
