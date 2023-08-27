@@ -8,9 +8,9 @@
 
 <meta name="author" content="Tony ElHabr">
 <meta name="dcterms.date" content="2023-09-05">
-<meta name="description" content="Using the Gamma-Poisson conjugate family and the empirical Bayes framework to quantify overperformance">
+<meta name="description" content="Using empirical Bayes and the Gamma-Poisson conjugate pair">
 
-<title>Tony’s Blog - Shooting Overperformance in Soccer</title>
+<title>Tony’s Blog - Measuring Shooting Overperformance in Soccer</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -188,8 +188,8 @@ cookieconsent.run({
 
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
-<link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - Shooting Overperformance in Soccer">
-<meta name="twitter:description" content="Using the Gamma-Poisson conjugate family and the empirical Bayes framework to quantify overperformance">
+<link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - Measuring Shooting Overperformance in Soccer">
+<meta name="twitter:description" content="Using empirical Bayes and the Gamma-Poisson conjugate pair">
 <meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts\xg-ratio-empirical-bayes\shaw-figure-1-replication-w-tony-logo.png">
 <meta name="twitter:site" content="@TonyElHabr">
 <meta name="twitter:image-height" content="640">
@@ -268,7 +268,10 @@ cookieconsent.run({
   <li><a href="#implementation" id="toc-implementation" class="nav-link" data-scroll-target="#implementation">Implementation</a>
   <ul>
   <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a></li>
+  <li><a href="#eb-step-1-estimate-prior-hyperparameters" id="toc-eb-step-1-estimate-prior-hyperparameters" class="nav-link" data-scroll-target="#eb-step-1-estimate-prior-hyperparameters">EB step 1: estimate prior hyperparameters</a></li>
+  <li><a href="#eb-step-2-use-prior-distribution-to-sample-the-posterior" id="toc-eb-step-2-use-prior-distribution-to-sample-the-posterior" class="nav-link" data-scroll-target="#eb-step-2-use-prior-distribution-to-sample-the-posterior">EB step 2: Use prior distribution to sample the posterior</a></li>
   </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
   </ul>
 </nav>
 </nav>
@@ -280,7 +283,7 @@ cookieconsent.run({
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<div class="quarto-title-block"><div><h1 class="title">Shooting Overperformance in Soccer</h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button" data-quarto-source-url="https://github.com/tonyelhabr/itsmetoeknee/blob/main/posts/xg-ratio-empirical-bayes/index.qmd">View Source</a></li></ul></div></div>
+<div class="quarto-title-block"><div><h1 class="title">Measuring Shooting Overperformance in Soccer</h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button" data-quarto-source-url="https://github.com/tonyelhabr/itsmetoeknee/blob/main/posts/xg-ratio-empirical-bayes/index.qmd">View Source</a></li></ul></div></div>
   <div class="quarto-categories">
     <div class="quarto-category">r</div>
     <div class="quarto-category">soccer</div>
@@ -289,7 +292,7 @@ cookieconsent.run({
 
 <div>
   <div class="description">
-    Using the Gamma-Poisson conjugate family and the empirical Bayes framework to quantify overperformance
+    Using empirical Bayes and the Gamma-Poisson conjugate pair
   </div>
 </div>
 
@@ -318,7 +321,7 @@ cookieconsent.run({
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
-<p>This blog post is my attempt to replicate the results in Laurie Shaw’s 2018 blog post <a href="http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html">“Exceeding Expected Goals”</a>. Specifically, I want to shed light on how to implement <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model">Gamma-Poisson</a> <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method">empirical Bayes</a> (EB) estimation.</p>
+<p>This blog post is my attempt to replicate the results in Laurie Shaw’s 2018 blog post <a href="http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html">“Exceeding Expected Goals”</a>. Specifically, I want to shed light on how to implement <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model">Gamma-Poisson</a> <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method">empirical Bayes</a> (EB) estimation. If you don’t care at all about the theory behind EB and its application to this context, then go ahead and skip ahead to the “Implementation” section.</p>
 <section id="what-is-empirical-bayes-eb-estimation" class="level3">
 <h3 class="anchored" data-anchor-id="what-is-empirical-bayes-eb-estimation">What Is empirical Bayes (EB) estimation?</h3>
 <p><strong>Empirical Bayes</strong> (EB) estimation. Wow, just typing that out makes me feel smart. But what is it, really? In short, I’d describe it as a mix of <a href="https://en.wikipedia.org/wiki/Bayesian_inference">Bayesian</a> and <a href="https://en.wikipedia.org/wiki/Frequentist_inference">Frequentist</a> inference. We lean into the observed frequencies of the data (Frequentist) while simultaneously refining our initial data assumptions through Bayesian updating. In practice, one might use EB as a (relatively) simple alternative to a full Bayesian analysis, which can feel daunting.</p>
@@ -360,7 +363,10 @@ Note
 <p><span id="eq-o"><span class="math display">\[
 O_p = \frac{G_p}{xG_p}
 \tag{4}\]</span></span></p>
-<p>While one might be tempted to use Beta-Binomial EB–shrinking the raw estimate for those with a relatively low volume of shots–Shaw used a [Gamma-Poisson]( <a href="https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family">Gamma-Poisson</a> EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts <em>and</em> what you’re trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, with <a href="#eq-ba">Equation&nbsp;1</a>, batting average is bounded between 0 and 1.</p>
+<p>While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in <a href="#eq-ba">Equation&nbsp;1</a>, Shaw used a <a href="https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family">Gamma-Poisson</a> EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts <em>and</em> what you’re trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, batting average is bounded between 0 and 1.</p>
+<p>Now, despite the naming of conjugate prior pairs–e.g.&nbsp;“Beta-Binomial” and “Gamma-Poisson”, where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second–let’s not forget that there are actually a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the “kernel” (i.e.&nbsp;the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)</p>
+<p>In practice, this means that we’ll be using the Gamma distribution for both estimating hyperparameters and posterior sampling. Perhaps surprising to the reader, you won’t actually need any Poisson functions in the code implementation. Rather, the Poisson distribution is pertinent to implementation only to the extent that the Gamma distribution happens to be the most reasonable distribution to pair with it.</p>
+<p>I’ve woefully explained away a lot of details here, but hopefully this all makes sense to those with a basic understanding of the Gamma and Poisson distributions themselves.</p>
 </section>
 </section>
 <section id="implementation" class="level2">
@@ -387,31 +393,30 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  tibble<span class="sc">::</span><span class="fu">as_tibble</span>() <span class="sc">|&gt;</span> </span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    season <span class="sc">%in%</span> <span class="fu">c</span>(2016L, 2017L), <span class="do">## 2016/17 and 2017/18 seasons</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="do">## "excluding free-kicks" in the blog post</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    situation <span class="sc">!=</span> <span class="st">'DirectFreeKick'</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(id) <span class="sc">|&gt;</span> </span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    id,</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    player,</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">xg =</span> x_g,</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">g =</span> <span class="fu">as.integer</span>(result <span class="sc">==</span> <span class="st">'Goal'</span>)</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>shots</span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 19,047 × 4</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;        id player               xg     g</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;     &lt;dbl&gt; &lt;chr&gt;             &lt;dbl&gt; &lt;int&gt;</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 112088 Aaron Ramsey    0.0695      0</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 112089 Nathaniel Clyne 0.0293      0</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 112090 Aaron Ramsey    0.00734     0</span></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 112091 Roberto Firmino 0.0856      0</span></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 112092 Roberto Firmino 0.0441      0</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 112093 Sadio Mané      0.0607      0</span></span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 112094 Ragnar Klavan   0.0742      0</span></span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 112095 Theo Walcott    0.761       0</span></span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 112096 Theo Walcott    0.0721      1</span></span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 112097 Roberto Firmino 0.0241      0</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 19,037 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    situation <span class="sc">!=</span> <span class="st">'DirectFreeKick'</span> <span class="do">## "excluding free-kicks" in the blog post</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(id) <span class="sc">|&gt;</span> </span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    id,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    player,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">xg =</span> x_g,</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">g =</span> <span class="fu">as.integer</span>(result <span class="sc">==</span> <span class="st">'Goal'</span>)</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>shots</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 19,047 × 4</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;        id player               xg     g</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;     &lt;dbl&gt; &lt;chr&gt;             &lt;dbl&gt; &lt;int&gt;</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 112088 Aaron Ramsey    0.0695      0</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 112089 Nathaniel Clyne 0.0293      0</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 112090 Aaron Ramsey    0.00734     0</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 112091 Roberto Firmino 0.0856      0</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 112092 Roberto Firmino 0.0441      0</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 112093 Sadio Mané      0.0607      0</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 112094 Ragnar Klavan   0.0742      0</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 112095 Theo Walcott    0.761       0</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 112096 Theo Walcott    0.0721      1</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 112097 Roberto Firmino 0.0241      0</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 19,037 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Above was pulling in every record of shots, with 1 row per shot. Now we aggregate to the player-level, such that we have one row per player.</p>
 <div class="cell">
@@ -422,26 +427,28 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">across</span>(<span class="fu">c</span>(g, xg), sum)</span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">raw_g_xg_ratio =</span> g <span class="sc">/</span> xg) <span class="sc">|&gt;</span> </span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">raw_ratio =</span> g <span class="sc">/</span> xg) <span class="sc">|&gt;</span> </span>
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(dplyr<span class="sc">::</span><span class="fu">desc</span>(shots))</span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>shots_by_player</span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 588 × 5</span></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player            shots     g    xg raw_g_xg_ratio</span></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;             &lt;int&gt; &lt;int&gt; &lt;dbl&gt;          &lt;dbl&gt;</span></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Harry Kane          293    59  46.7          1.26 </span></span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Sergio Agüero       234    41  41.2          0.994</span></span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 Christian Eriksen   229    18  16.1          1.12 </span></span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 Alexis Sánchez      217    33  29.1          1.13 </span></span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 Romelu Lukaku       196    41  32.1          1.28 </span></span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 Roberto Firmino     184    26  21.1          1.23 </span></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 Kevin De Bruyne     179    14  12.2          1.15 </span></span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 Salomón Rondón      171    15  16.2          0.924</span></span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 Paul Pogba          168    11  14.3          0.768</span></span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Christian Benteke   164    18  28.5          0.631</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player            shots     g    xg raw_ratio</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;             &lt;int&gt; &lt;int&gt; &lt;dbl&gt;     &lt;dbl&gt;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Harry Kane          293    59  46.7     1.26 </span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Sergio Agüero       234    41  41.2     0.994</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 Christian Eriksen   229    18  16.1     1.12 </span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 Alexis Sánchez      217    33  29.1     1.13 </span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 Romelu Lukaku       196    41  32.1     1.28 </span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 Roberto Firmino     184    26  21.1     1.23 </span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 Kevin De Bruyne     179    14  12.2     1.15 </span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 Salomón Rondón      171    15  16.2     0.924</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 Paul Pogba          168    11  14.3     0.768</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Christian Benteke   164    18  28.5     0.631</span></span>
 <span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 578 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Next, we estimate hyperparameters for our prior gamma distribution (with <code>dgamma</code>, these are the <code>shape</code> and <code>rate</code> parameters<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>) using MLE. I choose to include players having taken at least 50 shots for estimating these hyperparameters. In general, you want to subset your data here to records that provide good “signal”, and, therefore, will provide reliable estimates of your hyperparameters.</p>
-<p>Note that this process of selecting priors using a subset of your data is one thing that separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.</p>
+</section>
+<section id="eb-step-1-estimate-prior-hyperparameters" class="level3">
+<h3 class="anchored" data-anchor-id="eb-step-1-estimate-prior-hyperparameters">EB step 1: estimate prior hyperparameters</h3>
+<p>Next, we estimate hyperparameters for our prior gamma distribution using MLE. (With R’s <code>dgamma</code>, the hyperparameters are <code>shape</code> and <code>rate</code><a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>). I subset the data down to players having taken at least 50 shots for estimating these hyperparameters, as this is what Shaw does. In general, you’d want to filter your data here to records that provide good “signal”, and, therefore, will provide reliable estimates of your hyperparameters.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>prior_shots_by_player <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  shots_by_player, </span>
@@ -450,7 +457,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>prior_distr <span class="ot">&lt;-</span> MASS<span class="sc">::</span><span class="fu">fitdistr</span>(</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  prior_shots_by_player<span class="sc">$</span>raw_g_xg_ratio,</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  prior_shots_by_player<span class="sc">$</span>raw_ratio,</span>
 <span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  dgamma,</span>
 <span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">start =</span> <span class="fu">list</span>(<span class="at">shape =</span> <span class="dv">1</span>, <span class="at">rate =</span> <span class="dv">1</span>)</span>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>)</span>
@@ -465,8 +472,11 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; rate </span></span>
 <span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 8.93</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Now we simulate</p>
-<div class="cell" data-label="adj_shots_by_player">
+</section>
+<section id="eb-step-2-use-prior-distribution-to-sample-the-posterior" class="level3">
+<h3 class="anchored" data-anchor-id="eb-step-2-use-prior-distribution-to-sample-the-posterior">EB step 2: Use prior distribution to sample the posterior</h3>
+<p>Now we start with our prior distribution hyperparameters and update all players’ <span class="math inline">\(O\)</span> ratio based on their individual evidence, i.e.&nbsp;their exact volume of goals and xG.</p>
+<div class="cell" data-label="adj_ratio_by_player">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>simulate_gamma_posterior <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    successes, </span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    trials, </span>
@@ -485,7 +495,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>shots_by_player<span class="sc">$</span>adj_g_xg_ratio <span class="ot">&lt;-</span> purrr<span class="sc">::</span><span class="fu">map2</span>(</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>shots_by_player<span class="sc">$</span>adj_ratio <span class="ot">&lt;-</span> purrr<span class="sc">::</span><span class="fu">map2</span>(</span>
 <span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  shots_by_player<span class="sc">$</span>g, shots_by_player<span class="sc">$</span>xg,</span>
 <span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(g, xg) {</span>
 <span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">simulate_gamma_posterior</span>(</span>
@@ -497,28 +507,29 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>adj_shots_by_player <span class="ot">&lt;-</span> shots_by_player <span class="sc">|&gt;</span> </span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>adj_ratio_by_player <span class="ot">&lt;-</span> shots_by_player <span class="sc">|&gt;</span> </span>
 <span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(</span>
-<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    adj_g_xg_ratio, </span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    adj_ratio, </span>
 <span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_sep =</span> <span class="st">'_'</span></span>
 <span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(dplyr<span class="sc">::</span><span class="fu">desc</span>(adj_g_xg_ratio_mean))</span>
-<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>adj_shots_by_player</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(dplyr<span class="sc">::</span><span class="fu">desc</span>(adj_ratio_mean))</span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>adj_ratio_by_player</span>
 <span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 588 × 7</span></span>
-<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player            shots     g    xg raw_g_xg_ratio adj_g_xg_ratio_mean adj_g_xg_ratio_sd</span></span>
-<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;             &lt;int&gt; &lt;int&gt; &lt;dbl&gt;          &lt;dbl&gt;               &lt;dbl&gt;             &lt;dbl&gt;</span></span>
-<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Fernando Llorente    57    16  9.19           1.74                1.40             0.281</span></span>
-<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Philippe Coutinho   160    20 12.5            1.60                1.37             0.256</span></span>
-<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 Shkodran Mustafi     37     5  1.82           2.75                1.34             0.357</span></span>
-<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 Pascal Groß          43     7  3.34           2.10                1.34             0.334</span></span>
-<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 Ryan Fraser          55     8  4.09           1.95                1.34             0.324</span></span>
-<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 Eden Hazard         148    28 19.2            1.45                1.33             0.219</span></span>
-<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 James McArthur       53    10  5.93           1.69                1.31             0.299</span></span>
-<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 Charlie Daniels      39     5  2.18           2.30                1.30             0.346</span></span>
-<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 Xherdan Shaqiri     117    12  7.61           1.58                1.29             0.282</span></span>
-<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Andy Carroll         67    10  6.09           1.64                1.29             0.296</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player            shots     g    xg raw_ratio adj_ratio_mean adj_ratio_sd</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;             &lt;int&gt; &lt;int&gt; &lt;dbl&gt;     &lt;dbl&gt;          &lt;dbl&gt;        &lt;dbl&gt;</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Fernando Llorente    57    16  9.19      1.74           1.40        0.281</span></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Philippe Coutinho   160    20 12.5       1.60           1.37        0.256</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 Shkodran Mustafi     37     5  1.82      2.75           1.34        0.357</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 Pascal Groß          43     7  3.34      2.10           1.34        0.334</span></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 Ryan Fraser          55     8  4.09      1.95           1.34        0.324</span></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 Eden Hazard         148    28 19.2       1.45           1.33        0.219</span></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 James McArthur       53    10  5.93      1.69           1.31        0.299</span></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 Charlie Daniels      39     5  2.18      2.30           1.30        0.346</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 Xherdan Shaqiri     117    12  7.61      1.58           1.29        0.282</span></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Andy Carroll         67    10  6.09      1.64           1.29        0.296</span></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 578 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Now we can plot our results</p>
+<p>Now let’s plot our results, plotting our adjusted mean estimates of <span class="math inline">\(O_p\)</span>, ±1 standard deviation about the adjusted mean. As noted earlier, we won’t achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we’ve achieved results reasonably close to his.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -558,28 +569,28 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>  <span class="st">'Christian Benteke'</span> <span class="ot">=</span> <span class="st">'C. Benteke'</span></span>
 <span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>ordinal_adj_shots_by_player <span class="ot">&lt;-</span> adj_shots_by_player <span class="sc">|&gt;</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>ordinal_adj_ratio_by_player <span class="ot">&lt;-</span> adj_ratio_by_player <span class="sc">|&gt;</span></span>
 <span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
 <span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>    player <span class="sc">%in%</span> <span class="fu">names</span>(shaw_players)</span>
 <span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">player =</span> forcats<span class="sc">::</span><span class="fu">fct_reorder</span>(shaw_players[player], adj_g_xg_ratio_mean)</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">player =</span> forcats<span class="sc">::</span><span class="fu">fct_reorder</span>(shaw_players[player], adj_ratio_mean)</span>
 <span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>adj_ratio_plot <span class="ot">&lt;-</span> ordinal_adj_shots_by_player <span class="sc">|&gt;</span></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>adj_ratio_plot <span class="ot">&lt;-</span> ordinal_adj_ratio_by_player <span class="sc">|&gt;</span></span>
 <span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
 <span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">y =</span> player) <span class="sc">+</span></span>
 <span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_errorbarh</span>(</span>
 <span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a>    <span class="fu">aes</span>(</span>
-<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>      <span class="at">xmin =</span> adj_g_xg_ratio_mean <span class="sc">-</span> adj_g_xg_ratio_sd,</span>
-<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>      <span class="at">xmax =</span> adj_g_xg_ratio_mean <span class="sc">+</span> adj_g_xg_ratio_sd</span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>      <span class="at">xmin =</span> adj_ratio_mean <span class="sc">-</span> adj_ratio_sd,</span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>      <span class="at">xmax =</span> adj_ratio_mean <span class="sc">+</span> adj_ratio_sd</span>
 <span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a>    ),</span>
 <span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">'blue'</span>,</span>
 <span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a>    <span class="at">linewidth =</span> <span class="fl">0.1</span>,</span>
 <span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>    <span class="at">height =</span> <span class="fl">0.3</span></span>
 <span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
 <span id="cb5-57"><a href="#cb5-57" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_point</span>(</span>
-<span id="cb5-58"><a href="#cb5-58" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">x =</span> adj_g_xg_ratio_mean),</span>
+<span id="cb5-58"><a href="#cb5-58" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">x =</span> adj_ratio_mean),</span>
 <span id="cb5-59"><a href="#cb5-59" aria-hidden="true" tabindex="-1"></a>    <span class="at">shape =</span> <span class="dv">23</span>,</span>
 <span id="cb5-60"><a href="#cb5-60" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="fl">0.75</span>,</span>
 <span id="cb5-61"><a href="#cb5-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">stroke =</span> <span class="fl">0.15</span>,</span>
@@ -598,8 +609,8 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb5-74"><a href="#cb5-74" aria-hidden="true" tabindex="-1"></a>  <span class="do">##   using ggh4x is a workaround.</span></span>
 <span id="cb5-75"><a href="#cb5-75" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">guides</span>(</span>
 <span id="cb5-76"><a href="#cb5-76" aria-hidden="true" tabindex="-1"></a>    <span class="at">y.sec =</span> ggh4x<span class="sc">::</span><span class="fu">guide_axis_manual</span>(</span>
-<span id="cb5-77"><a href="#cb5-77" aria-hidden="true" tabindex="-1"></a>      <span class="at">breaks =</span> ordinal_adj_shots_by_player<span class="sc">$</span>player,</span>
-<span id="cb5-78"><a href="#cb5-78" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> ordinal_adj_shots_by_player<span class="sc">$</span>player</span>
+<span id="cb5-77"><a href="#cb5-77" aria-hidden="true" tabindex="-1"></a>      <span class="at">breaks =</span> ordinal_adj_ratio_by_player<span class="sc">$</span>player,</span>
+<span id="cb5-78"><a href="#cb5-78" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> ordinal_adj_ratio_by_player<span class="sc">$</span>player</span>
 <span id="cb5-79"><a href="#cb5-79" aria-hidden="true" tabindex="-1"></a>    )</span>
 <span id="cb5-80"><a href="#cb5-80" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
 <span id="cb5-81"><a href="#cb5-81" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">theme_linedraw</span>(<span class="at">base_family =</span> <span class="st">'DejaVu Sans'</span>, <span class="at">base_size =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
@@ -645,10 +656,16 @@ O_p = \frac{G_p}{xG_p}
 </details>
 </div>
 <p><img src="shaw-figure-1-compared-w-tony-logo.png" class="img-fluid"></p>
-
-
-
 </section>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>Having not seen a very clear example of Gamma-Prior EB implementation on the internet–although there are several good explanations with toy examples such as <a href="https://vioshyvo.github.io/Bayesian_inference/conjugate-distributions.html">this e-book chapter from Hyvönen and Topias Tolonen</a>–I hope I’ve perhaps un-muddied the waters for at least one interested reader.</p>
+<p>As for the actual application of <span class="math inline">\(G / xG\)</span> for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has basically zero year-over-year stability, i.e.&nbsp;one shouldn’t use a player’s raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of <span class="math inline">\(O_p\)</span> certainly is an improvement over raw <span class="math inline">\(G / xG\)</span> itself.</p>
+<p>Comparing hypothetical player A with 6 goals on 2 xG (<span class="math inline">\(O_p = 3\)</span>) vs.&nbsp;player B with 120 goals on 100 xG directly (<span class="math inline">\(O_p = 1.2\)</span>) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A’s <span class="math inline">\(O_p\)</span> would be shrunken back towards 1, and player B’s adjustment would be basically nothing, indicating that player B’s shooting performance is stronger, on average.</p>
+
+
+
 </section>
 
 
@@ -672,6 +689,7 @@ No matching items
 <li id="fn3"><p><a href="https://fbref.com/en/expected-goals-model-explained/">FBRef</a> only provides expected goals dating back to the 2017/18 season, so unfortunately it’s not viable for this analysis.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn4"><p>The other major reason why I may not be able to match his results is if I’ve implemented the Gamma-Poisson adjustment in a different (hopefully, not incorrect 😅) manner.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>In <a href="https://en.wikipedia.org/wiki/Gamma_distribution">the wild</a>, you’ll see <code>alpha</code> and <code>beta</code> used to describe the hyperparameters. <code>shape</code> and <code>rate</code> are different ways of framing these parameters.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>Note that this process of selecting priors is the “twist” I mentioned in the introduction that really separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

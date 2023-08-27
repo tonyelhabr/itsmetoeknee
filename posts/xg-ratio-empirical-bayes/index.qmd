@@ -16,7 +16,7 @@ execute:
 
 ## Introduction
 
-This blog post is my attempt to replicate the results in Laurie Shaw's 2018 blog post ["Exceeding Expected Goals"](http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html). Specifically, I want to shed light on how to implement [Gamma-Poisson](https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model) [empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) (EB) estimation.
+This blog post is my attempt to replicate the results in Laurie Shaw's 2018 blog post ["Exceeding Expected Goals"](http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html). Specifically, I want to shed light on how to implement [Gamma-Poisson](https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model) [empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) (EB) estimation. If you don't care at all about the theory behind EB and its application to this context, then go ahead and skip ahead to the "Implementation" section.
 
 ### What Is empirical Bayes (EB) estimation?
 
@@ -67,7 +67,13 @@ $$
 O_p = \frac{G_p}{xG_p}
 $$ {#eq-o}
 
-While one might be tempted to use Beta-Binomial EB--shrinking the raw estimate for those with a relatively low volume of shots--Shaw used a \[Gamma-Poisson\]( [Gamma-Poisson](https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family) EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts *and* what you're trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, with @eq-ba, batting average is bounded between 0 and 1.
+While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in @eq-ba, Shaw used a [Gamma-Poisson](https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family) EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts *and* what you're trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, batting average is bounded between 0 and 1.
+
+Now, despite the naming of conjugate prior pairs--e.g. "Beta-Binomial" and "Gamma-Poisson", where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second--let's not forget that there are actually a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the "kernel" (i.e. the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)
+
+In practice, this means that we'll be using the Gamma distribution for both estimating hyperparameters and posterior sampling. Perhaps surprising to the reader, you won't actually need any Poisson functions in the code implementation. Rather, the Poisson distribution is pertinent to implementation only to the extent that the Gamma distribution happens to be the most reasonable distribution to pair with it.
+
+I've woefully explained away a lot of details here, but hopefully this all makes sense to those with a basic understanding of the Gamma and Poisson distributions themselves.
 
 ## Implementation
 
@@ -102,8 +108,7 @@ shots <- raw_shots |>
   tibble::as_tibble() |> 
   dplyr::filter(
     season %in% c(2016L, 2017L), ## 2016/17 and 2017/18 seasons
-    ## "excluding free-kicks" in the blog post
-    situation != 'DirectFreeKick'
+    situation != 'DirectFreeKick' ## "excluding free-kicks" in the blog post
   ) |> 
   dplyr::arrange(id) |> 
   dplyr::transmute(
@@ -141,30 +146,32 @@ shots_by_player <- shots |>
     dplyr::across(c(g, xg), sum)
   ) |> 
   dplyr::ungroup() |> 
-  dplyr::mutate(raw_g_xg_ratio = g / xg) |> 
+  dplyr::mutate(raw_ratio = g / xg) |> 
   dplyr::arrange(dplyr::desc(shots))
 shots_by_player
 #> # A tibble: 588 × 5
-#>    player            shots     g    xg raw_g_xg_ratio
-#>    <chr>             <int> <int> <dbl>          <dbl>
-#>  1 Harry Kane          293    59  46.7          1.26 
-#>  2 Sergio Agüero       234    41  41.2          0.994
-#>  3 Christian Eriksen   229    18  16.1          1.12 
-#>  4 Alexis Sánchez      217    33  29.1          1.13 
-#>  5 Romelu Lukaku       196    41  32.1          1.28 
-#>  6 Roberto Firmino     184    26  21.1          1.23 
-#>  7 Kevin De Bruyne     179    14  12.2          1.15 
-#>  8 Salomón Rondón      171    15  16.2          0.924
-#>  9 Paul Pogba          168    11  14.3          0.768
-#> 10 Christian Benteke   164    18  28.5          0.631
+#>    player            shots     g    xg raw_ratio
+#>    <chr>             <int> <int> <dbl>     <dbl>
+#>  1 Harry Kane          293    59  46.7     1.26 
+#>  2 Sergio Agüero       234    41  41.2     0.994
+#>  3 Christian Eriksen   229    18  16.1     1.12 
+#>  4 Alexis Sánchez      217    33  29.1     1.13 
+#>  5 Romelu Lukaku       196    41  32.1     1.28 
+#>  6 Roberto Firmino     184    26  21.1     1.23 
+#>  7 Kevin De Bruyne     179    14  12.2     1.15 
+#>  8 Salomón Rondón      171    15  16.2     0.924
+#>  9 Paul Pogba          168    11  14.3     0.768
+#> 10 Christian Benteke   164    18  28.5     0.631
 #> # ℹ 578 more rows
 ```
 
-Next, we estimate hyperparameters for our prior gamma distribution (with `dgamma`, these are the `shape` and `rate` parameters[^5]) using MLE. I choose to include players having taken at least 50 shots for estimating these hyperparameters. In general, you want to subset your data here to records that provide good "signal", and, therefore, will provide reliable estimates of your hyperparameters.
+### EB step 1: estimate prior hyperparameters
+
+Next, we estimate hyperparameters for our prior gamma distribution using MLE. (With R's `dgamma`, the hyperparameters are `shape` and `rate`[^5]). I subset the data down to players having taken at least 50 shots for estimating these hyperparameters, as this is what Shaw does. In general, you'd want to filter your data here to records that provide good "signal", and, therefore, will provide reliable estimates of your hyperparameters.[^6]
 
 [^5]: In [the wild](https://en.wikipedia.org/wiki/Gamma_distribution), you'll see `alpha` and `beta` used to describe the hyperparameters. `shape` and `rate` are different ways of framing these parameters.
 
-Note that this process of selecting priors using a subset of your data is one thing that separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.
+[^6]: Note that this process of selecting priors is the "twist" I mentioned in the introduction that really separates empirical Bayes estimation from a traditional, full Bayesian approach. In the latter, one chooses priors for an analysis without using the data to be included in the analysis.
 
 ```{r}
 #| label: prior_distr
@@ -176,7 +183,7 @@ prior_shots_by_player <- dplyr::filter(
 )
 
 prior_distr <- MASS::fitdistr(
-  prior_shots_by_player$raw_g_xg_ratio,
+  prior_shots_by_player$raw_ratio,
   dgamma,
   start = list(shape = 1, rate = 1)
 )
@@ -192,10 +199,12 @@ list(prior_shape = round(prior_shape, 2), prior_rate = round(prior_rate, 2))
 #> 8.93
 ```
 
-Now we simulate
+### EB step 2: Use prior distribution to sample the posterior
+
+Now we start with our prior distribution hyperparameters and update all players' $O$ ratio based on their individual evidence, i.e. their exact volume of goals and xG.
 
 ```{r}
-#| data-label: adj_shots_by_player
+#| data-label: adj_ratio_by_player
 #| code-fold: false
 simulate_gamma_posterior <- function(
     successes, 
@@ -215,7 +224,7 @@ simulate_gamma_posterior <- function(
   )
 }
 
-shots_by_player$adj_g_xg_ratio <- purrr::map2(
+shots_by_player$adj_ratio <- purrr::map2(
   shots_by_player$g, shots_by_player$xg,
   function(g, xg) {
     simulate_gamma_posterior(
@@ -227,29 +236,30 @@ shots_by_player$adj_g_xg_ratio <- purrr::map2(
   }
 )
 
-adj_shots_by_player <- shots_by_player |> 
+adj_ratio_by_player <- shots_by_player |> 
   tidyr::unnest_wider(
-    adj_g_xg_ratio, 
+    adj_ratio, 
     names_sep = '_'
   ) |> 
-  dplyr::arrange(dplyr::desc(adj_g_xg_ratio_mean))
-adj_shots_by_player
+  dplyr::arrange(dplyr::desc(adj_ratio_mean))
+adj_ratio_by_player
 #> # A tibble: 588 × 7
-#>    player            shots     g    xg raw_g_xg_ratio adj_g_xg_ratio_mean adj_g_xg_ratio_sd
-#>    <chr>             <int> <int> <dbl>          <dbl>               <dbl>             <dbl>
-#>  1 Fernando Llorente    57    16  9.19           1.74                1.40             0.281
-#>  2 Philippe Coutinho   160    20 12.5            1.60                1.37             0.256
-#>  3 Shkodran Mustafi     37     5  1.82           2.75                1.34             0.357
-#>  4 Pascal Groß          43     7  3.34           2.10                1.34             0.334
-#>  5 Ryan Fraser          55     8  4.09           1.95                1.34             0.324
-#>  6 Eden Hazard         148    28 19.2            1.45                1.33             0.219
-#>  7 James McArthur       53    10  5.93           1.69                1.31             0.299
-#>  8 Charlie Daniels      39     5  2.18           2.30                1.30             0.346
-#>  9 Xherdan Shaqiri     117    12  7.61           1.58                1.29             0.282
-#> 10 Andy Carroll         67    10  6.09           1.64                1.29             0.296
+#>    player            shots     g    xg raw_ratio adj_ratio_mean adj_ratio_sd
+#>    <chr>             <int> <int> <dbl>     <dbl>          <dbl>        <dbl>
+#>  1 Fernando Llorente    57    16  9.19      1.74           1.40        0.281
+#>  2 Philippe Coutinho   160    20 12.5       1.60           1.37        0.256
+#>  3 Shkodran Mustafi     37     5  1.82      2.75           1.34        0.357
+#>  4 Pascal Groß          43     7  3.34      2.10           1.34        0.334
+#>  5 Ryan Fraser          55     8  4.09      1.95           1.34        0.324
+#>  6 Eden Hazard         148    28 19.2       1.45           1.33        0.219
+#>  7 James McArthur       53    10  5.93      1.69           1.31        0.299
+#>  8 Charlie Daniels      39     5  2.18      2.30           1.30        0.346
+#>  9 Xherdan Shaqiri     117    12  7.61      1.58           1.29        0.282
+#> 10 Andy Carroll         67    10  6.09      1.64           1.29        0.296
+#> # ℹ 578 more rows
 ```
 
-Now we can plot our results
+Now let's plot our results, plotting our adjusted mean estimates of $O_p$, ±1 standard deviation about the adjusted mean. As noted earlier, we won't achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we've achieved results reasonably close to his.
 
 ```{r}
 #| label: plot
@@ -290,28 +300,28 @@ shaw_players <- c(
   'Christian Benteke' = 'C. Benteke'
 )
 
-ordinal_adj_shots_by_player <- adj_shots_by_player |>
+ordinal_adj_ratio_by_player <- adj_ratio_by_player |>
   dplyr::filter(
     player %in% names(shaw_players)
   ) |> 
   dplyr::mutate(
-    player = forcats::fct_reorder(shaw_players[player], adj_g_xg_ratio_mean)
+    player = forcats::fct_reorder(shaw_players[player], adj_ratio_mean)
   )
 
-adj_ratio_plot <- ordinal_adj_shots_by_player |>
+adj_ratio_plot <- ordinal_adj_ratio_by_player |>
   ggplot2::ggplot() +
   ggplot2::aes(y = player) +
   ggplot2::geom_errorbarh(
     aes(
-      xmin = adj_g_xg_ratio_mean - adj_g_xg_ratio_sd,
-      xmax = adj_g_xg_ratio_mean + adj_g_xg_ratio_sd
+      xmin = adj_ratio_mean - adj_ratio_sd,
+      xmax = adj_ratio_mean + adj_ratio_sd
     ),
     color = 'blue',
     linewidth = 0.1,
     height = 0.3
   ) +
   ggplot2::geom_point(
-    ggplot2::aes(x = adj_g_xg_ratio_mean),
+    ggplot2::aes(x = adj_ratio_mean),
     shape = 23,
     size = 0.75,
     stroke = 0.15,
@@ -330,8 +340,8 @@ adj_ratio_plot <- ordinal_adj_shots_by_player |>
   ##   using ggh4x is a workaround.
   ggplot2::guides(
     y.sec = ggh4x::guide_axis_manual(
-      breaks = ordinal_adj_shots_by_player$player,
-      labels = ordinal_adj_shots_by_player$player
+      breaks = ordinal_adj_ratio_by_player$player,
+      labels = ordinal_adj_ratio_by_player$player
     )
   ) +
   ggplot2::theme_linedraw(base_family = 'DejaVu Sans', base_size = 4) +
@@ -377,3 +387,11 @@ magick::image_write(
 ```
 
 ![](shaw-figure-1-compared-w-tony-logo.png)
+
+## Conclusion
+
+Having not seen a very clear example of Gamma-Prior EB implementation on the internet--although there are several good explanations with toy examples such as [this e-book chapter from Hyvönen and Topias Tolonen](https://vioshyvo.github.io/Bayesian_inference/conjugate-distributions.html)--I hope I've perhaps un-muddied the waters for at least one interested reader.
+
+As for the actual application of $G / xG$ for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has basically zero year-over-year stability, i.e. one shouldn't use a player's raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of $O_p$ certainly is an improvement over raw $G / xG$ itself.
+
+Comparing hypothetical player A with 6 goals on 2 xG ($O_p = 3$) vs. player B with 120 goals on 100 xG directly ($O_p = 1.2$) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A's $O_p$ would be shrunken back towards 1, and player B's adjustment would be basically nothing, indicating that player B's shooting performance is stronger, on average.
