@@ -378,6 +378,8 @@ O_p = \frac{G_p}{xG_p}
 <p>First, let’s pull the data we’ll need–2016/17 and 2017/18 <a href="https://www.premierleague.com">English Premier League</a> goals and <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">expected goals (xG)</a> by player. I’m using <a href="https://understat.com/">understat</a> since it is a reliable source of data<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> and is easy to retrieve data from via the <a href="https://jaseziv.github.io/worldfootballR/"><code>{worldfootballR}</code> package</a>.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
 <p>Note that Shaw used data from a provider, <a href="https://www.linkedin.com/company/stratagem-ltd/about/">Stratagem</a>, that no long provides data, as far as I can tell. For at least this reason, I won’t be able to exactly match his reason.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
 <div class="cell">
+<details open="">
+<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="do">## data wrangling</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(worldfootballR)</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
@@ -418,9 +420,12 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 112096 Theo Walcott    0.0721      1</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 112097 Roberto Firmino 0.0241      0</span></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 19,037 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
 <p>Above was pulling in every record of shots, with 1 row per shot. Now we aggregate to the player level, such that we have one row per player.</p>
 <div class="cell">
+<details open="">
+<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>shots_by_player <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(player) <span class="sc">|&gt;</span> </span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
@@ -445,12 +450,15 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 Paul Pogba          168    11  14.3     0.768</span></span>
 <span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Christian Benteke   164    18  28.5     0.631</span></span>
 <span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 578 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
 </section>
 <section id="eb-step-1-estimate-prior-hyperparameters" class="level3">
 <h3 class="anchored" data-anchor-id="eb-step-1-estimate-prior-hyperparameters">EB step 1: estimate prior hyperparameters</h3>
 <p>Next, we estimate hyperparameters for our prior gamma distribution using MLE. (With R’s <code>dgamma</code>, the hyperparameters are <code>shape</code> and <code>rate</code><a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>). I subset the data down to players having taken at least 50 shots for estimating these hyperparameters, as this is what Shaw does. In general, you’d want to filter your data here to records that provide good “signal”, and, therefore, will provide reliable estimates of your hyperparameters.<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></p>
 <div class="cell">
+<details open="">
+<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>prior_shots_by_player <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  shots_by_player, </span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  shots <span class="sc">&gt;=</span> <span class="dv">50</span>,</span>
@@ -472,6 +480,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $prior_rate</span></span>
 <span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; rate </span></span>
 <span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 8.93</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
 </section>
 <section id="eb-step-2-use-prior-distribution-to-sample-the-posterior" class="level3">
@@ -532,8 +541,6 @@ O_p = \frac{G_p}{xG_p}
 </div>
 <p>Finally, let’s plot our results, plotting our adjusted mean estimates of <span class="math inline">\(O_p\)</span>, ±1 standard deviation about the adjusted mean.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> As noted earlier, we won’t achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we’ve achieved results reasonably close to his.</p>
 <div class="cell">
-<details>
-<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(forcats)</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggh4x)</span>
@@ -654,7 +661,6 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb5-118"><a href="#cb5-118" aria-hidden="true" tabindex="-1"></a>  combined_image_with_tony_logo, </span>
 <span id="cb5-119"><a href="#cb5-119" aria-hidden="true" tabindex="-1"></a>  <span class="at">path =</span> <span class="fu">file.path</span>(proj_dir, <span class="st">'shaw-figure-1-compared-w-tony-logo.png'</span>)</span>
 <span id="cb5-120"><a href="#cb5-120" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
 </div>
 <p><img src="shaw-figure-1-compared-w-tony-logo.png" class="img-fluid"></p>
 </section>
@@ -662,8 +668,6 @@ O_p = \frac{G_p}{xG_p}
 <h3 class="anchored" data-anchor-id="beyond-replication">Beyond Replication</h3>
 <p>For the sake of having a pretty plot that’s not just an attempt to replicate the original, let’s run it all back, this time with EPL 2021/22 and 2022/23 data.</p>
 <div class="cell">
-<details>
-<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>raw_shots <span class="ot">&lt;-</span> worldfootballR<span class="sc">::</span><span class="fu">load_understat_league_shots</span>(<span class="at">league =</span> <span class="st">'EPL'</span>)</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>shots <span class="ot">&lt;-</span> raw_shots <span class="sc">|&gt;</span> </span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  tibble<span class="sc">::</span><span class="fu">as_tibble</span>() <span class="sc">|&gt;</span> </span>
@@ -797,7 +801,6 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb6-131"><a href="#cb6-131" aria-hidden="true" tabindex="-1"></a>  <span class="at">width =</span> <span class="dv">7</span>,</span>
 <span id="cb6-132"><a href="#cb6-132" aria-hidden="true" tabindex="-1"></a>  <span class="at">height =</span> <span class="dv">7</span></span>
 <span id="cb6-133"><a href="#cb6-133" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
 </div>
 <p><img src="beyond-replication.png" class="img-fluid"></p>
 <p>For those who follow the EPL, The usual suspects, like Heung-Min Son, show up among the best of the best HERE. The adjusted mean minus one standard deviation value exceeds zero for Son, so one might say that he was a significantly skilled shooter over the past two season.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a></p>

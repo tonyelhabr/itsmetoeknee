@@ -69,6 +69,8 @@ Note
 <p>First, let’s pull the data we’ll need–2016/17 and 2017/18 <a href="https://www.premierleague.com">English Premier League</a> goals and <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">expected goals (xG)</a> by player. I’m using <a href="https://understat.com/">understat</a> since it is a reliable source of data<sup>3</sup> and is easy to retrieve data from via the <a href="https://jaseziv.github.io/worldfootballR/"><code>{worldfootballR}</code> package</a>.<sup>4</sup></p>
 <p>Note that Shaw used data from a provider, <a href="https://www.linkedin.com/company/stratagem-ltd/about/">Stratagem</a>, that no long provides data, as far as I can tell. For at least this reason, I won’t be able to exactly match his reason.<sup>5</sup></p>
 <div class="cell">
+<details open="">
+<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="do" style="color: #5E5E5E;
 font-style: italic;">## data wrangling</span></span>
 <span id="cb1-2"><span class="fu" style="color: #4758AB;">library</span>(worldfootballR)</span>
@@ -114,9 +116,12 @@ font-style: italic;">## "excluding free-kicks" in the blog post</span></span>
 <span id="cb1-38"><span class="co" style="color: #5E5E5E;">#&gt;  9 112096 Theo Walcott    0.0721      1</span></span>
 <span id="cb1-39"><span class="co" style="color: #5E5E5E;">#&gt; 10 112097 Roberto Firmino 0.0241      0</span></span>
 <span id="cb1-40"><span class="co" style="color: #5E5E5E;">#&gt; # ℹ 19,037 more rows</span></span></code></pre></div>
+</details>
 </div>
 <p>Above was pulling in every record of shots, with 1 row per shot. Now we aggregate to the player level, such that we have one row per player.</p>
 <div class="cell">
+<details open="">
+<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1">shots_by_player <span class="ot" style="color: #003B4F;">&lt;-</span> shots <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb2-2">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(player) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb2-3">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">summarize</span>(</span>
@@ -141,12 +146,15 @@ font-style: italic;">## "excluding free-kicks" in the blog post</span></span>
 <span id="cb2-22"><span class="co" style="color: #5E5E5E;">#&gt;  9 Paul Pogba          168    11  14.3     0.768</span></span>
 <span id="cb2-23"><span class="co" style="color: #5E5E5E;">#&gt; 10 Christian Benteke   164    18  28.5     0.631</span></span>
 <span id="cb2-24"><span class="co" style="color: #5E5E5E;">#&gt; # ℹ 578 more rows</span></span></code></pre></div>
+</details>
 </div>
 </section>
 <section id="eb-step-1-estimate-prior-hyperparameters" class="level3">
 <h3 class="anchored" data-anchor-id="eb-step-1-estimate-prior-hyperparameters">EB step 1: estimate prior hyperparameters</h3>
 <p>Next, we estimate hyperparameters for our prior gamma distribution using MLE. (With R’s <code>dgamma</code>, the hyperparameters are <code>shape</code> and <code>rate</code><sup>6</sup>). I subset the data down to players having taken at least 50 shots for estimating these hyperparameters, as this is what Shaw does. In general, you’d want to filter your data here to records that provide good “signal”, and, therefore, will provide reliable estimates of your hyperparameters.<sup>7</sup></p>
 <div class="cell">
+<details open="">
+<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">prior_shots_by_player <span class="ot" style="color: #003B4F;">&lt;-</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(</span>
 <span id="cb3-2">  shots_by_player, </span>
 <span id="cb3-3">  shots <span class="sc" style="color: #5E5E5E;">&gt;=</span> <span class="dv" style="color: #AD0000;">50</span>,</span>
@@ -169,6 +177,7 @@ font-style: italic;">## prevent error with fitting prior distribution</span></sp
 <span id="cb3-19"><span class="co" style="color: #5E5E5E;">#&gt; $prior_rate</span></span>
 <span id="cb3-20"><span class="co" style="color: #5E5E5E;">#&gt; rate </span></span>
 <span id="cb3-21"><span class="co" style="color: #5E5E5E;">#&gt; 8.93</span></span></code></pre></div>
+</details>
 </div>
 </section>
 <section id="eb-step-2-use-prior-distribution-to-sample-the-posterior" class="level3">
@@ -229,8 +238,6 @@ font-style: italic;">## prevent error with fitting prior distribution</span></sp
 </div>
 <p>Finally, let’s plot our results, plotting our adjusted mean estimates of <img src="https://latex.codecogs.com/png.latex?O_p">, ±1 standard deviation about the adjusted mean.<sup>8</sup> As noted earlier, we won’t achieve exactly the same results as Shaw due to using a different set of xG values, but evidently we’ve achieved results reasonably close to his.</p>
 <div class="cell">
-<details>
-<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="fu" style="color: #4758AB;">library</span>(ggplot2)</span>
 <span id="cb5-2"><span class="fu" style="color: #4758AB;">library</span>(forcats)</span>
 <span id="cb5-3"><span class="fu" style="color: #4758AB;">library</span>(ggh4x)</span>
@@ -355,7 +362,6 @@ font-style: italic;">##   using ggh4x is a workaround.</span></span>
 <span id="cb5-118">  combined_image_with_tony_logo, </span>
 <span id="cb5-119">  <span class="at" style="color: #657422;">path =</span> <span class="fu" style="color: #4758AB;">file.path</span>(proj_dir, <span class="st" style="color: #20794D;">'shaw-figure-1-compared-w-tony-logo.png'</span>)</span>
 <span id="cb5-120">)</span></code></pre></div>
-</details>
 </div>
 <p><img src="https://tonyelhabr.rbind.io/posts/xg-ratio-empirical-bayes/shaw-figure-1-compared-w-tony-logo.png" class="img-fluid"></p>
 </section>
@@ -363,8 +369,6 @@ font-style: italic;">##   using ggh4x is a workaround.</span></span>
 <h3 class="anchored" data-anchor-id="beyond-replication">Beyond Replication</h3>
 <p>For the sake of having a pretty plot that’s not just an attempt to replicate the original, let’s run it all back, this time with EPL 2021/22 and 2022/23 data.</p>
 <div class="cell">
-<details>
-<summary>Code</summary>
 <div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1">raw_shots <span class="ot" style="color: #003B4F;">&lt;-</span> worldfootballR<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">load_understat_league_shots</span>(<span class="at" style="color: #657422;">league =</span> <span class="st" style="color: #20794D;">'EPL'</span>)</span>
 <span id="cb6-2">shots <span class="ot" style="color: #003B4F;">&lt;-</span> raw_shots <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb6-3">  tibble<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">as_tibble</span>() <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
@@ -500,7 +504,6 @@ font-style: italic;">## https://github.com/tashapiro/tanya-data-viz/blob/1dfad73
 <span id="cb6-131">  <span class="at" style="color: #657422;">width =</span> <span class="dv" style="color: #AD0000;">7</span>,</span>
 <span id="cb6-132">  <span class="at" style="color: #657422;">height =</span> <span class="dv" style="color: #AD0000;">7</span></span>
 <span id="cb6-133">)</span></code></pre></div>
-</details>
 </div>
 <p><img src="https://tonyelhabr.rbind.io/posts/xg-ratio-empirical-bayes/beyond-replication.png" class="img-fluid"></p>
 <p>For those who follow the EPL, The usual suspects, like Heung-Min Son, show up among the best of the best HERE. The adjusted mean minus one standard deviation value exceeds zero for Son, so one might say that he was a significantly skilled shooter over the past two season.<sup>9</sup></p>
