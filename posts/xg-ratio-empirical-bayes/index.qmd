@@ -30,7 +30,7 @@ Empirical Bayes puts a twist on this. Instead of having a prior guess, you figur
 [David Robinson](https://github.com/dgrtwo) wrote [a wonderful blog post](http://varianceexplained.org/r/empirical_bayes_baseball/) about empirical Bayes estimation for estimating [batting averages in baseball](https://en.wikipedia.org/wiki/Batting_average_(baseball)), notably "shrinking" the battering averages of those with relatively few at bats closer to some "prior" estimate derived from a choice of hyperparameters. For context, batting average, $BA$, is defined as a player's count of hits, $H$, divided by the count of their at bats, $AB$.
 
 $$
-BA = H / AB
+BA = \frac{H}{AB}
 $$ {#eq-ba}
 
 ::: callout-note
@@ -47,16 +47,16 @@ In his post, David uses [a Beta prior](https://en.wikipedia.org/wiki/Beta_distri
     2.  [to adjust Whataburger Yelp reviews for small sample sizes](https://twitter.com/TonyElHabr/status/1429610210964955137?s=20)
 
 $$
-(H + \alpha_0) / (AB + \alpha_0 + \beta_0)
+\frac{H + \alpha_0}{AB + \alpha_0 + \beta_0}
 $$ {#eq-adj-ba}
 
 Specifically, the "prior" estimate of batting average is found by isolating the $\alpha_0$ and $\beta_0$ elements:
 
 $$
-\alpha_0 / (\alpha_0 + \beta_0)
+\frac{\alpha_0}{\alpha_0 + \beta_0}
 $$ {#eq-ba-prior}
 
-If, for example, `alpha0 = 70` and `beta0 = 230`, then the prior estimate of batting average is effectively `70 / (70 + 230) = 0.3`. Note that `alpha0` and `beta0` are learned from the data using [maximum likelihood estimation (MLE)](https://en.wikipedia.org/wiki/Maximum_likelihood_estimation), although other approaches, such as ["method of moments"](https://en.wikipedia.org/wiki/Method_of_moments_(statistics)) could be used. (Heck, you could even defensibly choose these "hyperparameters" yourself, without any fancy statistics, if you feel that you have enough knowledge of the data.)
+If, for example, `alpha0 = 70` and `beta0 = 163`, then the prior estimate of batting average is effectively `70 / (70 + 163) = 0.3`. Note that `alpha0` and `beta0` are learned from the data using [maximum likelihood estimation (MLE)](https://en.wikipedia.org/wiki/Maximum_likelihood_estimation), although other approaches, such as ["method of moments"](https://en.wikipedia.org/wiki/Method_of_moments_(statistics)) could be used. (Heck, you could even defensibly choose these "hyperparameters" yourself, without any fancy statistics, if you feel that you have enough knowledge of the data.)
 
 ### Gamma-Poisson EB estimation
 

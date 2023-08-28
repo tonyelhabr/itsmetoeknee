@@ -31,7 +31,7 @@
 <section id="a-canonical-example-of-eb-estimation-beta-binomial" class="level3">
 <h3 class="anchored" data-anchor-id="a-canonical-example-of-eb-estimation-beta-binomial">A canonical example of EB estimation (Beta-Binomial)</h3>
 <p><a href="https://github.com/dgrtwo">David Robinson</a> wrote <a href="http://varianceexplained.org/r/empirical_bayes_baseball/">a wonderful blog post</a> about empirical Bayes estimation for estimating <a href="https://en.wikipedia.org/wiki/Batting_average_(baseball)">batting averages in baseball</a>, notably “shrinking” the battering averages of those with relatively few at bats closer to some “prior” estimate derived from a choice of hyperparameters. For context, batting average, <img src="https://latex.codecogs.com/png.latex?BA">, is defined as a player’s count of hits, <img src="https://latex.codecogs.com/png.latex?H">, divided by the count of their at bats, <img src="https://latex.codecogs.com/png.latex?AB">.</p>
-<p><span id="eq-ba"><img src="https://latex.codecogs.com/png.latex?%0ABA%20=%20H%20/%20AB%0A%5Ctag%7B1%7D"></span></p>
+<p><span id="eq-ba"><img src="https://latex.codecogs.com/png.latex?%0ABA%20=%20%5Cfrac%7BH%7D%7BAB%7D%0A%5Ctag%7B1%7D"></span></p>
 <div class="callout-note callout callout-style-default callout-captioned">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -46,10 +46,10 @@ Note
 </div>
 </div>
 <p>In his post, David uses <a href="https://en.wikipedia.org/wiki/Beta_distribution">a Beta prior</a> and <a href="https://en.wikipedia.org/wiki/Binomial_distribution">a binomial posterior</a> together, i.e.&nbsp;a <a href="https://www.bayesrulesbook.com/chapter-3">Beta-binomial Bayesian model</a>)<sup>1</sup><sup>2</sup>, since this tandem is suitable for proportions and probabilities. The gist of his approach: we add some fixed number of hits, <img src="https://latex.codecogs.com/png.latex?%5Calpha_0">, and a fixed number of at bats, <img src="https://latex.codecogs.com/png.latex?%5Cbeta_0">, to the numerator and denominator of the battering average equation as so.</p>
-<p><span id="eq-adj-ba"><img src="https://latex.codecogs.com/png.latex?%0A(H%20+%20%5Calpha_0)%20/%20(AB%20+%20%5Calpha_0%20+%20%5Cbeta_0)%0A%5Ctag%7B2%7D"></span></p>
+<p><span id="eq-adj-ba"><img src="https://latex.codecogs.com/png.latex?%0A%5Cfrac%7BH%20+%20%5Calpha_0%7D%7BAB%20+%20%5Calpha_0%20+%20%5Cbeta_0%7D%0A%5Ctag%7B2%7D"></span></p>
 <p>Specifically, the “prior” estimate of batting average is found by isolating the <img src="https://latex.codecogs.com/png.latex?%5Calpha_0"> and <img src="https://latex.codecogs.com/png.latex?%5Cbeta_0"> elements:</p>
-<p><span id="eq-ba-prior"><img src="https://latex.codecogs.com/png.latex?%0A%5Calpha_0%20/%20(%5Calpha_0%20+%20%5Cbeta_0)%0A%5Ctag%7B3%7D"></span></p>
-<p>If, for example, <code>alpha0 = 70</code> and <code>beta0 = 230</code>, then the prior estimate of batting average is effectively <code>70 / (70 + 230) = 0.3</code>. Note that <code>alpha0</code> and <code>beta0</code> are learned from the data using <a href="https://en.wikipedia.org/wiki/Maximum_likelihood_estimation">maximum likelihood estimation (MLE)</a>, although other approaches, such as <a href="https://en.wikipedia.org/wiki/Method_of_moments_(statistics)">“method of moments”</a> could be used. (Heck, you could even defensibly choose these “hyperparameters” yourself, without any fancy statistics, if you feel that you have enough knowledge of the data.)</p>
+<p><span id="eq-ba-prior"><img src="https://latex.codecogs.com/png.latex?%0A%5Cfrac%7B%5Calpha_0%7D%7B%5Calpha_0%20+%20%5Cbeta_0%7D%0A%5Ctag%7B3%7D"></span></p>
+<p>If, for example, <code>alpha0 = 70</code> and <code>beta0 = 163</code>, then the prior estimate of batting average is effectively <code>70 / (70 + 163) = 0.3</code>. Note that <code>alpha0</code> and <code>beta0</code> are learned from the data using <a href="https://en.wikipedia.org/wiki/Maximum_likelihood_estimation">maximum likelihood estimation (MLE)</a>, although other approaches, such as <a href="https://en.wikipedia.org/wiki/Method_of_moments_(statistics)">“method of moments”</a> could be used. (Heck, you could even defensibly choose these “hyperparameters” yourself, without any fancy statistics, if you feel that you have enough knowledge of the data.)</p>
 </section>
 <section id="gamma-poisson-eb-estimation" class="level3">
 <h3 class="anchored" data-anchor-id="gamma-poisson-eb-estimation">Gamma-Poisson EB estimation</h3>

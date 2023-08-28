@@ -333,7 +333,7 @@ cookieconsent.run({
 <h3 class="anchored" data-anchor-id="a-canonical-example-of-eb-estimation-beta-binomial">A canonical example of EB estimation (Beta-Binomial)</h3>
 <p><a href="https://github.com/dgrtwo">David Robinson</a> wrote <a href="http://varianceexplained.org/r/empirical_bayes_baseball/">a wonderful blog post</a> about empirical Bayes estimation for estimating <a href="https://en.wikipedia.org/wiki/Batting_average_(baseball)">batting averages in baseball</a>, notably “shrinking” the battering averages of those with relatively few at bats closer to some “prior” estimate derived from a choice of hyperparameters. For context, batting average, <span class="math inline">\(BA\)</span>, is defined as a player’s count of hits, <span class="math inline">\(H\)</span>, divided by the count of their at bats, <span class="math inline">\(AB\)</span>.</p>
 <p><span id="eq-ba"><span class="math display">\[
-BA = H / AB
+BA = \frac{H}{AB}
 \tag{1}\]</span></span></p>
 <div class="callout-note callout callout-style-default callout-captioned">
 <div class="callout-header d-flex align-content-center">
@@ -350,13 +350,13 @@ Note
 </div>
 <p>In his post, David uses <a href="https://en.wikipedia.org/wiki/Beta_distribution">a Beta prior</a> and <a href="https://en.wikipedia.org/wiki/Binomial_distribution">a binomial posterior</a> together, i.e.&nbsp;a <a href="https://www.bayesrulesbook.com/chapter-3">Beta-binomial Bayesian model</a>)<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a><a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>, since this tandem is suitable for proportions and probabilities. The gist of his approach: we add some fixed number of hits, <span class="math inline">\(\alpha_0\)</span>, and a fixed number of at bats, <span class="math inline">\(\beta_0\)</span>, to the numerator and denominator of the battering average equation as so.</p>
 <p><span id="eq-adj-ba"><span class="math display">\[
-(H + \alpha_0) / (AB + \alpha_0 + \beta_0)
+\frac{H + \alpha_0}{AB + \alpha_0 + \beta_0}
 \tag{2}\]</span></span></p>
 <p>Specifically, the “prior” estimate of batting average is found by isolating the <span class="math inline">\(\alpha_0\)</span> and <span class="math inline">\(\beta_0\)</span> elements:</p>
 <p><span id="eq-ba-prior"><span class="math display">\[
-\alpha_0 / (\alpha_0 + \beta_0)
+\frac{\alpha_0}{\alpha_0 + \beta_0}
 \tag{3}\]</span></span></p>
-<p>If, for example, <code>alpha0 = 70</code> and <code>beta0 = 230</code>, then the prior estimate of batting average is effectively <code>70 / (70 + 230) = 0.3</code>. Note that <code>alpha0</code> and <code>beta0</code> are learned from the data using <a href="https://en.wikipedia.org/wiki/Maximum_likelihood_estimation">maximum likelihood estimation (MLE)</a>, although other approaches, such as <a href="https://en.wikipedia.org/wiki/Method_of_moments_(statistics)">“method of moments”</a> could be used. (Heck, you could even defensibly choose these “hyperparameters” yourself, without any fancy statistics, if you feel that you have enough knowledge of the data.)</p>
+<p>If, for example, <code>alpha0 = 70</code> and <code>beta0 = 163</code>, then the prior estimate of batting average is effectively <code>70 / (70 + 163) = 0.3</code>. Note that <code>alpha0</code> and <code>beta0</code> are learned from the data using <a href="https://en.wikipedia.org/wiki/Maximum_likelihood_estimation">maximum likelihood estimation (MLE)</a>, although other approaches, such as <a href="https://en.wikipedia.org/wiki/Method_of_moments_(statistics)">“method of moments”</a> could be used. (Heck, you could even defensibly choose these “hyperparameters” yourself, without any fancy statistics, if you feel that you have enough knowledge of the data.)</p>
 </section>
 <section id="gamma-poisson-eb-estimation" class="level3">
 <h3 class="anchored" data-anchor-id="gamma-poisson-eb-estimation">Gamma-Poisson EB estimation</h3>
