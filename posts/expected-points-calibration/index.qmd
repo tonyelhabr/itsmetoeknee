@@ -1,0 +1,68 @@
+---
+title: Improving Expected Points
+description: Using Beta calibration to improve the descriptive accuracy of expected points in soccer
+date: 2023-09-10
+draft: true
+categories:
+  - r
+  - soccer
+image: footedness_calibration.png
+execute: 
+  code-fold: false
+  eval: false
+  include: true
+  echo: true
+---
+
+## Introduction
+
+This blog post demonstrates how to adjust [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/) to enhance the accuracy of predicting [match points](https://en.wikipedia.org/wiki/Three_points_for_a_win) for soccer (football) teams. This is achieved through a technique called calibration (or ["remediation"](https://www.tidymodels.org/learn/models/calibration/#remediation)), which improves the reliability of [**expected points (xPts)**](https://www.bettingodds.com/news/what-are-expected-points-xp-football-betting) relation to the teams' real performance.
+
+If you don't care at all about what "expected points" are or simply just want to see how to do such a model adjustment with R, feel free to skip past the "Introduction" section.
+
+### Expected Points
+
+In [a prior post](/posts/opta-xg-model-calibration/), I showed how to calculate **expected points (xPts)** from expected goals (xG) for the beautiful game of soccer (football). What is xPts? Well, to quote myself:
+
+> \[xPts\] a number between 0 and 3 assigned to each team in a match that we estimate from the xG of each shot in the match. Teams that accumulate more xG than their opponents in the match are more likely to have xPts closer to 3, i.e. the points awarded for a win... xPts is convenient for translating a team's xG (relative to it's opponents) to the team's expected placement in the standings.
+
+One thing that is not traditionally accounted for with xPts: [**game state**](https://theathletic.com/2730755/2021/07/28/the-athletics-football-analytics-glossary-explaining-xg-ppda-field-tilt-and-how-to-use-them/), i.e. whether "the team is in a losing, drawing or winning position when they are performing certain actions". To account for this, we need to make xG "aware" of the game state.
+
+One way to do that would be to add game state as an input feature to the xG model. However:
+
+1.  I'm not the creator of the xG model that I'll be using, so I can't actually do that.
+2.  Further, and more importantly, I don't think this is a good idea, based on considerations of conceptual integrity.
+
+On the latter point: traditional xG models are intended to be agnostic to everything but the actual attributes of the shot. Sure, we could improve an xG model by having a dummy variable for whether the shot taker is Lionel Messi, but I fundamentally think that goes against the spirit of the xG model.[^1]
+
+[^1]: This isn't to discredit [research](https://statsbomb.com/wp-content/uploads/2022/09/Tahmeed-Tureen-and-Sigrid-Olthof-%E2%80%93-Estimated-Player-Impact-EPI-Quantifying-The-Effects-Of-Individual-Players-On-Football-Actions-Using-Hierarchical-Statistical-Models.pdf) conducted where player effects are modeled as part of xG---I actually really like doing that kind of thing when trying to tease out estimates of player skill. However, for the sole purpose of quantifying the innate quality of a shot, adding inputs that aren't directly related to the attributes of a shot, such as game state, feel unjustified, even if they would improve model performance.
+
+With that being said, when we're using xG for a separate descriptive task, such as calculated xPts, accounting for game state feels like fair game. One way to do so is via a second model that "calibrates" the output of the original model. In our case, we would want to calibrate the output of the xG model against the actual goal conversion rate, accounting for game state. (You can calibrate a model when there are no grouping variables of interest and typically achieve marginal gains.)
+
+*"Why might this create a more accurate set of xPts? Like, doesn't xG already directly capture the fact that teams trailing in a match may be taking more, lower quality shots?"* Well, there are at least two confounding factors that immediately come to mind:
+
+1.  Players on the trailing team may be taking more off-balance or rushed shots that they would not otherwise take. Traditional xG model, which do not account for body pose or footedness, do not capture this kind of "desperateness".
+2.  Players on teams that often fall behind their opponents tend to have less finishing skill. Lower finishing skill generally manifests in worse goal conversion rates. Thust, the xG of shots taken by such players may tend to overrate their actual number of goals scored.
+
+```{=html}
+<!--
+Objectives section
+-->
+```
+## Analysis
+
+For this analysis, we'll use data from [FBref](https://fbref.com/), which gets its xG from [Opta](https://www.statsperform.com/opta/). We'll limit the scope to the 2017/18 through 2022/23 seasons for the English Premier League.
+
+First, let's take a look at the calibration of our xG model, splitting by game state. (Note that this uses `probably::cal_plot_breaks()`.)
+
+```{r}
+#| label: data-pull
+library(dplyr) ## 1.0.99.9000
+library(purrr)
+library(worldfootballR)
+library(tidyr)
+```
+
+## TODO
+
+[There is evidence](https://twitter.com/Torvaney/status/1623316194936725506) that the current score of a match effects shooting rate, but it's not so clear that it has [an effect on conversion probability](https://kwiatkowski.io/rethinking-shots).
