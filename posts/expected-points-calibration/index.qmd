@@ -31,38 +31,688 @@ One thing that is not traditionally accounted for with xPts: [**game state**](ht
 One way to do that would be to add game state as an input feature to the xG model. However:
 
 1.  I'm not the creator of the xG model that I'll be using, so I can't actually do that.
-2.  Further, and more importantly, I don't think this is a good idea, based on considerations of conceptual integrity.
+2.  Further, and more importantly, I don't think this is a good idea, based on conceptual integrity.
 
-On the latter point: traditional xG models are intended to be agnostic to everything but the actual attributes of the shot. Sure, we could improve an xG model by having a dummy variable for whether the shot taker is Lionel Messi, but I fundamentally think that goes against the spirit of the xG model.[^1]
+On the latter point--traditional xG models are supposed to be agnostic to everything but the actual attributes of the shot. Sure, we could improve an xG model by having a dummy variable for whether the shot taker is Lionel Messi, but that goes against the spirit of the xG model.[^1]
 
 [^1]: This isn't to discredit [research](https://statsbomb.com/wp-content/uploads/2022/09/Tahmeed-Tureen-and-Sigrid-Olthof-%E2%80%93-Estimated-Player-Impact-EPI-Quantifying-The-Effects-Of-Individual-Players-On-Football-Actions-Using-Hierarchical-Statistical-Models.pdf) conducted where player effects are modeled as part of xG---I actually really like doing that kind of thing when trying to tease out estimates of player skill. However, for the sole purpose of quantifying the innate quality of a shot, adding inputs that aren't directly related to the attributes of a shot, such as game state, feel unjustified, even if they would improve model performance.
 
-With that being said, when we're using xG for a separate descriptive task, such as calculated xPts, accounting for game state feels like fair game. One way to do so is via a second model that "calibrates" the output of the original model. In our case, we would want to calibrate the output of the xG model against the actual goal conversion rate, accounting for game state. (You can calibrate a model when there are no grouping variables of interest and typically achieve marginal gains.)
+With that being said, when we're applying xG for a separate task, such as for calculating xPts, accounting for game state is fair game. One way to do so is via a second model that "calibrates" the output of the original model. In our case, we would want to calibrate the output of the xG model against the actual goal conversion rate, accounting for game state.[^2]
 
-*"Why might this create a more accurate set of xPts? Like, doesn't xG already directly capture the fact that teams trailing in a match may be taking more, lower quality shots?"* Well, there are at least two confounding factors that immediately come to mind:
+[^2]: You could also calibrate the output of a model to achieve marginal gains when there are no external factors you want to account for and achieve marginal gains.)
 
-1.  Players on the trailing team may be taking more off-balance or rushed shots that they would not otherwise take. Traditional xG model, which do not account for body pose or footedness, do not capture this kind of "desperateness".
-2.  Players on teams that often fall behind their opponents tend to have less finishing skill. Lower finishing skill generally manifests in worse goal conversion rates. Thust, the xG of shots taken by such players may tend to overrate their actual number of goals scored.
+So let's dive in.
 
-```{=html}
-<!--
-Objectives section
--->
-```
 ## Analysis
 
-For this analysis, we'll use data from [FBref](https://fbref.com/), which gets its xG from [Opta](https://www.statsperform.com/opta/). We'll limit the scope to the 2017/18 through 2022/23 seasons for the English Premier League.
+We'll be using data from [FBref](https://fbref.com/), which gets its xG from [Opta](https://www.statsperform.com/opta/). We'll limit the scope to the 2017/18 through 2022/23 seasons for the English Premier League. This post isn't about data collection, so I'll skip those details.
 
-First, let's take a look at the calibration of our xG model, splitting by game state. (Note that this uses `probably::cal_plot_breaks()`.)
+Here's a glance at the data frame I'm working with.
 
 ```{r}
-#| label: data-pull
-library(dplyr) ## 1.0.99.9000
-library(purrr)
-library(worldfootballR)
+#| label: data-scrape
+#| include: false
+library(worldfootballR) ## version: 0.6.4.1
+library(readr)
+library(dplyr)
+library(lubridate)
 library(tidyr)
+library(qs)
+library(rlang)
+library(purrr)
+
+PROJ_DIR <- 'posts/expected-points-calibration'
+
+load_rds_from_url <- function(url) {
+  readRDS(url(url))
+}
+
+load_fb_match_summary <- function(item, country, gender, tier, season_end_year) {
+  
+  urls <- sprintf(
+    "https://github.com/JaseZiv/worldfootballR_data/releases/download/fb_match_summary/%s_%s_%s_match_summary.rds",
+    country,
+    gender,
+    tier
+  )
+  
+  purrr::map_dfr(
+    urls, 
+    load_rds_from_url
+  ) |> 
+    dplyr::filter(.data$Season_End_Year %in% season_end_year)
+}
+
+COUNTRIES <-  'ENG'
+GENDERS <- 'M'
+TIERS <- '1st'
+SEASON_END_YEARS <- 2018:2023
+
+raw_shots <- worlfootballR::load_fb_match_shooting(
+  country = COUNTRIES,
+  gender = GENDERS,
+  tier = TIERS,
+  season_end_year = SEASON_END_YEARS
+)
+
+raw_match_summaries <- load_fb_match_summary(
+  country = COUNTRIES,
+  gender = GENDERS,
+  tier = TIERS,
+  season_end_year = SEASON_END_YEARS
+)
+
+extract_fbref_match_id <- function(match_url) {
+  basename(dirname(match_url))
+}
+
+generate_time_key <- function(period, min, min_added) {
+  period * (min + dplyr::coalesce(min_added, 0L))
+}
+
+match_summaries <- raw_match_summaries |> 
+  dplyr::group_by(MatchURL) |> 
+  dplyr::mutate(
+    match_summary_rn = dplyr::row_number(dplyr::desc(Event_Time)),
+    match_has_no_penalties = all(Event_Type != 'Penalty')
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    match_has_no_goals = Away_Score == 0 & Home_Score == 0
+  ) |> 
+  dplyr::filter(
+    Event_Type %in% c('Goal', 'Own Goal', 'Penalty') | 
+      ## don't drop games with no goals
+      (match_has_no_goals & match_has_no_penalties & match_summary_rn == 1)
+  ) |> 
+  dplyr::transmute(
+    rn = dplyr::row_number(), 
+    match_id = extract_fbref_match_id(MatchURL),
+    season = sprintf('%s/%s', Season_End_Year - 1, substr(Season_End_Year , 3, 4)),
+    gender = Gender,
+    tier = Tier,
+    date = lubridate::ymd(Match_Date),
+    home_team = Home_Team ,
+    away_team = Away_Team,
+    period = as.integer(Event_Half),
+    min = dplyr::case_when(
+      period == 1L & Event_Time > 45 ~ 45, 
+      period == 2L & Event_Time > 90 ~ 90,
+      .default = Event_Time
+    ) |> as.integer(),
+    min_added = dplyr::case_when(
+      period == 1L & Event_Time > 45 ~ Event_Time - 45, 
+      period == 2L & Event_Time > 90 ~ Event_Time - 90,
+      .default = NA_integer_
+    ) |> as.integer(),
+    final_home_g = Home_Score,
+    final_away_g = Away_Score,
+    home_g = as.integer(gsub('[:].*$', '', Score_Progression)), ## after event
+    away_g = as.integer(gsub('^.*[:]', '', Score_Progression)),
+    match_has_no_goals,
+    match_has_no_penalties,
+    is_own_goal = Event_Type == 'Own Goal',
+    is_penalty = Event_Type == 'Penalty',
+    team = Team,
+    player = Event_Players,
+    event_type = ifelse(match_has_no_goals & match_has_no_penalties, NA_character_, Event_Type),
+    time_key = generate_time_key(period, min, min_added)
+  )
+
+match_results <- match_summaries |> 
+  dplyr::distinct(
+    match_id,
+    season,
+    gender,
+    tier,
+    date,
+    home_team,
+    away_team,
+    home_g = final_home_g,
+    away_g = final_away_g
+  )
+qs::qsave(match_results, file.path(PROJ_DIR, 'match_results.qs'))
+
+long_shots <- raw_shots |> 
+  dplyr::transmute(
+    rn = dplyr::row_number(),
+    match_id = extract_fbref_match_id(MatchURL),
+    period = as.integer(Match_Half),
+    min = ifelse(
+      grepl('[+]', Minute),
+      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\1', Minute)), 
+      as.integer(Minute)
+    ),
+    min_added = ifelse(
+      grepl('[+]', Minute), 
+      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\2', Minute)), 
+      NA_integer_
+    ),
+    is_home = Home_Away == 'Home',
+    team = Squad,
+    player = Player,
+    is_goal = Outcome == 'Goal',
+    xg = as.double(xG),
+    is_penalty = dplyr::coalesce((Distance == '13' & round(xg, 2) == 0.79), FALSE),
+    time_key = generate_time_key(period, min, min_added)
+  )
+
+synthetic_rn_base <- 10^(ceiling(log10(max(long_shots$rn))))
+long_shots_with_own_goals <- long_shots |> 
+  dplyr::mutate(
+    is_own_goal = FALSE
+  ) |> 
+  dplyr::bind_rows(
+    ## synthetic events for own goals
+    match_summaries |> 
+      dplyr::filter(
+        is_own_goal
+      ) |> 
+      dplyr::transmute(
+        rn = .env$synthetic_rn_base + dplyr::row_number(),
+        match_id,
+        period,
+        min,
+        min_added,
+        is_home = team == home_team,
+        team,
+        player,
+        is_goal = TRUE,
+        xg = NA_real_,
+        time_key,
+        is_own_goal = TRUE,
+        is_penalty = FALSE
+      )
+  )
+clean_shots <- long_shots_with_own_goals |> 
+  dplyr::inner_join(
+    match_summaries |>
+      dplyr::distinct(match_id, season, date, home_team, away_team),
+    by = dplyr::join_by(match_id),
+    relationship = 'many-to-one'
+  ) |> 
+  dplyr::left_join(
+    match_summaries |> 
+      dplyr::group_by(match_id, time_key) |> 
+      dplyr::slice_max(home_g + away_g, n = 1, with_ties = FALSE) |> 
+      dplyr::ungroup() |>
+      dplyr::select(
+        match_id, 
+        time_key, 
+        home_g, 
+        away_g,
+        is_own_goal,
+        is_penalty,
+        team,
+        player
+      ) |> 
+      dplyr::rename_with(
+        \(.x) paste0('summary_', .x),
+        -c(match_id)
+      ),
+    by = dplyr::join_by(
+      match_id,
+      time_key >= summary_time_key,
+      time_key <= summary_time_key
+    ),
+    relationship = 'many-to-many'
+  ) |> 
+  dplyr::group_by(match_id) |> 
+  tidyr::fill(summary_home_g, summary_away_g, .direction = 'down') |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    dplyr::across(c(summary_home_g, summary_away_g), \(.x) dplyr::coalesce(.x, 0L))
+  ) |> 
+  dplyr::mutate(
+    home_g = dplyr::case_when(
+      ## note that fotmob would list the away team for an own goal but fbref lists the home team
+      (is_goal | is_own_goal) & is_home ~ 1L,
+      is_own_goal & is_home ~ 1L,
+      TRUE ~ 0L
+    ),
+    away_g = dplyr::case_when(
+      (is_goal | is_own_goal) & !is_home ~ 1L,
+      TRUE ~ 0L
+    ),
+    home_xg = dplyr::case_when(
+      is_home ~ dplyr::coalesce(xg, 0),
+      TRUE ~ 0L ## even for own goals
+    ),
+    away_xg = dplyr::case_when(
+      !is_home ~ dplyr::coalesce(xg, 0),
+      TRUE ~ 0L
+    )
+  ) |>
+  dplyr::group_by(match_id) |> 
+  dplyr::mutate(
+    shot_idx = dplyr::row_number(time_key)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    shot_id = sprintf('%s-%02d', match_id, shot_idx)
+  ) |> 
+  dplyr::arrange(season, date, shot_id)
+
+restacked_shots <- dplyr::bind_rows(
+  clean_shots |> 
+    dplyr::filter(is_home) |> 
+    dplyr::transmute(
+      shot_id,
+      match_id,
+      season,
+      date,
+      period,
+      min,
+      min_added,
+      is_home,
+      is_goal,
+      is_penalty,
+      is_own_goal,
+      player,
+      team = home_team,
+      opponent = away_team,
+      g = home_g,
+      g_conceded = away_g,
+      xg = home_xg,
+      xg_conceded = away_xg,
+      summary_g = summary_home_g,
+      summary_g_conceded = summary_away_g
+    ),
+  clean_shots |> 
+    dplyr::filter(!is_home) |> 
+    dplyr::transmute(
+      shot_id,
+      match_id,
+      season,
+      date,
+      period,
+      min,
+      min_added,
+      is_home,
+      is_goal,
+      is_penalty = summary_is_penalty,
+      is_own_goal,
+      player,
+      team = away_team,
+      opponent = home_team,
+      g = away_g,
+      g_conceded = home_g,
+      xg = away_xg,
+      xg_conceded = home_xg,
+      summary_g = summary_away_g,
+      summary_g_conceded = summary_home_g,
+    )
+) |> 
+  dplyr::arrange(season, date, match_id, shot_id)
+
+doublecounted_restacked_shots <- dplyr::bind_rows(
+  restacked_shots |> dplyr::mutate(pov = 'primary', .before = is_home),
+  restacked_shots |> 
+    dplyr::rename(
+      team1 = team,
+      team2 = opponent,
+      g1 = g,
+      g2 = g_conceded,
+      xg1 = xg,
+      xg2 = xg_conceded
+    ) |> 
+    dplyr::rename(
+      team = team2,
+      opponent = team1,
+      g = g2,
+      g_conceded = g1,
+      xg = xg2,
+      xg_conceded = xg1
+    ) |> 
+    dplyr::mutate(
+      is_home = !is_home,
+      pov = 'secondary'
+    )
+) |> 
+  dplyr::arrange(season, date, match_id, shot_id, pov)
+
+cumu_doublecounted_restacked_shots <- doublecounted_restacked_shots |> 
+  dplyr::group_by(match_id, team) |> 
+  dplyr::mutate(
+    dplyr::across(
+      c(g, g_conceded, xg, xg_conceded),
+      list(cumu = cumsum)
+    )
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    is_goal = factor(ifelse(g == 1L, 'yes', 'no')),
+    game_state = g_cumu - g_conceded_cumu
+  )
+qs::qsave(cumu_doublecounted_restacked_shots, file.path(PROJ_DIR, 'shots.qs'))
 ```
+
+```{r}
+#| label: shots
+library(dplyr)
+library(qs)
+library(purrr)
+library(probably) ## 0.1.0.9008
+packageVersion('probably') 
+
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(ragg)
+library(htmltools)
+
+match_results <- qs::qread(file.path(PROJ_DIR, 'match_results.qs'))
+raw_shots <- qs::qread(file.path(PROJ_DIR, 'shots.qs')) |> 
+  dplyr::filter(
+    pov == 'primary',
+    !is_own_goal
+  )
+
+shots <- raw_shots |> 
+  dplyr::inner_join(
+    match_results |> 
+      dplyr::distinct(
+        match_id,
+        home_team,
+        away_team
+      ),
+    by = dplyr::join_by(match_id)
+  ) |> 
+  dplyr::transmute(
+    match_id,
+    season,
+    date,
+    home_team,
+    away_team,
+    team,
+    player,
+    shot_id,
+    is_penalty,
+    is_goal,
+    .pred_yes = xg,
+    .pred_no = 1 - xg,
+    game_state = cut(
+      game_state,
+      breaks = c(-Inf, -1, 0, Inf), 
+      labels = c('trailing', 'neutral', 'leading')
+    )
+  ) |> 
+  dplyr::group_by(match_id) |> 
+  dplyr::arrange(shot_id, .by_group = TRUE) |> 
+  dplyr::mutate(
+    pre_shot_game_state = dplyr::lag(game_state, default = 'neutral')
+  ) |> 
+  dplyr::ungroup()
+```
+
+```{r}
+#| label: shots-show
+#| code-fold: false
+library(dplyr)
+shots |> 
+  dplyr::select(
+    shot_id,
+    team,
+    player,
+    is_goal,
+    pre_shot_game_state,
+    .pred_yes, ## xg
+    .pred_no   ## 1 - xg
+  )
+#> # A tibble: 56,872 × 7
+#>    shot_id          team        player is_goal pre_shot_game_state .pred_yes .pred_no
+#>    <chr>       <chr>       <chr>  <fct>   <fct>                   <dbl>    <dbl>
+#>  1 0014076a-01 Arsenal     Henri… no      neutral                  0.03     0.97
+#>  2 0014076a-02 Arsenal     Henri… no      neutral                  0.06     0.94
+#>  3 0014076a-03 West Ham U… Marko… no      neutral                  0.08     0.92
+#>  4 0014076a-04 West Ham U… Marko… no      neutral                  0.03     0.97
+#>  5 0014076a-05 West Ham U… Marko… yes     neutral                  0.05     0.95
+#>  6 0014076a-06 Arsenal     Aaron… no      leading                  0.11     0.89
+#>  7 0014076a-07 Arsenal     Nacho… yes     trailing                 0.6      0.4 
+#>  8 0014076a-08 West Ham U… Micha… no      neutral                  0.07     0.93
+#>  9 0014076a-09 West Ham U… Felip… no      neutral                  0.07     0.93
+#> 10 0014076a-10 Arsenal     Shkod… no      neutral                  0.02     0.98
+#> # ℹ 56,862 more rows
+```
+
+Let's start by taking a look at the calibration of the Opta xG model, splitting by game state. (Note that this uses `probably::cal_plot_breaks()`.)
+
+```{r}
+#| label: no_pre_shot_game_state_xg_calibration
+library(purrr)
+library(probably)
+# packageVersion('probably') ## 0.1.0.9008
+
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
+
+CAL_N_BREAKS <- 20
+CAL_CONF_LEVEL <- 0.9
+
+TAG_LABEL <- htmltools::tagList(
+  htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
+  htmltools::tags$span("@TonyElHabr"),
+)
+SUBTITLE_LABEL <- 'English Premier League, 2017/18 - 2022/23'
+PLOT_RESOLUTION <- 300
+WHITISH_FOREGROUND_COLOR <- 'white'
+COMPLEMENTARY_FOREGROUND_COLOR <- '#f1f1f1'
+BLACKISH_BACKGROUND_COLOR <- '#1c1c1c'
+COMPLEMENTARY_BACKGROUND_COLOR <- '#4d4d4d'
+FONT <- 'Titillium Web'
+sysfonts::font_add_google(FONT, FONT)
+## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = PLOT_RESOLUTION)
+
+ggplot2::theme_set(ggplot2::theme_minimal())
+ggplot2::theme_update(
+  text = ggplot2::element_text(family = FONT),
+  title = ggplot2::element_text(size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title = ggplot2::element_text(face = 'bold', size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title.position = 'plot',
+  plot.subtitle = ggplot2::element_text(size = 16, color = COMPLEMENTARY_FOREGROUND_COLOR),
+  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
+  axis.title = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.line = ggplot2::element_blank(),
+  strip.text = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0),
+  panel.grid.major = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor.x = ggplot2::element_blank(),
+  panel.grid.minor.y = ggplot2::element_blank(),
+  plot.margin = ggplot2::margin(10, 20, 10, 20),
+  plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
+  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain'),
+  plot.caption.position = 'plot',
+  plot.tag = ggtext::element_markdown(size = 12, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
+  plot.tag.position = c(0.99, 0.01),
+  panel.spacing.x = grid::unit(2, 'lines'),
+  panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
+)
+ggplot2::update_geom_defaults('text', list(color = WHITISH_FOREGROUND_COLOR, size = 12 / .pt))
+ggplot2::update_geom_defaults('point', list(color = WHITISH_FOREGROUND_COLOR))
+
+plot_and_save_calibration <- function(
+    df,
+    .by,
+    size = 7,
+    width = size, 
+    height = size, 
+    title = NULL,
+    caption = NULL,
+    filename = tempfile(),
+    extra_layers
+) {
+  
+  group_cols <- rlang::ensyms(.by)
+  
+  p <- df |> 
+    ggplot2::ggplot() +
+    ggplot2::aes(x = predicted_midpoint, y = event_rate) +
+    ggplot2::geom_abline(color = WHITISH_FOREGROUND_COLOR, linetype = 2) +
+    ggplot2::geom_ribbon(
+      fill = '#999999',
+      alpha = 0.5,
+      ggplot2::aes(ymin = lower, ymax = upper)
+    ) +
+    ggplot2::geom_line(color = WHITISH_FOREGROUND_COLOR) +
+    ggplot2::geom_point(
+      color = WHITISH_FOREGROUND_COLOR,
+      ggplot2::aes(size = total),
+      show.legend = FALSE
+    ) +
+    ggplot2::coord_cartesian(
+      xlim = c(0, 1),
+      ylim = c(0, 1)
+    ) +
+    ggplot2::labs(
+      title = paste0(c('Opta xG calibration', title), collapse = ' by '),
+      subtitle = SUBTITLE_LABEL,
+      y = 'Actual goal rate',
+      x = 'Expected goals (xG)',
+      caption = paste0(c('**Data**: Opta via fbref.<br/>Point size is proportional to number of observations.', caption), collapse = '\n'),
+      tag = TAG_LABEL
+    ) + 
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_blank(),
+      panel.background = ggplot2::element_rect(color = WHITISH_FOREGROUND_COLOR)
+    ) + 
+    ggplot2::facet_wrap(ggplot2::vars(!!!group_cols))
+  
+  if (isFALSE(missing(extra_layers))) {
+    p <- p + extra_layers
+  }
+  
+  ggplot2::ggsave(
+    p,
+    filename = file.path(PROJ_DIR, sprintf('%s_calibration.png', filename)),
+    width = width,
+    height = height
+  )
+  invisible(p)
+}
+
+xg_cal_plot_breaks <- purrr::partial(
+  probably::cal_plot_breaks,
+  num_breaks = CAL_N_BREAKS,
+  conf_level = CAL_CONF_LEVEL,
+  event_level = 'second'
+)
+
+extra_xg_cal_plot_layers <- list(
+  ggplot2::geom_segment(
+    data = data.frame(
+      x = 0.45,
+      xend = 0.35,
+      y = 0.6,
+      yend = 0.7,
+      pre_shot_game_state = 'leading'
+    ),
+    arrow = grid::arrow(length = grid::unit(6, 'pt'), type = 'closed'),
+    ggplot2::aes(
+      x = x,
+      xend = xend,
+      y = y,
+      yend = yend
+    ),
+    linewidth = 1,
+    color = '#009ffd'
+  ),
+  ggplot2::geom_segment(
+    data = data.frame(
+      x = 0.55,
+      xend = 0.65,
+      y = 0.4,
+      yend = 0.3,
+      pre_shot_game_state = 'leading'
+    ),
+    arrow = grid::arrow(length = grid::unit(6, 'pt'), type = 'closed'),
+    ggplot2::aes(
+      x = x,
+      xend = xend,
+      y = y,
+      yend = yend
+    ),
+    linewidth = 1,
+    color = '#ffa400'
+  ),
+  ggtext::geom_richtext(
+    data = data.frame(
+      x = 0.65,
+      y = 0.8,
+      label = 'Model *under-predicts*',
+      pre_shot_game_state = 'leading'
+    ),
+    fill = NA, label.color = NA,
+    label.padding = grid::unit(rep(0, 1), 'pt'),
+    color = '#009ffd',
+    family = FONT,
+    hjust = 1,
+    vjust = 0.5,
+    size = 12 / ggplot2::.pt,
+    ggplot2::aes(
+      x = x,
+      y = y,
+      label = label
+    )
+  ),
+  ggtext::geom_richtext(
+    data = data.frame(
+      x = 0.35,
+      y = 0.2,
+      label = 'Model *over-predicts*',
+      pre_shot_game_state = 'leading'
+    ),
+    fill = NA, label.color = NA,
+    label.padding = grid::unit(rep(0, 1), 'pt'),
+    color = '#ffa400',
+    family = FONT,
+    hjust = 0,
+    vjust = 0.5,
+    size = 12 / ggplot2::.pt,
+    ggplot2::aes(
+      x = x,
+      y = y,
+      label = label
+    )
+  )
+)
+
+calib_game_state <- shots |> 
+  xg_cal_plot_breaks(
+    truth = is_goal,
+    estimate = .pred_yes,
+    .by = pre_shot_game_state
+  ) |> 
+  purrr::pluck('data')
+
+plot_and_save_calibration(
+  calib_game_state,
+  width = 9,
+  height = 9 / 2,
+  extra_layers = extra_xg_cal_plot_layers,
+  .by = pre_shot_game_state,
+  title = 'game state',
+  filename = 'no_pre_shot_game_state_xg'
+)
+```
+
+![](no_pre_shot_game_state_xg_calibration.png)
 
 ## TODO
 
 [There is evidence](https://twitter.com/Torvaney/status/1623316194936725506) that the current score of a match effects shooting rate, but it's not so clear that it has [an effect on conversion probability](https://kwiatkowski.io/rethinking-shots).
+
+## Conclustion
+
+*"Why should accounting for game state create a more accurate set of xPts? Doesn't xG already directly capture the fact that teams trailing in a match may be taking more, lower quality shots?"* Well, there are at least two confounding factors that immediately come to mind:
+
+1.  Players on the trailing team may be taking more off-balance or rushed shots that they would not otherwise take. Traditional xG model, which do not account for body pose or footedness, do not capture this kind of "desperateness".
+2.  Players on teams that fall behind their opponents tend to have less finishing skill. Lower finishing skill generally manifests in worse goal conversion rates. Thust, the xG of shots taken by such players may tend to overrate their actual number of goals scored.
+
+A picture is worth a thousand words.
