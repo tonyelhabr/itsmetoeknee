@@ -359,14 +359,19 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 </section>
 <section id="simplified-formulas" class="level4">
 <h4 class="anchored" data-anchor-id="simplified-formulas">Simplified Formulas</h4>
-<p>Let’s abstract one level up from metric <span class="math inline">\(m\)</span>, since, fundamentally, it should be intuitive that we won’t be looking at variance across different stats, i.e.&nbsp;variance across shots taken and passes completed doesn’t make sense. Further, removing the notation for seasons, players, expectations, and variances for clarity, we can re-write <a href="#eq-discrimination-full">Equation&nbsp;1</a> more plainly as</p>
+<p>Let’s abstract one level up from metric <span class="math inline">\(m\)</span>, since, fundamentally, it should be intuitive that we won’t be looking at variance across different stats, i.e.&nbsp;variance across shots taken and passes completed doesn’t make sense. Further, we’ll remove the subscripts and other notation for seasons, players, expectations, and variances for clarity.</p>
+<p>We re-write <a href="#eq-discrimination-full">Equation&nbsp;1</a> more plainly as</p>
 <p><span id="eq-discrimination-short"><span class="math display">\[
-\text{(Discrimination)} = 1 - \frac{BV}{SV}.
+\begin{array}{cc}
+\text{(Discrimination)} &amp; 1 - \frac{BV}{SV}.
+\end{array}
 \tag{3}\]</span></span></p>
-<p><span class="math inline">\(BV\)</span> is the <strong>b</strong>ootstrapped <strong>v</strong>ariability (of a given metric) for a given player in a given season (1 record per “player-season”), averaged over all player-seasons. <span class="math inline">\(SV\)</span> is the player-season <strong>v</strong>ariance for all players for a given <strong>s</strong>eason.</p>
-<p>Next, we can re-write <a href="#eq-stability-full">Equation&nbsp;2</a> as</p>
+<p><span class="math inline">\(BV\)</span> is the <strong>b</strong>ootstrapped <strong>v</strong>ariance for a given player in a given season (1 record per “player-season”), averaged over all player-seasons. <span class="math inline">\(SV\)</span> is the player-season <strong>v</strong>ariance for all players for a given <strong>s</strong>eason.</p>
+<p>Next, let’s re-write <a href="#eq-stability-full">Equation&nbsp;2</a> as</p>
 <p><span id="eq-stability-short"><span class="math display">\[
-\text{(Stability)} = 1 - \frac{WV - BV}{TV - BV}.
+\begin{array}{cc}
+\text{(Stability)} &amp; 1 - \frac{WV - BV}{TV - BV}.
+\end{array}
 \tag{4}\]</span></span></p>
 <p><span class="math inline">\(WV\)</span> represents the <strong>v</strong>ariance across all player-seasons <strong>w</strong>ithin a player. <span class="math inline">\(TV\)</span> is the <strong>t</strong>otal <strong>v</strong>ariance across all player-season totals over all seasons.</p>
 </section>
@@ -379,7 +384,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <p>We’ll be using public data from <a href="https://fbref.com/">FBref</a> for the 2018/19 - 2022/23 seasons of the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big 5 European soccer leagues</a>.</p>
 <div class="cell">
 <details>
-<summary>Data retrieval</summary>
+<summary>Retrieve and wrangle data</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyr)</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(purrr)</span>
@@ -684,7 +689,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ pass_completion_rate   &lt;dbl&gt; 0.8090508, 0.7914439, 0.7308146, 0.7256163, …</span></span>
 <span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ successful_takeon_rate &lt;dbl&gt; 0.7142857, 0.6451613, 0.5375000, 0.6562500, …</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Next, we calculate the bootstrap variance across the player-season bootstraps. Then we take the average of the bootstrap variance over all player-seasons, grouping by season, to arrive at <span class="math inline">\(BV\)</span>. (1 value per season and metric.)</p>
+<p>Next, we calculate the bootstrap variance across the player-season bootstraps. Then we take the average of the bootstrap variance over all player-seasons, grouping by season, to arrive at <span class="math inline">\(BV\)</span>. (One value per season and metric.)</p>
 <div class="cell">
 <details>
 <summary>Calculate bootstrap variance, BV</summary>
@@ -738,7 +743,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 2017/18 passes_attempted     15725.      </span></span>
 <span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 128 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Next, we move on to the “seasonal variance”, <span class="math inline">\(SV\)</span>. This is actually pretty trivial, as it’s just a direct call to <code>stats::var</code> on the empirical player-season aggregates, grouping by season. We end up with 1 row per season and metric, as we do with <span class="math inline">\(BV\)</span>.</p>
+<p>Next, we move on to the “seasonal variance”, <span class="math inline">\(SV\)</span>. This is actually pretty trivial, as it’s just a direct call to <code>stats::var</code> on the empirical player-season aggregates, grouping by season. We end up with one row per season and metric, as we do with <span class="math inline">\(BV\)</span>.</p>
 <div class="cell">
 <details>
 <summary>Calculate seasonal variance, SV</summary>
@@ -772,7 +777,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 </div>
 <p>Now, the easy part—bringing <span class="math inline">\(BV\)</span> and <span class="math inline">\(SV\)</span> together to calculate discrimination, by season.</p>
 <div class="cell">
-<details open="">
+<details>
 <summary>Calculate discrimination</summary>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>discrimination <span class="ot">&lt;-</span> bv <span class="sc">|&gt;</span> </span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
@@ -931,6 +936,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>TODO: Emphasize that discrimination is within season, whereas stability is across seasons</p>
 <blockquote class="blockquote">
 <p>discrimination, which is a meta-metric that describes variation within a single season, it is important to understand how much an individual player’s metric varies from season to season.</p>
 </blockquote>

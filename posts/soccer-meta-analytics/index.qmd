@@ -67,18 +67,24 @@ This represents **the fraction of total variance that is due to within-player ch
 
 #### Simplified Formulas
 
-Let's abstract one level up from metric $m$, since, fundamentally, it should be intuitive that we won't be looking at variance across different stats, i.e. variance across shots taken and passes completed doesn't make sense. Further, removing the notation for seasons, players, expectations, and variances for clarity, we can re-write @eq-discrimination-full more plainly as
+Let's abstract one level up from metric $m$, since, fundamentally, it should be intuitive that we won't be looking at variance across different stats, i.e. variance across shots taken and passes completed doesn't make sense. Further, we'll remove the subscripts and other notation for seasons, players, expectations, and variances for clarity.
+
+We re-write @eq-discrimination-full more plainly as
 
 $$
-\text{(Discrimination)} = 1 - \frac{BV}{SV}.
+\begin{array}{cc}
+\text{(Discrimination)} & 1 - \frac{BV}{SV}.
+\end{array}
 $$ {#eq-discrimination-short}
 
-$BV$ is the **b**ootstrapped **v**ariability (of a given metric) for a given player in a given season (1 record per "player-season"), averaged over all player-seasons. $SV$ is the player-season **v**ariance for all players for a given **s**eason.
+$BV$ is the **b**ootstrapped **v**ariance for a given player in a given season (1 record per "player-season"), averaged over all player-seasons. $SV$ is the player-season **v**ariance for all players for a given **s**eason.
 
-Next, we can re-write @eq-stability-full as
+Next, let's re-write @eq-stability-full as
 
 $$
-\text{(Stability)} = 1 - \frac{WV - BV}{TV - BV}.
+\begin{array}{cc}
+\text{(Stability)} & 1 - \frac{WV - BV}{TV - BV}.
+\end{array}
 $$ {#eq-stability-short}
 
 $WV$ represents the **v**ariance across all player-seasons **w**ithin a player. $TV$ is the **t**otal **v**ariance across all player-season totals over all seasons.
@@ -92,7 +98,7 @@ We'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 20
 ```{r}
 #| label: data-pull
 #| code-fold: true
-#| code-summary: Data retrieval
+#| code-summary: Retrieve and wrangle data
 library(dplyr)
 library(tidyr)
 library(purrr)
@@ -423,7 +429,7 @@ dplyr::glimpse(resampled_player_season_stats)
 #> $ successful_takeon_rate <dbl> 0.7142857, 0.6451613, 0.5375000, 0.6562500, …
 ```
 
-Next, we calculate the bootstrap variance across the player-season bootstraps. Then we take the average of the bootstrap variance over all player-seasons, grouping by season, to arrive at $BV$. (1 value per season and metric.)
+Next, we calculate the bootstrap variance across the player-season bootstraps. Then we take the average of the bootstrap variance over all player-seasons, grouping by season, to arrive at $BV$. (One value per season and metric.)
 
 ```{r}
 #| label: bv
@@ -488,7 +494,7 @@ bv
 #> # ℹ 128 more rows
 ```
 
-Next, we move on to the "seasonal variance", $SV$. This is actually pretty trivial, as it's just a direct call to `stats::var` on the empirical player-season aggregates, grouping by season. We end up with 1 row per season and metric, as we do with $BV$.
+Next, we move on to the "seasonal variance", $SV$. This is actually pretty trivial, as it's just a direct call to `stats::var` on the empirical player-season aggregates, grouping by season. We end up with one row per season and metric, as we do with $BV$.
 
 ```{r}
 #| label: sv
@@ -535,7 +541,7 @@ Now, the easy part---bringing $BV$ and $SV$ together to calculate discrimination
 
 ```{r}
 #| label: discrimination
-#| code-fold: show
+#| code-fold: true
 #| code-summary: Calculate discrimination
 discrimination <- bv |> 
   dplyr::inner_join(
@@ -737,6 +743,8 @@ stability
 ## Results
 
 ## Conclusion
+
+TODO: Emphasize that discrimination is within season, whereas stability is across seasons
 
 > discrimination, which is a meta-metric that describes variation within a single season, it is important to understand how much an individual player's metric varies from season to season.
 
