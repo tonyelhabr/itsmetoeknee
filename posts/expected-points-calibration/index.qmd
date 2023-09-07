@@ -1,12 +1,12 @@
 ---
-title: Improving Expected Points
-description: Using Beta calibration to improve the accuracy of expected points in soccer
+title: Calibrating Implied Match Probabilities in Soccer 
+description: Using calibration to improve the match outcome probabilities implied by expected points
 date: 2023-09-10
 draft: true
 categories:
   - r
   - soccer
-image: footedness_calibration.png
+image: foo.png
 execute: 
   code-fold: false
   eval: false
@@ -1232,6 +1232,33 @@ compared_xpts_by_match_plot <- compared_xpts_by_match |>
     y = cal_xpts
   ) +
   ggplot2::geom_point()
+
+```
+
+```{r}
+#| label: tbl
+#| include: false
+compared_xpts_by_season <- compared_xpts_by_match |> 
+  group_by(season, team) |> 
+  summarize(
+    across(ends_with('pts'), sum)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    reg_d = pts - reg_xpts,
+    cal_d = pts - cal_xpts,
+    cal_is_improvement = abs(cal_d) < abs(reg_d)
+  )
+compared_xpts_by_season |> count(season, cal_is_improvement)
+
+compared_xpts_by_match |> 
+  arrange(desc(abs(reg_xpts - cal_xpts)))
+
+compared_xpts_by_season |> 
+  arrange(desc(abs(reg_xpts - cal_xpts)))
+
+compared_xpts_by_season |> 
+  filter(team == 'Brighton & Hove Albion')
 
 ```
 

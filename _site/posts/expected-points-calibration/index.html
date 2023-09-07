@@ -8,9 +8,9 @@
 
 <meta name="author" content="Tony ElHabr">
 <meta name="dcterms.date" content="2023-09-10">
-<meta name="description" content="Using Beta calibration to improve the accuracy of expected points in soccer">
+<meta name="description" content="Using calibration to improve the match outcome probabilities implied by expected points">
 
-<title>Tony’s Blog - Improving Expected Points</title>
+<title>Tony’s Blog - Calibrating Implied Match Probabilities in Soccer</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -188,9 +188,9 @@ cookieconsent.run({
 
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
-<link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - Improving Expected Points">
-<meta name="twitter:description" content="Using Beta calibration to improve the accuracy of expected points in soccer">
-<meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts\expected-points-calibration\footedness_calibration.png">
+<link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - Calibrating Implied Match Probabilities in Soccer">
+<meta name="twitter:description" content="Using calibration to improve the match outcome probabilities implied by expected points">
+<meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts\expected-points-calibration\foo.png">
 <meta name="twitter:site" content="@TonyElHabr">
 <meta name="twitter:card" content="summary_large_image">
 </head>
@@ -280,7 +280,7 @@ cookieconsent.run({
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<div class="quarto-title-block"><div><h1 class="title">Improving Expected Points</h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> Code</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Show All Code</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">Hide All Code</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button" data-quarto-source-url="https://github.com/tonyelhabr/itsmetoeknee/blob/main/posts/expected-points-calibration/index.qmd">View Source</a></li></ul></div></div>
+<div class="quarto-title-block"><div><h1 class="title">Calibrating Implied Match Probabilities in Soccer</h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source" data-quarto-source-url="https://github.com/tonyelhabr/itsmetoeknee/blob/main/posts/expected-points-calibration/index.qmd"><i class="bi"></i> Code</button></div></div>
   <div class="quarto-categories">
     <div class="quarto-category">r</div>
     <div class="quarto-category">soccer</div>
@@ -289,7 +289,7 @@ cookieconsent.run({
 
 <div>
   <div class="description">
-    Using Beta calibration to improve the accuracy of expected points in soccer
+    Using calibration to improve the match outcome probabilities implied by expected points
   </div>
 </div>
 
@@ -508,25 +508,13 @@ Calibration Without a Grouping Variable
 <p>Below is a plot that shows how the Beta calibration has adjusted the raw <strong>“uncalibrated”</strong> xG values.</p>
 <p><img src="uncalibrated_vs_calibrated_xg.png" class="img-fluid"></p>
 <p>Putting the <strong>calibrated</strong> xG along side the original xG in the calibration plot that we made earlier, we can see a slight visual improvement.</p>
-<p><img src="xg_calibration_compared.png" class="img-fluid"></p>
+<p><img src="compared_calibration.png" class="img-fluid"></p>
 <p>We could evaluate just how much the calibration has helped by calculating <a href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">Brier Skill Score</a>, for example, but quantifying improvement to xG is not our primary focus.</p>
 </section>
 <section id="revising-expected-points-xpts" class="level3">
 <h3 class="anchored" data-anchor-id="revising-expected-points-xpts">Revising Expected Points (xPts)</h3>
 <p>We set out to evaluate how we could improve xPts (which relies on xG), so let’s do that. I’ll spare the details of how to calculate xPts because I have a whole separate blog post on that.</p>
 <p>Instead, let’s skip to evaluating</p>
-<div class="cell">
-<details>
-<summary>Code</summary>
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>compared_xpts_by_match_plot <span class="ot">&lt;-</span> compared_xpts_by_match <span class="sc">|&gt;</span> </span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> reg_xpts,</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> cal_xpts</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_point</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</details>
-</div>
 </section>
 </section>
 <section id="todo" class="level2">
