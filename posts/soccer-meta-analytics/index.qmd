@@ -103,7 +103,6 @@ library(dplyr)
 library(tidyr)
 library(purrr)
 library(tibble)
-library(lubridate)
 
 load_fb_advanced_match_stats <- function(country, gender, tier, stat_type, team_or_player, season_end_year = NA) {
   
@@ -168,56 +167,99 @@ BASE_METRICS <- c(
 )
 
 RATE_METRICS <- c(
-  'goal_conversion_rate',
+  'shot_conversion_rate',
   'pass_completion_rate',
   'successful_takeon_rate'
 )
 
+# ALL_METRICS <- c(
+#   setdiff(
+#     BASE_METRICS,
+#     c(
+#       'blocks',
+#       'sca',
+#       'gca',
+#       'carries',
+#       'passes_attempted',
+#       'takeons_attempted'
+#     )
+#   ),
+#   RATE_METRICS
+# )
+
 ALL_METRICS <- c(
-  BASE_METRICS,
-  RATE_METRICS
+  'goals' = 'Goals',
+  'assists' = 'Assists',
+  'shots' = 'Shots',
+  'shots_on_target' = 'Shots on Target',
+  # 'touches' = 'Touches',
+  'tackles' = 'Tackles',
+  'interceptions' = 'Interceptions',
+  'xg' = 'xG',
+  # 'npxg' = 'npxG',
+  'xa' = 'xA',
+  'passes_completed' = 'Passes Completed',
+  'carries' = 'Carries',
+  # 'progressive_passes' = 'Progressive Passes',
+  # 'progressive_carries' = 'Progressive Carries',
+  # 'successful_takeons' = 'Successful Take-ons',
+  'shot_conversion_rate' = 'Shots Conversion Rate',
+  'pass_completion_rate' = 'Pass Completion Rate',
+  # 'successful_takeon_rate' = 'Successful Take-on %',
+  'xg_p90' = 'xG/90',
+  # 'npxg_p90' = 'npxG/90',
+  'goals_p90' = 'Goals/90',
+  'goals_xg_ratio' = 'Goals/xG'
 )
 
 player_match_stats <- raw_player_match_stats |> 
   dplyr::transmute(
     league = sprintf('%s-%s-%s', Country, Gender, Tier),
     season = sprintf('%s/%s', Season_End_Year - 1, substr(Season_End_Year, 3, 4)),
-    date = lubridate::ymd(Match_Date),
+    date = Match_Date,
     match_id = basename(dirname(MatchURL)),
     team = Team,
     player = Player,
+    nation = Nation, ## to help uniquely identify players
+
     minutes_played = Min,
     
     goals = Gls, ## includes pks
     assists = Ast,
     shots = Sh, ## does not include pk attempts
     shots_on_target = SoT,
-    touches = Touches,
+    # touches = Touches,
     tackles = Tkl,
     interceptions = Int,
     blocks = Blocks,
     
     xg = xG_Expected,
-    npxg = npxG_Expected,
+    # npxg = npxG_Expected,
     xa = xAG_Expected,
     
-    sca = SCA_SCA,
-    gca = GCA_SCA,
+    # sca = SCA_SCA,
+    # gca = GCA_SCA,
+
+    # takeons_attempted = Att_Take_Ons,
+    # successful_takeons = Succ_Take_Ons,
+        
+    # progressive_passes = PrgP_Passes,
+    # progressive_carries = PrgC_Carries,
     
     passes_completed = Cmp_Passes,
     passes_attempted = Att_Passes,
-    
-    progressive_passes = PrgP_Passes,
-    carries = Carries_Carries,
-    progressive_carries = PrgC_Carries,
-    
-    takeons_attempted = Att_Take_Ons,
-    successful_takeons = Succ_Take_Ons
+    carries = Carries_Carries
   )
 
+safe_divide <- function(num, den) {
+  case_when(
+    den == 0 | is.na(den) ~ NA_real_,
+    TRUE ~ dplyr::coalesce(num / den, 0)
+  )
+}
+
 coalesce_fraction <- purrr::compose(
-  \(num, den) ifelse(num > 0 & den == 0, 0, num / den),
-  \(x) dplyr::coalesce(x, 0),
+  \(num, den) safe_divide(num, den),
   \(x) ifelse(x > 1, 1, x),
   \(x) ifelse(x < 0, 0, x),
   .dir = 'forward'
@@ -225,24 +267,33 @@ coalesce_fraction <- purrr::compose(
 
 summarize_all_metric_columns <- function(df, ...) {
   df |> 
-    dplyr::group_by(..., league, season, team, player) |> 
+    dplyr::group_by(..., league, season, team, player, nation) |> 
     dplyr::summarize(
       dplyr::across(
-        c(minutes_played, dplyr::all_of(BASE_METRICS)), 
+        c(minutes_played:dplyr::last_col()),
         sum
       )
     ) |> 
     dplyr::ungroup() |> 
     dplyr::mutate(
       ## Mark Noble with the epic 1 goal on 0 shots https://fbref.com/en/matches/b56fd899/Watford-West-Ham-United-December-28-2021-Premier-League
-      goal_conversion_rate = coalesce_fraction(goals, shots),
+      shot_conversion_rate = coalesce_fraction(goals, shots),
       pass_completion_rate = coalesce_fraction(passes_completed, passes_attempted),
-      successful_takeon_rate = coalesce_fraction(successful_takeons, takeons_attempted)
+      # successful_takeon_rate = coalesce_fraction(successful_takeons, takeons_attempted)
+      goals_xg_ratio = safe_divide(goals, xg)
+    ) |> 
+    dplyr::mutate(
+      dplyr::across(
+        c(xg, npxg, goals),
+        list(
+          p90 = \(.x) 90 * .x / minutes_played
+        )
+      )
     )
 }
 
 player_team_season_mapping <- player_match_stats |> 
-  dplyr::group_by(league, season, team, player) |>
+  dplyr::group_by(league, season, team, player, nation) |>
   dplyr::filter(minutes_played > 0L) |> 
   dplyr::summarize(
     dplyr::across(minutes_played, sum),
@@ -261,9 +312,18 @@ eligible_player_season_stats <- player_season_stats |>
 eligible_player_match_stats <- player_match_stats |> 
   dplyr::semi_join(
     eligible_player_season_stats,
-    by = dplyr::join_by(league, season, team, player)
+    by = dplyr::join_by(league, season, team, player, nation)
   ) |> 
-  dplyr::arrange(league, season, team, player)
+  dplyr::arrange(league, season, team, player, nation)
+## drop players with 0s for any given metric across any season?
+##   looks like they only did that for testing a 1-season evaluation:
+##   https://github.com/afranks86/meta-analytics/blob/1871d24762184afa69f29a2b5b348431e70b9b2b/basketballReliability.R#L25
+# eligible_player_season_stats |> 
+#   pivot_metric_columns() |> 
+#   group_by(league, team, player, metric) |> 
+#   summarize(has_any_zero = any(value == 0)) |> 
+#   ungroup() |> 
+#   filter(has_any_zero)
 ```
 
 ```{r}
@@ -383,7 +443,7 @@ resampled_player_match_stats <- resampled_player_match_stats |>
 
 resampled_player_season_stats <- resampled_player_match_stats |> 
   summarize_all_metric_columns(bootstrap_id) |> 
-  dplyr::arrange(bootstrap_id, league, season, team, player)
+  dplyr::arrange(bootstrap_id, league, season, team, player, nation)
 ```
 
 ```{r}
@@ -424,7 +484,7 @@ dplyr::glimpse(resampled_player_season_stats)
 #> $ progressive_carries    <dbl> 51, 31, 116, 61, 32, 53, 28, 13, 32, 91, 80,…
 #> $ takeons_attempted      <dbl> 21, 31, 80, 96, 12, 45, 9, 2, 27, 33, 35, 4,…
 #> $ successful_takeons     <dbl> 15, 20, 43, 63, 6, 11, 8, 2, 12, 25, 25, 2, …
-#> $ goal_conversion_rate   <dbl> 0.07142857, 0.25000000, 0.09677419, 0.107843…
+#> $ shot_conversion_rate   <dbl> 0.07142857, 0.25000000, 0.09677419, 0.107843…
 #> $ pass_completion_rate   <dbl> 0.8090508, 0.7914439, 0.7308146, 0.7256163, …
 #> $ successful_takeon_rate <dbl> 0.7142857, 0.6451613, 0.5375000, 0.6562500, …
 ```
@@ -442,10 +502,11 @@ pivot_metric_columns <- function(df) {
       season,
       team,
       player,
-      dplyr::all_of(ALL_METRICS)
+      nation,
+      dplyr::any_of(names(ALL_METRICS))
     ) |> 
     tidyr::pivot_longer(
-      -c(league, season, team, player),
+      -c(league, season, team, player, nation),
       names_to = 'metric',
       values_to = 'value'
     )
@@ -478,20 +539,20 @@ qs::qsave(bv, file.path(PROJ_DIR, 'bv.qs'))
 #| label: glimpse-bv
 #| code-fold: false
 bv
-#> # A tibble: 138 × 3
+#> # A tibble: 114 × 3
 #>    season  metric                         bv
 #>    <chr>   <chr>                       <dbl>
 #>  1 2017/18 assists                  1.64    
 #>  2 2017/18 blocks                  26.3     
-#>  3 2017/18 carries               7712.      
-#>  4 2017/18 gca                      4.65    
-#>  5 2017/18 goal_conversion_rate     0.00625 
-#>  6 2017/18 goals                    2.36    
-#>  7 2017/18 interceptions           33.4     
-#>  8 2017/18 npxg                     0.761   
-#>  9 2017/18 pass_completion_rate     0.000639
-#> 10 2017/18 passes_attempted     15725.      
-#> # ℹ 128 more rows
+#>  3 2017/18 gca                      4.65    
+#>  4 2017/18 shot_conversion_rate     0.00625 
+#>  5 2017/18 goals                    2.36    
+#>  6 2017/18 interceptions           33.4     
+#>  7 2017/18 npxg                     0.761   
+#>  8 2017/18 pass_completion_rate     0.000639
+#>  9 2017/18 passes_completed     10809.      
+#> 10 2017/18 progressive_carries     65.6     
+#> # ℹ 104 more rows
 ```
 
 Next, we move on to the "seasonal variance", $SV$. This is actually pretty trivial, as it's just a direct call to `stats::var` on the empirical player-season aggregates, grouping by season. We end up with one row per season and metric, as we do with $BV$.
@@ -521,20 +582,20 @@ qs::qsave(sv, file.path(PROJ_DIR, 'sv.qs'))
 #| label: glimpse-sv
 #| code-fold: false
 sv
-#> # A tibble: 138 × 3
+#> # A tibble: 114 × 3
 #>    season  metric                        sv
 #>    <chr>   <chr>                      <dbl>
 #>  1 2017/18 assists                   4.33  
 #>  2 2017/18 blocks                  186.    
-#>  3 2017/18 carries              153542.    
-#>  4 2017/18 gca                      19.3   
-#>  5 2017/18 goal_conversion_rate      0.0120
-#>  6 2017/18 goals                    12.4   
-#>  7 2017/18 interceptions           319.    
-#>  8 2017/18 npxg                      7.27  
-#>  9 2017/18 pass_completion_rate      0.0112
-#> 10 2017/18 passes_attempted     337383.    
-#> # ℹ 128 more rows
+#>  3 2017/18 gca                      19.3   
+#>  4 2017/18 shot_conversion_rate      0.0120
+#>  5 2017/18 goals                    12.4   
+#>  6 2017/18 interceptions           319.    
+#>  7 2017/18 npxg                      7.27  
+#>  8 2017/18 pass_completion_rate      0.0112
+#>  9 2017/18 passes_completed     231962.    
+#> 10 2017/18 progressive_carries     944.    
+#> # ℹ 104 more rows
 ```
 
 Now, the easy part---bringing $BV$ and $SV$ together to calculate discrimination, by season.
@@ -564,20 +625,20 @@ qs::qsave(discrimination, file.path(PROJ_DIR, 'discrimination.qs'))
 #| label: glimpse-discrimination
 #| code-fold: false
 discrimination
-#> # A tibble: 138 × 5
+#> # A tibble: 114 × 5
 #>    season  metric                         bv          sv discrimination
 #>    <chr>   <chr>                       <dbl>       <dbl>          <dbl>
 #>  1 2017/18 assists                  1.64          4.33            0.621
 #>  2 2017/18 blocks                  26.3         186.              0.859
-#>  3 2017/18 carries               7712.       153542.              0.950
-#>  4 2017/18 gca                      4.65         19.3             0.759
-#>  5 2017/18 goal_conversion_rate     0.00625       0.0120          0.481
-#>  6 2017/18 goals                    2.36         12.4             0.810
-#>  7 2017/18 interceptions           33.4         319.              0.895
-#>  8 2017/18 npxg                     0.761         7.27            0.895
-#>  9 2017/18 pass_completion_rate     0.000639      0.0112          0.943
-#> 10 2017/18 passes_attempted     15725.       337383.              0.953
-#> # ℹ 128 more rows
+#>  3 2017/18 gca                      4.65         19.3             0.759
+#>  4 2017/18 shot_conversion_rate     0.00625       0.0120          0.481
+#>  5 2017/18 goals                    2.36         12.4             0.810
+#>  6 2017/18 interceptions           33.4         319.              0.895
+#>  7 2017/18 npxg                     0.761         7.27            0.895
+#>  8 2017/18 pass_completion_rate     0.000639      0.0112          0.943
+#>  9 2017/18 passes_completed     10809.       231962.              0.953
+#> 10 2017/18 progressive_carries     65.6         944.              0.931
+#> # ℹ 104 more rows
 ```
 
 ### Stability
@@ -627,27 +688,35 @@ qs::qsave(wv, file.path(PROJ_DIR, 'wv.qs'))
 #| label: glimpse-wv
 #| code-fold: false
 wv
-#> # A tibble: 23 × 2
-#>    metric                         wv
-#>    <chr>                       <dbl>
-#>  1 assists                   2.71   
-#>  2 blocks                   96.2    
-#>  3 carries               77143.     
-#>  4 gca                      10.0    
-#>  5 goal_conversion_rate      0.00954
-#>  6 goals                     5.75   
-#>  7 interceptions           122.     
-#>  8 npxg                      2.85   
-#>  9 pass_completion_rate      0.00721
-#> 10 passes_attempted     153729.     
-#> # ℹ 13 more rows
+#> # A tibble: 19 × 2
+#>    metric                           wv
+#>    <chr>                         <dbl>
+#>  1 assists                     2.71   
+#>  2 blocks                     96.2    
+#>  3 gca                        10.0    
+#>  4 shot_conversion_rate        0.00954
+#>  5 goals                       5.75   
+#>  6 interceptions             122.     
+#>  7 npxg                        2.85   
+#>  8 pass_completion_rate        0.00721
+#>  9 passes_completed       102682.     
+#> 10 progressive_carries       400.     
+#> 11 progressive_passes       1346.     
+#> 12 shots                     183.     
+#> 13 shots_on_target            29.1    
+#> 14 successful_takeon_rate      0.0511 
+#> 15 successful_takeons        124.     
+#> 16 tackles                   239.     
+#> 17 touches                220064.     
+#> 18 xa                          1.57   
+#> 19 xg                          3.71
 ```
 
 Note that there is just one record per metric.[^4]
 
 [^4]: This agrees with the notation indicated in @eq-stability-full, where there is just one subscript, for metric $m$. Compare this to the two subscripts for both season $s$ and metric $m$ in @eq-discrimination-full. Accordingly, our `discrimination` variable has one row per season and metric.
 
-Finally, we calculate "total variance", $TV$. This is the most straightforward of all our variance calculations, as it involves just a call to `stats::var()` for each metric on the empirical player-season stats.
+To finsh our variance calculations, we calculate "total variance", $TV$. This is the most straightforward of them all, as it involves just a call to `stats::var()` for each metric on the empirical player-season stats.
 
 ```{r}
 #| label: tv
@@ -672,34 +741,44 @@ qs::qsave(tv, file.path(PROJ_DIR, 'tv.qs'))
 #| label: glimpse-tv
 #| code-fold: false
 tv
-#> # A tibble: 23 × 2
-#>    metric                        tv
-#>    <chr>                      <dbl>
-#>  1 assists                   4.16  
-#>  2 blocks                  177.    
-#>  3 carries              161078.    
-#>  4 gca                      17.9   
-#>  5 goal_conversion_rate      0.0128
-#>  6 goals                    11.5   
-#>  7 interceptions           252.    
-#>  8 npxg                      6.86  
-#>  9 pass_completion_rate      0.0179
-#> 10 passes_attempted     339330.    
-#> # ℹ 13 more rows
+#> # A tibble: 19 × 2
+#>    metric                          tv
+#>    <chr>                        <dbl>
+#>  1 assists                     4.16  
+#>  2 blocks                    177.    
+#>  3 gca                        17.9   
+#>  4 shot_conversion_rate        0.0128
+#>  5 goals                      11.5   
+#>  6 interceptions             252.    
+#>  7 npxg                        6.86  
+#>  8 pass_completion_rate        0.0179
+#>  9 passes_completed       236881.    
+#> 10 progressive_carries       856.    
+#> 11 progressive_passes       2914.    
+#> 12 shots                     427.    
+#> 13 shots_on_target            65.2   
+#> 14 successful_takeon_rate      0.0787
+#> 15 successful_takeons        254.    
+#> 16 tackles                   460.    
+#> 17 touches                460123.    
+#> 18 xa                          3.15  
+#> 19 xg                          9.27
 ```
 
-Finally, we bring $BV$, $WV$ and $TV$ together to calculate stability.
+Finally, we bring $BV$, $WV$ and $TV$ together to calculate stability. Note that we average $BV$ across all seasons, arriving at one value per metric, since stability is calculated only per metric, not per metric and per season.
 
 ```{r}
 #| label: stability
 #| code-fold: true
 #| code-summary: Calculate stability
-stability <- bv |> 
+average_bv <- bv |> 
   dplyr::group_by(metric) |> 
   dplyr::summarize(
     bv = mean(bv)
   ) |> 
-  dplyr::ungroup() |> 
+  dplyr::ungroup()
+
+stability <- average_bv |> 
   dplyr::inner_join(
     tv,
     by = dplyr::join_by(metric)
@@ -724,23 +803,170 @@ qs::qsave(stability, file.path(PROJ_DIR, 'stability.qs'))
 #| label: glimpse-stability
 #| code-fold: false
 stability
-#> # A tibble: 23 × 5
-#>    metric                        bv          tv           wv stability
-#>    <chr>                      <dbl>       <dbl>        <dbl>     <dbl>
-#>  1 assists                  1.66         4.16        2.71        0.580
-#>  2 blocks                  25.8        177.         96.2         0.533
-#>  3 carries               7808.      161078.      77143.          0.548
-#>  4 gca                      4.64        17.9        10.0         0.592
-#>  5 goal_conversion_rate     0.00707      0.0128      0.00954     0.569
-#>  6 goals                    2.38        11.5         5.75        0.629
-#>  7 interceptions           27.8        252.        122.          0.577
-#>  8 npxg                     0.746        6.86        2.85        0.656
-#>  9 pass_completion_rate     0.00108      0.0179      0.00721     0.635
-#> 10 passes_attempted     14995.      339330.     153729.          0.572
-#> # ℹ 13 more rows
+#> # A tibble: 19 × 5
+#>    metric                          bv          tv           wv stability
+#>    <chr>                        <dbl>       <dbl>        <dbl>     <dbl>
+#>  1 assists                    1.66         4.16        2.71        0.580
+#>  2 blocks                    25.8        177.         96.2         0.533
+#>  3 gca                        4.64        17.9        10.0         0.592
+#>  4 shot_conversion_rate       0.00707      0.0128      0.00954     0.569
+#>  5 goals                      2.38        11.5         5.75        0.629
+#>  6 interceptions             27.8        252.        122.          0.577
+#>  7 npxg                       0.746        6.86        2.85        0.656
+#>  8 pass_completion_rate       0.00108      0.0179      0.00721     0.635
+#>  9 passes_completed       10527.      236881.     102682.          0.593
+#> 10 progressive_carries       61.5        856.        400.          0.574
+#> 11 progressive_passes       194.        2914.       1346.          0.576
+#> 12 shots                     31.7        427.        183.          0.618
+#> 13 shots_on_target            8.17        65.2        29.1         0.634
+#> 14 successful_takeon_rate     0.0254       0.0787      0.0511      0.519
+#> 15 successful_takeons        25.2        254.        124.          0.568
+#> 16 tackles                   48.3        460.        239.          0.537
+#> 17 touches                20370.      460123.     220064.          0.546
+#> 18 xa                         0.538        3.15        1.57        0.607
+#> 19 xg                         0.944        9.27        3.71        0.668
 ```
 
 ## Results
+
+Using the 2022/23 season as our choice for discrimination, let's make a scatter plot of the discriminaton and stability of our metrics, akin to the plots made by Franks et al.
+
+```{r}
+#| label: meta_metrics
+#| include: false
+meta_metrics <- dplyr::inner_join(
+  discrimination |> dplyr::select(season, metric, sv, bv, discrimination),
+  stability |> dplyr::select(metric, tv, wv, stability),
+  by = dplyr::join_by(metric),
+  relationship = 'many-to-one'
+) |> 
+  dplyr::select(
+    season,
+    metric,
+    tv,
+    sv,
+    bv,
+    wv,
+    discrimination,
+    stability
+  ) |> 
+  dplyr::arrange(season, metric)
+```
+
+```{r}
+#| label: plot-meta_metrics
+#| include: false
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
+
+TAG_LABEL <- htmltools::tagList(
+  htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
+  htmltools::tags$span("@TonyElHabr"),
+)
+CAPTION_LABEL <- '**Data**: Opta via fbref.<br/>**Inspiration**: *“Meta-Analytics: Tools for Understanding the Statistical Properties of Sports Metrics”*, Franks et al. (2017)'
+SUBTITLE_LABEL <- 'Big 5 Leagues, 2017/18 - 2022/23'
+PLOT_RESOLUTION <- 300
+WHITISH_FOREGROUND_COLOR <- 'white'
+COMPLEMENTARY_FOREGROUND_COLOR <- '#cbcbcb' # '#f1f1f1'
+BLACKISH_BACKGROUND_COLOR <- '#1c1c1c'
+COMPLEMENTARY_BACKGROUND_COLOR <- '#4d4d4d'
+FONT <- 'Titillium Web'
+sysfonts::font_add_google(FONT, FONT)
+## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = PLOT_RESOLUTION)
+
+ggplot2::theme_set(ggplot2::theme_minimal())
+ggplot2::theme_update(
+  text = ggplot2::element_text(family = FONT),
+  title = ggplot2::element_text(size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title = ggtext::element_markdown(face = 'bold', size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title.position = 'plot',
+  plot.subtitle = ggtext::element_markdown(size = 16, color = COMPLEMENTARY_FOREGROUND_COLOR),
+  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
+  # axis.title = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.x = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.y = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.line = ggplot2::element_blank(),
+  strip.text = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0),
+  panel.grid.major = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor.x = ggplot2::element_blank(),
+  panel.grid.minor.y = ggplot2::element_blank(),
+  plot.margin = ggplot2::margin(10, 20, 10, 20),
+  plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
+  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain'),
+  plot.caption.position = 'plot',
+  plot.tag = ggtext::element_markdown(size = 12, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
+  plot.tag.position = c(0.99, 0.99),
+  panel.spacing.x = grid::unit(2, 'lines'),
+  panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
+)
+
+p <- meta_metrics |> 
+  dplyr::filter(season == '2022/23') |> 
+  dplyr::mutate(
+      metric = ALL_METRICS[metric]
+  ) |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = discrimination,
+    y = stability
+  ) +
+  ggplot2::geom_abline(
+    linetype = 2,
+    color = COMPLEMENTARY_FOREGROUND_COLOR
+  ) +
+  ggplot2::geom_point(
+    size = 2.5,
+    color = WHITISH_FOREGROUND_COLOR
+  ) +
+  ggrepel::geom_text_repel(
+    seed = 42,
+    family = FONT,
+    size = 11 / .pt,
+    min.segment.length = 0,
+    force = 100,
+    max.overlaps = Inf,
+    colour = WHITISH_FOREGROUND_COLOR,
+    segment.colour = COMPLEMENTARY_FOREGROUND_COLOR,
+    ggplot2:: aes(label = metric)
+  ) +
+  # coord_equal(xlim = c(0, 1), ylim = c(0, 1))
+  ggplot2::scale_x_continuous(limits = c(0.25, 1)) +
+  ggplot2::scale_y_continuous(limits = c(0.25, 1)) +
+  ggplot2::labs(
+    title = 'Meta-metrics for soccer',
+    subtitle = SUBTITLE_LABEL,
+    tag = TAG_LABEL,
+    caption = CAPTION_LABEL,
+    x = 'Discrimination',
+    y = 'Stability'
+  )
+p
+ggplot2::ggsave(
+  p,
+  filename = file.path(PROJ_DIR, 'discrimination-v-stability.png'),
+  width = 7,
+  height = 7
+)
+```
+
+We can make the following observations:
+
+-   Tallying statistics based on total playing time--like goals, shots, tackles, and interceptions--tend to be highly discriminative and not as stable. This makes sense---such statistics have large between-player variance (think about the number of shots that a central defender takes compared to a striker) and, when aggregated for each player over the course of a season, provide strong signal for different player types, i.e. positions.
+
+    -   Indeed, Franks et al. found the same for NBA and NHL statistics.
+
+-   Of the cluster of statistics that are more discriminative than stable, xG nudges out as the most stable.
+
+-   Shot conversion rate (i.e. goals divided by shots) stands out as the only metric that is relatively more stable than discriminative.
+
+-   It's interesting to see that our minutes-adjusted metrics, goals/90 and xG/90, seem to be equally stable and discriminative. The stability of these metrics is significantly improved compared to their non-minutes-adjusted counterparts, goals and xG. This speaks to the between-player noise-minimizing benefits of comparing players on an equal minute basis.
 
 ## Conclusion
 
@@ -751,3 +977,4 @@ TODO: Emphasize that discrimination is within season, whereas stability is acros
 > Our discrimination meta-metric quantifies how useful a metric is for distinguishing between players within a given season, whereas our stability meta-metric measures how much a metric varies season to season due to changes in context and player skill after removing chance variation
 
 [Repository](https://github.com/afranks86/meta-analytics)
+
