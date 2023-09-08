@@ -20,7 +20,7 @@ This blog post demonstrates how to calculate the **discrimination** and **stabil
 
 ### Background
 
-In the realm of sports, data analysis has grown significantly, introducing numerous metrics to guide coaching, management, and, of course, fans. However, this proliferation has also led to confusion, with overlapping and sometimes conflicting metrics. To address this, [Franks et al. (2017)](https://www.degruyter.com/document/doi/10.1515/jqas-2016-0098/html)[^1] propose three "meta-metrics" to help determine which metrics offer unique and dependable information for decision-makers.
+In the realm of sports, data analysis has grown significantly, introducing numerous metrics to guide coaching, management, and, of course, fans. However, this proliferation has also led to confusion, with overlapping and sometimes conflicting metrics. To address this, Franks et al.[^1] propose three "meta-metrics" to help determine which metrics offer unique and dependable information for decision-makers.
 
 [^1]: If it means anything, the *Meta-analytics* paper has [40 citations](https://scholar.google.com/scholar?cites=13818794209592074425&as_sdt=5,44&sciodt=0,44&hl=en) at the time of writing, suggesting it has had a non-trivial influence on subsequent sports analytics research.
 
@@ -44,21 +44,21 @@ $$
 1 - \frac{BV}{SV}.
 $$ {#eq-discrimination-short}
 
-$BV$ is the average **b**ootstrapped **v**ariance of a metric for a given player in a given season. (We will be resampling the actual game totals for individual players.) $SV$ is the **v**ariance of a metric for all players in a given **s**eason.
+$BV$ is the average sampling **v**ariance of a metric after **b**ootstrapping matches. (This variance measure is unique in that it involves resampling, while the others are simply calculated on the observed data.) $SV$ is the total **v**ariance of a metric between players in a given **s**eason.
 
-This equation describes **the fraction of between-player variance due to true differences in player ability**. A value closer to 1 indicates a metric that can differentiate between players more precisely.
+Altogether, this equation describes **the fraction of variance between players due to true differences in player ability**. A value closer to 1 indicates a metric that can differentiate between players more precisely.
 
 ### Stability
 
-Again, simplifying the original formula, let's define stability as so:
+Again, simplifying the original equation from Franks et al., we define stability as so:
 
 $$
 1 - \frac{WV - BV}{TV - BV}.
 $$ {#eq-stability-short}
 
-$WV$ represents the average **v**ariance among seasons "**w**ithin" a player. $TV$ is the **t**otal **v**ariance of a metric over all seasons.
+$WV$ represents the average **v**ariance among seasons "**w**ithin" a player, before accounting for sampling variance ($BV$). $TV$ is the **t**otal **v**ariance of a metric over all seasons, before accounting for sampling variance.
 
-This representation represents **the fraction of total variance that is due to within-player changes over time**. A value closer to 1 indicates that the metric value for a given player is less likely to change from season to season.
+On the whole, this equation represent **the fraction of total variance that is due to within-player changes over time**. A value closer to 1 indicates that the metric value for a given player is less likely to change from season to season.
 
 ## Inference
 
@@ -421,7 +421,7 @@ Next, we calculate the variance across the player-season bootstraps, and then av
 ```{r}
 #| label: bv
 #| code-fold: true
-#| code-summary: Calculate bootstrap variance, BV
+#| code-summary: Calculate average bootstrap variance, BV
 pivot_metric_columns <- function(df) {
   df |> 
     dplyr::select(
@@ -615,16 +615,14 @@ average_discrimination
 
 ### Stability
 
-For stability, we need to calculate "within player" variance, $WV$, and "total variance", $TV$, as shown in @eq-stability-short.[^3]
-
-[^3]: "Within player" variance and "total variance" are convenient short names, but they slightly obscure the truth. In reality, $WV$ is the within player variance before subtracting out the relevant sampling variance (i.e. $BV$), and likewise for $TV$.
+For stability, we need to calculate "within"-player variance, $WV$, and "total variance", $TV$, as shown in @eq-stability-short.
 
 For $WV$, we start by grouping on the on everything but the metric values and season variable in our data frame for observed player-season stats, and calculate variance with `var()`. Then we average the variance across all players with `mean()`.
 
 ```{r}
 #| label: wv
 #| code-fold: true
-#| code-summary: Calculate within player variance, WV
+#| code-summary: Calculate within-player variance, WV
 within_player_variance <- pivoted_player_season_stats |> 
   ## should check for players with the same name
   dplyr::group_by(league, team, player, metric) |>
@@ -1030,9 +1028,9 @@ We can make the following observations:
 
 ## Conclusion
 
-We've replicated the ideas of a commonly cited sports analytics paper[^4], applying them to the beautiful game of soccer. While this blog post was more about replication than insights, we've confirmed that the key observations regarding the meta-metric properties of volume and rate statistics also apply soccer.
+We've replicated the ideas of a commonly cited sports analytics paper[^3], applying them to the beautiful game of soccer. While this blog post was more about replication than insights, we've confirmed that the key observations regarding the meta-metric properties of volume and rate statistics also apply soccer.
 
-[^4]: The fact that they've published [their code](https://github.com/afranks86/meta-analytics) made the replication much less of a daunting task, so huge kudos to the authors. (Note that there were a few tweaks that I needed to make to get all of the code working properly with R \>4.0.)
+[^3]: The fact that they've published [their code](https://github.com/afranks86/meta-analytics) made the replication much less of a daunting task, so huge kudos to the authors. (Note that there were a few tweaks that I needed to make to get all of the code working properly with R \>4.0.)
 
 -   Discrimination can be used to distinguish between players for a given season. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn't expect a striker to be making more tackles than a defender.)
 -   Stability represents how much a metric can vary over time. Intuitively, stats that adjust for playing time (i.e. "per 90") show less fluctuations from season to season.
