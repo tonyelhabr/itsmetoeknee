@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Tony ElHabr">
-<meta name="dcterms.date" content="2023-09-10">
-<meta name="description" content="Calculating discrimination and stability (Franks et al.&nbsp;2017) for soccer stats">
+<meta name="dcterms.date" content="2023-09-08">
+<meta name="description" content="Calculating the discrimination and stability of soccer stats">
 
 <title>Tony’s Blog - Meta-Analytics for Soccer</title>
 <style>
@@ -189,7 +189,7 @@ cookieconsent.run({
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 <link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - Meta-Analytics for Soccer">
-<meta name="twitter:description" content="Calculating discrimination and stability (Franks et al. 2017) for soccer stats">
+<meta name="twitter:description" content="Calculating the discrimination and stability of soccer stats">
 <meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts\soccer-meta-analytics\discrimination-vs-stability.png">
 <meta name="twitter:site" content="@TonyElHabr">
 <meta name="twitter:image-height" content="2100">
@@ -295,7 +295,7 @@ cookieconsent.run({
 
 <div>
   <div class="description">
-    Calculating discrimination and stability (Franks et al.&nbsp;2017) for soccer stats
+    Calculating the discrimination and stability of soccer stats
   </div>
 </div>
 
@@ -312,7 +312,7 @@ cookieconsent.run({
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">September 10, 2023</p>
+      <p class="date">September 8, 2023</p>
     </div>
   </div>
   
@@ -324,11 +324,11 @@ cookieconsent.run({
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
-<p>In the realm of sports, data analysis has grown significantly, introducing numerous metrics to guide coaching, management, and, of course, fans. However, this proliferation has also led to confusion, with overlapping and sometimes conflicting metrics. To address this, the <a href="https://www.degruyter.com/document/doi/10.1515/jqas-2016-0098/html">Franks et al.&nbsp;(2017)</a><a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> propose three “meta-metrics” to help determine which metrics offer unique and dependable information for decision-makers.</p>
+<p>In the realm of sports, data analysis has grown significantly, introducing numerous metrics to guide coaching, management, and, of course, fans. However, this proliferation has also led to confusion, with overlapping and sometimes conflicting metrics. To address this, <a href="https://www.degruyter.com/document/doi/10.1515/jqas-2016-0098/html">Franks et al.&nbsp;(2017)</a><a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> propose three “meta-metrics” to help determine which metrics offer unique and dependable information for decision-makers.</p>
 <p>By examining sources of variation in sports metrics (e.g.&nbsp;intrinsic player skill), Franks et al.&nbsp;introduce three meta-metrics to assess player performance stats:</p>
 <ul>
 <li><strong>discrimination</strong>: How good is the metric at telling players apart?</li>
-<li><strong>stability</strong>: How likely is that a player maintains the same performance for the metric in the next season?</li>
+<li><strong>stability</strong>: How likely is it that a player maintains the same performance for the metric in the next season?</li>
 <li><strong>independence</strong>: Does the stat tell us something different about players that other stats don’t tell us?</li>
 </ul>
 <p>This blog post demonstrates how to calculate the <strong>discrimination</strong> and <strong>stability</strong> meta-metrics on an array of soccer stats.</p>
@@ -350,8 +350,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 \text{(Discrimination)} &amp; D_{sm} = 1 - \frac{E_{sm}[V_{spm}[X]]}{V_{sm}[X]}.
 \end{array}
 \tag{1}\]</span></span></p>
-<p>This describes <strong>the fraction of between-player variance due to true differences in player ability</strong>. A value closer to 1 indicates a metric that can differentiate between players more precisely.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
-<p>Stability is defined as</p>
+<p>This describes <strong>the fraction of between-player variance due to true differences in player ability</strong>. A value closer to 1 indicates a metric that can differentiate between players more precisely. Stability is defined as</p>
 <p><span id="eq-stability-full"><span class="math display">\[
 \begin{array}{cc}
 \text{(Stability)} &amp; S_{m} = 1 - \frac{E_{m}[V_{spm}[X] - V_{spm}[X]]}{V_{m}[X] - E_{m}[V_{spm}[X]]}.
@@ -593,7 +592,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ shots_p90            &lt;dbl&gt; 1.698113, 7.826087, 2.000000, 2.000000, 0.0000…</span></span>
 <span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ xg_p90               &lt;dbl&gt; 0.0000000, 0.3913043, 0.1000000, 0.1000000, 0.…</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>There are a lot more stats we could pull in, but I’ve opted for a relatively small set of 15 stats<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>:</p>
+<p>There are a lot more stats we could pull in, but I’ve opted for a relatively small set of 15 stats<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>:</p>
 <ul>
 <li>“Un-adjusted” (i.e.&nbsp;not normalized for the number of minutes played) <strong>counting</strong> stats: goals, assists, shots, shots on target, tackles, interceptions, and carries</li>
 <li>Un-adjusted <strong>“advanced”</strong> stats: <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">expected goals (xG)</a>, <a href="https://theanalyst.com/eu/2021/03/what-are-expected-assists-xa/">expected assists (xA)</a>, goals/xG ratio</li>
@@ -657,7 +656,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">bootstrap_id =</span> <span class="fu">as.integer</span>(bootstrap_id))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>And, then, after we aggregate over the matches in each bootstrap to create player-season summaries per bootstrap, we get a data frame that looks like this.</p>
+<p>Then, after we aggregate over the matches in each bootstrap to create player-season summaries per bootstrap, we get a data frame that looks like this.</p>
 <div class="cell">
 <details>
 <summary>Aggregate bootstraps</summary>
@@ -857,7 +856,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 </section>
 <section id="stability" class="level3">
 <h3 class="anchored" data-anchor-id="stability">Stability</h3>
-<p>For stability, we need to calculate “within player” variance, <span class="math inline">\(WV\)</span>, and “total variance”, <span class="math inline">\(TV\)</span>.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
+<p>For stability, we need to calculate “within player” variance, <span class="math inline">\(WV\)</span>, and “total variance”, <span class="math inline">\(TV\)</span>.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 <p>We start with <span class="math inline">\(WV\)</span>. Like <span class="math inline">\(SV\)</span>, the calculation is actually fairly straightforward. We group on the appropriate columns, calculate variance with <code>stats::var()</code>, group again on a subset of the prior columns, then calculate the average variance with <code>stats::mean()</code>.</p>
 <div class="cell">
 <details>
@@ -908,7 +907,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 14 xg                       3.71   </span></span>
 <span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 15 xg_p90                   0.0141</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Observe that there is just one record per metric.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
+<p>Observe that there is just one record per metric.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
 <p>To finish our variance calculations, we calculate “total variance”, <span class="math inline">\(TV\)</span>. This is the most straightforward of them all, as it involves just a call to <code>stats::var()</code> for each metric on the observed player-season stats.</p>
 <div class="cell">
 <details>
@@ -998,19 +997,19 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <p><img src="discrimination-vs-stability.png" class="img-fluid"></p>
 <p>We can make the following observations:</p>
 <ul>
-<li><p>Un-adjusted tallying (i.e.&nbsp;“count”) statistics based on total playing time–like shots, tackles, and interceptions–tend to be highly discriminative , but not quite as stable. This makes sense—such statistics have large between-player variance—think about the number of shots that a central defender takes compared to a striker. When aggregated for each player over the course of a season, they provide strong signal for different player types, i.e.&nbsp;positions. Indeed, Franks et al.&nbsp;found the same for NBA and NHL statistics.</p></li>
+<li><p>Un-adjusted tallying (i.e.&nbsp;“count”) statistics based on total playing time–like shots, tackles, and interceptions–tend to be highly discriminative, but not quite as stable. This makes sense—such statistics have large between-player variance—think about the number of shots that a central defender takes compared to a striker. When aggregated for each player throughout a season, they provide a strong signal for different player types, i.e.&nbsp;positions. Indeed, Franks et al.&nbsp;found the same for NBA and NHL statistics.</p></li>
 <li><p>When not adjusted for minutes played, xG and xA also prove to be more discriminative than stable.</p></li>
 <li><p>The other “advanced” stat, Goals/xG ratio, stands out. It’s the only metric that is significantly more stable than discriminative. Although I haven’t looked into this extensively or given it much more than a few moments of thought, I believe this is because most players do not score goals in individual matches, but often accumulate some non-zero xG via shots. Thus, Goals/xG can be zero very frequently, meaning that it would be hard to differentiate players just on this ratio. And, because the ratio is often zero, it is found to be stable.</p></li>
 <li><p>Shot conversion rate seems to be the center of the universe, having nearly equal discrimination and stability, both at around 0.5.</p></li>
-<li><p>The “per 90” metrics show higher stability than all other stats evaluated. This speaks to the between-player noise-minimizing benefits of comparing players on an equal minute basis. Their stability is much closer to their discriminative power than most other other metrics.</p></li>
+<li><p>The “per 90” metrics show higher stability than all other stats evaluated. This speaks to the between-player noise-minimizing benefits of comparing players on an equal-minute basis. Their stability is much closer to their discriminative power than most other other metrics.</p></li>
 </ul>
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
-<p>We’ve replicated the ideas of a commonly cited sports analytics paper<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>, applying them to the beautiful game of soccer. While this blog post was more about replication than insights, we’ve verified what Franks et al.&nbsp;found with their analysis, in the context of a different sport.</p>
+<p>We’ve replicated the ideas of a commonly cited sports analytics paper<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>, applying them to the beautiful game of soccer. While this blog post was more about replication than insights, we’ve verified what Franks et al.&nbsp;found with their analysis, in the context of a different sport.</p>
 <ul>
-<li>Discrimination can be used to distinguish between players, with respect to a given season. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn’t expect a striker to be making more tackles than a defender.)</li>
-<li>Stability shows how much a metric varies over time. Intuitively, adjusting for playing time (i.e.&nbsp;“per 90”) should reduce how much a player’s stats fluctuate from season to season.</li>
+<li>Discrimination can be used to distinguish between players. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn’t expect a striker to be making more tackles than a defender.)</li>
+<li>Stability represents how much a metric can vary over time. Intuitively, stats that adjust for playing time (i.e.&nbsp;“per 90”) show less fluctations from season to season.</li>
 </ul>
 
 
@@ -1028,12 +1027,11 @@ No matching items
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>If it means anything, the <em>Meta-analytics</em> paper has <a href="https://scholar.google.com/scholar?cites=13818794209592074425&amp;as_sdt=5,44&amp;sciodt=0,44&amp;hl=en">40 citations</a> at time of writing, suggesting it has had non-trivial influence on subsequent sports analytics research.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>Note that we can average <span class="math inline">\(D_{sm}\)</span> across all seasons of interest to arrive at a singular value per metric, <span class="math inline">\(D_m\)</span>.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn3"><p>This isn’t meant to be an explainer of what these stats are or why they were chosen. Nonetheless, it’s worth pointing out the different types of stats, as it is relevant to the calculation relationship between discrimination and stability, as we shall see.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>“Within player” variance and “total variance” are convenient short names, but they slightly obscure the truth. In reality, <span class="math inline">\(WV\)</span> is the within player variance prior to subtracting out the relevant sampling variance (i.e.&nbsp;<span class="math inline">\(BV\)</span>), and likewise for <span class="math inline">\(TV\)</span>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn5"><p>This agrees with the notation indicated in <a href="#eq-stability-full">Equation&nbsp;2</a>, where there is just one subscript, for metric <span class="math inline">\(m\)</span>. Compare this to the two subscripts for both season <span class="math inline">\(s\)</span> and metric <span class="math inline">\(m\)</span> in <a href="#eq-discrimination-full">Equation&nbsp;1</a>.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>The fact that they’ve published <a href="https://github.com/afranks86/meta-analytics">their code</a> made the replication much less of a daunting task, so huge kudos to the authors. (Note that there were a few tweaks that I needed to make to get all of the code working properly with $ &gt;4.0.)<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn1"><p>If it means anything, the <em>Meta-analytics</em> paper has <a href="https://scholar.google.com/scholar?cites=13818794209592074425&amp;as_sdt=5,44&amp;sciodt=0,44&amp;hl=en">40 citations</a> at the time of writing, suggesting it has had a non-trivial influence on subsequent sports analytics research.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>This isn’t meant to be an explainer of what these stats are or why they were chosen. Nonetheless, it’s worth pointing out the different types of stats, as it is relevant to the calculation relationship between discrimination and stability, as we shall see.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>“Within player” variance and “total variance” are convenient short names, but they slightly obscure the truth. In reality, <span class="math inline">\(WV\)</span> is the within player variance before subtracting out the relevant sampling variance (i.e.&nbsp;<span class="math inline">\(BV\)</span>), and likewise for <span class="math inline">\(TV\)</span>. This is represented fully in <a href="#eq-stability-full">Equation&nbsp;2</a>.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>This agrees with the notation indicated in <a href="#eq-stability-full">Equation&nbsp;2</a>, where there is just one subscript, for metric <span class="math inline">\(m\)</span>. Compare this to the two subscripts for both season <span class="math inline">\(s\)</span> and metric <span class="math inline">\(m\)</span> in <a href="#eq-discrimination-full">Equation&nbsp;1</a>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>The fact that they’ve published <a href="https://github.com/afranks86/meta-analytics">their code</a> made the replication much less of a daunting task, so huge kudos to the authors. (Note that there were a few tweaks that I needed to make to get all of the code working properly with R &gt;4.0.)<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

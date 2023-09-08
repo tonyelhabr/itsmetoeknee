@@ -1,8 +1,7 @@
 ---
 title: Meta-Analytics for Soccer 
-description: Calculating discrimination and stability (Franks et al. 2017) for soccer stats
-date: 2023-09-10
-draft: true
+description: Calculating the discrimination and stability of soccer stats
+date: 2023-09-08
 categories:
   - r
   - soccer
@@ -17,14 +16,14 @@ execute:
 
 ## Introduction
 
-In the realm of sports, data analysis has grown significantly, introducing numerous metrics to guide coaching, management, and, of course, fans. However, this proliferation has also led to confusion, with overlapping and sometimes conflicting metrics. To address this, the [Franks et al. (2017)](https://www.degruyter.com/document/doi/10.1515/jqas-2016-0098/html)[^1] propose three "meta-metrics" to help determine which metrics offer unique and dependable information for decision-makers.
+In the realm of sports, data analysis has grown significantly, introducing numerous metrics to guide coaching, management, and, of course, fans. However, this proliferation has also led to confusion, with overlapping and sometimes conflicting metrics. To address this, [Franks et al. (2017)](https://www.degruyter.com/document/doi/10.1515/jqas-2016-0098/html)[^1] propose three "meta-metrics" to help determine which metrics offer unique and dependable information for decision-makers.
 
-[^1]: If it means anything, the *Meta-analytics* paper has [40 citations](https://scholar.google.com/scholar?cites=13818794209592074425&as_sdt=5,44&sciodt=0,44&hl=en) at time of writing, suggesting it has had non-trivial influence on subsequent sports analytics research.
+[^1]: If it means anything, the *Meta-analytics* paper has [40 citations](https://scholar.google.com/scholar?cites=13818794209592074425&as_sdt=5,44&sciodt=0,44&hl=en) at the time of writing, suggesting it has had a non-trivial influence on subsequent sports analytics research.
 
 By examining sources of variation in sports metrics (e.g. intrinsic player skill), Franks et al. introduce three meta-metrics to assess player performance stats:
 
 -   **discrimination**: How good is the metric at telling players apart?
--   **stability**: How likely is that a player maintains the same performance for the metric in the next season?
+-   **stability**: How likely is it that a player maintains the same performance for the metric in the next season?
 -   **independence**: Does the stat tell us something different about players that other stats don't tell us?
 
 This blog post demonstrates how to calculate the **discrimination** and **stability** meta-metrics on an array of soccer stats.
@@ -52,11 +51,7 @@ $$
 \end{array}
 $$ {#eq-discrimination-full}
 
-This describes **the fraction of between-player variance due to true differences in player ability**. A value closer to 1 indicates a metric that can differentiate between players more precisely.[^2]
-
-[^2]: Note that we can average $D_{sm}$ across all seasons of interest to arrive at a singular value per metric, $D_m$.
-
-Stability is defined as
+This describes **the fraction of between-player variance due to true differences in player ability**. A value closer to 1 indicates a metric that can differentiate between players more precisely. Stability is defined as
 
 $$
 \begin{array}{cc}
@@ -318,9 +313,9 @@ dplyr::glimpse(eligible_player_match_stats)
 #> $ xg_p90               <dbl> 0.0000000, 0.3913043, 0.1000000, 0.1000000, 0.…
 ```
 
-There are a lot more stats we could pull in, but I've opted for a relatively small set of 15 stats[^3]:
+There are a lot more stats we could pull in, but I've opted for a relatively small set of 15 stats[^2]:
 
-[^3]: This isn't meant to be an explainer of what these stats are or why they were chosen. Nonetheless, it's worth pointing out the different types of stats, as it is relevant to the calculation relationship between discrimination and stability, as we shall see.
+[^2]: This isn't meant to be an explainer of what these stats are or why they were chosen. Nonetheless, it's worth pointing out the different types of stats, as it is relevant to the calculation relationship between discrimination and stability, as we shall see.
 
 -   "Un-adjusted" (i.e. not normalized for the number of minutes played) **counting** stats: goals, assists, shots, shots on target, tackles, interceptions, and carries
 -   Un-adjusted **"advanced"** stats: [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/), [expected assists (xA)](https://theanalyst.com/eu/2021/03/what-are-expected-assists-xa/), goals/xG ratio
@@ -387,7 +382,7 @@ resampled_player_match_stats <- purrr::map_dfr(
   dplyr::mutate(bootstrap_id = as.integer(bootstrap_id))
 ```
 
-And, then, after we aggregate over the matches in each bootstrap to create player-season summaries per bootstrap, we get a data frame that looks like this.
+Then, after we aggregate over the matches in each bootstrap to create player-season summaries per bootstrap, we get a data frame that looks like this.
 
 ```{r}
 #| label: resampled_player_season_stats
@@ -641,9 +636,9 @@ average_discrimination
 
 ### Stability
 
-For stability, we need to calculate "within player" variance, $WV$, and "total variance", $TV$.[^4]
+For stability, we need to calculate "within player" variance, $WV$, and "total variance", $TV$.[^3]
 
-[^4]: "Within player" variance and "total variance" are convenient short names, but they slightly obscure the truth. In reality, $WV$ is the within player variance prior to subtracting out the relevant sampling variance (i.e. $BV$), and likewise for $TV$.
+[^3]: "Within player" variance and "total variance" are convenient short names, but they slightly obscure the truth. In reality, $WV$ is the within player variance before subtracting out the relevant sampling variance (i.e. $BV$), and likewise for $TV$. This is represented fully in @eq-stability-full.
 
 We start with $WV$. Like $SV$, the calculation is actually fairly straightforward. We group on the appropriate columns, calculate variance with `stats::var()`, group again on a subset of the prior columns, then calculate the average variance with `stats::mean()`.
 
@@ -706,9 +701,9 @@ wv
 #> 15 xg_p90                   0.0141
 ```
 
-Observe that there is just one record per metric.[^5]
+Observe that there is just one record per metric.[^4]
 
-[^5]: This agrees with the notation indicated in @eq-stability-full, where there is just one subscript, for metric $m$. Compare this to the two subscripts for both season $s$ and metric $m$ in @eq-discrimination-full.
+[^4]: This agrees with the notation indicated in @eq-stability-full, where there is just one subscript, for metric $m$. Compare this to the two subscripts for both season $s$ and metric $m$ in @eq-discrimination-full.
 
 To finish our variance calculations, we calculate "total variance", $TV$. This is the most straightforward of them all, as it involves just a call to `stats::var()` for each metric on the observed player-season stats.
 
@@ -1046,7 +1041,7 @@ ggplot2::ggsave(
 
 We can make the following observations:
 
--   Un-adjusted tallying (i.e. "count") statistics based on total playing time--like shots, tackles, and interceptions--tend to be highly discriminative , but not quite as stable. This makes sense---such statistics have large between-player variance---think about the number of shots that a central defender takes compared to a striker. When aggregated for each player over the course of a season, they provide strong signal for different player types, i.e. positions. Indeed, Franks et al. found the same for NBA and NHL statistics.
+-   Un-adjusted tallying (i.e. "count") statistics based on total playing time--like shots, tackles, and interceptions--tend to be highly discriminative, but not quite as stable. This makes sense---such statistics have large between-player variance---think about the number of shots that a central defender takes compared to a striker. When aggregated for each player throughout a season, they provide a strong signal for different player types, i.e. positions. Indeed, Franks et al. found the same for NBA and NHL statistics.
 
 -   When not adjusted for minutes played, xG and xA also prove to be more discriminative than stable.
 
@@ -1054,13 +1049,13 @@ We can make the following observations:
 
 -   Shot conversion rate seems to be the center of the universe, having nearly equal discrimination and stability, both at around 0.5.
 
--   The "per 90" metrics show higher stability than all other stats evaluated. This speaks to the between-player noise-minimizing benefits of comparing players on an equal minute basis. Their stability is much closer to their discriminative power than most other other metrics.
+-   The "per 90" metrics show higher stability than all other stats evaluated. This speaks to the between-player noise-minimizing benefits of comparing players on an equal-minute basis. Their stability is much closer to their discriminative power than most other other metrics.
 
 ## Conclusion
 
-We've replicated the ideas of a commonly cited sports analytics paper[^6], applying them to the beautiful game of soccer. While this blog post was more about replication than insights, we've verified what Franks et al. found with their analysis, in the context of a different sport.
+We've replicated the ideas of a commonly cited sports analytics paper[^5], applying them to the beautiful game of soccer. While this blog post was more about replication than insights, we've verified what Franks et al. found with their analysis, in the context of a different sport.
 
-[^6]: The fact that they've published [their code](https://github.com/afranks86/meta-analytics) made the replication much less of a daunting task, so huge kudos to the authors. (Note that there were a few tweaks that I needed to make to get all of the code working properly with \$ \>4.0.)
+[^5]: The fact that they've published [their code](https://github.com/afranks86/meta-analytics) made the replication much less of a daunting task, so huge kudos to the authors. (Note that there were a few tweaks that I needed to make to get all of the code working properly with R \>4.0.)
 
--   Discrimination can be used to distinguish between players, with respect to a given season. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn't expect a striker to be making more tackles than a defender.)
--   Stability shows how much a metric varies over time. Intuitively, adjusting for playing time (i.e. "per 90") should reduce how much a player's stats fluctuate from season to season.
+-   Discrimination can be used to distinguish between players. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn't expect a striker to be making more tackles than a defender.)
+-   Stability represents how much a metric can vary over time. Intuitively, stats that adjust for playing time (i.e. "per 90") show less fluctations from season to season.
