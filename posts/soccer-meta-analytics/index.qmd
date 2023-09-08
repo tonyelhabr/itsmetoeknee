@@ -1,6 +1,6 @@
 ---
 title: Meta-Analytics for Soccer 
-description: Calculating the discrimination and stability of soccer stats
+description: To what extent does a state differentiate between players? How much does the stat's value change over time?
 date: 2023-09-08
 categories:
   - r
@@ -26,11 +26,11 @@ By examining sources of variation in sports metrics (e.g. intrinsic player skill
 -   **stability**: How likely is it that a player maintains the same performance for the metric in the next season?
 -   **independence**: Does the stat tell us something different about players that other stats don't tell us?
 
-This blog post demonstrates how to calculate the **discrimination** and **stability** meta-metrics on an array of soccer stats.
+This blog post demonstrates how to calculate the **discrimination** and **stability** meta-metrics on an array of soccer stats. Before the computations (*"Inference"*), I start by spelling out the formulas for the meta-metrics (*"Definitions"*), although I gloss over the "why"s for the sake of brevity. I'd encourage an interested reader to review the original paper. At the end, in *"Results"*, I briefly discuss how my results compare to those for Franks et al., who analyzed basketball and hockey stats.
 
-### Definitions
+## Definitions
 
-Before we dive into implementation, we should more specifically define the meta-metrics of interest: discrimination and stability. I'll break things down more formally first, but if you want just the gist of things, at least observe the "Simplified" formulas.
+First, we should explicitly define the meta-metrics of interest: discrimination and stability. I'll break things down more formally first, but if you want just the gist of things, at least observe the "Simplified" formulas.
 
 #### Full Formulas
 
@@ -63,7 +63,7 @@ This represents **the fraction of total variance that is due to within-player ch
 
 #### Simplified Formulas
 
-Let's abstract one level up from metric $m$ since it should be intuitive that we won't be looking at variance across different stats, i.e. variance across shots taken and passes completed doesn't make sense. Further, we'll remove the subscripts and other notation for seasons, players, expectations, and variances for clarity.
+Let's abstract one level up from metric $m$ since it should be intuitive that we won't be looking at variance across different stats. (Evaluating variance across shots taken and passes completion rate has not practical meaning!) Further, we'll remove the subscripts and other notation for seasons, players, expectations, and variances for clarity.
 
 We re-write @eq-discrimination-full more plainly as
 
@@ -75,7 +75,7 @@ $$ {#eq-discrimination-short}
 
 $BV$ is the **b**ootstrapped **v**ariance for a given player in a given season (1 record per "player-season"), averaged over all player-seasons. $SV$ is the player-season **v**ariance for all players for a given **s**eason.
 
-Next, let's re-write @eq-stability-full as
+We re-write @eq-stability-full as
 
 $$
 \begin{array}{cc}
@@ -318,8 +318,8 @@ There are a lot more stats we could pull in, but I've opted for a relatively sma
 [^2]: This isn't meant to be an explainer of what these stats are or why they were chosen. Nonetheless, it's worth pointing out the different types of stats, as it is relevant to the calculation relationship between discrimination and stability, as we shall see.
 
 -   "Un-adjusted" (i.e. not normalized for the number of minutes played) **counting** stats: goals, assists, shots, shots on target, tackles, interceptions, and carries
--   Un-adjusted **"advanced"** stats: [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/), [expected assists (xA)](https://theanalyst.com/eu/2021/03/what-are-expected-assists-xa/), goals/xG ratio
--   **Rate** metrics: pass completion rate and shot conversion rate (i.e. goals diviided by shots)
+-   Un-adjusted **"advanced"** stats: [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/), [expected assists (xA)](https://theanalyst.com/eu/2021/03/what-are-expected-assists-xa/), and goals/xG ratio
+-   **Rate** metrics: pass completion rate and shot conversion rate (i.e. goals divided by shots)
 -   **"Per 90"** versions of other stats: goals/90, shots/90, and xG/90
 
 Now we can start to calculate the meta-metrics.
@@ -328,7 +328,7 @@ Now we can start to calculate the meta-metrics.
 
 We'll begin with the discrimination meta-metric, which means we'll need to calculate "bootstrap variance", $BV$, and, "seasonal variance", $SV$, as shown in @eq-discrimination-short.
 
-Starting with the former, we need to first resample player matches within teams, with replacement.
+Starting with the former, we resample player matches within teams, with replacement.
 
 ```{r}
 #| label: resampled_player_match_stats
@@ -382,7 +382,7 @@ resampled_player_match_stats <- purrr::map_dfr(
   dplyr::mutate(bootstrap_id = as.integer(bootstrap_id))
 ```
 
-Then, after we aggregate over the matches in each bootstrap to create player-season summaries per bootstrap, we get a data frame that looks like this.
+After we aggregate over the matches in each bootstrap to create player-season summaries per bootstrap, we get a data frame that looks like this.
 
 ```{r}
 #| label: resampled_player_season_stats
@@ -414,7 +414,7 @@ dplyr::glimpse(resampled_player_season_stats)
 #> $ league               <chr> "ENG-M-1st", "ENG-M-1st", "ENG-M-1st", "ENG-M-…
 #> $ season               <chr> "2018/19", "2018/19", "2018/19", "2018/19", "2…
 #> $ team                 <chr> "Arsenal", "Arsenal", "Arsenal", "Arsenal", "A…
-#> $ player               <chr> "Aaron Ramsey", "Ainsley Maitland-Niles", "Ale…
+#> $ player               <chr> "Aaron Ramsey", "Ainsley we-Niles", "Ale…
 #> $ nation               <chr> "WAL", "ENG", "NGA", "FRA", "SUI", "ARM", "ESP…
 #> $ matches_played       <int> 28, 16, 35, 35, 29, 25, 19, 17, 34, 33, 24, 8,…
 #> $ minutes_played       <dbl> 1349, 1053, 1714, 2767, 2213, 1357, 989, 1385,…
@@ -437,7 +437,7 @@ dplyr::glimpse(resampled_player_season_stats)
 #> $ xg_p90               <dbl> 0.180133432, 0.136752137, 0.220536756, 0.35778…
 ```
 
-Next, we calculate the variance across the player-season bootstraps. Then we take the average of the bootstrap variance over all player-seasons, grouping by season, to arrive at $BV$. You should end up with one variance value per season and metric.
+Next, we calculate the variance across the player-season bootstraps, and then average the bootstrap variance over all player-seasons, grouping by season, to arrive at $BV$. We end up with one variance value per season and metric.
 
 ```{r}
 #| label: bv
@@ -503,7 +503,7 @@ bv
 #> # ℹ 80 more rows
 ```
 
-Next, we move on to the "seasonal variance", $SV$. This is actually pretty trivial, as it's just a direct call to `stats::var` on the observed player-season aggregates, grouping by season. We end up with one row per season and metric, as we do with $BV$.
+Next, we move on to the "seasonal variance", $SV$. This is actually pretty trivial, as it's just a direct call to `stats::var` on the observed player-season aggregates, grouping by season. Again, we end up with one row per season and metric.
 
 ```{r}
 #| label: sv
@@ -640,7 +640,7 @@ For stability, we need to calculate "within player" variance, $WV$, and "total v
 
 [^3]: "Within player" variance and "total variance" are convenient short names, but they slightly obscure the truth. In reality, $WV$ is the within player variance before subtracting out the relevant sampling variance (i.e. $BV$), and likewise for $TV$. This is represented fully in @eq-stability-full.
 
-We start with $WV$. Like $SV$, the calculation is actually fairly straightforward. We group on the appropriate columns, calculate variance with `stats::var()`, group again on a subset of the prior columns, then calculate the average variance with `stats::mean()`.
+For $WV$, we start by grouping on the on everything but the metric values and season variable in our data frame for observed player-season stats, and calculate variance with `stats::var()`. Then we average the variance across all players with `stats::mean()`.
 
 ```{r}
 #| label: wv
@@ -750,7 +750,7 @@ tv
 #> 15 xg_p90                    0.0729
 ```
 
-Lastly, we bring $BV$, $WV$ and $TV$ together to calculate stability. Note that we average $BV$ across all seasons, arriving at one value per metric, since stability is calculated only per metric, not per metric and per season.
+We bring $BV$, $WV$ and $TV$ together to calculate stability.
 
 ```{r}
 #| label: stability
@@ -810,7 +810,7 @@ stability
 
 ## Results
 
-Using the 2022/23 season as our choice for discrimination, let's make a scatter plot of the discrimination and stability of our metrics, akin to the plots made by Franks et al.
+Let's make a scatter plot of the discrimination and stability of our metrics, akin to the plots made by Franks et al.
 
 ```{r}
 #| label: meta_metrics
@@ -1057,5 +1057,5 @@ We've replicated the ideas of a commonly cited sports analytics paper[^5], apply
 
 [^5]: The fact that they've published [their code](https://github.com/afranks86/meta-analytics) made the replication much less of a daunting task, so huge kudos to the authors. (Note that there were a few tweaks that I needed to make to get all of the code working properly with R \>4.0.)
 
--   Discrimination can be used to distinguish between players. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn't expect a striker to be making more tackles than a defender.)
--   Stability represents how much a metric can vary over time. Intuitively, stats that adjust for playing time (i.e. "per 90") show less fluctations from season to season.
+-   Discrimination can be used to distinguish between players for a given season. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn't expect a striker to be making more tackles than a defender.)
+-   Stability represents how much a metric can vary over time. Intuitively, stats that adjust for playing time (i.e. "per 90") show less fluctuations from season to season.

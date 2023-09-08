@@ -8,7 +8,7 @@
 
 <meta name="author" content="Tony ElHabr">
 <meta name="dcterms.date" content="2023-09-08">
-<meta name="description" content="Calculating the discrimination and stability of soccer stats">
+<meta name="description" content="To what extent does a state differentiate between players? How much does the stat’s value change over time?">
 
 <title>Tony’s Blog - Meta-Analytics for Soccer</title>
 <style>
@@ -189,7 +189,7 @@ cookieconsent.run({
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 <link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - Meta-Analytics for Soccer">
-<meta name="twitter:description" content="Calculating the discrimination and stability of soccer stats">
+<meta name="twitter:description" content="To what extent does a state differentiate between players? How much does the stat's value change over time?">
 <meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts\soccer-meta-analytics\discrimination-vs-stability.png">
 <meta name="twitter:site" content="@TonyElHabr">
 <meta name="twitter:image-height" content="2100">
@@ -259,13 +259,11 @@ cookieconsent.run({
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a>
-  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
   <li><a href="#definitions" id="toc-definitions" class="nav-link" data-scroll-target="#definitions">Definitions</a>
-  <ul class="collapse">
+  <ul>
   <li><a href="#full-formulas" id="toc-full-formulas" class="nav-link" data-scroll-target="#full-formulas">Full Formulas</a></li>
   <li><a href="#simplified-formulas" id="toc-simplified-formulas" class="nav-link" data-scroll-target="#simplified-formulas">Simplified Formulas</a></li>
-  </ul></li>
   </ul></li>
   <li><a href="#inference" id="toc-inference" class="nav-link" data-scroll-target="#inference">Inference</a>
   <ul>
@@ -295,7 +293,7 @@ cookieconsent.run({
 
 <div>
   <div class="description">
-    Calculating the discrimination and stability of soccer stats
+    To what extent does a state differentiate between players? How much does the stat’s value change over time?
   </div>
 </div>
 
@@ -331,10 +329,11 @@ cookieconsent.run({
 <li><strong>stability</strong>: How likely is it that a player maintains the same performance for the metric in the next season?</li>
 <li><strong>independence</strong>: Does the stat tell us something different about players that other stats don’t tell us?</li>
 </ul>
-<p>This blog post demonstrates how to calculate the <strong>discrimination</strong> and <strong>stability</strong> meta-metrics on an array of soccer stats.</p>
-<section id="definitions" class="level3">
-<h3 class="anchored" data-anchor-id="definitions">Definitions</h3>
-<p>Before we dive into implementation, we should more specifically define the meta-metrics of interest: discrimination and stability. I’ll break things down more formally first, but if you want just the gist of things, at least observe the “Simplified” formulas.</p>
+<p>This blog post demonstrates how to calculate the <strong>discrimination</strong> and <strong>stability</strong> meta-metrics on an array of soccer stats. Before the computations (<em>“Inference”</em>), I start by spelling out the formulas for the meta-metrics (<em>“Definitions”</em>), although I gloss over the “why”s for the sake of brevity. I’d encourage an interested reader to review the original paper. At the end, in <em>“Results”</em>, I briefly discuss how my results compare to those for Franks et al., who analyzed basketball and hockey stats.</p>
+</section>
+<section id="definitions" class="level2">
+<h2 class="anchored" data-anchor-id="definitions">Definitions</h2>
+<p>First, we should explicitly define the meta-metrics of interest: discrimination and stability. I’ll break things down more formally first, but if you want just the gist of things, at least observe the “Simplified” formulas.</p>
 <section id="full-formulas" class="level4">
 <h4 class="anchored" data-anchor-id="full-formulas">Full Formulas</h4>
 <p>Let <span class="math inline">\(X\)</span> to be a random variable. Given metric <span class="math inline">\(m\)</span> for player <span class="math inline">\(p\)</span> in season <span class="math inline">\(s\)</span>, we can represent a single value of the random variable as <span class="math inline">\(X_{spm}\)</span>. Given these representations, we specify the following shorthands.</p>
@@ -360,7 +359,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 </section>
 <section id="simplified-formulas" class="level4">
 <h4 class="anchored" data-anchor-id="simplified-formulas">Simplified Formulas</h4>
-<p>Let’s abstract one level up from metric <span class="math inline">\(m\)</span> since it should be intuitive that we won’t be looking at variance across different stats, i.e.&nbsp;variance across shots taken and passes completed doesn’t make sense. Further, we’ll remove the subscripts and other notation for seasons, players, expectations, and variances for clarity.</p>
+<p>Let’s abstract one level up from metric <span class="math inline">\(m\)</span> since it should be intuitive that we won’t be looking at variance across different stats. (Evaluating variance across shots taken and passes completion rate has not practical meaning!) Further, we’ll remove the subscripts and other notation for seasons, players, expectations, and variances for clarity.</p>
 <p>We re-write <a href="#eq-discrimination-full">Equation&nbsp;1</a> more plainly as</p>
 <p><span id="eq-discrimination-short"><span class="math display">\[
 \begin{array}{cc}
@@ -368,14 +367,13 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 \end{array}
 \tag{3}\]</span></span></p>
 <p><span class="math inline">\(BV\)</span> is the <strong>b</strong>ootstrapped <strong>v</strong>ariance for a given player in a given season (1 record per “player-season”), averaged over all player-seasons. <span class="math inline">\(SV\)</span> is the player-season <strong>v</strong>ariance for all players for a given <strong>s</strong>eason.</p>
-<p>Next, let’s re-write <a href="#eq-stability-full">Equation&nbsp;2</a> as</p>
+<p>We re-write <a href="#eq-stability-full">Equation&nbsp;2</a> as</p>
 <p><span id="eq-stability-short"><span class="math display">\[
 \begin{array}{cc}
 \text{(Stability)} &amp; 1 - \frac{WV - BV}{TV - BV}.
 \end{array}
 \tag{4}\]</span></span></p>
 <p><span class="math inline">\(WV\)</span> represents the <strong>v</strong>ariance across all player-seasons <strong>w</strong>ithin a player. <span class="math inline">\(TV\)</span> is the <strong>t</strong>otal <strong>v</strong>ariance across all player-season totals over all seasons.</p>
-</section>
 </section>
 </section>
 <section id="inference" class="level2">
@@ -595,8 +593,8 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <p>There are a lot more stats we could pull in, but I’ve opted for a relatively small set of 15 stats<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>:</p>
 <ul>
 <li>“Un-adjusted” (i.e.&nbsp;not normalized for the number of minutes played) <strong>counting</strong> stats: goals, assists, shots, shots on target, tackles, interceptions, and carries</li>
-<li>Un-adjusted <strong>“advanced”</strong> stats: <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">expected goals (xG)</a>, <a href="https://theanalyst.com/eu/2021/03/what-are-expected-assists-xa/">expected assists (xA)</a>, goals/xG ratio</li>
-<li><strong>Rate</strong> metrics: pass completion rate and shot conversion rate (i.e.&nbsp;goals diviided by shots)</li>
+<li>Un-adjusted <strong>“advanced”</strong> stats: <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">expected goals (xG)</a>, <a href="https://theanalyst.com/eu/2021/03/what-are-expected-assists-xa/">expected assists (xA)</a>, and goals/xG ratio</li>
+<li><strong>Rate</strong> metrics: pass completion rate and shot conversion rate (i.e.&nbsp;goals divided by shots)</li>
 <li><strong>“Per 90”</strong> versions of other stats: goals/90, shots/90, and xG/90</li>
 </ul>
 <p>Now we can start to calculate the meta-metrics.</p>
@@ -604,7 +602,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <section id="discrimination" class="level3">
 <h3 class="anchored" data-anchor-id="discrimination">Discrimination</h3>
 <p>We’ll begin with the discrimination meta-metric, which means we’ll need to calculate “bootstrap variance”, <span class="math inline">\(BV\)</span>, and, “seasonal variance”, <span class="math inline">\(SV\)</span>, as shown in <a href="#eq-discrimination-short">Equation&nbsp;3</a>.</p>
-<p>Starting with the former, we need to first resample player matches within teams, with replacement.</p>
+<p>Starting with the former, we resample player matches within teams, with replacement.</p>
 <div class="cell">
 <details>
 <summary>Bootstrap observed player-seasons</summary>
@@ -656,7 +654,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">bootstrap_id =</span> <span class="fu">as.integer</span>(bootstrap_id))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>Then, after we aggregate over the matches in each bootstrap to create player-season summaries per bootstrap, we get a data frame that looks like this.</p>
+<p>After we aggregate over the matches in each bootstrap to create player-season summaries per bootstrap, we get a data frame that looks like this.</p>
 <div class="cell">
 <details>
 <summary>Aggregate bootstraps</summary>
@@ -678,7 +676,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ league               &lt;chr&gt; "ENG-M-1st", "ENG-M-1st", "ENG-M-1st", "ENG-M-…</span></span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ season               &lt;chr&gt; "2018/19", "2018/19", "2018/19", "2018/19", "2…</span></span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ team                 &lt;chr&gt; "Arsenal", "Arsenal", "Arsenal", "Arsenal", "A…</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ player               &lt;chr&gt; "Aaron Ramsey", "Ainsley Maitland-Niles", "Ale…</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ player               &lt;chr&gt; "Aaron Ramsey", "Ainsley we-Niles", "Ale…</span></span>
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ nation               &lt;chr&gt; "WAL", "ENG", "NGA", "FRA", "SUI", "ARM", "ESP…</span></span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ matches_played       &lt;int&gt; 28, 16, 35, 35, 29, 25, 19, 17, 34, 33, 24, 8,…</span></span>
 <span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ minutes_played       &lt;dbl&gt; 1349, 1053, 1714, 2767, 2213, 1357, 989, 1385,…</span></span>
@@ -700,7 +698,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ shots_p90            &lt;dbl&gt; 1.8680504, 0.6837607, 1.6277713, 3.3176726, 0.…</span></span>
 <span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; $ xg_p90               &lt;dbl&gt; 0.180133432, 0.136752137, 0.220536756, 0.35778…</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Next, we calculate the variance across the player-season bootstraps. Then we take the average of the bootstrap variance over all player-seasons, grouping by season, to arrive at <span class="math inline">\(BV\)</span>. You should end up with one variance value per season and metric.</p>
+<p>Next, we calculate the variance across the player-season bootstraps, and then average the bootstrap variance over all player-seasons, grouping by season, to arrive at <span class="math inline">\(BV\)</span>. We end up with one variance value per season and metric.</p>
 <div class="cell">
 <details>
 <summary>Calculate bootstrap variance, BV</summary>
@@ -755,7 +753,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 2017/18 shots_on_target         8.39    </span></span>
 <span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 80 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Next, we move on to the “seasonal variance”, <span class="math inline">\(SV\)</span>. This is actually pretty trivial, as it’s just a direct call to <code>stats::var</code> on the observed player-season aggregates, grouping by season. We end up with one row per season and metric, as we do with <span class="math inline">\(BV\)</span>.</p>
+<p>Next, we move on to the “seasonal variance”, <span class="math inline">\(SV\)</span>. This is actually pretty trivial, as it’s just a direct call to <code>stats::var</code> on the observed player-season aggregates, grouping by season. Again, we end up with one row per season and metric.</p>
 <div class="cell">
 <details>
 <summary>Calculate seasonal variance, SV</summary>
@@ -857,7 +855,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <section id="stability" class="level3">
 <h3 class="anchored" data-anchor-id="stability">Stability</h3>
 <p>For stability, we need to calculate “within player” variance, <span class="math inline">\(WV\)</span>, and “total variance”, <span class="math inline">\(TV\)</span>.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
-<p>We start with <span class="math inline">\(WV\)</span>. Like <span class="math inline">\(SV\)</span>, the calculation is actually fairly straightforward. We group on the appropriate columns, calculate variance with <code>stats::var()</code>, group again on a subset of the prior columns, then calculate the average variance with <code>stats::mean()</code>.</p>
+<p>For <span class="math inline">\(WV\)</span>, we start by grouping on the on everything but the metric values and season variable in our data frame for observed player-season stats, and calculate variance with <code>stats::var()</code>. Then we average the variance across all players with <code>stats::mean()</code>.</p>
 <div class="cell">
 <details>
 <summary>Calculate within player variance, WV</summary>
@@ -942,7 +940,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 14 xg                        9.27  </span></span>
 <span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 15 xg_p90                    0.0729</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Lastly, we bring <span class="math inline">\(BV\)</span>, <span class="math inline">\(WV\)</span> and <span class="math inline">\(TV\)</span> together to calculate stability. Note that we average <span class="math inline">\(BV\)</span> across all seasons, arriving at one value per metric, since stability is calculated only per metric, not per metric and per season.</p>
+<p>We bring <span class="math inline">\(BV\)</span>, <span class="math inline">\(WV\)</span> and <span class="math inline">\(TV\)</span> together to calculate stability.</p>
 <div class="cell">
 <details>
 <summary>Calculate stability</summary>
@@ -993,7 +991,7 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 </section>
 <section id="results" class="level2">
 <h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>Using the 2022/23 season as our choice for discrimination, let’s make a scatter plot of the discrimination and stability of our metrics, akin to the plots made by Franks et al.</p>
+<p>Let’s make a scatter plot of the discrimination and stability of our metrics, akin to the plots made by Franks et al.</p>
 <p><img src="discrimination-vs-stability.png" class="img-fluid"></p>
 <p>We can make the following observations:</p>
 <ul>
@@ -1008,8 +1006,8 @@ V_{spm}[X] &amp; = &amp; Var[X|S=s,P=p,M=m]. \\
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
 <p>We’ve replicated the ideas of a commonly cited sports analytics paper<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>, applying them to the beautiful game of soccer. While this blog post was more about replication than insights, we’ve verified what Franks et al.&nbsp;found with their analysis, in the context of a different sport.</p>
 <ul>
-<li>Discrimination can be used to distinguish between players. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn’t expect a striker to be making more tackles than a defender.)</li>
-<li>Stability represents how much a metric can vary over time. Intuitively, stats that adjust for playing time (i.e.&nbsp;“per 90”) show less fluctations from season to season.</li>
+<li>Discrimination can be used to distinguish between players for a given season. Volume measures like shots and tackles should implicitly provide some indication of player positions and roles. (After all, we wouldn’t expect a striker to be making more tackles than a defender.)</li>
+<li>Stability represents how much a metric can vary over time. Intuitively, stats that adjust for playing time (i.e.&nbsp;“per 90”) show less fluctuations from season to season.</li>
 </ul>
 
 
