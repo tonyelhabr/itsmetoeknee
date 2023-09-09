@@ -26,7 +26,7 @@ One of my favorite (and relatively new) packages in the [`{tidymodels}` ecosyste
 
 ### Data
 
-For demonstration, I'll be using the pre-match win probabilities from [FiveThirtyEight](https://data.fivethirtyeight.com/#soccer-spi) ([RIP](https://twitter.com/ryanabest/status/1672013407908667392)). Specifically, I'll subjset their plethora of historical projections to two women's leagues: the [Women's Super League (WSL)](https://en.wikipedia.org/wiki/Women%27s_Super_League) in England and the [National Women's Soccer League (NWSL)](https://en.wikipedia.org/wiki/National_Women%27s_Soccer_League) in the U.S. I have a suspicion that the model probabilities are perhaps not as calibrated as they could be, as there is [a general tendency for gender-agnostic models](https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/) in soccer to be less performant for the women's game.
+I'll be using the pre-match win probabilities from [FiveThirtyEight](https://data.fivethirtyeight.com/#soccer-spi) ([RIP](https://twitter.com/ryanabest/status/1672013407908667392)). Specifically, I'll subset their plethora of historical projections to two women's leagues: the [Women's Super League (WSL)](https://en.wikipedia.org/wiki/Women%27s_Super_League) in England and the [National Women's Soccer League (NWSL)](https://en.wikipedia.org/wiki/National_Women%27s_Soccer_League) in the U.S. I have a suspicion that the model probabilities are not as calibrated as they could be, as there is [has been observed that gender-agnostic models](https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/) in soccer can be less performant for the women's game.
 
 To keep things simple, I'm going to treat this as a [binary classification](https://en.wikipedia.org/wiki/Binary_classification) task, where matches are the "positive" outcome (`"yes"`), and losses and draw are grouped as the "negative" outcome (`"no"`).
 
@@ -36,15 +36,15 @@ To keep things simple, I'm going to treat this as a [binary classification](http
 #| code-summary: Retrieve data
 library(readr)
 library(dplyr)
-matches <- read_csv('https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv') |> 
-  filter(
+matches <- readr::read_csv('https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv') |> 
+  dplyr::filter(
     !is.na(score1), ## match is completed
     league %in% c(
       "FA Women's Super League",
       "National Women's Soccer League"
     )
   ) |> 
-  transmute(
+  dplyr::transmute(
     league,
     season,
     date,
@@ -59,6 +59,7 @@ matches <- read_csv('https://projects.fivethirtyeight.com/soccer-api/club/spi_ma
 
 ```{r}
 #| label: save-matches
+#| include: false
 PROJ_DIR <- 'posts/probability-calibration'
 qs::qsave(matches, file.path(PROJ_DIR, 'matches.qs'))
 ```
@@ -89,7 +90,7 @@ We start with the ["diagnosis"](https://www.tidymodels.org/learn/models/calibrat
 
 [^1]: Sticking with the basics, I use the defaults for `num_breaks` (10) and `conf_level` (0.9).
 
-This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin's range. Ideally, if our predictions are on point, the curve produced should match up with a straight diagonal line, i.e. a 45 degree reference slope passing through (0,0) and (1,1). As a bonus, the `probably::cal_plot_*` family of functions even provides confidence intervals about the calibration curve.
+This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin's range. Ideally, if our predictions are calibrated, the curve produced should match up with a straight diagonal line, i.e. a 45 degree slope passing through (0,0) and (1,1). As a bonus, the `probably::cal_plot_*` family of functions even provides confidence intervals about the calibration curve.
 
 ```{r}
 #| label: cal_plot_breaks
@@ -108,7 +109,7 @@ matches |>
   )
 ```
 
-`{probably}` offers some really neat auto-plotting of calibration curves. While I'd suggest giving them a try, I like to make my curves in a certain manner. In particular, instead of using a "rug", I like showing sample sizes via points on the curve.
+`{probably}` offers some really neat automatic plotting of calibration curves. While I'd suggest giving them a try, I like to make my curves in a certain manner. In particular, instead of using a "rug", I like showing sample sizes via points on the curve.
 
 ```{r}
 #| label: cal_plot_breaks-plot
@@ -228,7 +229,7 @@ common_calibration_plot_layers <- function(...) {
       )
     ),
     ggplot2::labs(
-      title = "Calibration of soccer pre-match win probabilities",
+      title = "Calibration of pre-match win probabilities",
       subtitle = SUBTITLE_LABEL,
       y = 'Actual match win rate',
       x = 'Pre-match win probablity',
@@ -367,7 +368,11 @@ Indeed, it looks like there is some room for improvement with the match probabil
 
 ### Remediation
 
-Now we move on the ["remedation"](https://www.tidymodels.org/learn/models/calibration/#remediation) step. That is, we fit an
+Now we move on the ["remedation"](https://www.tidymodels.org/learn/models/calibration/#remediation) step. That is, we fit a model with the binary outcome as the target variable and the probability estimate as the lone input feature. `{probably}` offers several options with the `cal_estimate_*()` of functions.
+
+I've opted for [Beta calibration](https://probably.tidymodels.org/reference/cal_estimate_beta.html), although [logistic calibration](https://probably.tidymodels.org/reference/cal_estimate_logistic.html) would work fine here as well. Beta calibration is a little more flexible, and, consequently, [can provide superior probability estimates](https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-11/issue-2/Beyond-sigmoids--How-to-obtain-well-calibrated-probabilities-from/10.1214/17-EJS1338SI.full), especially when the target distribution is skewed.[^2]
+
+[^2]: We don't have a skew problem in this context, but it's good to note when a Beta calibration might provide meaningful benefits over other calibration methods.
 
 ```{r}
 #| label: cal_estimate_beta
@@ -397,11 +402,17 @@ Under the hood, `cal_estimate_beta()` is doing something like this.
 library(betacal)
 
 betacal::beta_calibration(
-  p = matches$.pred_no,
+  p = matches$.pred_yes,
   y = matches$target == 'yes',
   parameters = 'abm'
 )
 ```
+
+It's almost shocking how simple the implementation is.
+
+## Results
+
+With the remediation model in hand, let's make a scatter plot of all the points in the data set, viewing how the model has adjusted the original probabilities.
 
 ```{r}
 #| label: calibration_scatter_plot
@@ -428,17 +439,21 @@ calibrated <- dplyr::bind_cols(
 
 calibration_scatter_plot <- calibrated |> 
   ggplot2::ggplot() +
-  ggplot2::aes(x = .raw_pred_yes, y = .pred_yes) +
+  ggplot2::aes(y = .raw_pred_yes, x = .pred_yes) +
   ggplot2::geom_abline(color = WHITISH_FOREGROUND_COLOR, linetype = 2) +
   ggplot2::geom_point(
     color = WHITISH_FOREGROUND_COLOR,
     shape = 21
   ) +
+  ggplot2::theme(
+    ## to fit in the plot width
+    plot.title = ggtext::element_markdown(size = 19)
+  ) +
   ggplot2::labs(
-    title = glue::glue('<span style=color:{CAL_COLORS["Un-calibrated"]}>Uncalibrated</span> vs. <span style=color:{CAL_COLORS["Calibrated"]}>Calibrated</span> pre-match win probabilities'),
+    title = glue::glue('<span style=color:{CAL_COLORS["Calibrated"]}>Calibrated</span> vs. <span style=color:{CAL_COLORS["Un-calibrated"]}>Un-calibrated</span> pre-match win probabilities'),
     subtitle = SUBTITLE_LABEL,
-    x = glue::glue('<span style=color:{CAL_COLORS["Un-calibrated"]}>Uncalibrated</span> pre-match win probability'),
-    y = glue::glue('<span style=color:{CAL_COLORS["Calibrated"]}>Calibrated</span> pre-match win probability'),
+    y = glue::glue('<span style=color:{CAL_COLORS["Un-calibrated"]}>Uncalibrated</span> pre-match win probability'),
+    x = glue::glue('<span style=color:{CAL_COLORS["Calibrated"]}>Calibrated</span> pre-match win probability'),
     caption = '<br/>',
     tag = TAG_LABEL
   )
@@ -452,6 +467,10 @@ ggplot2::ggsave(
 ```
 
 ![](calibration-scatter.png)
+
+We observe that the remediation model has increased point estimates on the lower end of the spectrum and decreased estimates on the upper end of the spectrum. The calibration has seemingly fine-tuned under-predicting and over-predicting behavior from the original model.
+
+To really see the change that remediaton model has made, we can re-make our calibration curve plot, adding the remediated, or "calibrated", curve along side the original "un-calibrated" curve.
 
 ```{r}
 #| label: compared_calibration_plot
@@ -503,8 +522,159 @@ ggplot2::ggsave(
 
 ![](compared-calibration.png)
 
+Visually, it's evident that the remediation has improved the probability estimates. The calibrated curve more closely "hugs" the ideal 45 degree slope across the whole probability spectrum.
+
+### Validation
+
+To quantitatively describe the difference in calibration between the two models, we can compare the [Brier Skill Score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)) of the un-calibrated and calibrated models.[^3] Keep in mind that a higher BSS indicates a more calibrated model. (1 is ideal. 0 indicates that the model is no better or worse than a reference model[^4].)
+
+[^3]: I've discussed BSS in [a prior post on expected goals model calibration](/posts/opta-xg-model-calibration) and [another post on expected goals match-implied win probabilities](/posts/epl-xpts-simulation-1).
+
+[^4]: In this case, I choose to use the observed match win rate as the reference model.
+
+```{r}
+#| label: compared_brier_skill_scores
+#| code-fold: true
+#| code-summary: Brier Skill Score (BSS) calculation
+library(yardstick)
+library(rlang)
+brier_score <- function(data, ...) {
+  UseMethod('brier_score')
+}
+
+brier_score <- yardstick::new_prob_metric(brier_score, direction = 'minimize')
+
+brier_score_vec <- function(truth, estimate, na_rm = TRUE, event_level, ...) {
+  
+  brier_score_impl <- function(truth, estimate, event_level, ...) {
+    truth <- 1 - (as.numeric(truth) - 1)
+    
+    if (event_level == 'second') {
+      truth <- 1 - truth
+    }
+    
+    mean((truth - estimate)^2)
+  }
+  
+  if (length(estimate) == 1) {
+    estimate <- rep(estimate, length(truth))
+  }
+  
+  yardstick::metric_vec_template(
+    metric_impl = brier_score_impl,
+    truth = truth,
+    estimate = estimate,
+    na_rm = na_rm,
+    cls = c('factor', 'numeric'),
+    estimator = 'binary',
+    event_level = event_level,
+    ...
+  )
+}
+
+brier_skill_score <- function(data, ...) {
+  UseMethod('brier_skill_score')
+}
+
+brier_skill_score <- yardstick::new_prob_metric(brier_skill_score, direction = 'maximize')
+
+brier_skill_score_vec <- function(truth, estimate, ref_estimate, na_rm = TRUE, event_level, ...) {
+  
+  brier_skill_score_impl <- function(truth, estimate, ref_estimate, event_level, ...) {
+    truth_quo <- rlang::enquo(truth)
+    
+    estimate_bs <- brier_score_vec(
+      truth = truth,
+      estimate = estimate,
+      na_rm = na_rm,
+      event_level = event_level,
+      ...
+    )
+    
+    ref_bs <- brier_score_vec(
+      truth = truth,
+      estimate = ref_estimate,
+      na_rm = na_rm,
+      event_level = event_level,
+      ...
+    )
+    
+    1 - (estimate_bs / ref_bs)
+  }
+  
+  if (length(estimate) == 1) {
+    estimate <- rep(estimate, length(truth))
+  }
+  
+  if (length(ref_estimate) == 1) {
+    ref_estimate <- rep(ref_estimate, length(truth))
+  }
+  
+  yardstick::metric_vec_template(
+    metric_impl = brier_skill_score_impl,
+    truth = truth,
+    estimate = estimate,
+    ref_estimate = ref_estimate,
+    cls = c('factor', 'numeric'),
+    estimator = 'binary',
+    event_level = event_level,
+    ...
+  )
+}
+
+ref_estimate <- matches |> 
+  dplyr::count(target) |> 
+  dplyr::mutate(prop = n / sum(n)) |> 
+  dplyr::filter(target == 'yes') |> 
+  dplyr::pull(prop)
+
+raw_brier_skill_score <- brier_skill_score_vec(
+  truth = calibrated$target,
+  estimate = calibrated$.raw_pred_yes,
+  ref_estimate = ref_prop,
+  event_level = 'second'
+)
+
+calibrated_brier_skill_score <- brier_skill_score_vec(
+  truth = calibrated$target,
+  estimate = calibrated$.pred_yes,
+  ref_estimate = ref_prop,
+  event_level = 'second'
+)
+
+compared_brier_skill_scores <- round(
+  c(
+    'Un-calibrated' = raw_brier_skill_score,
+    'Calibrated' = calibrated_brier_skill_score
+  ),
+  3
+)
+```
+
+```{r}
+#| label: compared_brier_skill_scores-save
+#| include: false
+qs::qsave(compared_brier_skill_scores, file.path(PROJ_DIR, 'compared_brier_skill_scores.qs'))
+```
+
+```{r}
+#| label: compared_brier_skill_scores-show
+#| code-fold: false
+compared_brier_skill_scores
+#> Un-calibrated    Calibrated 
+#>         0.196         0.205
+```
+
+Indeed, we have (marginally) improved the original pre-match win probabilities.
+
+I should note that the `{probably}` package offers `cal_validate_*()` functions to help with deciphering whether a calibrated model is truly better than the original. That set of functions uses a more robust and valid technique that I have here.[^5]
+
+[^5]: The `cal_validate_*()` function resample a holdout set, compute ROC AUC and Brier score, and calculate standard error of the performance metrics.
+
 ## Conclusion
 
-While I wouldn't say "calibration is all you need", it's certainly something nice to know about and have in your toolkit when you're working on a modeling task. It may certainly be the best thing to do, especially if you don't have access to the original model (or are too lazy to modify the model).
+While I wouldn't say "calibration is all you need", it's certainly something nice to have in your toolkit when you're working on a modeling task. It can be a game-changer, especially when tweaking the original model isn't an option, whether due to access limitations or, let's be honest, sheer laziness.
 
-And the beauty is, you're not restricted to binary classifiers. Whether it's a multinomial classifier or a model designed for a regression task, calibration is your friend.
+Oh, and I failed to mention this earlier---calibration isn't just for binary classifiers. Multinomial classifiers and even regression models can benefit from this technique as well.
+
+Happy modeling, folks.
