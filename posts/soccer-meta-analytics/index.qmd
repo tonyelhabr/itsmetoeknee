@@ -167,7 +167,7 @@ add_rate_and_p90_metric_columns <- function(df) {
 
 summarize_all_metric_columns <- function(df, ...) {
   matches_played <- df |> 
-    dplyr::group_by(league, season, team, player, nation) |>
+    dplyr::group_by(league, season, team, player) |>
     dplyr::filter(minutes_played > 0L) |> 
     dplyr::summarize(
       matches_played = dplyr::n_distinct(match_id)
@@ -175,7 +175,7 @@ summarize_all_metric_columns <- function(df, ...) {
     dplyr::ungroup()
   
   df |> 
-    dplyr::group_by(..., league, season, team, player, nation) |> 
+    dplyr::group_by(..., league, season, team, player) |> 
     dplyr::summarize(
       dplyr::across(
         c(minutes_played:dplyr::last_col()),
@@ -186,7 +186,7 @@ summarize_all_metric_columns <- function(df, ...) {
     add_rate_and_p90_metric_columns() |> 
     dplyr::inner_join(
       matches_played,
-      by = dplyr::join_by(league, season, team, player, nation)
+      by = dplyr::join_by(league, season, team, player)
     ) |> 
     dplyr::relocate(
       matches_played,
@@ -203,7 +203,6 @@ player_match_stats <- raw_player_match_stats |>
     match_id = basename(dirname(MatchURL)),
     team = Team,
     player = Player,
-    nation = Nation, ## to help uniquely identify players
     
     minutes_played = Min,
     
@@ -234,9 +233,9 @@ eligible_player_season_stats <- player_season_stats |>
 eligible_player_match_stats <- player_match_stats |> 
   dplyr::semi_join(
     eligible_player_season_stats,
-    by = dplyr::join_by(league, season, team, player, nation)
+    by = dplyr::join_by(league, season, team, player)
   ) |> 
-  dplyr::arrange(league, season, team, player, nation)
+  dplyr::arrange(league, season, team, player)
 
 ## drop players with 0s for any given metric across any season?
 ##   looks like they only did that for testing a 1-season evaluation:
@@ -264,14 +263,13 @@ After some light wrangling, the player-match data looks like this.
 #| code-fold: false
 dplyr::glimpse(eligible_player_match_stats)
 #> Rows: 271,416
-#> Columns: 25
+#> Columns: 24
 #> $ league               <chr> "ENG-M-1st", "ENG-M-1st", "ENG-M-1st", "ENG-M-…
 #> $ season               <chr> "2018/19", "2018/19", "2018/19", "2018/19", "2…
 #> $ date                 <chr> "2018-08-12", "2018-08-18", "2018-08-25", "201…
 #> $ match_id             <chr> "478e9dab", "9b69882c", "0014076a", "c1503e09"…
 #> $ team                 <chr> "Arsenal", "Arsenal", "Arsenal", "Arsenal", "A…
 #> $ player               <chr> "Aaron Ramsey", "Aaron Ramsey", "Aaron Ramsey"…
-#> $ nation               <chr> "WAL", "WAL", "WAL", "WAL", "WAL", "WAL", "WAL…
 #> $ minutes_played       <dbl> 53, 23, 90, 90, 79, 79, 62, 24, 11, 13, 18, 16…
 #> $ goals                <dbl> 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0…
 #> $ assists              <dbl> 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0…
@@ -374,7 +372,7 @@ resampled_player_match_stats <- resampled_player_match_stats |>
 
 resampled_player_season_stats <- resampled_player_match_stats |> 
   summarize_all_metric_columns(bootstrap_id) |> 
-  dplyr::arrange(bootstrap_id, league, season, team, player, nation)
+  dplyr::arrange(bootstrap_id, league, season, team, player)
 ```
 
 ```{r}
@@ -388,13 +386,12 @@ qs::qsave(resampled_player_season_stats, file.path(PROJ_DIR, 'resampled_player_s
 #| code-fold: false
 dplyr::glimpse(resampled_player_season_stats)
 #> Rows: 234,172
-#> Columns: 25
+#> Columns: 24
 #> $ bootstrap_id         <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
 #> $ league               <chr> "ENG-M-1st", "ENG-M-1st", "ENG-M-1st", "ENG-M-…
 #> $ season               <chr> "2018/19", "2018/19", "2018/19", "2018/19", "2…
 #> $ team                 <chr> "Arsenal", "Arsenal", "Arsenal", "Arsenal", "A…
-#> $ player               <chr> "Aaron Ramsey", "Ainsley we-Niles", "Ale…
-#> $ nation               <chr> "WAL", "ENG", "NGA", "FRA", "SUI", "ARM", "ESP…
+#> $ player               <chr> "Aaron Ramsey", "Ainsley Maitland-Niles", "Ale…
 #> $ matches_played       <int> 28, 16, 35, 35, 29, 25, 19, 17, 34, 33, 24, 8,…
 #> $ minutes_played       <dbl> 1349, 1053, 1714, 2767, 2213, 1357, 989, 1385,…
 #> $ goals                <dbl> 2, 2, 3, 11, 4, 3, 0, 5, 0, 0, 7, 0, 2, 20, 0,…
@@ -429,11 +426,10 @@ pivot_metric_columns <- function(df) {
       season,
       team,
       player,
-      nation,
       dplyr::any_of(names(ALL_METRICS))
     ) |> 
     tidyr::pivot_longer(
-      -c(league, season, team, player, nation),
+      -c(league, season, team, player),
       names_to = 'metric',
       values_to = 'value'
     )
@@ -478,7 +474,7 @@ bv
 #>  7 2017/18 pass_completion_rate    0.000577
 #>  8 2017/18 shot_conversion_rate    0.00604 
 #>  9 2017/18 shots                  32.5     
-#> 10 2017/18 shots_on_target         8.39    
+#> 10 2017/18 shots_on_target         8.39 
 #> # ℹ 80 more rows
 ```
 
@@ -525,7 +521,7 @@ sv
 #> # ℹ 80 more rows
 ```
 
-Finally, we bring $BV$ and $SV$ together to calculate discrimination, by season.
+Finally, we bring $BV$ and $SV$ together to calculate discrimination by season.
 
 ```{r}
 #| label: discrimination
@@ -1004,11 +1000,10 @@ discrimination_vs_stability_plot <- meta_metrics |>
 discrimination_vs_stability_plot
 ggplot2::ggsave(
   discrimination_vs_stability_plot,
-  filename = file.path(PROJ_DIR, 'discrimination-vs-stability-resized.png'),
-  units = 'px',
+  filename = file.path(PROJ_DIR, 'discrimination-vs-stability.png'),
   device = 'png',
-  width = 600,
-  height = 690
+  width = 7,
+  height = 7
 )
 ```
 
@@ -1016,15 +1011,15 @@ ggplot2::ggsave(
 
 We can make the following observations:
 
--   Un-adjusted tallying (i.e. "count") statistics based on total playing time--like shots, tackles, and interceptions--tend to be highly discriminative, but not quite as stable. This makes sense---such statistics have large between-player variance---think about the number of shots that a central defender takes compared to a striker. When aggregated for each player throughout a season, they provide a strong signal for different player types, i.e. positions. Indeed, Franks et al. found the same for NBA and NHL statistics.
+-   Un-adjusted volume (i.e. "count" in the plot) statistics based on total playing time--like shots, tackles, and interceptions--tend to be highly discriminative, but not quite as stable. This makes sense---such statistics have large between-player variance---think about the number of shots that a central defender takes compared to a striker. When aggregated for each player throughout a season, they provide a strong signal for different player types, i.e. positions. Indeed, Franks et al. found the same for NBA and NHL statistics.
 
--   "Advanced" stats like xG and xA also prove to be more discriminative than stable.
+-   Advanced stats like xG and xA also prove to be more discriminative than stable.
 
--   The other "advanced" stat, goals/xG ratio, stands out. It's the only metric that is significantly more stable than discriminative. Although I haven't looked into this extensively or given it much more than a few moments of thought, I believe this is because most players do not score goals in individual matches, but often accumulate some non-zero xG via shots. Thus, Goals/xG can be zero very frequently, meaning that it would be hard to differentiate players just on this ratio. And, because the ratio is often zero, it is found to be stable.
+-   The other advanced stat, goals/xG ratio, stands out. It's the only metric that is significantly more stable than discriminative. Although I haven't looked into this extensively or given it much more than a few moments of thought, I believe this is because most players do not score goals in individual matches, but often accumulate some non-zero xG via shots. Thus, Goals/xG can be zero very frequently, meaning that it would be hard to differentiate players just on this ratio. And, because the ratio is often zero, it is found to be stable.
 
 -   Shot conversion rate seems to be the center of the universe, having nearly equal discrimination and stability, both at around 0.5.
 
--   The "per 90" metrics show higher stability than all other stats evaluated. This speaks to the between-player noise-minimizing benefits of comparing players on an equal-minute basis. Their stability is much closer to their discriminative power than most other other metrics.
+-   The per 90 metrics show higher stability than all other stats evaluated. This speaks to the between-player noise-minimizing benefits of comparing players on an equal-minute basis. Their stability is much closer to their discriminative power than most other other metrics.
 
 ## Conclusion
 
