@@ -1,0 +1,14 @@
+{
+  "hash": "2a836515703b8b09047dea8341bacc9d",
+  "result": {
+    "markdown": "---\ntitle: More xG Model Calibration\ndescription: Evaluating Opta's xG model performance, continued...\ndate: 2024-05-20\ndraft: true\ncategories:\n  - r\n  - soccer\nimage: footedness_calibration.png\nexecute: \n  include: true\n---\n\n\n## Introduction\n\nIn [my prior post](/posts/opta-xg-model-calibration/), I looked at the calibration of Opta's [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/) model. There I looked at some features that are explicitly included in the model, e.g. distance from goal, and others that are not included, e.g. whether the shot was taken by the player's dominant foot.\n\nNow I want to further explore one more aspect that is not directly accounted for---[game state](https://theathletic.com/2730755/2021/07/28/the-athletics-football-analytics-glossary-explaining-xg-ppda-field-tilt-and-how-to-use-them/), i.e. whether \"the team is in a losing, drawing or winning position when they are performing certain actions\". [There is evidence](https://twitter.com/Torvaney/status/1623316194936725506) that the current score of a match effects shooting rate, but it's not so clear that it has [an effect on conversion probability](https://kwiatkowski.io/rethinking-shots).\n\n## Calibration\n\nFirst, let's plot non-penalty xG in a similar\n\n\n::: {.cell}\n\n:::\n\n\nTo be honest, I don't really like the look of this graph. Evenly spaced bins don't make a ton of sense when the distribution of the underlying data is skewed strongly towards one end of the spectrum. Here, npxG is right-skewed---most shots have xG values much closer to 0 than to 1.\n\nThere are two big confounding factors that immediately come to mind:\n\n1.  Teams that are behind may tend to take more shots, more of which may be \"desperate\".\n\n2.  Teams that are behind are simply just not as good as their opponents. Poor shot conversion correlates with less skill.\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
