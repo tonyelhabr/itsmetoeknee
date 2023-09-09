@@ -1,0 +1,164 @@
+---
+title: Calibrating Probabilities
+description: Using calibration to improve classifier model performance
+date: 2023-09-17
+draft: true
+categories:
+  - r
+  - soccer
+image: foo.png
+execute: 
+  code-fold: false
+  eval: false
+  include: true
+  echo: true
+---
+
+```{r}
+#| label: data-pull
+#| code-fold: true
+#| code-summary: Retrieve data
+
+library(readr)
+library(dplyr)
+matches <-  read_csv('https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv') |> 
+  filter(!is.na(score1)) |> 
+  transmute(
+    season,
+    date,
+    league_id,
+    league,
+    team1,
+    team2,
+    prob1,
+    prob2,
+    probtie,
+    result = case_when(
+      score1 == score2 ~ 'd',
+      score1 < score2 ~ 'l',
+      score1 > score2 ~ 'w'
+    )
+  )
+```
+
+```{r}
+mls_wins <- matches |> 
+  # filter(league == 'Barclays Premier League') |> 
+  filter(league == 'Major League Soccer') |> 
+  transmute(
+    target = factor(ifelse(result == 'w', 'yes', 'no')),
+    .pred_yes = prob1,
+    .pred_no = 1- .pred_yes 
+  )
+
+library(probably)
+library(purrr)
+mls_wins_calibration <- mls_wins |> 
+  probably::cal_plot_windowed(
+    truth = target,
+    estimate = .pred_yes,
+    event_level = 'second'
+  ) |> 
+  purrr::pluck('data')
+
+mls_wins_calibration |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(x = predicted_midpoint, y = event_rate) +
+  ggplot2::geom_abline(color = WHITISH_FOREGROUND_COLOR, linetype = 2) +
+  ggplot2::geom_ribbon(
+    fill = '#999999',
+    alpha = 0.5,
+    ggplot2::aes(ymin = lower, ymax = upper)
+  ) +
+  ggplot2::geom_line(color = WHITISH_FOREGROUND_COLOR) +
+  ggplot2::geom_point(
+    color = WHITISH_FOREGROUND_COLOR,
+    ggplot2::aes(size = total),
+    show.legend = FALSE
+  ) +
+  ggplot2::coord_cartesian(
+    xlim = c(0, 1),
+    ylim = c(0, 1)
+  ) +
+  ggplot2::labs(
+    # title = paste0(c('xG calibration', title), collapse = ' by '),
+    # subtitle = SUBTITLE_LABEL,
+    y = 'Actual match win rate',
+    x = 'Pre-match win probablity',
+    # caption = paste0(c(CAPTION_LABEL, caption), collapse = '<br/>'),
+    tag = TAG_LABEL
+  )
+
+mls_wins_calibrator <- mls_wins |> 
+  probably::cal_estimate_beta(
+    truth = target,
+    estimate = dplyr::starts_with('.pred'),
+    event_level = 'second'
+  )
+
+mls_wins_calibrated <- bind_cols(
+  mls_wins |> 
+    rename(
+      .raw_pred_yes = .pred_yes,
+      .raw_pred_no = .pred_no
+    ),
+  cal_apply(
+    mls_wins,
+    mls_wins_calibrator
+  ) |> 
+    select(.pred_yes, .pred_no)
+)
+
+mls_wins_calibrated |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(x = .raw_pred_yes, y = .pred_yes) +
+  ggplot2::geom_abline(color = WHITISH_FOREGROUND_COLOR, linetype = 2) +
+  ggplot2::geom_point(
+    color = WHITISH_FOREGROUND_COLOR,
+    shape = 21
+  )
+
+mls_wins_calibrated_calibration <- mls_wins_calibrated |> 
+  probably::cal_plot_windowed(
+    truth = target,
+    estimate = .pred_yes,
+    event_level = 'second'
+  ) |> 
+  purrr::pluck('data')
+
+dplyr::bind_rows(
+  mls_wins_calibration |> dplyr::mutate(source = 'Un-calibrated'),
+  mls_wins_calibrated_calibration |> dplyr::mutate(source = 'Calibrated')
+) |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = predicted_midpoint, 
+    y = event_rate,
+    color = source
+  ) +
+  ggplot2::geom_abline(color = WHITISH_FOREGROUND_COLOR, linetype = 2) +
+  # ggplot2::geom_ribbon(
+  #   # fill = '#999999',
+  #   alpha = 0.5,
+  #   ggplot2::aes(ymin = lower, ymax = upper)
+  # ) +
+  ggplot2::geom_line() +
+  ggplot2::geom_point(
+    # color = WHITISH_FOREGROUND_COLOR,
+    ggplot2::aes(size = total),
+    show.legend = FALSE
+  ) +
+  ggplot2::coord_cartesian(
+    xlim = c(0, 1),
+    ylim = c(0, 1)
+  ) +
+  ggplot2::labs(
+    # title = paste0(c('xG calibration', title), collapse = ' by '),
+    # subtitle = SUBTITLE_LABEL,
+    y = 'Actual match win rate',
+    x = 'Pre-match win probablity',
+    # caption = paste0(c(CAPTION_LABEL, caption), collapse = '<br/>'),
+    tag = TAG_LABEL
+  )
+
+```
