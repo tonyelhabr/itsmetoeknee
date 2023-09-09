@@ -1,12 +1,12 @@
 ---
-title: Calibrating Probabilities
+title: Calibrating Binary Probabilities
 description: Using calibration to improve classifier model performance
 date: 2023-09-17
 draft: true
 categories:
   - r
   - soccer
-image: foo.png
+image: compared-calibratoin.png
 execute: 
   code-fold: false
   eval: false
@@ -14,151 +14,497 @@ execute:
   echo: true
 ---
 
+## Introduction
+
+Ever grappled with a [classification](https://en.wikipedia.org/wiki/Statistical_classification) model that consistently over-predicts or under-predicts an event? Your first thought might be to re-evaluate the model's features or framework. But what if tweaking the model isn't an option, either due to a lack of resources or access restrictions? The good news is, there's another way--it's called [**calibration**](https://www.tidyverse.org/blog/2022/11/model-calibration/).
+
+Calibration falls in the "post-processing" step of modeling. We modify the output of a model using nothing but the model predictions and labels of the output.
+
+One of my favorite (and relatively new) packages in the [`{tidymodels}` ecosystem](https://www.tidymodels.org/) is the [`{probably}`](https://probably.tidymodels.org/) package. It provides functions that make it fairly straightforward to do calibration, even for those who are new to the concept. So let's use `{probably}` to demonstrate the power of calibration.
+
+## Calibrating a Binary Classifier
+
+### Data
+
+For demonstration, I'll be using the pre-match win probabilities from [FiveThirtyEight](https://data.fivethirtyeight.com/#soccer-spi) ([RIP](https://twitter.com/ryanabest/status/1672013407908667392)). Specifically, I'll subjset their plethora of historical projections to two women's leagues: the [Women's Super League (WSL)](https://en.wikipedia.org/wiki/Women%27s_Super_League) in England and the [National Women's Soccer League (NWSL)](https://en.wikipedia.org/wiki/National_Women%27s_Soccer_League) in the U.S. I have a suspicion that the model probabilities are perhaps not as calibrated as they could be, as there is [a general tendency for gender-agnostic models](https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/) in soccer to be less performant for the women's game.
+
+To keep things simple, I'm going to treat this as a [binary classification](https://en.wikipedia.org/wiki/Binary_classification) task, where matches are the "positive" outcome (`"yes"`), and losses and draw are grouped as the "negative" outcome (`"no"`).
+
 ```{r}
 #| label: data-pull
 #| code-fold: true
 #| code-summary: Retrieve data
-
 library(readr)
 library(dplyr)
-matches <-  read_csv('https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv') |> 
-  filter(!is.na(score1)) |> 
+matches <- read_csv('https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv') |> 
+  filter(
+    !is.na(score1), ## match is completed
+    league %in% c(
+      "FA Women's Super League",
+      "National Women's Soccer League"
+    )
+  ) |> 
   transmute(
+    league,
     season,
     date,
-    league_id,
-    league,
     team1,
     team2,
-    prob1,
-    prob2,
-    probtie,
-    result = case_when(
-      score1 == score2 ~ 'd',
-      score1 < score2 ~ 'l',
-      score1 > score2 ~ 'w'
-    )
+    target = factor(ifelse(score1 > score2, 'yes', 'no')),
+    ## .pred_ is sort of a convention among {tidymodels} docs
+    .pred_yes = prob1,
+    .pred_no = 1- .pred_yes 
   )
 ```
 
 ```{r}
-mls_wins <- matches |> 
-  # filter(league == 'Barclays Premier League') |> 
-  filter(league == 'Major League Soccer') |> 
-  transmute(
-    target = factor(ifelse(result == 'w', 'yes', 'no')),
-    .pred_yes = prob1,
-    .pred_no = 1- .pred_yes 
-  )
+#| label: save-matches
+PROJ_DIR <- 'posts/probability-calibration'
+qs::qsave(matches, file.path(PROJ_DIR, 'matches.qs'))
+```
 
+```{r}
+#| label: show-matches
+#| code-fold: false
+matches
+#> # A tibble: 1,358 × 6
+#>    date       team1               team2             target .pred_yes .pred_no
+#>    <date>     <chr>               <chr>             <fct>      <dbl>    <dbl>
+#>  1 2016-07-09 Liverpool Women     Reading           yes        0.439    0.561
+#>  2 2016-07-10 Arsenal Women       Notts County Lad… yes        0.357    0.643
+#>  3 2016-07-10 Chelsea FC Women    Birmingham City   no         0.480    0.520
+#>  4 2016-07-16 Liverpool Women     Notts County Lad… no         0.429    0.571
+#>  5 2016-07-17 Chelsea FC Women    Arsenal Women     no         0.412    0.588
+#>  6 2016-07-24 Reading             Birmingham City   no         0.382    0.618
+#>  7 2016-07-24 Notts County Ladies Manchester City … no         0.308    0.692
+#>  8 2016-07-31 Reading             Notts County Lad… no         0.407    0.593
+#>  9 2016-07-31 Arsenal Women       Liverpool Women   no         0.435    0.565
+#> 10 2016-08-03 Reading             Manchester City … no         0.306    0.694
+#> # ℹ 1,348 more rows
+```
+
+### Diagnosis
+
+We start with the ["diagnosis"](https://www.tidymodels.org/learn/models/calibration/#but-is-it-calibrated) phase: "How well do the original probabilities perform?" To evaluate this, we can use one of the several `probably::cal_plot_*` functions. In this case, we'll use `cal_plot_breaks()`.[^1]
+
+[^1]: Sticking with the basics, I use the defaults for `num_breaks` (10) and `conf_level` (0.9).
+
+This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin's range. Ideally, if our predictions are on point, the curve produced should match up with a straight diagonal line, i.e. a 45 degree reference slope passing through (0,0) and (1,1). As a bonus, the `probably::cal_plot_*` family of functions even provides confidence intervals about the calibration curve.
+
+```{r}
+#| label: cal_plot_breaks
+#| code-fold: false
 library(probably)
+packageVersion('probably')
+#> [1] ‘1.0.1.9000’
+
+matches |> 
+  probably::cal_plot_breaks(
+    truth = target,
+    ## the "_yes" in `.pred_yes` must match one of the values in `target`
+    estimate = .pred_yes,
+    ## because "yes" is the second event level ("no" is the first)
+    event_level = 'second'
+  )
+```
+
+`{probably}` offers some really neat auto-plotting of calibration curves. While I'd suggest giving them a try, I like to make my curves in a certain manner. In particular, instead of using a "rug", I like showing sample sizes via points on the curve.
+
+```{r}
+#| label: cal_plot_breaks-plot
+#| include: false
 library(purrr)
-mls_wins_calibration <- mls_wins |> 
-  probably::cal_plot_windowed(
+
+raw_calibration <- matches |> 
+  probably::cal_plot_breaks(
     truth = target,
     estimate = .pred_yes,
     event_level = 'second'
   ) |> 
   purrr::pluck('data')
 
-mls_wins_calibration |> 
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
+
+CAPTION_LABEL <- '**Data**: FiveThirtyEight.<br/>Point size is proportional to number of observations.'
+SUBTITLE_LABEL <- 'WSL 2016-2022, NWSL 2017-2023'
+TAG_LABEL <- htmltools::tagList(
+  htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
+  htmltools::tags$span("@TonyElHabr"),
+)
+common_calibration_plot_layers <- function(...) {
+  list(
+    ...,
+    ggplot2::geom_abline(
+      color = WHITISH_FOREGROUND_COLOR, 
+      linetype = 2
+    ),
+    # ggplot2::coord_cartesian(
+    #   xlim = c(0, 1),
+    #   ylim = c(0, 1),
+    #   expand = FALSE
+    # ),
+    ggplot2::scale_x_continuous(
+      limits = c(0, 1),
+      expand = c(0.01, 0.01)
+    ),
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1),
+      expand = c(0.01, 0.01)
+    ),
+    ggplot2::geom_segment(
+      data = data.frame(
+        x = 0.45,
+        xend = 0.35,
+        y = 0.6,
+        yend = 0.7
+      ),
+      arrow = grid::arrow(length = grid::unit(6, 'pt'), type = 'closed'),
+      color = WHITISH_FOREGROUND_COLOR,
+      linewidth = 1,
+      ggplot2::aes(
+        x = x,
+        xend = xend,
+        y = y,
+        yend = yend
+      )
+    ),
+    ggplot2::geom_segment(
+      data = data.frame(
+        x = 0.55,
+        xend = 0.65,
+        y = 0.4,
+        yend = 0.3
+      ),
+      arrow = grid::arrow(length = grid::unit(6, 'pt'), type = 'closed'),
+      color = WHITISH_FOREGROUND_COLOR,
+      linewidth = 1,
+      ggplot2::aes(
+        x = x,
+        xend = xend,
+        y = y,
+        yend = yend
+      )
+    ),
+    ggtext::geom_richtext(
+      data = data.frame(
+        x = 0.35,
+        y = 0.75,
+        label = '*Model under-predicts*'
+      ),
+      fill = NA, label.color = NA,
+      label.padding = grid::unit(rep(0, 1), 'pt'),
+      color = WHITISH_FOREGROUND_COLOR,
+      family = FONT,
+      hjust = 1,
+      vjust = 1.1,
+      size = 14 / ggplot2::.pt,
+      ggplot2::aes(
+        x = x,
+        y = y,
+        label = label
+      )
+    ),
+    ggtext::geom_richtext(
+      data = data.frame(
+        x = 0.65,
+        y = 0.25,
+        label = '*Model over-predicts*'
+      ),
+      fill = NA, label.color = NA,
+      label.padding = grid::unit(rep(0, 1), 'pt'),
+      color = WHITISH_FOREGROUND_COLOR,
+      family = FONT,
+      hjust = 0,
+      vjust = -0.1,
+      size = 14 / ggplot2::.pt,
+      ggplot2::aes(
+        x = x,
+        y = y,
+        label = label
+      )
+    ),
+    ggplot2::labs(
+      title = "Calibration of soccer pre-match win probabilities",
+      subtitle = SUBTITLE_LABEL,
+      y = 'Actual match win rate',
+      x = 'Pre-match win probablity',
+      caption = CAPTION_LABEL,
+      tag = TAG_LABEL
+    )
+  )
+}
+
+PLOT_RESOLUTION <- 300
+WHITISH_FOREGROUND_COLOR <- 'white'
+COMPLEMENTARY_FOREGROUND_COLOR <- '#999999'
+BLACKISH_BACKGROUND_COLOR <- '#1c1c1c'
+COMPLEMENTARY_BACKGROUND_COLOR <- '#4d4d4d'
+FONT <- 'Titillium Web'
+sysfonts::font_add_google(FONT, FONT)
+## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = PLOT_RESOLUTION)
+
+ggplot2::theme_set(ggplot2::theme_minimal())
+ggplot2::theme_update(
+  text = ggplot2::element_text(family = FONT),
+  title = ggplot2::element_text(size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title = ggtext::element_markdown(face = 'bold', size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title.position = 'plot',
+  plot.subtitle = ggtext::element_markdown(size = 16, color = COMPLEMENTARY_FOREGROUND_COLOR),
+  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
+  axis.title.x = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.y = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.line = ggplot2::element_blank(),
+  strip.text = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0),
+  legend.position = 'top',
+  legend.text = ggplot2::element_text(size = 12, color = WHITISH_FOREGROUND_COLOR, face = 'plain'),
+  panel.grid.major = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor.x = ggplot2::element_blank(),
+  panel.grid.minor.y = ggplot2::element_blank(),
+  plot.margin = ggplot2::margin(10, 20, 10, 20),
+  plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
+  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain'),
+  plot.caption.position = 'plot',
+  plot.tag = ggtext::element_markdown(size = 12, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
+  plot.tag.position = c(0.99, 0.01),
+  panel.spacing.x = grid::unit(2, 'lines'),
+  panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
+)
+ggplot2::update_geom_defaults('text', list(color = WHITISH_FOREGROUND_COLOR, size = 12 / .pt))
+# ggplot2::update_geom_defaults('point', list(color = WHITISH_FOREGROUND_COLOR))
+
+CAL_COLORS <- c(
+  'Un-calibrated' = '#009ffd', 
+  'Calibrated' = '#ffa400'
+)
+point_to_annotate <- dplyr::filter(
+  raw_calibration,
+  round(predicted_midpoint, 2) == 0.15
+)
+raw_calibration_plot <- raw_calibration |> 
   ggplot2::ggplot() +
-  ggplot2::aes(x = predicted_midpoint, y = event_rate) +
-  ggplot2::geom_abline(color = WHITISH_FOREGROUND_COLOR, linetype = 2) +
-  ggplot2::geom_ribbon(
-    fill = '#999999',
-    alpha = 0.5,
-    ggplot2::aes(ymin = lower, ymax = upper)
+  ggplot2::aes(
+    x = predicted_midpoint, 
+    y = event_rate
   ) +
-  ggplot2::geom_line(color = WHITISH_FOREGROUND_COLOR) +
+  ggplot2::geom_ribbon(
+    fill = CAL_COLORS['Un-calibrated'],
+    alpha = 0.25,
+    ggplot2::aes(
+      ymin = lower, 
+      ymax = upper
+    )
+  ) +
+  ggplot2::geom_line(
+    color = CAL_COLORS['Un-calibrated']
+  ) +
   ggplot2::geom_point(
-    color = WHITISH_FOREGROUND_COLOR,
+    color = CAL_COLORS['Un-calibrated'],
     ggplot2::aes(size = total),
     show.legend = FALSE
   ) +
-  ggplot2::coord_cartesian(
-    xlim = c(0, 1),
-    ylim = c(0, 1)
-  ) +
+  common_calibration_plot_layers() +
   ggplot2::labs(
-    # title = paste0(c('xG calibration', title), collapse = ' by '),
-    # subtitle = SUBTITLE_LABEL,
-    y = 'Actual match win rate',
-    x = 'Pre-match win probablity',
-    # caption = paste0(c(CAPTION_LABEL, caption), collapse = '<br/>'),
-    tag = TAG_LABEL
+    caption = paste0(CAPTION_LABEL, '<br/>Ribbon illustrates 90% confidence interval.')
+  ) +
+  ggtext::geom_richtext(
+    data = data.frame(
+      x = point_to_annotate$predicted_midpoint + 0.05,
+      y = point_to_annotate$event_rate - 0.03,
+      label = as.character(glue::glue('<i>On average, model predicts    {scales::percent(point_to_annotate$predicted_midpoint, accuracy = 0.1)} <br/>when observed win rate is just {scales::percent(point_to_annotate$event_rate, accuracy = 0.1)}.</i>'))
+    ),
+    fill = NA, label.color = NA,
+    label.padding = grid::unit(rep(0, 1), 'pt'),
+    color = WHITISH_FOREGROUND_COLOR,
+    family = FONT,
+    hjust = 0,
+    vjust = 0.5,
+    size = 10 / ggplot2::.pt,
+    ggplot2::aes(
+      x = x,
+      y = y,
+      label = label
+    )
+  ) +
+  ggplot2::geom_curve(
+    data = data.frame(
+      x = point_to_annotate$predicted_midpoint + 0.05,
+      xend = point_to_annotate$predicted_midpoint + 0.01,
+      y = point_to_annotate$event_rate - 0.03,
+      yend = point_to_annotate$event_rate - 0.01
+    ),
+    arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
+    color = WHITISH_FOREGROUND_COLOR,
+    linewidth = 0.5,
+    curvature = -0.25,
+    ggplot2::aes(
+      x = x,
+      xend = xend,
+      y = y,
+      yend = yend
+    )
   )
+raw_calibration_plot
 
-mls_wins_calibrator <- mls_wins |> 
+ggplot2::ggsave(
+  raw_calibration_plot,
+  filename = file.path(PROJ_DIR, 'raw-calibration.png'),
+  width = 7,
+  height = 7
+)
+```
+
+![](raw-calibration.png)
+
+Indeed, it looks like there is some room for improvement with the match probabilities. It seems that the FiveThirtyEight model over-predicts when the actual win rate is low, broadly below 20%; and, likewise, it tends to under-predict when the true win rate is really greater than 60%
+
+### Remediation
+
+Now we move on the ["remedation"](https://www.tidymodels.org/learn/models/calibration/#remediation) step. That is, we fit an
+
+```{r}
+#| label: cal_estimate_beta
+#| code-fold: false
+matches |> 
+  probably::cal_estimate_beta(
+    truth = target,
+    estimate = dplyr::starts_with('.pred'),
+    event_level = 'second'
+  )
+#>  ── Probability Calibration 
+#>  Method: Beta calibration
+#>  Type: Binary
+#>  Source class: Data Frame
+#>  Data points: 1,358
+#>  Truth variable: `target`
+#>  Estimate variables:
+#>  `.pred_no` ==> no
+#>  .pred_yes` ==> yes
+```
+
+Under the hood, `cal_estimate_beta()` is doing something like this.
+
+```{r}
+#| label: beta_calibration
+#| code-fold: false
+library(betacal)
+
+betacal::beta_calibration(
+  p = matches$.pred_no,
+  y = matches$target == 'yes',
+  parameters = 'abm'
+)
+```
+
+```{r}
+#| label: calibration_scatter_plot
+#| include: false
+remediator <- matches |> 
   probably::cal_estimate_beta(
     truth = target,
     estimate = dplyr::starts_with('.pred'),
     event_level = 'second'
   )
 
-mls_wins_calibrated <- bind_cols(
-  mls_wins |> 
-    rename(
+calibrated <- dplyr::bind_cols(
+  matches |> 
+    dplyr::rename(
       .raw_pred_yes = .pred_yes,
       .raw_pred_no = .pred_no
     ),
-  cal_apply(
-    mls_wins,
-    mls_wins_calibrator
+  probably::cal_apply(
+    matches,
+    remediator
   ) |> 
-    select(.pred_yes, .pred_no)
+    dplyr::select(.pred_yes, .pred_no)
 )
 
-mls_wins_calibrated |> 
+calibration_scatter_plot <- calibrated |> 
   ggplot2::ggplot() +
   ggplot2::aes(x = .raw_pred_yes, y = .pred_yes) +
   ggplot2::geom_abline(color = WHITISH_FOREGROUND_COLOR, linetype = 2) +
   ggplot2::geom_point(
     color = WHITISH_FOREGROUND_COLOR,
     shape = 21
+  ) +
+  ggplot2::labs(
+    title = glue::glue('<span style=color:{CAL_COLORS["Un-calibrated"]}>Uncalibrated</span> vs. <span style=color:{CAL_COLORS["Calibrated"]}>Calibrated</span> pre-match win probabilities'),
+    subtitle = SUBTITLE_LABEL,
+    x = glue::glue('<span style=color:{CAL_COLORS["Un-calibrated"]}>Uncalibrated</span> pre-match win probability'),
+    y = glue::glue('<span style=color:{CAL_COLORS["Calibrated"]}>Calibrated</span> pre-match win probability'),
+    caption = '<br/>',
+    tag = TAG_LABEL
   )
 
-mls_wins_calibrated_calibration <- mls_wins_calibrated |> 
-  probably::cal_plot_windowed(
+ggplot2::ggsave(
+  calibration_scatter_plot,
+  filename = file.path(PROJ_DIR, 'calibration-scatter.png'),
+  width = 7,
+  height = 7
+)
+```
+
+![](calibration-scatter.png)
+
+```{r}
+#| label: compared_calibration_plot
+#| include: false
+calibrated_calibration <- calibrated |> 
+  probably::cal_plot_breaks(
     truth = target,
     estimate = .pred_yes,
     event_level = 'second'
   ) |> 
   purrr::pluck('data')
 
-dplyr::bind_rows(
-  mls_wins_calibration |> dplyr::mutate(source = 'Un-calibrated'),
-  mls_wins_calibrated_calibration |> dplyr::mutate(source = 'Calibrated')
-) |> 
+compared_calibration <- dplyr::bind_rows(
+  dplyr::mutate(raw_calibration, source = 'Un-calibrated'),
+  dplyr::mutate(calibrated_calibration, source = 'Calibrated')
+)
+
+compared_calibration_plot <- compared_calibration |> 
   ggplot2::ggplot() +
   ggplot2::aes(
     x = predicted_midpoint, 
     y = event_rate,
     color = source
   ) +
-  ggplot2::geom_abline(color = WHITISH_FOREGROUND_COLOR, linetype = 2) +
-  # ggplot2::geom_ribbon(
-  #   # fill = '#999999',
-  #   alpha = 0.5,
-  #   ggplot2::aes(ymin = lower, ymax = upper)
-  # ) +
   ggplot2::geom_line() +
   ggplot2::geom_point(
-    # color = WHITISH_FOREGROUND_COLOR,
     ggplot2::aes(size = total),
     show.legend = FALSE
   ) +
-  ggplot2::coord_cartesian(
-    xlim = c(0, 1),
-    ylim = c(0, 1)
+  ggplot2::scale_color_manual(
+    values = CAL_COLORS
   ) +
-  ggplot2::labs(
-    # title = paste0(c('xG calibration', title), collapse = ' by '),
-    # subtitle = SUBTITLE_LABEL,
-    y = 'Actual match win rate',
-    x = 'Pre-match win probablity',
-    # caption = paste0(c(CAPTION_LABEL, caption), collapse = '<br/>'),
-    tag = TAG_LABEL
-  )
+  ggplot2::guides(
+    color = ggplot2::guide_legend(
+      title = '',
+      override.aes = list(linewidth = 3)
+    )
+  ) +
+  common_calibration_plot_layers()
+compared_calibration_plot
 
+ggplot2::ggsave(
+  compared_calibration_plot,
+  filename = file.path(PROJ_DIR, 'compared-calibration.png'),
+  width = 7,
+  height = 7
+)
 ```
+
+![](compared-calibration.png)
+
+## Conclusion
+
+While I wouldn't say "calibration is all you need", it's certainly something nice to know about and have in your toolkit when you're working on a modeling task. It may certainly be the best thing to do, especially if you don't have access to the original model (or are too lazy to modify the model).
+
+And the beauty is, you're not restricted to binary classifiers. Whether it's a multinomial classifier or a model designed for a regression task, calibration is your friend.

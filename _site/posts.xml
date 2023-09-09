@@ -171,7 +171,7 @@ font-style: italic;">## Mark Noble with the epic 1 goal on 0 shots https://fbref
 <span id="cb1-95"></span>
 <span id="cb1-96">summarize_all_metric_columns <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(df, ...) {</span>
 <span id="cb1-97">  matches_played <span class="ot" style="color: #003B4F;">&lt;-</span> df <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb1-98">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(league, season, team, player, nation) <span class="sc" style="color: #5E5E5E;">|&gt;</span></span>
+<span id="cb1-98">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(league, season, team, player) <span class="sc" style="color: #5E5E5E;">|&gt;</span></span>
 <span id="cb1-99">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(minutes_played <span class="sc" style="color: #5E5E5E;">&gt;</span> 0L) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb1-100">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">summarize</span>(</span>
 <span id="cb1-101">      <span class="at" style="color: #657422;">matches_played =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">n_distinct</span>(match_id)</span>
@@ -179,7 +179,7 @@ font-style: italic;">## Mark Noble with the epic 1 goal on 0 shots https://fbref
 <span id="cb1-103">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ungroup</span>()</span>
 <span id="cb1-104">  </span>
 <span id="cb1-105">  df <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb1-106">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(..., league, season, team, player, nation) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb1-106">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(..., league, season, team, player) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb1-107">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">summarize</span>(</span>
 <span id="cb1-108">      dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">across</span>(</span>
 <span id="cb1-109">        <span class="fu" style="color: #4758AB;">c</span>(minutes_played<span class="sc" style="color: #5E5E5E;">:</span>dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">last_col</span>()),</span>
@@ -190,7 +190,7 @@ font-style: italic;">## Mark Noble with the epic 1 goal on 0 shots https://fbref
 <span id="cb1-114">    <span class="fu" style="color: #4758AB;">add_rate_and_p90_metric_columns</span>() <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb1-115">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">inner_join</span>(</span>
 <span id="cb1-116">      matches_played,</span>
-<span id="cb1-117">      <span class="at" style="color: #657422;">by =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">join_by</span>(league, season, team, player, nation)</span>
+<span id="cb1-117">      <span class="at" style="color: #657422;">by =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">join_by</span>(league, season, team, player)</span>
 <span id="cb1-118">    ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb1-119">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">relocate</span>(</span>
 <span id="cb1-120">      matches_played,</span>
@@ -207,90 +207,87 @@ font-style: italic;">## Mark Noble with the epic 1 goal on 0 shots https://fbref
 <span id="cb1-131">    <span class="at" style="color: #657422;">match_id =</span> <span class="fu" style="color: #4758AB;">basename</span>(<span class="fu" style="color: #4758AB;">dirname</span>(MatchURL)),</span>
 <span id="cb1-132">    <span class="at" style="color: #657422;">team =</span> Team,</span>
 <span id="cb1-133">    <span class="at" style="color: #657422;">player =</span> Player,</span>
-<span id="cb1-134">    <span class="at" style="color: #657422;">nation =</span> Nation, <span class="do" style="color: #5E5E5E;
-font-style: italic;">## to help uniquely identify players</span></span>
-<span id="cb1-135">    </span>
-<span id="cb1-136">    <span class="at" style="color: #657422;">minutes_played =</span> Min,</span>
-<span id="cb1-137">    </span>
-<span id="cb1-138">    <span class="at" style="color: #657422;">goals =</span> Gls, <span class="do" style="color: #5E5E5E;
+<span id="cb1-134">    </span>
+<span id="cb1-135">    <span class="at" style="color: #657422;">minutes_played =</span> Min,</span>
+<span id="cb1-136">    </span>
+<span id="cb1-137">    <span class="at" style="color: #657422;">goals =</span> Gls, <span class="do" style="color: #5E5E5E;
 font-style: italic;">## includes pks</span></span>
-<span id="cb1-139">    <span class="at" style="color: #657422;">assists =</span> Ast,</span>
-<span id="cb1-140">    <span class="at" style="color: #657422;">shots =</span> Sh, <span class="do" style="color: #5E5E5E;
+<span id="cb1-138">    <span class="at" style="color: #657422;">assists =</span> Ast,</span>
+<span id="cb1-139">    <span class="at" style="color: #657422;">shots =</span> Sh, <span class="do" style="color: #5E5E5E;
 font-style: italic;">## does not include pk attempts</span></span>
-<span id="cb1-141">    <span class="at" style="color: #657422;">shots_on_target =</span> SoT,</span>
-<span id="cb1-142">    <span class="at" style="color: #657422;">tackles =</span> Tkl,</span>
-<span id="cb1-143">    <span class="at" style="color: #657422;">interceptions =</span> Int,</span>
-<span id="cb1-144">    </span>
-<span id="cb1-145">    <span class="at" style="color: #657422;">passes_completed =</span> Cmp_Passes,</span>
-<span id="cb1-146">    <span class="at" style="color: #657422;">passes_attempted =</span> Att_Passes,</span>
-<span id="cb1-147">    <span class="at" style="color: #657422;">carries =</span> Carries_Carries,</span>
-<span id="cb1-148">    </span>
-<span id="cb1-149">    <span class="at" style="color: #657422;">xg =</span> xG_Expected,</span>
-<span id="cb1-150">    <span class="at" style="color: #657422;">xa =</span> xAG_Expected</span>
-<span id="cb1-151">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb1-152">  <span class="fu" style="color: #4758AB;">add_rate_and_p90_metric_columns</span>()</span>
-<span id="cb1-153"></span>
-<span id="cb1-154">player_season_stats <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">summarize_all_metric_columns</span>(player_match_stats)</span>
-<span id="cb1-155"></span>
-<span id="cb1-156"><span class="do" style="color: #5E5E5E;
+<span id="cb1-140">    <span class="at" style="color: #657422;">shots_on_target =</span> SoT,</span>
+<span id="cb1-141">    <span class="at" style="color: #657422;">tackles =</span> Tkl,</span>
+<span id="cb1-142">    <span class="at" style="color: #657422;">interceptions =</span> Int,</span>
+<span id="cb1-143">    </span>
+<span id="cb1-144">    <span class="at" style="color: #657422;">passes_completed =</span> Cmp_Passes,</span>
+<span id="cb1-145">    <span class="at" style="color: #657422;">passes_attempted =</span> Att_Passes,</span>
+<span id="cb1-146">    <span class="at" style="color: #657422;">carries =</span> Carries_Carries,</span>
+<span id="cb1-147">    </span>
+<span id="cb1-148">    <span class="at" style="color: #657422;">xg =</span> xG_Expected,</span>
+<span id="cb1-149">    <span class="at" style="color: #657422;">xa =</span> xAG_Expected</span>
+<span id="cb1-150">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb1-151">  <span class="fu" style="color: #4758AB;">add_rate_and_p90_metric_columns</span>()</span>
+<span id="cb1-152"></span>
+<span id="cb1-153">player_season_stats <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">summarize_all_metric_columns</span>(player_match_stats)</span>
+<span id="cb1-154"></span>
+<span id="cb1-155"><span class="do" style="color: #5E5E5E;
 font-style: italic;">## Franks et al. used 250 min played for the NBA</span></span>
-<span id="cb1-157"><span class="do" style="color: #5E5E5E;
+<span id="cb1-156"><span class="do" style="color: #5E5E5E;
 font-style: italic;">## https://github.com/afranks86/meta-analytics/blob/1871d24762184afa69f29a2b5b348431e70b9b2b/basketballReliability.R#L60</span></span>
-<span id="cb1-158">MIN_MINUTES_PLAYED <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="dv" style="color: #AD0000;">270</span></span>
-<span id="cb1-159">eligible_player_season_stats <span class="ot" style="color: #003B4F;">&lt;-</span> player_season_stats <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb1-160">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(minutes_played <span class="sc" style="color: #5E5E5E;">&gt;=</span> MIN_MINUTES_PLAYED)</span>
-<span id="cb1-161"></span>
-<span id="cb1-162">eligible_player_match_stats <span class="ot" style="color: #003B4F;">&lt;-</span> player_match_stats <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb1-163">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">semi_join</span>(</span>
-<span id="cb1-164">    eligible_player_season_stats,</span>
-<span id="cb1-165">    <span class="at" style="color: #657422;">by =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">join_by</span>(league, season, team, player, nation)</span>
-<span id="cb1-166">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb1-167">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(league, season, team, player, nation)</span>
-<span id="cb1-168"></span>
-<span id="cb1-169"><span class="do" style="color: #5E5E5E;
+<span id="cb1-157">MIN_MINUTES_PLAYED <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="dv" style="color: #AD0000;">270</span></span>
+<span id="cb1-158">eligible_player_season_stats <span class="ot" style="color: #003B4F;">&lt;-</span> player_season_stats <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb1-159">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(minutes_played <span class="sc" style="color: #5E5E5E;">&gt;=</span> MIN_MINUTES_PLAYED)</span>
+<span id="cb1-160"></span>
+<span id="cb1-161">eligible_player_match_stats <span class="ot" style="color: #003B4F;">&lt;-</span> player_match_stats <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb1-162">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">semi_join</span>(</span>
+<span id="cb1-163">    eligible_player_season_stats,</span>
+<span id="cb1-164">    <span class="at" style="color: #657422;">by =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">join_by</span>(league, season, team, player)</span>
+<span id="cb1-165">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb1-166">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(league, season, team, player)</span>
+<span id="cb1-167"></span>
+<span id="cb1-168"><span class="do" style="color: #5E5E5E;
 font-style: italic;">## drop players with 0s for any given metric across any season?</span></span>
-<span id="cb1-170"><span class="do" style="color: #5E5E5E;
+<span id="cb1-169"><span class="do" style="color: #5E5E5E;
 font-style: italic;">##   looks like they only did that for testing a 1-season evaluation:</span></span>
-<span id="cb1-171"><span class="do" style="color: #5E5E5E;
+<span id="cb1-170"><span class="do" style="color: #5E5E5E;
 font-style: italic;">##   https://github.com/afranks86/meta-analytics/blob/1871d24762184afa69f29a2b5b348431e70b9b2b/basketballReliability.R#L25</span></span>
-<span id="cb1-172"><span class="co" style="color: #5E5E5E;"># eligible_player_season_stats |&gt; </span></span>
-<span id="cb1-173"><span class="co" style="color: #5E5E5E;">#   pivot_metric_columns() |&gt; </span></span>
-<span id="cb1-174"><span class="co" style="color: #5E5E5E;">#   group_by(league, team, player, metric) |&gt; </span></span>
-<span id="cb1-175"><span class="co" style="color: #5E5E5E;">#   summarize(has_any_zero = any(value == 0)) |&gt; </span></span>
-<span id="cb1-176"><span class="co" style="color: #5E5E5E;">#   ungroup() |&gt; </span></span>
-<span id="cb1-177"><span class="co" style="color: #5E5E5E;">#   filter(has_any_zero)</span></span></code></pre></div>
+<span id="cb1-171"><span class="co" style="color: #5E5E5E;"># eligible_player_season_stats |&gt; </span></span>
+<span id="cb1-172"><span class="co" style="color: #5E5E5E;">#   pivot_metric_columns() |&gt; </span></span>
+<span id="cb1-173"><span class="co" style="color: #5E5E5E;">#   group_by(league, team, player, metric) |&gt; </span></span>
+<span id="cb1-174"><span class="co" style="color: #5E5E5E;">#   summarize(has_any_zero = any(value == 0)) |&gt; </span></span>
+<span id="cb1-175"><span class="co" style="color: #5E5E5E;">#   ungroup() |&gt; </span></span>
+<span id="cb1-176"><span class="co" style="color: #5E5E5E;">#   filter(has_any_zero)</span></span></code></pre></div>
 </details>
 </div>
 <p>After some light wrangling, the player-match data looks like this.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1">dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">glimpse</span>(eligible_player_match_stats)</span>
 <span id="cb2-2"><span class="co" style="color: #5E5E5E;">#&gt; Rows: 271,416</span></span>
-<span id="cb2-3"><span class="co" style="color: #5E5E5E;">#&gt; Columns: 25</span></span>
+<span id="cb2-3"><span class="co" style="color: #5E5E5E;">#&gt; Columns: 24</span></span>
 <span id="cb2-4"><span class="co" style="color: #5E5E5E;">#&gt; $ league               &lt;chr&gt; "ENG-M-1st", "ENG-M-1st", "ENG-M-1st", "ENG-M-…</span></span>
 <span id="cb2-5"><span class="co" style="color: #5E5E5E;">#&gt; $ season               &lt;chr&gt; "2018/19", "2018/19", "2018/19", "2018/19", "2…</span></span>
 <span id="cb2-6"><span class="co" style="color: #5E5E5E;">#&gt; $ date                 &lt;chr&gt; "2018-08-12", "2018-08-18", "2018-08-25", "201…</span></span>
 <span id="cb2-7"><span class="co" style="color: #5E5E5E;">#&gt; $ match_id             &lt;chr&gt; "478e9dab", "9b69882c", "0014076a", "c1503e09"…</span></span>
 <span id="cb2-8"><span class="co" style="color: #5E5E5E;">#&gt; $ team                 &lt;chr&gt; "Arsenal", "Arsenal", "Arsenal", "Arsenal", "A…</span></span>
 <span id="cb2-9"><span class="co" style="color: #5E5E5E;">#&gt; $ player               &lt;chr&gt; "Aaron Ramsey", "Aaron Ramsey", "Aaron Ramsey"…</span></span>
-<span id="cb2-10"><span class="co" style="color: #5E5E5E;">#&gt; $ nation               &lt;chr&gt; "WAL", "WAL", "WAL", "WAL", "WAL", "WAL", "WAL…</span></span>
-<span id="cb2-11"><span class="co" style="color: #5E5E5E;">#&gt; $ minutes_played       &lt;dbl&gt; 53, 23, 90, 90, 79, 79, 62, 24, 11, 13, 18, 16…</span></span>
-<span id="cb2-12"><span class="co" style="color: #5E5E5E;">#&gt; $ goals                &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0…</span></span>
-<span id="cb2-13"><span class="co" style="color: #5E5E5E;">#&gt; $ assists              &lt;dbl&gt; 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0…</span></span>
-<span id="cb2-14"><span class="co" style="color: #5E5E5E;">#&gt; $ shots                &lt;dbl&gt; 1, 2, 2, 2, 0, 1, 0, 1, 0, 0, 0, 1, 0, 3, 1, 0…</span></span>
-<span id="cb2-15"><span class="co" style="color: #5E5E5E;">#&gt; $ shots_on_target      &lt;dbl&gt; 1, 1, 1, 2, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0…</span></span>
-<span id="cb2-16"><span class="co" style="color: #5E5E5E;">#&gt; $ tackles              &lt;dbl&gt; 2, 0, 2, 1, 2, 0, 2, 0, 1, 0, 0, 0, 1, 2, 1, 0…</span></span>
-<span id="cb2-17"><span class="co" style="color: #5E5E5E;">#&gt; $ interceptions        &lt;dbl&gt; 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0…</span></span>
-<span id="cb2-18"><span class="co" style="color: #5E5E5E;">#&gt; $ passes_completed     &lt;dbl&gt; 9, 6, 48, 51, 49, 26, 16, 16, 13, 5, 11, 7, 8,…</span></span>
-<span id="cb2-19"><span class="co" style="color: #5E5E5E;">#&gt; $ passes_attempted     &lt;dbl&gt; 13, 9, 61, 66, 58, 31, 20, 21, 15, 7, 12, 10, …</span></span>
-<span id="cb2-20"><span class="co" style="color: #5E5E5E;">#&gt; $ carries              &lt;dbl&gt; 5, 7, 41, 49, 43, 27, 21, 16, 11, 8, 11, 7, 7,…</span></span>
-<span id="cb2-21"><span class="co" style="color: #5E5E5E;">#&gt; $ xg                   &lt;dbl&gt; 0.0, 0.1, 0.1, 0.1, 0.0, 0.0, 0.0, 0.1, 0.0, 0…</span></span>
-<span id="cb2-22"><span class="co" style="color: #5E5E5E;">#&gt; $ xa                   &lt;dbl&gt; 0.1, 0.0, 0.2, 0.2, 0.1, 0.4, 0.0, 0.1, 0.0, 0…</span></span>
-<span id="cb2-23"><span class="co" style="color: #5E5E5E;">#&gt; $ shot_conversion_rate &lt;dbl&gt; 0, 0, 0, 0, NA, 0, NA, 1, NA, NA, NA, 0, NA, 0…</span></span>
-<span id="cb2-24"><span class="co" style="color: #5E5E5E;">#&gt; $ pass_completion_rate &lt;dbl&gt; 0.6923077, 0.6666667, 0.7868852, 0.7727273, 0.…</span></span>
-<span id="cb2-25"><span class="co" style="color: #5E5E5E;">#&gt; $ goals_xg_ratio       &lt;dbl&gt; NA, 0.000000, 0.000000, 0.000000, NA, NA, NA, …</span></span>
-<span id="cb2-26"><span class="co" style="color: #5E5E5E;">#&gt; $ goals_p90            &lt;dbl&gt; 0.000000, 0.000000, 0.000000, 0.000000, 0.0000…</span></span>
-<span id="cb2-27"><span class="co" style="color: #5E5E5E;">#&gt; $ shots_p90            &lt;dbl&gt; 1.698113, 7.826087, 2.000000, 2.000000, 0.0000…</span></span>
-<span id="cb2-28"><span class="co" style="color: #5E5E5E;">#&gt; $ xg_p90               &lt;dbl&gt; 0.0000000, 0.3913043, 0.1000000, 0.1000000, 0.…</span></span></code></pre></div>
+<span id="cb2-10"><span class="co" style="color: #5E5E5E;">#&gt; $ minutes_played       &lt;dbl&gt; 53, 23, 90, 90, 79, 79, 62, 24, 11, 13, 18, 16…</span></span>
+<span id="cb2-11"><span class="co" style="color: #5E5E5E;">#&gt; $ goals                &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0…</span></span>
+<span id="cb2-12"><span class="co" style="color: #5E5E5E;">#&gt; $ assists              &lt;dbl&gt; 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0…</span></span>
+<span id="cb2-13"><span class="co" style="color: #5E5E5E;">#&gt; $ shots                &lt;dbl&gt; 1, 2, 2, 2, 0, 1, 0, 1, 0, 0, 0, 1, 0, 3, 1, 0…</span></span>
+<span id="cb2-14"><span class="co" style="color: #5E5E5E;">#&gt; $ shots_on_target      &lt;dbl&gt; 1, 1, 1, 2, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0…</span></span>
+<span id="cb2-15"><span class="co" style="color: #5E5E5E;">#&gt; $ tackles              &lt;dbl&gt; 2, 0, 2, 1, 2, 0, 2, 0, 1, 0, 0, 0, 1, 2, 1, 0…</span></span>
+<span id="cb2-16"><span class="co" style="color: #5E5E5E;">#&gt; $ interceptions        &lt;dbl&gt; 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0…</span></span>
+<span id="cb2-17"><span class="co" style="color: #5E5E5E;">#&gt; $ passes_completed     &lt;dbl&gt; 9, 6, 48, 51, 49, 26, 16, 16, 13, 5, 11, 7, 8,…</span></span>
+<span id="cb2-18"><span class="co" style="color: #5E5E5E;">#&gt; $ passes_attempted     &lt;dbl&gt; 13, 9, 61, 66, 58, 31, 20, 21, 15, 7, 12, 10, …</span></span>
+<span id="cb2-19"><span class="co" style="color: #5E5E5E;">#&gt; $ carries              &lt;dbl&gt; 5, 7, 41, 49, 43, 27, 21, 16, 11, 8, 11, 7, 7,…</span></span>
+<span id="cb2-20"><span class="co" style="color: #5E5E5E;">#&gt; $ xg                   &lt;dbl&gt; 0.0, 0.1, 0.1, 0.1, 0.0, 0.0, 0.0, 0.1, 0.0, 0…</span></span>
+<span id="cb2-21"><span class="co" style="color: #5E5E5E;">#&gt; $ xa                   &lt;dbl&gt; 0.1, 0.0, 0.2, 0.2, 0.1, 0.4, 0.0, 0.1, 0.0, 0…</span></span>
+<span id="cb2-22"><span class="co" style="color: #5E5E5E;">#&gt; $ shot_conversion_rate &lt;dbl&gt; 0, 0, 0, 0, NA, 0, NA, 1, NA, NA, NA, 0, NA, 0…</span></span>
+<span id="cb2-23"><span class="co" style="color: #5E5E5E;">#&gt; $ pass_completion_rate &lt;dbl&gt; 0.6923077, 0.6666667, 0.7868852, 0.7727273, 0.…</span></span>
+<span id="cb2-24"><span class="co" style="color: #5E5E5E;">#&gt; $ goals_xg_ratio       &lt;dbl&gt; NA, 0.000000, 0.000000, 0.000000, NA, NA, NA, …</span></span>
+<span id="cb2-25"><span class="co" style="color: #5E5E5E;">#&gt; $ goals_p90            &lt;dbl&gt; 0.000000, 0.000000, 0.000000, 0.000000, 0.0000…</span></span>
+<span id="cb2-26"><span class="co" style="color: #5E5E5E;">#&gt; $ shots_p90            &lt;dbl&gt; 1.698113, 7.826087, 2.000000, 2.000000, 0.0000…</span></span>
+<span id="cb2-27"><span class="co" style="color: #5E5E5E;">#&gt; $ xg_p90               &lt;dbl&gt; 0.0000000, 0.3913043, 0.1000000, 0.1000000, 0.…</span></span></code></pre></div>
 </div>
 <p>There are a lot more stats we could pull in, but I’ve opted for a relatively small set of 15 stats<sup>2</sup>:</p>
 <ul>
@@ -373,38 +370,37 @@ font-style: italic;">## https://github.com/afranks86/meta-analytics/blob/1871d24
 <span id="cb4-5"></span>
 <span id="cb4-6">resampled_player_season_stats <span class="ot" style="color: #003B4F;">&lt;-</span> resampled_player_match_stats <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb4-7">  <span class="fu" style="color: #4758AB;">summarize_all_metric_columns</span>(bootstrap_id) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb4-8">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(bootstrap_id, league, season, team, player, nation)</span></code></pre></div>
+<span id="cb4-8">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(bootstrap_id, league, season, team, player)</span></code></pre></div>
 </details>
 </div>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1">dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">glimpse</span>(resampled_player_season_stats)</span>
 <span id="cb5-2"><span class="co" style="color: #5E5E5E;">#&gt; Rows: 234,172</span></span>
-<span id="cb5-3"><span class="co" style="color: #5E5E5E;">#&gt; Columns: 25</span></span>
+<span id="cb5-3"><span class="co" style="color: #5E5E5E;">#&gt; Columns: 24</span></span>
 <span id="cb5-4"><span class="co" style="color: #5E5E5E;">#&gt; $ bootstrap_id         &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…</span></span>
 <span id="cb5-5"><span class="co" style="color: #5E5E5E;">#&gt; $ league               &lt;chr&gt; "ENG-M-1st", "ENG-M-1st", "ENG-M-1st", "ENG-M-…</span></span>
 <span id="cb5-6"><span class="co" style="color: #5E5E5E;">#&gt; $ season               &lt;chr&gt; "2018/19", "2018/19", "2018/19", "2018/19", "2…</span></span>
 <span id="cb5-7"><span class="co" style="color: #5E5E5E;">#&gt; $ team                 &lt;chr&gt; "Arsenal", "Arsenal", "Arsenal", "Arsenal", "A…</span></span>
-<span id="cb5-8"><span class="co" style="color: #5E5E5E;">#&gt; $ player               &lt;chr&gt; "Aaron Ramsey", "Ainsley we-Niles", "Ale…</span></span>
-<span id="cb5-9"><span class="co" style="color: #5E5E5E;">#&gt; $ nation               &lt;chr&gt; "WAL", "ENG", "NGA", "FRA", "SUI", "ARM", "ESP…</span></span>
-<span id="cb5-10"><span class="co" style="color: #5E5E5E;">#&gt; $ matches_played       &lt;int&gt; 28, 16, 35, 35, 29, 25, 19, 17, 34, 33, 24, 8,…</span></span>
-<span id="cb5-11"><span class="co" style="color: #5E5E5E;">#&gt; $ minutes_played       &lt;dbl&gt; 1349, 1053, 1714, 2767, 2213, 1357, 989, 1385,…</span></span>
-<span id="cb5-12"><span class="co" style="color: #5E5E5E;">#&gt; $ goals                &lt;dbl&gt; 2, 2, 3, 11, 4, 3, 0, 5, 0, 0, 7, 0, 2, 20, 0,…</span></span>
-<span id="cb5-13"><span class="co" style="color: #5E5E5E;">#&gt; $ assists              &lt;dbl&gt; 1, 1, 4, 8, 2, 5, 3, 0, 3, 0, 2, 0, 4, 4, 0, 5…</span></span>
-<span id="cb5-14"><span class="co" style="color: #5E5E5E;">#&gt; $ shots                &lt;dbl&gt; 28, 8, 31, 102, 24, 30, 7, 5, 21, 20, 14, 9, 7…</span></span>
-<span id="cb5-15"><span class="co" style="color: #5E5E5E;">#&gt; $ shots_on_target      &lt;dbl&gt; 9, 6, 15, 28, 11, 11, 4, 5, 1, 4, 9, 0, 6, 27,…</span></span>
-<span id="cb5-16"><span class="co" style="color: #5E5E5E;">#&gt; $ tackles              &lt;dbl&gt; 37, 28, 21, 35, 44, 17, 9, 21, 61, 35, 9, 21, …</span></span>
-<span id="cb5-17"><span class="co" style="color: #5E5E5E;">#&gt; $ interceptions        &lt;dbl&gt; 10, 17, 14, 19, 34, 9, 13, 36, 55, 23, 3, 0, 3…</span></span>
-<span id="cb5-18"><span class="co" style="color: #5E5E5E;">#&gt; $ passes_completed     &lt;dbl&gt; 733, 444, 619, 677, 1656, 552, 470, 832, 1269,…</span></span>
-<span id="cb5-19"><span class="co" style="color: #5E5E5E;">#&gt; $ passes_attempted     &lt;dbl&gt; 906, 561, 847, 933, 2059, 724, 580, 905, 1504,…</span></span>
-<span id="cb5-20"><span class="co" style="color: #5E5E5E;">#&gt; $ carries              &lt;dbl&gt; 630, 334, 724, 738, 1085, 454, 333, 602, 978, …</span></span>
-<span id="cb5-21"><span class="co" style="color: #5E5E5E;">#&gt; $ xg                   &lt;dbl&gt; 2.7, 1.6, 4.2, 11.0, 1.0, 3.9, 0.3, 1.9, 0.6, …</span></span>
-<span id="cb5-22"><span class="co" style="color: #5E5E5E;">#&gt; $ xa                   &lt;dbl&gt; 2.4, 0.9, 5.3, 3.6, 2.0, 4.8, 0.9, 0.5, 0.7, 0…</span></span>
-<span id="cb5-23"><span class="co" style="color: #5E5E5E;">#&gt; $ shot_conversion_rate &lt;dbl&gt; 0.07142857, 0.25000000, 0.09677419, 0.10784314…</span></span>
-<span id="cb5-24"><span class="co" style="color: #5E5E5E;">#&gt; $ pass_completion_rate &lt;dbl&gt; 0.8090508, 0.7914439, 0.7308146, 0.7256163, 0.…</span></span>
-<span id="cb5-25"><span class="co" style="color: #5E5E5E;">#&gt; $ goals_xg_ratio       &lt;dbl&gt; 0.7407407, 1.2500000, 0.7142857, 1.0000000, 4.…</span></span>
-<span id="cb5-26"><span class="co" style="color: #5E5E5E;">#&gt; $ goals_p90            &lt;dbl&gt; 0.1334322, 0.1709402, 0.1575263, 0.3577882, 0.…</span></span>
-<span id="cb5-27"><span class="co" style="color: #5E5E5E;">#&gt; $ shots_p90            &lt;dbl&gt; 1.8680504, 0.6837607, 1.6277713, 3.3176726, 0.…</span></span>
-<span id="cb5-28"><span class="co" style="color: #5E5E5E;">#&gt; $ xg_p90               &lt;dbl&gt; 0.180133432, 0.136752137, 0.220536756, 0.35778…</span></span></code></pre></div>
+<span id="cb5-8"><span class="co" style="color: #5E5E5E;">#&gt; $ player               &lt;chr&gt; "Aaron Ramsey", "Ainsley Maitland-Niles", "Ale…</span></span>
+<span id="cb5-9"><span class="co" style="color: #5E5E5E;">#&gt; $ matches_played       &lt;int&gt; 28, 16, 35, 35, 29, 25, 19, 17, 34, 33, 24, 8,…</span></span>
+<span id="cb5-10"><span class="co" style="color: #5E5E5E;">#&gt; $ minutes_played       &lt;dbl&gt; 1349, 1053, 1714, 2767, 2213, 1357, 989, 1385,…</span></span>
+<span id="cb5-11"><span class="co" style="color: #5E5E5E;">#&gt; $ goals                &lt;dbl&gt; 2, 2, 3, 11, 4, 3, 0, 5, 0, 0, 7, 0, 2, 20, 0,…</span></span>
+<span id="cb5-12"><span class="co" style="color: #5E5E5E;">#&gt; $ assists              &lt;dbl&gt; 1, 1, 4, 8, 2, 5, 3, 0, 3, 0, 2, 0, 4, 4, 0, 5…</span></span>
+<span id="cb5-13"><span class="co" style="color: #5E5E5E;">#&gt; $ shots                &lt;dbl&gt; 28, 8, 31, 102, 24, 30, 7, 5, 21, 20, 14, 9, 7…</span></span>
+<span id="cb5-14"><span class="co" style="color: #5E5E5E;">#&gt; $ shots_on_target      &lt;dbl&gt; 9, 6, 15, 28, 11, 11, 4, 5, 1, 4, 9, 0, 6, 27,…</span></span>
+<span id="cb5-15"><span class="co" style="color: #5E5E5E;">#&gt; $ tackles              &lt;dbl&gt; 37, 28, 21, 35, 44, 17, 9, 21, 61, 35, 9, 21, …</span></span>
+<span id="cb5-16"><span class="co" style="color: #5E5E5E;">#&gt; $ interceptions        &lt;dbl&gt; 10, 17, 14, 19, 34, 9, 13, 36, 55, 23, 3, 0, 3…</span></span>
+<span id="cb5-17"><span class="co" style="color: #5E5E5E;">#&gt; $ passes_completed     &lt;dbl&gt; 733, 444, 619, 677, 1656, 552, 470, 832, 1269,…</span></span>
+<span id="cb5-18"><span class="co" style="color: #5E5E5E;">#&gt; $ passes_attempted     &lt;dbl&gt; 906, 561, 847, 933, 2059, 724, 580, 905, 1504,…</span></span>
+<span id="cb5-19"><span class="co" style="color: #5E5E5E;">#&gt; $ carries              &lt;dbl&gt; 630, 334, 724, 738, 1085, 454, 333, 602, 978, …</span></span>
+<span id="cb5-20"><span class="co" style="color: #5E5E5E;">#&gt; $ xg                   &lt;dbl&gt; 2.7, 1.6, 4.2, 11.0, 1.0, 3.9, 0.3, 1.9, 0.6, …</span></span>
+<span id="cb5-21"><span class="co" style="color: #5E5E5E;">#&gt; $ xa                   &lt;dbl&gt; 2.4, 0.9, 5.3, 3.6, 2.0, 4.8, 0.9, 0.5, 0.7, 0…</span></span>
+<span id="cb5-22"><span class="co" style="color: #5E5E5E;">#&gt; $ shot_conversion_rate &lt;dbl&gt; 0.07142857, 0.25000000, 0.09677419, 0.10784314…</span></span>
+<span id="cb5-23"><span class="co" style="color: #5E5E5E;">#&gt; $ pass_completion_rate &lt;dbl&gt; 0.8090508, 0.7914439, 0.7308146, 0.7256163, 0.…</span></span>
+<span id="cb5-24"><span class="co" style="color: #5E5E5E;">#&gt; $ goals_xg_ratio       &lt;dbl&gt; 0.7407407, 1.2500000, 0.7142857, 1.0000000, 4.…</span></span>
+<span id="cb5-25"><span class="co" style="color: #5E5E5E;">#&gt; $ goals_p90            &lt;dbl&gt; 0.1334322, 0.1709402, 0.1575263, 0.3577882, 0.…</span></span>
+<span id="cb5-26"><span class="co" style="color: #5E5E5E;">#&gt; $ shots_p90            &lt;dbl&gt; 1.8680504, 0.6837607, 1.6277713, 3.3176726, 0.…</span></span>
+<span id="cb5-27"><span class="co" style="color: #5E5E5E;">#&gt; $ xg_p90               &lt;dbl&gt; 0.180133432, 0.136752137, 0.220536756, 0.35778…</span></span></code></pre></div>
 </div>
 <p>Next, we calculate the variance across the player-season bootstraps, and then average the bootstrap variance over all player-seasons, grouping by season, to arrive at <img src="https://latex.codecogs.com/png.latex?BV">. We end up with one variance value per season and metric.</p>
 <div class="cell">
@@ -417,31 +413,30 @@ font-style: italic;">## https://github.com/afranks86/meta-analytics/blob/1871d24
 <span id="cb6-5">      season,</span>
 <span id="cb6-6">      team,</span>
 <span id="cb6-7">      player,</span>
-<span id="cb6-8">      nation,</span>
-<span id="cb6-9">      dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">any_of</span>(<span class="fu" style="color: #4758AB;">names</span>(ALL_METRICS))</span>
-<span id="cb6-10">    ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-11">    tidyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">pivot_longer</span>(</span>
-<span id="cb6-12">      <span class="sc" style="color: #5E5E5E;">-</span><span class="fu" style="color: #4758AB;">c</span>(league, season, team, player, nation),</span>
-<span id="cb6-13">      <span class="at" style="color: #657422;">names_to =</span> <span class="st" style="color: #20794D;">'metric'</span>,</span>
-<span id="cb6-14">      <span class="at" style="color: #657422;">values_to =</span> <span class="st" style="color: #20794D;">'value'</span></span>
-<span id="cb6-15">    )</span>
-<span id="cb6-16">}</span>
-<span id="cb6-17"></span>
-<span id="cb6-18">resampled_player_season_variance <span class="ot" style="color: #003B4F;">&lt;-</span> resampled_player_season_stats <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-19">  <span class="fu" style="color: #4758AB;">pivot_metric_columns</span>() <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-20">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(season, team, player, metric) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-21">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">summarize</span>(</span>
-<span id="cb6-22">    <span class="at" style="color: #657422;">bv =</span> <span class="fu" style="color: #4758AB;">var</span>(value, <span class="at" style="color: #657422;">na.rm =</span> <span class="cn" style="color: #8f5902;">TRUE</span>)</span>
-<span id="cb6-23">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-24">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ungroup</span>()</span>
-<span id="cb6-25"></span>
-<span id="cb6-26">bv <span class="ot" style="color: #003B4F;">&lt;-</span> resampled_player_season_variance <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-27">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(season, metric) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-28">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">summarize</span>(</span>
-<span id="cb6-29">    <span class="at" style="color: #657422;">bv =</span> <span class="fu" style="color: #4758AB;">mean</span>(bv, <span class="at" style="color: #657422;">na.rm =</span> <span class="cn" style="color: #8f5902;">TRUE</span>)</span>
-<span id="cb6-30">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-31">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ungroup</span>() <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb6-32">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(season, metric)</span></code></pre></div>
+<span id="cb6-8">      dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">any_of</span>(<span class="fu" style="color: #4758AB;">names</span>(ALL_METRICS))</span>
+<span id="cb6-9">    ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-10">    tidyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">pivot_longer</span>(</span>
+<span id="cb6-11">      <span class="sc" style="color: #5E5E5E;">-</span><span class="fu" style="color: #4758AB;">c</span>(league, season, team, player),</span>
+<span id="cb6-12">      <span class="at" style="color: #657422;">names_to =</span> <span class="st" style="color: #20794D;">'metric'</span>,</span>
+<span id="cb6-13">      <span class="at" style="color: #657422;">values_to =</span> <span class="st" style="color: #20794D;">'value'</span></span>
+<span id="cb6-14">    )</span>
+<span id="cb6-15">}</span>
+<span id="cb6-16"></span>
+<span id="cb6-17">resampled_player_season_variance <span class="ot" style="color: #003B4F;">&lt;-</span> resampled_player_season_stats <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-18">  <span class="fu" style="color: #4758AB;">pivot_metric_columns</span>() <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-19">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(season, team, player, metric) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-20">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">summarize</span>(</span>
+<span id="cb6-21">    <span class="at" style="color: #657422;">bv =</span> <span class="fu" style="color: #4758AB;">var</span>(value, <span class="at" style="color: #657422;">na.rm =</span> <span class="cn" style="color: #8f5902;">TRUE</span>)</span>
+<span id="cb6-22">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-23">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ungroup</span>()</span>
+<span id="cb6-24"></span>
+<span id="cb6-25">bv <span class="ot" style="color: #003B4F;">&lt;-</span> resampled_player_season_variance <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-26">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(season, metric) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-27">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">summarize</span>(</span>
+<span id="cb6-28">    <span class="at" style="color: #657422;">bv =</span> <span class="fu" style="color: #4758AB;">mean</span>(bv, <span class="at" style="color: #657422;">na.rm =</span> <span class="cn" style="color: #8f5902;">TRUE</span>)</span>
+<span id="cb6-29">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-30">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ungroup</span>() <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-31">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(season, metric)</span></code></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -458,7 +453,7 @@ font-style: italic;">## https://github.com/afranks86/meta-analytics/blob/1871d24
 <span id="cb7-11"><span class="co" style="color: #5E5E5E;">#&gt;  7 2017/18 pass_completion_rate    0.000577</span></span>
 <span id="cb7-12"><span class="co" style="color: #5E5E5E;">#&gt;  8 2017/18 shot_conversion_rate    0.00604 </span></span>
 <span id="cb7-13"><span class="co" style="color: #5E5E5E;">#&gt;  9 2017/18 shots                  32.5     </span></span>
-<span id="cb7-14"><span class="co" style="color: #5E5E5E;">#&gt; 10 2017/18 shots_on_target         8.39    </span></span>
+<span id="cb7-14"><span class="co" style="color: #5E5E5E;">#&gt; 10 2017/18 shots_on_target         8.39 </span></span>
 <span id="cb7-15"><span class="co" style="color: #5E5E5E;">#&gt; # ℹ 80 more rows</span></span></code></pre></div>
 </div>
 <p>Next, we move on to the “seasonal variance”, <img src="https://latex.codecogs.com/png.latex?SV">. This is actually pretty trivial, as it’s just a direct call to <code>stats::var</code> on the observed player-season aggregates, grouping by season. Again, we end up with one row per season and metric.</p>
@@ -493,7 +488,7 @@ font-style: italic;">## https://github.com/afranks86/meta-analytics/blob/1871d24
 <span id="cb9-14"><span class="co" style="color: #5E5E5E;">#&gt; 10 2017/18 shots_on_target          73.4    </span></span>
 <span id="cb9-15"><span class="co" style="color: #5E5E5E;">#&gt; # ℹ 80 more rows</span></span></code></pre></div>
 </div>
-<p>Finally, we bring <img src="https://latex.codecogs.com/png.latex?BV"> and <img src="https://latex.codecogs.com/png.latex?SV"> together to calculate discrimination, by season.</p>
+<p>Finally, we bring <img src="https://latex.codecogs.com/png.latex?BV"> and <img src="https://latex.codecogs.com/png.latex?SV"> together to calculate discrimination by season.</p>
 <div class="cell">
 <details>
 <summary>Calculate discrimination</summary>
@@ -707,11 +702,11 @@ font-style: italic;">##   with 20 seasons of NBA data. (I'm working with 6.)</sp
 <p><img src="https://tonyelhabr.rbind.io/posts/soccer-meta-analytics/discrimination-vs-stability.png" class="img-fluid"></p>
 <p>We can make the following observations:</p>
 <ul>
-<li><p>Un-adjusted tallying (i.e.&nbsp;“count”) statistics based on total playing time–like shots, tackles, and interceptions–tend to be highly discriminative, but not quite as stable. This makes sense—such statistics have large between-player variance—think about the number of shots that a central defender takes compared to a striker. When aggregated for each player throughout a season, they provide a strong signal for different player types, i.e.&nbsp;positions. Indeed, Franks et al.&nbsp;found the same for NBA and NHL statistics.</p></li>
-<li><p>“Advanced” stats like xG and xA also prove to be more discriminative than stable.</p></li>
-<li><p>The other “advanced” stat, goals/xG ratio, stands out. It’s the only metric that is significantly more stable than discriminative. Although I haven’t looked into this extensively or given it much more than a few moments of thought, I believe this is because most players do not score goals in individual matches, but often accumulate some non-zero xG via shots. Thus, Goals/xG can be zero very frequently, meaning that it would be hard to differentiate players just on this ratio. And, because the ratio is often zero, it is found to be stable.</p></li>
+<li><p>Un-adjusted volume (i.e.&nbsp;“count” in the plot) statistics based on total playing time–like shots, tackles, and interceptions–tend to be highly discriminative, but not quite as stable. This makes sense—such statistics have large between-player variance—think about the number of shots that a central defender takes compared to a striker. When aggregated for each player throughout a season, they provide a strong signal for different player types, i.e.&nbsp;positions. Indeed, Franks et al.&nbsp;found the same for NBA and NHL statistics.</p></li>
+<li><p>Advanced stats like xG and xA also prove to be more discriminative than stable.</p></li>
+<li><p>The other advanced stat, goals/xG ratio, stands out. It’s the only metric that is significantly more stable than discriminative. Although I haven’t looked into this extensively or given it much more than a few moments of thought, I believe this is because most players do not score goals in individual matches, but often accumulate some non-zero xG via shots. Thus, Goals/xG can be zero very frequently, meaning that it would be hard to differentiate players just on this ratio. And, because the ratio is often zero, it is found to be stable.</p></li>
 <li><p>Shot conversion rate seems to be the center of the universe, having nearly equal discrimination and stability, both at around 0.5.</p></li>
-<li><p>The “per 90” metrics show higher stability than all other stats evaluated. This speaks to the between-player noise-minimizing benefits of comparing players on an equal-minute basis. Their stability is much closer to their discriminative power than most other other metrics.</p></li>
+<li><p>The per 90 metrics show higher stability than all other stats evaluated. This speaks to the between-player noise-minimizing benefits of comparing players on an equal-minute basis. Their stability is much closer to their discriminative power than most other other metrics.</p></li>
 </ul>
 </section>
 <section id="conclusion" class="level2">
