@@ -10,7 +10,303 @@
 <atom:link href="https://tonyelhabr.rbind.io/posts.xml" rel="self" type="application/rss+xml"/>
 <description></description>
 <generator>quarto-1.2.335</generator>
-<lastBuildDate>Fri, 08 Sep 2023 05:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 11 Sep 2023 05:00:00 GMT</lastBuildDate>
+<item>
+  <title>Calibrating Binary Probabilities</title>
+  <dc:creator>Tony ElHabr</dc:creator>
+  <link>https://tonyelhabr.rbind.io/posts/probability-calibration/index.html</link>
+  <description><![CDATA[ 
+
+
+
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>Ever grappled with a <a href="https://en.wikipedia.org/wiki/Statistical_classification">classification</a> model that consistently over-predicts or under-predicts an event? Your first thought might be to re-evaluate the model’s features or framework. But what if tweaking the model isn’t an option, either due to a lack of resources or access restrictions? The good news is, there’s another way–it’s called <a href="https://www.tidyverse.org/blog/2022/11/model-calibration/"><strong>calibration</strong></a>.</p>
+<p>Calibration falls in the “post-processing” step of modeling. We modify the output of a model using nothing but the model predictions and labels of the output.</p>
+<p>One of my favorite (and relatively new) packages in the <a href="https://www.tidymodels.org/"><code>{tidymodels}</code> ecosystem</a> is the <a href="https://probably.tidymodels.org/"><code>{probably}</code></a> package. It provides functions that make it fairly straightforward to do calibration, even for those who are new to the concept. So let’s use <code>{probably}</code> to demonstrate the power of calibration.</p>
+</section>
+<section id="calibrating-a-binary-classifier" class="level2">
+<h2 class="anchored" data-anchor-id="calibrating-a-binary-classifier">Calibrating a Binary Classifier</h2>
+<section id="data" class="level3">
+<h3 class="anchored" data-anchor-id="data">Data</h3>
+<p>I’ll be using the pre-match win probabilities from <a href="https://data.fivethirtyeight.com/#soccer-spi">FiveThirtyEight</a> (<a href="https://twitter.com/ryanabest/status/1672013407908667392">RIP</a>). Specifically, I’ll subset their plethora of historical projections to two women’s leagues: the <a href="https://en.wikipedia.org/wiki/Women%27s_Super_League">Women’s Super League (WSL)</a> in England and the <a href="https://en.wikipedia.org/wiki/National_Women%27s_Soccer_League">National Women’s Soccer League (NWSL)</a> in the U.S. I have a suspicion that the model probabilities are not as calibrated as they could be, as there is <a href="https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/">has been observed that gender-agnostic models</a> in soccer can be less performant for the women’s game.</p>
+<p>To keep things simple, I’m going to treat this as a <a href="https://en.wikipedia.org/wiki/Binary_classification">binary classification</a> task, where matches are the “positive” outcome (<code>"yes"</code>), and losses and draw are grouped as the “negative” outcome (<code>"no"</code>).</p>
+<div class="cell">
+<details>
+<summary>Retrieve data</summary>
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="fu" style="color: #4758AB;">library</span>(readr)</span>
+<span id="cb1-2"><span class="fu" style="color: #4758AB;">library</span>(dplyr)</span>
+<span id="cb1-3">matches <span class="ot" style="color: #003B4F;">&lt;-</span> readr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">read_csv</span>(<span class="st" style="color: #20794D;">'https://projects.fivethirtyeight.com/soccer-api/club/spi_matches.csv'</span>) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb1-4">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(</span>
+<span id="cb1-5">    <span class="sc" style="color: #5E5E5E;">!</span><span class="fu" style="color: #4758AB;">is.na</span>(score1), <span class="do" style="color: #5E5E5E;
+font-style: italic;">## match is completed</span></span>
+<span id="cb1-6">    league <span class="sc" style="color: #5E5E5E;">%in%</span> <span class="fu" style="color: #4758AB;">c</span>(</span>
+<span id="cb1-7">      <span class="st" style="color: #20794D;">"FA Women's Super League"</span>,</span>
+<span id="cb1-8">      <span class="st" style="color: #20794D;">"National Women's Soccer League"</span></span>
+<span id="cb1-9">    )</span>
+<span id="cb1-10">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb1-11">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">transmute</span>(</span>
+<span id="cb1-12">    league,</span>
+<span id="cb1-13">    season,</span>
+<span id="cb1-14">    date,</span>
+<span id="cb1-15">    team1,</span>
+<span id="cb1-16">    team2,</span>
+<span id="cb1-17">    <span class="at" style="color: #657422;">target =</span> <span class="fu" style="color: #4758AB;">factor</span>(<span class="fu" style="color: #4758AB;">ifelse</span>(score1 <span class="sc" style="color: #5E5E5E;">&gt;</span> score2, <span class="st" style="color: #20794D;">'yes'</span>, <span class="st" style="color: #20794D;">'no'</span>)),</span>
+<span id="cb1-18">    <span class="do" style="color: #5E5E5E;
+font-style: italic;">## .pred_ is sort of a convention among {tidymodels} docs</span></span>
+<span id="cb1-19">    <span class="at" style="color: #657422;">.pred_yes =</span> prob1,</span>
+<span id="cb1-20">    <span class="at" style="color: #657422;">.pred_no =</span> <span class="dv" style="color: #AD0000;">1</span><span class="sc" style="color: #5E5E5E;">-</span> .pred_yes </span>
+<span id="cb1-21">  )</span></code></pre></div>
+</details>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1">matches</span>
+<span id="cb2-2"><span class="co" style="color: #5E5E5E;">#&gt; # A tibble: 1,358 × 6</span></span>
+<span id="cb2-3"><span class="co" style="color: #5E5E5E;">#&gt;    date       team1               team2             target .pred_yes .pred_no</span></span>
+<span id="cb2-4"><span class="co" style="color: #5E5E5E;">#&gt;    &lt;date&gt;     &lt;chr&gt;               &lt;chr&gt;             &lt;fct&gt;      &lt;dbl&gt;    &lt;dbl&gt;</span></span>
+<span id="cb2-5"><span class="co" style="color: #5E5E5E;">#&gt;  1 2016-07-09 Liverpool Women     Reading           yes        0.439    0.561</span></span>
+<span id="cb2-6"><span class="co" style="color: #5E5E5E;">#&gt;  2 2016-07-10 Arsenal Women       Notts County Lad… yes        0.357    0.643</span></span>
+<span id="cb2-7"><span class="co" style="color: #5E5E5E;">#&gt;  3 2016-07-10 Chelsea FC Women    Birmingham City   no         0.480    0.520</span></span>
+<span id="cb2-8"><span class="co" style="color: #5E5E5E;">#&gt;  4 2016-07-16 Liverpool Women     Notts County Lad… no         0.429    0.571</span></span>
+<span id="cb2-9"><span class="co" style="color: #5E5E5E;">#&gt;  5 2016-07-17 Chelsea FC Women    Arsenal Women     no         0.412    0.588</span></span>
+<span id="cb2-10"><span class="co" style="color: #5E5E5E;">#&gt;  6 2016-07-24 Reading             Birmingham City   no         0.382    0.618</span></span>
+<span id="cb2-11"><span class="co" style="color: #5E5E5E;">#&gt;  7 2016-07-24 Notts County Ladies Manchester City … no         0.308    0.692</span></span>
+<span id="cb2-12"><span class="co" style="color: #5E5E5E;">#&gt;  8 2016-07-31 Reading             Notts County Lad… no         0.407    0.593</span></span>
+<span id="cb2-13"><span class="co" style="color: #5E5E5E;">#&gt;  9 2016-07-31 Arsenal Women       Liverpool Women   no         0.435    0.565</span></span>
+<span id="cb2-14"><span class="co" style="color: #5E5E5E;">#&gt; 10 2016-08-03 Reading             Manchester City … no         0.306    0.694</span></span>
+<span id="cb2-15"><span class="co" style="color: #5E5E5E;">#&gt; # ℹ 1,348 more rows</span></span></code></pre></div>
+</div>
+</section>
+<section id="diagnosis" class="level3">
+<h3 class="anchored" data-anchor-id="diagnosis">Diagnosis</h3>
+<p>We start with the <a href="https://www.tidymodels.org/learn/models/calibration/#but-is-it-calibrated">“diagnosis”</a> phase: “How well do the original probabilities perform?” To evaluate this, we can use one of the several <code>probably::cal_plot_*</code> functions. In this case, we’ll use <code>cal_plot_breaks()</code>.<sup>1</sup></p>
+<p>This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin’s range. Ideally, if our predictions are calibrated, the curve produced should match up with a straight diagonal line, i.e.&nbsp;a 45 degree slope passing through (0,0) and (1,1). As a bonus, the <code>probably::cal_plot_*</code> family of functions even provides confidence intervals about the calibration curve.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="fu" style="color: #4758AB;">library</span>(probably)</span>
+<span id="cb3-2"><span class="fu" style="color: #4758AB;">packageVersion</span>(<span class="st" style="color: #20794D;">'probably'</span>)</span>
+<span id="cb3-3"><span class="co" style="color: #5E5E5E;">#&gt; [1] ‘1.0.1.9000’</span></span>
+<span id="cb3-4"></span>
+<span id="cb3-5">matches <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb3-6">  probably<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">cal_plot_breaks</span>(</span>
+<span id="cb3-7">    <span class="at" style="color: #657422;">truth =</span> target,</span>
+<span id="cb3-8">    <span class="do" style="color: #5E5E5E;
+font-style: italic;">## the "_yes" in `.pred_yes` must match one of the values in `target`</span></span>
+<span id="cb3-9">    <span class="at" style="color: #657422;">estimate =</span> .pred_yes,</span>
+<span id="cb3-10">    <span class="do" style="color: #5E5E5E;
+font-style: italic;">## because "yes" is the second event level ("no" is the first)</span></span>
+<span id="cb3-11">    <span class="at" style="color: #657422;">event_level =</span> <span class="st" style="color: #20794D;">'second'</span></span>
+<span id="cb3-12">  )</span></code></pre></div>
+</div>
+<p><code>{probably}</code> offers some really neat automatic plotting of calibration curves. While I’d suggest giving them a try, I like to make my curves in a certain manner. In particular, instead of using a “rug”, I like showing sample sizes via points on the curve.</p>
+<p><img src="https://tonyelhabr.rbind.io/posts/probability-calibration/raw-calibration.png" class="img-fluid"></p>
+<p>Indeed, it looks like there is some room for improvement with the match probabilities. It seems that the FiveThirtyEight model over-predicts when the actual win rate is low, broadly below 20%; and, likewise, it tends to under-predict when the true win rate is really greater than 60%</p>
+</section>
+<section id="remediation" class="level3">
+<h3 class="anchored" data-anchor-id="remediation">Remediation</h3>
+<p>Now we move on the <a href="https://www.tidymodels.org/learn/models/calibration/#remediation">“remedation”</a> step. That is, we fit a model with the binary outcome as the target variable and the probability estimate as the lone input feature. <code>{probably}</code> offers several options with the <code>cal_estimate_*()</code> of functions.</p>
+<p>I’ve opted for <a href="https://probably.tidymodels.org/reference/cal_estimate_beta.html">Beta calibration</a>, although <a href="https://probably.tidymodels.org/reference/cal_estimate_logistic.html">logistic calibration</a> would work fine here as well. Beta calibration is a little more flexible, and, consequently, <a href="https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-11/issue-2/Beyond-sigmoids--How-to-obtain-well-calibrated-probabilities-from/10.1214/17-EJS1338SI.full">can provide superior probability estimates</a>, especially when the target distribution is skewed.<sup>2</sup></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1">matches <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb4-2">  probably<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">cal_estimate_beta</span>(</span>
+<span id="cb4-3">    <span class="at" style="color: #657422;">truth =</span> target,</span>
+<span id="cb4-4">    <span class="at" style="color: #657422;">estimate =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">starts_with</span>(<span class="st" style="color: #20794D;">'.pred'</span>),</span>
+<span id="cb4-5">    <span class="at" style="color: #657422;">event_level =</span> <span class="st" style="color: #20794D;">'second'</span></span>
+<span id="cb4-6">  )</span>
+<span id="cb4-7"><span class="co" style="color: #5E5E5E;">#&gt;  ── Probability Calibration </span></span>
+<span id="cb4-8"><span class="co" style="color: #5E5E5E;">#&gt;  Method: Beta calibration</span></span>
+<span id="cb4-9"><span class="co" style="color: #5E5E5E;">#&gt;  Type: Binary</span></span>
+<span id="cb4-10"><span class="co" style="color: #5E5E5E;">#&gt;  Source class: Data Frame</span></span>
+<span id="cb4-11"><span class="co" style="color: #5E5E5E;">#&gt;  Data points: 1,358</span></span>
+<span id="cb4-12"><span class="co" style="color: #5E5E5E;">#&gt;  Truth variable: `target`</span></span>
+<span id="cb4-13"><span class="co" style="color: #5E5E5E;">#&gt;  Estimate variables:</span></span>
+<span id="cb4-14"><span class="co" style="color: #5E5E5E;">#&gt;  `.pred_no` ==&gt; no</span></span>
+<span id="cb4-15"><span class="co" style="color: #5E5E5E;">#&gt;  .pred_yes` ==&gt; yes</span></span></code></pre></div>
+</div>
+<p>Under the hood, <code>cal_estimate_beta()</code> is doing something like this.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="fu" style="color: #4758AB;">library</span>(betacal)</span>
+<span id="cb5-2"></span>
+<span id="cb5-3">betacal<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">beta_calibration</span>(</span>
+<span id="cb5-4">  <span class="at" style="color: #657422;">p =</span> matches<span class="sc" style="color: #5E5E5E;">$</span>.pred_yes,</span>
+<span id="cb5-5">  <span class="at" style="color: #657422;">y =</span> matches<span class="sc" style="color: #5E5E5E;">$</span>target <span class="sc" style="color: #5E5E5E;">==</span> <span class="st" style="color: #20794D;">'yes'</span>,</span>
+<span id="cb5-6">  <span class="at" style="color: #657422;">parameters =</span> <span class="st" style="color: #20794D;">'abm'</span></span>
+<span id="cb5-7">)</span></code></pre></div>
+</div>
+<p>It’s almost shocking how simple the implementation is.</p>
+</section>
+</section>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results</h2>
+<p>With the remediation model in hand, let’s make a scatter plot of all the points in the data set, viewing how the model has adjusted the original probabilities.</p>
+<p><img src="https://tonyelhabr.rbind.io/posts/probability-calibration/calibration-scatter.png" class="img-fluid"></p>
+<p>We observe that the remediation model has increased point estimates on the lower end of the spectrum and decreased estimates on the upper end of the spectrum. The calibration has seemingly fine-tuned under-predicting and over-predicting behavior from the original model.</p>
+<p>To really see the change that remediaton model has made, we can re-make our calibration curve plot, adding the remediated, or “calibrated”, curve along side the original “un-calibrated” curve.</p>
+<p><img src="https://tonyelhabr.rbind.io/posts/probability-calibration/compared-calibration.png" class="img-fluid"></p>
+<p>Visually, it’s evident that the remediation has improved the probability estimates. The calibrated curve more closely “hugs” the ideal 45 degree slope across the whole probability spectrum.</p>
+<section id="validation" class="level3">
+<h3 class="anchored" data-anchor-id="validation">Validation</h3>
+<p>To quantitatively describe the difference in calibration between the two models, we can compare the <a href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">Brier Skill Score (BSS)</a> of the un-calibrated and calibrated models.<sup>3</sup> Keep in mind that a higher BSS indicates a more calibrated model. (1 is ideal. 0 indicates that the model is no better or worse than a reference model<sup>4</sup>.)</p>
+<div class="cell">
+<details>
+<summary>Brier Skill Score (BSS) calculation</summary>
+<div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><span class="fu" style="color: #4758AB;">library</span>(yardstick)</span>
+<span id="cb6-2"><span class="fu" style="color: #4758AB;">library</span>(rlang)</span>
+<span id="cb6-3">brier_score <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(data, ...) {</span>
+<span id="cb6-4">  <span class="fu" style="color: #4758AB;">UseMethod</span>(<span class="st" style="color: #20794D;">'brier_score'</span>)</span>
+<span id="cb6-5">}</span>
+<span id="cb6-6"></span>
+<span id="cb6-7">brier_score <span class="ot" style="color: #003B4F;">&lt;-</span> yardstick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">new_prob_metric</span>(brier_score, <span class="at" style="color: #657422;">direction =</span> <span class="st" style="color: #20794D;">'minimize'</span>)</span>
+<span id="cb6-8"></span>
+<span id="cb6-9">brier_score_vec <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(truth, estimate, <span class="at" style="color: #657422;">na_rm =</span> <span class="cn" style="color: #8f5902;">TRUE</span>, event_level, ...) {</span>
+<span id="cb6-10">  </span>
+<span id="cb6-11">  brier_score_impl <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(truth, estimate, event_level, ...) {</span>
+<span id="cb6-12">    truth <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="dv" style="color: #AD0000;">1</span> <span class="sc" style="color: #5E5E5E;">-</span> (<span class="fu" style="color: #4758AB;">as.numeric</span>(truth) <span class="sc" style="color: #5E5E5E;">-</span> <span class="dv" style="color: #AD0000;">1</span>)</span>
+<span id="cb6-13">    </span>
+<span id="cb6-14">    <span class="cf" style="color: #003B4F;">if</span> (event_level <span class="sc" style="color: #5E5E5E;">==</span> <span class="st" style="color: #20794D;">'second'</span>) {</span>
+<span id="cb6-15">      truth <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="dv" style="color: #AD0000;">1</span> <span class="sc" style="color: #5E5E5E;">-</span> truth</span>
+<span id="cb6-16">    }</span>
+<span id="cb6-17">    </span>
+<span id="cb6-18">    <span class="fu" style="color: #4758AB;">mean</span>((truth <span class="sc" style="color: #5E5E5E;">-</span> estimate)<span class="sc" style="color: #5E5E5E;">^</span><span class="dv" style="color: #AD0000;">2</span>)</span>
+<span id="cb6-19">  }</span>
+<span id="cb6-20">  </span>
+<span id="cb6-21">  <span class="cf" style="color: #003B4F;">if</span> (<span class="fu" style="color: #4758AB;">length</span>(estimate) <span class="sc" style="color: #5E5E5E;">==</span> <span class="dv" style="color: #AD0000;">1</span>) {</span>
+<span id="cb6-22">    estimate <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">rep</span>(estimate, <span class="fu" style="color: #4758AB;">length</span>(truth))</span>
+<span id="cb6-23">  }</span>
+<span id="cb6-24">  </span>
+<span id="cb6-25">  yardstick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">metric_vec_template</span>(</span>
+<span id="cb6-26">    <span class="at" style="color: #657422;">metric_impl =</span> brier_score_impl,</span>
+<span id="cb6-27">    <span class="at" style="color: #657422;">truth =</span> truth,</span>
+<span id="cb6-28">    <span class="at" style="color: #657422;">estimate =</span> estimate,</span>
+<span id="cb6-29">    <span class="at" style="color: #657422;">na_rm =</span> na_rm,</span>
+<span id="cb6-30">    <span class="at" style="color: #657422;">cls =</span> <span class="fu" style="color: #4758AB;">c</span>(<span class="st" style="color: #20794D;">'factor'</span>, <span class="st" style="color: #20794D;">'numeric'</span>),</span>
+<span id="cb6-31">    <span class="at" style="color: #657422;">estimator =</span> <span class="st" style="color: #20794D;">'binary'</span>,</span>
+<span id="cb6-32">    <span class="at" style="color: #657422;">event_level =</span> event_level,</span>
+<span id="cb6-33">    ...</span>
+<span id="cb6-34">  )</span>
+<span id="cb6-35">}</span>
+<span id="cb6-36"></span>
+<span id="cb6-37">brier_skill_score <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(data, ...) {</span>
+<span id="cb6-38">  <span class="fu" style="color: #4758AB;">UseMethod</span>(<span class="st" style="color: #20794D;">'brier_skill_score'</span>)</span>
+<span id="cb6-39">}</span>
+<span id="cb6-40"></span>
+<span id="cb6-41">brier_skill_score <span class="ot" style="color: #003B4F;">&lt;-</span> yardstick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">new_prob_metric</span>(brier_skill_score, <span class="at" style="color: #657422;">direction =</span> <span class="st" style="color: #20794D;">'maximize'</span>)</span>
+<span id="cb6-42"></span>
+<span id="cb6-43">brier_skill_score_vec <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(truth, estimate, ref_estimate, <span class="at" style="color: #657422;">na_rm =</span> <span class="cn" style="color: #8f5902;">TRUE</span>, event_level, ...) {</span>
+<span id="cb6-44">  </span>
+<span id="cb6-45">  brier_skill_score_impl <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(truth, estimate, ref_estimate, event_level, ...) {</span>
+<span id="cb6-46">    truth_quo <span class="ot" style="color: #003B4F;">&lt;-</span> rlang<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">enquo</span>(truth)</span>
+<span id="cb6-47">    </span>
+<span id="cb6-48">    estimate_bs <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">brier_score_vec</span>(</span>
+<span id="cb6-49">      <span class="at" style="color: #657422;">truth =</span> truth,</span>
+<span id="cb6-50">      <span class="at" style="color: #657422;">estimate =</span> estimate,</span>
+<span id="cb6-51">      <span class="at" style="color: #657422;">na_rm =</span> na_rm,</span>
+<span id="cb6-52">      <span class="at" style="color: #657422;">event_level =</span> event_level,</span>
+<span id="cb6-53">      ...</span>
+<span id="cb6-54">    )</span>
+<span id="cb6-55">    </span>
+<span id="cb6-56">    ref_bs <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">brier_score_vec</span>(</span>
+<span id="cb6-57">      <span class="at" style="color: #657422;">truth =</span> truth,</span>
+<span id="cb6-58">      <span class="at" style="color: #657422;">estimate =</span> ref_estimate,</span>
+<span id="cb6-59">      <span class="at" style="color: #657422;">na_rm =</span> na_rm,</span>
+<span id="cb6-60">      <span class="at" style="color: #657422;">event_level =</span> event_level,</span>
+<span id="cb6-61">      ...</span>
+<span id="cb6-62">    )</span>
+<span id="cb6-63">    </span>
+<span id="cb6-64">    <span class="dv" style="color: #AD0000;">1</span> <span class="sc" style="color: #5E5E5E;">-</span> (estimate_bs <span class="sc" style="color: #5E5E5E;">/</span> ref_bs)</span>
+<span id="cb6-65">  }</span>
+<span id="cb6-66">  </span>
+<span id="cb6-67">  <span class="cf" style="color: #003B4F;">if</span> (<span class="fu" style="color: #4758AB;">length</span>(estimate) <span class="sc" style="color: #5E5E5E;">==</span> <span class="dv" style="color: #AD0000;">1</span>) {</span>
+<span id="cb6-68">    estimate <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">rep</span>(estimate, <span class="fu" style="color: #4758AB;">length</span>(truth))</span>
+<span id="cb6-69">  }</span>
+<span id="cb6-70">  </span>
+<span id="cb6-71">  <span class="cf" style="color: #003B4F;">if</span> (<span class="fu" style="color: #4758AB;">length</span>(ref_estimate) <span class="sc" style="color: #5E5E5E;">==</span> <span class="dv" style="color: #AD0000;">1</span>) {</span>
+<span id="cb6-72">    ref_estimate <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">rep</span>(ref_estimate, <span class="fu" style="color: #4758AB;">length</span>(truth))</span>
+<span id="cb6-73">  }</span>
+<span id="cb6-74">  </span>
+<span id="cb6-75">  yardstick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">metric_vec_template</span>(</span>
+<span id="cb6-76">    <span class="at" style="color: #657422;">metric_impl =</span> brier_skill_score_impl,</span>
+<span id="cb6-77">    <span class="at" style="color: #657422;">truth =</span> truth,</span>
+<span id="cb6-78">    <span class="at" style="color: #657422;">estimate =</span> estimate,</span>
+<span id="cb6-79">    <span class="at" style="color: #657422;">ref_estimate =</span> ref_estimate,</span>
+<span id="cb6-80">    <span class="at" style="color: #657422;">cls =</span> <span class="fu" style="color: #4758AB;">c</span>(<span class="st" style="color: #20794D;">'factor'</span>, <span class="st" style="color: #20794D;">'numeric'</span>),</span>
+<span id="cb6-81">    <span class="at" style="color: #657422;">estimator =</span> <span class="st" style="color: #20794D;">'binary'</span>,</span>
+<span id="cb6-82">    <span class="at" style="color: #657422;">event_level =</span> event_level,</span>
+<span id="cb6-83">    ...</span>
+<span id="cb6-84">  )</span>
+<span id="cb6-85">}</span>
+<span id="cb6-86"></span>
+<span id="cb6-87">ref_estimate <span class="ot" style="color: #003B4F;">&lt;-</span> matches <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-88">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">count</span>(target) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-89">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">mutate</span>(<span class="at" style="color: #657422;">prop =</span> n <span class="sc" style="color: #5E5E5E;">/</span> <span class="fu" style="color: #4758AB;">sum</span>(n)) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-90">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(target <span class="sc" style="color: #5E5E5E;">==</span> <span class="st" style="color: #20794D;">'yes'</span>) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb6-91">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">pull</span>(prop)</span>
+<span id="cb6-92"></span>
+<span id="cb6-93">raw_brier_skill_score <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">brier_skill_score_vec</span>(</span>
+<span id="cb6-94">  <span class="at" style="color: #657422;">truth =</span> calibrated<span class="sc" style="color: #5E5E5E;">$</span>target,</span>
+<span id="cb6-95">  <span class="at" style="color: #657422;">estimate =</span> calibrated<span class="sc" style="color: #5E5E5E;">$</span>.raw_pred_yes,</span>
+<span id="cb6-96">  <span class="at" style="color: #657422;">ref_estimate =</span> ref_prop,</span>
+<span id="cb6-97">  <span class="at" style="color: #657422;">event_level =</span> <span class="st" style="color: #20794D;">'second'</span></span>
+<span id="cb6-98">)</span>
+<span id="cb6-99"></span>
+<span id="cb6-100">calibrated_brier_skill_score <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">brier_skill_score_vec</span>(</span>
+<span id="cb6-101">  <span class="at" style="color: #657422;">truth =</span> calibrated<span class="sc" style="color: #5E5E5E;">$</span>target,</span>
+<span id="cb6-102">  <span class="at" style="color: #657422;">estimate =</span> calibrated<span class="sc" style="color: #5E5E5E;">$</span>.pred_yes,</span>
+<span id="cb6-103">  <span class="at" style="color: #657422;">ref_estimate =</span> ref_prop,</span>
+<span id="cb6-104">  <span class="at" style="color: #657422;">event_level =</span> <span class="st" style="color: #20794D;">'second'</span></span>
+<span id="cb6-105">)</span>
+<span id="cb6-106"></span>
+<span id="cb6-107">compared_brier_skill_scores <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">round</span>(</span>
+<span id="cb6-108">  <span class="fu" style="color: #4758AB;">c</span>(</span>
+<span id="cb6-109">    <span class="st" style="color: #20794D;">'Un-calibrated'</span> <span class="ot" style="color: #003B4F;">=</span> raw_brier_skill_score,</span>
+<span id="cb6-110">    <span class="st" style="color: #20794D;">'Calibrated'</span> <span class="ot" style="color: #003B4F;">=</span> calibrated_brier_skill_score</span>
+<span id="cb6-111">  ),</span>
+<span id="cb6-112">  <span class="dv" style="color: #AD0000;">3</span></span>
+<span id="cb6-113">)</span></code></pre></div>
+</details>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1">compared_brier_skill_scores</span>
+<span id="cb7-2"><span class="co" style="color: #5E5E5E;">#&gt; Un-calibrated    Calibrated </span></span>
+<span id="cb7-3"><span class="co" style="color: #5E5E5E;">#&gt;         0.196         0.205</span></span></code></pre></div>
+</div>
+<p>Indeed, we have (marginally) improved the original pre-match win probabilities.</p>
+<p>I should note that the <code>{probably}</code> package offers <code>cal_validate_*()</code> functions to help with deciphering whether a calibrated model is truly better than the original. That set of functions uses a more robust and valid technique that I have here.<sup>5</sup></p>
+</section>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>While I wouldn’t say “calibration is all you need”, it’s certainly something nice to have in your toolkit when you’re working on a modeling task. It can be a game-changer, especially when tweaking the original model isn’t an option, whether due to access limitations or, let’s be honest, sheer laziness.</p>
+<p>Oh, and I failed to mention this earlier—calibration isn’t just for binary classifiers. Multinomial classifiers and even regression models can benefit from this technique as well.</p>
+<p>Happy modeling, folks.</p>
+
+
+
+</section>
+
+
+<div class="quarto-listing quarto-listing-container-default" id="listing-listing">
+<div class="list quarto-listing-default">
+
+</div>
+<div class="listing-no-matching d-none">
+No matching items
+</div>
+</div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>Sticking with the basics, I use the defaults for <code>num_breaks</code> (10) and <code>conf_level</code> (0.9).↩︎</p></li>
+<li id="fn2"><p>We don’t have a skew problem in this context, but it’s good to note when a Beta calibration might provide meaningful benefits over other calibration methods.↩︎</p></li>
+<li id="fn3"><p>I’ve discussed BSS in <a href="../../posts/opta-xg-model-calibration">a prior post on expected goals model calibration</a> and <a href="../../posts/epl-xpts-simulation-1">another post on expected goals match-implied win probabilities</a>.↩︎</p></li>
+<li id="fn4"><p>In this case, I choose to use the observed match win rate as the reference model.↩︎</p></li>
+<li id="fn5"><p>The <code>cal_validate_*()</code> function resample a holdout set, compute ROC AUC and Brier score, and calculate standard error of the performance metrics.↩︎</p></li>
+</ol>
+</section></div> ]]></description>
+  <category>r</category>
+  <category>soccer</category>
+  <guid>https://tonyelhabr.rbind.io/posts/probability-calibration/index.html</guid>
+  <pubDate>Mon, 11 Sep 2023 05:00:00 GMT</pubDate>
+  <media:content url="https://tonyelhabr.rbind.io/posts/probability-calibration/compared-calibration.png" medium="image" type="image/png" height="144" width="144"/>
+</item>
 <item>
   <title>Meta-Analytics for Soccer</title>
   <dc:creator>Tony ElHabr</dc:creator>
