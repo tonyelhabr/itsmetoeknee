@@ -312,6 +312,12 @@ cookieconsent.run({
     </div>
   </div>
   
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">September 14, 2023</p>
+    </div>
+  </div>
     
   </div>
   
@@ -321,14 +327,14 @@ cookieconsent.run({
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
 <p>Ever grappled with a <a href="https://en.wikipedia.org/wiki/Statistical_classification">classification</a> model that consistently over-predicts or under-predicts an event? Your first thought might be to re-evaluate the model’s features or framework. But what if tweaking the model isn’t an option, either due to a lack of resources or access restrictions? The good news is, there’s another way–it’s called <a href="https://www.tidyverse.org/blog/2022/11/model-calibration/"><strong>calibration</strong></a>.</p>
-<p>Calibration falls in the “post-processing” step of modeling. We modify the output of a model using nothing but the model predictions and labels of the output.</p>
+<p>Calibration falls in the “post-processing” step of predictive modeling.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> We modify the output of a model using nothing but the model predictions and labels of the output. We do that by, you guess it, fitting another model, often called <a href="https://scikit-learn.org/stable/modules/calibration.html#calibrating-a-classifier">a “calibrator”</a>.</p>
 <p>One of my favorite (and relatively new) packages in the <a href="https://www.tidymodels.org/"><code>{tidymodels}</code> ecosystem</a> is the <a href="https://probably.tidymodels.org/"><code>{probably}</code></a> package. It provides functions that make it fairly straightforward to do calibration, even for those who are new to the concept. So let’s use <code>{probably}</code> to demonstrate the power of calibration.</p>
 </section>
 <section id="calibrating-a-binary-classifier" class="level2">
 <h2 class="anchored" data-anchor-id="calibrating-a-binary-classifier">Calibrating a Binary Classifier</h2>
 <section id="data" class="level3">
 <h3 class="anchored" data-anchor-id="data">Data</h3>
-<p>I’ll be using the pre-match win probabilities from <a href="https://data.fivethirtyeight.com/#soccer-spi">FiveThirtyEight</a> (<a href="https://twitter.com/ryanabest/status/1672013407908667392">RIP</a>). Specifically, I’ll subset their plethora of historical projections to two women’s leagues: the <a href="https://en.wikipedia.org/wiki/Women%27s_Super_League">Women’s Super League (WSL)</a> in England and the <a href="https://en.wikipedia.org/wiki/National_Women%27s_Soccer_League">National Women’s Soccer League (NWSL)</a> in the U.S. I have a suspicion that the model probabilities are not as calibrated as they could be, as there is <a href="https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/">has been observed that gender-agnostic models</a> in soccer can be less performant for the women’s game.</p>
+<p>I’ll be using the pre-match win probabilities from <a href="https://data.fivethirtyeight.com/#soccer-spi">FiveThirtyEight</a> (<a href="https://twitter.com/ryanabest/status/1672013407908667392">RIP</a>). Specifically, I’ll subset their plethora of historical projections to two women’s leagues: the <a href="https://en.wikipedia.org/wiki/Women%27s_Super_League">Women’s Super League (WSL)</a> in England and the <a href="https://en.wikipedia.org/wiki/National_Women%27s_Soccer_League">National Women’s Soccer League (NWSL)</a> in the U.S. I have a suspicion that the model probabilities are not as calibrated as they could be, as <a href="https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/">has been observed that gender-agnostic models</a> in soccer can be less performant for the women’s game.</p>
 <p>To keep things simple, I’m going to treat this as a <a href="https://en.wikipedia.org/wiki/Binary_classification">binary classification</a> task, where matches are the “positive” outcome (<code>"yes"</code>), and losses and draw are grouped as the “negative” outcome (<code>"no"</code>).</p>
 <div class="cell">
 <details>
@@ -376,7 +382,7 @@ cookieconsent.run({
 </section>
 <section id="diagnosis" class="level3">
 <h3 class="anchored" data-anchor-id="diagnosis">Diagnosis</h3>
-<p>We start with the <a href="https://www.tidymodels.org/learn/models/calibration/#but-is-it-calibrated">“diagnosis”</a> phase: “How well do the original probabilities perform?” To evaluate this, we can use one of the several <code>probably::cal_plot_*</code> functions. In this case, we’ll use <code>cal_plot_breaks()</code>.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+<p>We start with the <a href="https://www.tidymodels.org/learn/models/calibration/#but-is-it-calibrated">“diagnosis”</a> phase: “How well do the original probabilities perform?” To evaluate this, we can use one of the several <code>probably::cal_plot_*</code> functions. In this case, we’ll use <code>cal_plot_breaks()</code>.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
 <p>This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin’s range. Ideally, if our predictions are calibrated, the curve produced should match up with a straight diagonal line, i.e.&nbsp;a 45 degree slope passing through (0,0) and (1,1). As a bonus, the <code>probably::cal_plot_*</code> family of functions even provides confidence intervals about the calibration curve.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(probably)</span>
@@ -399,7 +405,7 @@ cookieconsent.run({
 <section id="remediation" class="level3">
 <h3 class="anchored" data-anchor-id="remediation">Remediation</h3>
 <p>Now we move on the <a href="https://www.tidymodels.org/learn/models/calibration/#remediation">“remedation”</a> step. That is, we fit a model with the binary outcome as the target variable and the probability estimate as the lone input feature. <code>{probably}</code> offers several options with the <code>cal_estimate_*()</code> of functions.</p>
-<p>I’ve opted for <a href="https://probably.tidymodels.org/reference/cal_estimate_beta.html">Beta calibration</a>, although <a href="https://probably.tidymodels.org/reference/cal_estimate_logistic.html">logistic calibration</a> would work fine here as well. Beta calibration is a little more flexible, and, consequently, <a href="https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-11/issue-2/Beyond-sigmoids--How-to-obtain-well-calibrated-probabilities-from/10.1214/17-EJS1338SI.full">can provide superior probability estimates</a>, especially when the target distribution is skewed.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<p>I’ve opted for <a href="https://probably.tidymodels.org/reference/cal_estimate_beta.html">Beta calibration</a>, although <a href="https://probably.tidymodels.org/reference/cal_estimate_logistic.html">logistic calibration</a> would work fine here as well. Beta calibration is a little more flexible, and, consequently, <a href="https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-11/issue-2/Beyond-sigmoids--How-to-obtain-well-calibrated-probabilities-from/10.1214/17-EJS1338SI.full">can provide superior probability estimates</a>, especially when the target distribution is skewed.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>matches <span class="sc">|&gt;</span> </span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  probably<span class="sc">::</span><span class="fu">cal_estimate_beta</span>(</span>
@@ -440,7 +446,7 @@ cookieconsent.run({
 <p>Visually, it’s evident that the remediation has improved the probability estimates. The calibrated curve more closely “hugs” the ideal 45 degree slope across the whole probability spectrum.</p>
 <section id="validation" class="level3">
 <h3 class="anchored" data-anchor-id="validation">Validation</h3>
-<p>To quantitatively describe the difference in calibration between the two models, we can compare the <a href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">Brier Skill Score (BSS)</a> of the un-calibrated and calibrated models.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> Keep in mind that a higher BSS indicates a more calibrated model. (1 is ideal. 0 indicates that the model is no better or worse than a reference model<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>.)</p>
+<p>To quantitatively describe the difference in calibration between the two models, we can compare the <a href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">Brier Skill Score (BSS)</a> of the un-calibrated and calibrated models.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> Keep in mind that a higher BSS indicates a more calibrated model. (1 is ideal. 0 indicates that the model is no better or worse than a reference model<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>.)</p>
 <div class="cell">
 <details>
 <summary>Brier Skill Score (BSS) calculation</summary>
@@ -539,14 +545,14 @@ cookieconsent.run({
 <span id="cb6-93"><a href="#cb6-93" aria-hidden="true" tabindex="-1"></a>raw_brier_skill_score <span class="ot">&lt;-</span> <span class="fu">brier_skill_score_vec</span>(</span>
 <span id="cb6-94"><a href="#cb6-94" aria-hidden="true" tabindex="-1"></a>  <span class="at">truth =</span> calibrated<span class="sc">$</span>target,</span>
 <span id="cb6-95"><a href="#cb6-95" aria-hidden="true" tabindex="-1"></a>  <span class="at">estimate =</span> calibrated<span class="sc">$</span>.raw_pred_yes,</span>
-<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref_estimate =</span> ref_prop,</span>
+<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref_estimate =</span> ref_estimate,</span>
 <span id="cb6-97"><a href="#cb6-97" aria-hidden="true" tabindex="-1"></a>  <span class="at">event_level =</span> <span class="st">'second'</span></span>
 <span id="cb6-98"><a href="#cb6-98" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb6-99"><a href="#cb6-99" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-100"><a href="#cb6-100" aria-hidden="true" tabindex="-1"></a>calibrated_brier_skill_score <span class="ot">&lt;-</span> <span class="fu">brier_skill_score_vec</span>(</span>
 <span id="cb6-101"><a href="#cb6-101" aria-hidden="true" tabindex="-1"></a>  <span class="at">truth =</span> calibrated<span class="sc">$</span>target,</span>
 <span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>  <span class="at">estimate =</span> calibrated<span class="sc">$</span>.pred_yes,</span>
-<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref_estimate =</span> ref_prop,</span>
+<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref_estimate =</span> ref_estimate,</span>
 <span id="cb6-104"><a href="#cb6-104" aria-hidden="true" tabindex="-1"></a>  <span class="at">event_level =</span> <span class="st">'second'</span></span>
 <span id="cb6-105"><a href="#cb6-105" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb6-106"><a href="#cb6-106" aria-hidden="true" tabindex="-1"></a></span>
@@ -565,7 +571,7 @@ cookieconsent.run({
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;         0.196         0.205</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Indeed, we have (marginally) improved the original pre-match win probabilities.</p>
-<p>I should note that the <code>{probably}</code> package offers <code>cal_validate_*()</code> functions to help with deciphering whether a calibrated model is truly better than the original. That set of functions uses a more robust and valid technique that I have here.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
+<p>I should note that the <code>{probably}</code> package offers <code>cal_validate_*()</code> functions to help with deciphering whether a calibrated model is truly better than the original. That set of functions uses a more robust and valid technique that I have here.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
 </section>
 </section>
 <section id="conclusion" class="level2">
@@ -589,11 +595,20 @@ No matching items
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>Sticking with the basics, I use the defaults for <code>num_breaks</code> (10) and <code>conf_level</code> (0.9).<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>We don’t have a skew problem in this context, but it’s good to note when a Beta calibration might provide meaningful benefits over other calibration methods.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn3"><p>I’ve discussed BSS in <a href="../../posts/opta-xg-model-calibration">a prior post on expected goals model calibration</a> and <a href="../../posts/epl-xpts-simulation-1">another post on expected goals match-implied win probabilities</a>.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>In this case, I choose to use the observed match win rate as the reference model.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn5"><p>The <code>cal_validate_*()</code> function resample a holdout set, compute ROC AUC and Brier score, and calculate standard error of the performance metrics.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn1"><p>The <a href="https://www.tidymodels.org/learn/models/calibration"><code>{tidymodels}</code> guide</a> breaks down the traditional modeling workflow into three steps:</p>
+<blockquote class="blockquote">
+<ul>
+<li>the pre-processing stage (e.g., feature engineering, normalization, etc.)</li>
+<li>model fitting (actually training the model)</li>
+<li>post-processing (such as optimizing a probability threshold)</li>
+</ul>
+</blockquote>
+<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></li>
+<li id="fn2"><p>Sticking with the basics, I use the defaults for <code>num_breaks</code> (10) and <code>conf_level</code> (0.9).<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>We don’t have a skew problem in this context, but it’s good to note when a Beta calibration might provide meaningful benefits over other calibration methods.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>I’ve discussed BSS in <a href="../../posts/opta-xg-model-calibration">a prior post on expected goals model calibration</a> and <a href="../../posts/epl-xpts-simulation-1">another post on expected goals match-implied win probabilities</a>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>In this case, I choose to use the observed match win rate as the reference model.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>The <code>cal_validate_*()</code> function resample a holdout set, compute ROC AUC and Brier score, and calculate standard error of the performance metrics.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
