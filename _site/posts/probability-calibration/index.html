@@ -315,7 +315,7 @@ cookieconsent.run({
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">September 14, 2023</p>
+      <p class="date-modified">September 12, 2023</p>
     </div>
   </div>
     
@@ -328,6 +328,13 @@ cookieconsent.run({
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
 <p>Ever grappled with a <a href="https://en.wikipedia.org/wiki/Statistical_classification">classification</a> model that consistently over-predicts or under-predicts an event? Your first thought might be to re-evaluate the model’s features or framework. But what if tweaking the model isn’t an option, either due to a lack of resources or access restrictions? The good news is, there’s another way–it’s called <a href="https://www.tidyverse.org/blog/2022/11/model-calibration/"><strong>calibration</strong></a>.</p>
 <p>Calibration falls in the “post-processing” step of predictive modeling.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> We modify the output of a model using nothing but the model predictions and labels of the output. We do that by, you guess it, fitting another model, often called <a href="https://scikit-learn.org/stable/modules/calibration.html#calibrating-a-classifier">a “calibrator”</a>.</p>
+<blockquote class="blockquote">
+<ul>
+<li>the pre-processing stage (e.g., feature engineering, normalization, etc.)</li>
+<li>model fitting (actually training the model)</li>
+<li>post-processing (such as optimizing a probability threshold)</li>
+</ul>
+</blockquote>
 <p>One of my favorite (and relatively new) packages in the <a href="https://www.tidymodels.org/"><code>{tidymodels}</code> ecosystem</a> is the <a href="https://probably.tidymodels.org/"><code>{probably}</code></a> package. It provides functions that make it fairly straightforward to do calibration, even for those who are new to the concept. So let’s use <code>{probably}</code> to demonstrate the power of calibration.</p>
 </section>
 <section id="calibrating-a-binary-classifier" class="level2">
@@ -335,7 +342,7 @@ cookieconsent.run({
 <section id="data" class="level3">
 <h3 class="anchored" data-anchor-id="data">Data</h3>
 <p>I’ll be using the pre-match win probabilities from <a href="https://data.fivethirtyeight.com/#soccer-spi">FiveThirtyEight</a> (<a href="https://twitter.com/ryanabest/status/1672013407908667392">RIP</a>). Specifically, I’ll subset their plethora of historical projections to two women’s leagues: the <a href="https://en.wikipedia.org/wiki/Women%27s_Super_League">Women’s Super League (WSL)</a> in England and the <a href="https://en.wikipedia.org/wiki/National_Women%27s_Soccer_League">National Women’s Soccer League (NWSL)</a> in the U.S. I have a suspicion that the model probabilities are not as calibrated as they could be, as <a href="https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/">has been observed that gender-agnostic models</a> in soccer can be less performant for the women’s game.</p>
-<p>To keep things simple, I’m going to treat this as a <a href="https://en.wikipedia.org/wiki/Binary_classification">binary classification</a> task, where matches are the “positive” outcome (<code>"yes"</code>), and losses and draw are grouped as the “negative” outcome (<code>"no"</code>).</p>
+<p>To keep things simple, I’m going to treat this as a <a href="https://en.wikipedia.org/wiki/Binary_classification">binary classification</a> task, where matches are the “positive” outcome (<code>"yes"</code>), and losses and draws are grouped as the “negative” outcome (<code>"no"</code>).</p>
 <div class="cell">
 <details>
 <summary>Retrieve data</summary>
@@ -383,7 +390,7 @@ cookieconsent.run({
 <section id="diagnosis" class="level3">
 <h3 class="anchored" data-anchor-id="diagnosis">Diagnosis</h3>
 <p>We start with the <a href="https://www.tidymodels.org/learn/models/calibration/#but-is-it-calibrated">“diagnosis”</a> phase: “How well do the original probabilities perform?” To evaluate this, we can use one of the several <code>probably::cal_plot_*</code> functions. In this case, we’ll use <code>cal_plot_breaks()</code>.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
-<p>This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin’s range. Ideally, if our predictions are calibrated, the curve produced should match up with a straight diagonal line, i.e.&nbsp;a 45 degree slope passing through (0,0) and (1,1). As a bonus, the <code>probably::cal_plot_*</code> family of functions even provides confidence intervals about the calibration curve.</p>
+<p>This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin’s range. Ideally, if our predictions are calibrated, the curve produced should match up with a straight diagonal line, i.e.&nbsp;a 45-degree slope passing through (0,0) and (1,1). As a bonus, the <code>probably::cal_plot_*</code> family of functions even provides confidence intervals about the calibration curve.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(probably)</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">packageVersion</span>(<span class="st">'probably'</span>)</span>
@@ -400,11 +407,11 @@ cookieconsent.run({
 </div>
 <p><code>{probably}</code> offers some really neat automatic plotting of calibration curves. While I’d suggest giving them a try, I like to make my curves in a certain manner. In particular, instead of using a “rug”, I like showing sample sizes via points on the curve.</p>
 <p><img src="raw-calibration.png" class="img-fluid"></p>
-<p>Indeed, it looks like there is some room for improvement with the match probabilities. It seems that the FiveThirtyEight model over-predicts when the actual win rate is low, broadly below 20%; and, likewise, it tends to under-predict when the true win rate is really greater than 60%</p>
+<p>Indeed, it looks like there is some room for improvement with the match probabilities. It seems that the <a href="https://fivethirtyeight.com/">FiveThirtyEight</a> model over-predicts when the actual win rate is low, broadly below 20%; and, likewise, it tends to under-predict when the true win rate is really greater than 60%</p>
 </section>
 <section id="remediation" class="level3">
 <h3 class="anchored" data-anchor-id="remediation">Remediation</h3>
-<p>Now we move on the <a href="https://www.tidymodels.org/learn/models/calibration/#remediation">“remedation”</a> step. That is, we fit a model with the binary outcome as the target variable and the probability estimate as the lone input feature. <code>{probably}</code> offers several options with the <code>cal_estimate_*()</code> of functions.</p>
+<p>Now we move on to the <a href="https://www.tidymodels.org/learn/models/calibration/#remediation">“remedation”</a> step. That is, we fit a model, a “calibrator”, with the binary outcome as the target variable and the probability estimate as the lone input feature. <code>{probably}</code> offers several options with <a href="https://probably.tidymodels.org/reference/index.html#calibration-validation">the <code>cal_estimate_*()</code> set of functions</a>.</p>
 <p>I’ve opted for <a href="https://probably.tidymodels.org/reference/cal_estimate_beta.html">Beta calibration</a>, although <a href="https://probably.tidymodels.org/reference/cal_estimate_logistic.html">logistic calibration</a> would work fine here as well. Beta calibration is a little more flexible, and, consequently, <a href="https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-11/issue-2/Beyond-sigmoids--How-to-obtain-well-calibrated-probabilities-from/10.1214/17-EJS1338SI.full">can provide superior probability estimates</a>, especially when the target distribution is skewed.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>matches <span class="sc">|&gt;</span> </span>
@@ -438,10 +445,10 @@ cookieconsent.run({
 </section>
 <section id="results" class="level2">
 <h2 class="anchored" data-anchor-id="results">Results</h2>
-<p>With the remediation model in hand, let’s make a scatter plot of all the points in the data set, viewing how the model has adjusted the original probabilities.</p>
+<p>With the calibrator model in hand, let’s make a scatter plot of all the points in the data set, viewing how the model has adjusted the original probabilities.</p>
 <p><img src="calibration-scatter.png" class="img-fluid"></p>
-<p>We observe that the remediation model has increased point estimates on the lower end of the spectrum and decreased estimates on the upper end of the spectrum. The calibration has seemingly fine-tuned under-predicting and over-predicting behavior from the original model.</p>
-<p>To really see the change that remediaton model has made, we can re-make our calibration curve plot, adding the remediated, or “calibrated”, curve along side the original “un-calibrated” curve.</p>
+<p>We observe that the calibrator has increased point estimates on the lower end of the spectrum and decreased estimates on the upper end of the spectrum. The calibration has seemingly fine-tuned under-predicting and over-predicting behavior from the original model.</p>
+<p>To see the change that calibrator has made, we can re-make our calibration curve plot, adding the “calibrated” curve alongside the original “un-calibrated” curve.</p>
 <p><img src="compared-calibration.png" class="img-fluid"></p>
 <p>Visually, it’s evident that the remediation has improved the probability estimates. The calibrated curve more closely “hugs” the ideal 45 degree slope across the whole probability spectrum.</p>
 <section id="validation" class="level3">
@@ -452,117 +459,157 @@ cookieconsent.run({
 <summary>Brier Skill Score (BSS) calculation</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(yardstick)</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rlang)</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>brier_score <span class="ot">&lt;-</span> <span class="cf">function</span>(data, ...) {</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">UseMethod</span>(<span class="st">'brier_score'</span>)</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>brier_score <span class="ot">&lt;-</span> yardstick<span class="sc">::</span><span class="fu">new_prob_metric</span>(brier_score, <span class="at">direction =</span> <span class="st">'minimize'</span>)</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>brier_score_vec <span class="ot">&lt;-</span> <span class="cf">function</span>(truth, estimate, <span class="at">na_rm =</span> <span class="cn">TRUE</span>, event_level, ...) {</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>  brier_score_impl <span class="ot">&lt;-</span> <span class="cf">function</span>(truth, estimate, event_level, ...) {</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    truth <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> (<span class="fu">as.numeric</span>(truth) <span class="sc">-</span> <span class="dv">1</span>)</span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (event_level <span class="sc">==</span> <span class="st">'second'</span>) {</span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>      truth <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">-</span> truth</span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>((truth <span class="sc">-</span> estimate)<span class="sc">^</span><span class="dv">2</span>)</span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(estimate) <span class="sc">==</span> <span class="dv">1</span>) {</span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    estimate <span class="ot">&lt;-</span> <span class="fu">rep</span>(estimate, <span class="fu">length</span>(truth))</span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  yardstick<span class="sc">::</span><span class="fu">metric_vec_template</span>(</span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">metric_impl =</span> brier_score_impl,</span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> truth,</span>
-<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> estimate,</span>
-<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">na_rm =</span> na_rm,</span>
-<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">cls =</span> <span class="fu">c</span>(<span class="st">'factor'</span>, <span class="st">'numeric'</span>),</span>
-<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimator =</span> <span class="st">'binary'</span>,</span>
-<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> event_level,</span>
-<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>    ...</span>
-<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>brier_skill_score <span class="ot">&lt;-</span> <span class="cf">function</span>(data, ...) {</span>
-<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">UseMethod</span>(<span class="st">'brier_skill_score'</span>)</span>
-<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>brier_skill_score <span class="ot">&lt;-</span> yardstick<span class="sc">::</span><span class="fu">new_prob_metric</span>(brier_skill_score, <span class="at">direction =</span> <span class="st">'maximize'</span>)</span>
-<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>brier_skill_score_vec <span class="ot">&lt;-</span> <span class="cf">function</span>(truth, estimate, ref_estimate, <span class="at">na_rm =</span> <span class="cn">TRUE</span>, event_level, ...) {</span>
-<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  brier_skill_score_impl <span class="ot">&lt;-</span> <span class="cf">function</span>(truth, estimate, ref_estimate, event_level, ...) {</span>
-<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>    truth_quo <span class="ot">&lt;-</span> rlang<span class="sc">::</span><span class="fu">enquo</span>(truth)</span>
-<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>    estimate_bs <span class="ot">&lt;-</span> <span class="fu">brier_score_vec</span>(</span>
-<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>      <span class="at">truth =</span> truth,</span>
-<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>      <span class="at">estimate =</span> estimate,</span>
-<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>      <span class="at">na_rm =</span> na_rm,</span>
-<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>      <span class="at">event_level =</span> event_level,</span>
-<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>      ...</span>
-<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb6-56"><a href="#cb6-56" aria-hidden="true" tabindex="-1"></a>    ref_bs <span class="ot">&lt;-</span> <span class="fu">brier_score_vec</span>(</span>
-<span id="cb6-57"><a href="#cb6-57" aria-hidden="true" tabindex="-1"></a>      <span class="at">truth =</span> truth,</span>
-<span id="cb6-58"><a href="#cb6-58" aria-hidden="true" tabindex="-1"></a>      <span class="at">estimate =</span> ref_estimate,</span>
-<span id="cb6-59"><a href="#cb6-59" aria-hidden="true" tabindex="-1"></a>      <span class="at">na_rm =</span> na_rm,</span>
-<span id="cb6-60"><a href="#cb6-60" aria-hidden="true" tabindex="-1"></a>      <span class="at">event_level =</span> event_level,</span>
-<span id="cb6-61"><a href="#cb6-61" aria-hidden="true" tabindex="-1"></a>      ...</span>
-<span id="cb6-62"><a href="#cb6-62" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb6-63"><a href="#cb6-63" aria-hidden="true" tabindex="-1"></a>    </span>
-<span id="cb6-64"><a href="#cb6-64" aria-hidden="true" tabindex="-1"></a>    <span class="dv">1</span> <span class="sc">-</span> (estimate_bs <span class="sc">/</span> ref_bs)</span>
-<span id="cb6-65"><a href="#cb6-65" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb6-66"><a href="#cb6-66" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-67"><a href="#cb6-67" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(estimate) <span class="sc">==</span> <span class="dv">1</span>) {</span>
-<span id="cb6-68"><a href="#cb6-68" aria-hidden="true" tabindex="-1"></a>    estimate <span class="ot">&lt;-</span> <span class="fu">rep</span>(estimate, <span class="fu">length</span>(truth))</span>
-<span id="cb6-69"><a href="#cb6-69" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb6-70"><a href="#cb6-70" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-71"><a href="#cb6-71" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(ref_estimate) <span class="sc">==</span> <span class="dv">1</span>) {</span>
-<span id="cb6-72"><a href="#cb6-72" aria-hidden="true" tabindex="-1"></a>    ref_estimate <span class="ot">&lt;-</span> <span class="fu">rep</span>(ref_estimate, <span class="fu">length</span>(truth))</span>
-<span id="cb6-73"><a href="#cb6-73" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb6-74"><a href="#cb6-74" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-75"><a href="#cb6-75" aria-hidden="true" tabindex="-1"></a>  yardstick<span class="sc">::</span><span class="fu">metric_vec_template</span>(</span>
-<span id="cb6-76"><a href="#cb6-76" aria-hidden="true" tabindex="-1"></a>    <span class="at">metric_impl =</span> brier_skill_score_impl,</span>
-<span id="cb6-77"><a href="#cb6-77" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> truth,</span>
-<span id="cb6-78"><a href="#cb6-78" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> estimate,</span>
-<span id="cb6-79"><a href="#cb6-79" aria-hidden="true" tabindex="-1"></a>    <span class="at">ref_estimate =</span> ref_estimate,</span>
-<span id="cb6-80"><a href="#cb6-80" aria-hidden="true" tabindex="-1"></a>    <span class="at">cls =</span> <span class="fu">c</span>(<span class="st">'factor'</span>, <span class="st">'numeric'</span>),</span>
-<span id="cb6-81"><a href="#cb6-81" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimator =</span> <span class="st">'binary'</span>,</span>
-<span id="cb6-82"><a href="#cb6-82" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> event_level,</span>
-<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>    ...</span>
-<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>ref_estimate <span class="ot">&lt;-</span> matches <span class="sc">|&gt;</span> </span>
-<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">count</span>(target) <span class="sc">|&gt;</span> </span>
-<span id="cb6-89"><a href="#cb6-89" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">prop =</span> n <span class="sc">/</span> <span class="fu">sum</span>(n)) <span class="sc">|&gt;</span> </span>
-<span id="cb6-90"><a href="#cb6-90" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(target <span class="sc">==</span> <span class="st">'yes'</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb6-91"><a href="#cb6-91" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">pull</span>(prop)</span>
-<span id="cb6-92"><a href="#cb6-92" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-93"><a href="#cb6-93" aria-hidden="true" tabindex="-1"></a>raw_brier_skill_score <span class="ot">&lt;-</span> <span class="fu">brier_skill_score_vec</span>(</span>
-<span id="cb6-94"><a href="#cb6-94" aria-hidden="true" tabindex="-1"></a>  <span class="at">truth =</span> calibrated<span class="sc">$</span>target,</span>
-<span id="cb6-95"><a href="#cb6-95" aria-hidden="true" tabindex="-1"></a>  <span class="at">estimate =</span> calibrated<span class="sc">$</span>.raw_pred_yes,</span>
-<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref_estimate =</span> ref_estimate,</span>
-<span id="cb6-97"><a href="#cb6-97" aria-hidden="true" tabindex="-1"></a>  <span class="at">event_level =</span> <span class="st">'second'</span></span>
-<span id="cb6-98"><a href="#cb6-98" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb6-99"><a href="#cb6-99" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-100"><a href="#cb6-100" aria-hidden="true" tabindex="-1"></a>calibrated_brier_skill_score <span class="ot">&lt;-</span> <span class="fu">brier_skill_score_vec</span>(</span>
-<span id="cb6-101"><a href="#cb6-101" aria-hidden="true" tabindex="-1"></a>  <span class="at">truth =</span> calibrated<span class="sc">$</span>target,</span>
-<span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>  <span class="at">estimate =</span> calibrated<span class="sc">$</span>.pred_yes,</span>
-<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref_estimate =</span> ref_estimate,</span>
-<span id="cb6-104"><a href="#cb6-104" aria-hidden="true" tabindex="-1"></a>  <span class="at">event_level =</span> <span class="st">'second'</span></span>
-<span id="cb6-105"><a href="#cb6-105" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb6-106"><a href="#cb6-106" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-107"><a href="#cb6-107" aria-hidden="true" tabindex="-1"></a>compared_brier_skill_scores <span class="ot">&lt;-</span> <span class="fu">round</span>(</span>
-<span id="cb6-108"><a href="#cb6-108" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(</span>
-<span id="cb6-109"><a href="#cb6-109" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Un-calibrated'</span> <span class="ot">=</span> raw_brier_skill_score,</span>
-<span id="cb6-110"><a href="#cb6-110" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Calibrated'</span> <span class="ot">=</span> calibrated_brier_skill_score</span>
-<span id="cb6-111"><a href="#cb6-111" aria-hidden="true" tabindex="-1"></a>  ),</span>
-<span id="cb6-112"><a href="#cb6-112" aria-hidden="true" tabindex="-1"></a>  <span class="dv">3</span></span>
-<span id="cb6-113"><a href="#cb6-113" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>brier_skill_score <span class="ot">&lt;-</span> <span class="cf">function</span>(data, ...) {</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">UseMethod</span>(<span class="st">'brier_skill_score'</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>brier_skill_score <span class="ot">&lt;-</span> yardstick<span class="sc">::</span><span class="fu">new_prob_metric</span>(</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  brier_skill_score, </span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">direction =</span> <span class="st">'maximize'</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>bss <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    truth, </span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    estimate, </span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    ref_estimate, </span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    event_level,</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    case_weights,</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    ...</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(estimate) <span class="sc">==</span> <span class="dv">1</span>) {</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    estimate <span class="ot">&lt;-</span> <span class="fu">rep</span>(estimate, <span class="fu">length</span>(truth))</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(ref_estimate) <span class="sc">==</span> <span class="dv">1</span>) {</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    ref_estimate <span class="ot">&lt;-</span> <span class="fu">rep</span>(ref_estimate, <span class="fu">length</span>(truth))</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  estimate_brier_score <span class="ot">&lt;-</span> <span class="fu">brier_class_vec</span>(</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> truth,</span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> estimate,</span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> event_level,</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">case_weights =</span> case_weights,</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>    ...</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  ref_brier_score <span class="ot">&lt;-</span> <span class="fu">brier_class_vec</span>(</span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> truth,</span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> ref_estimate,</span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> event_level,</span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">case_weights =</span> case_weights,</span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>    ...</span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>  <span class="dv">1</span> <span class="sc">-</span> (estimate_brier_score <span class="sc">/</span> ref_brier_score)</span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>brier_skill_score_estimator_impl <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>    truth, </span>
+<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>    estimate, </span>
+<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>    ref_estimate, </span>
+<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>    event_level,</span>
+<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a>    case_weights</span>
+<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb6-56"><a href="#cb6-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bss</span>(</span>
+<span id="cb6-57"><a href="#cb6-57" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> truth,</span>
+<span id="cb6-58"><a href="#cb6-58" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> estimate,</span>
+<span id="cb6-59"><a href="#cb6-59" aria-hidden="true" tabindex="-1"></a>    <span class="at">ref_estimate =</span> ref_estimate,</span>
+<span id="cb6-60"><a href="#cb6-60" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> event_level,</span>
+<span id="cb6-61"><a href="#cb6-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">case_weights =</span> case_weights</span>
+<span id="cb6-62"><a href="#cb6-62" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-63"><a href="#cb6-63" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-64"><a href="#cb6-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-65"><a href="#cb6-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-66"><a href="#cb6-66" aria-hidden="true" tabindex="-1"></a>brier_skill_score_vec <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb6-67"><a href="#cb6-67" aria-hidden="true" tabindex="-1"></a>    truth, </span>
+<span id="cb6-68"><a href="#cb6-68" aria-hidden="true" tabindex="-1"></a>    estimate, </span>
+<span id="cb6-69"><a href="#cb6-69" aria-hidden="true" tabindex="-1"></a>    ref_estimate, </span>
+<span id="cb6-70"><a href="#cb6-70" aria-hidden="true" tabindex="-1"></a>    <span class="at">na_rm =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb6-71"><a href="#cb6-71" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> yardstick<span class="sc">:::</span><span class="fu">yardstick_event_level</span>(),</span>
+<span id="cb6-72"><a href="#cb6-72" aria-hidden="true" tabindex="-1"></a>    <span class="at">case_weights =</span> <span class="cn">NULL</span>, </span>
+<span id="cb6-73"><a href="#cb6-73" aria-hidden="true" tabindex="-1"></a>    ...</span>
+<span id="cb6-74"><a href="#cb6-74" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb6-75"><a href="#cb6-75" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-76"><a href="#cb6-76" aria-hidden="true" tabindex="-1"></a>  yardstick<span class="sc">:::</span><span class="fu">abort_if_class_pred</span>(truth)</span>
+<span id="cb6-77"><a href="#cb6-77" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-78"><a href="#cb6-78" aria-hidden="true" tabindex="-1"></a>  estimator <span class="ot">&lt;-</span> yardstick<span class="sc">::</span><span class="fu">finalize_estimator</span>(</span>
+<span id="cb6-79"><a href="#cb6-79" aria-hidden="true" tabindex="-1"></a>    truth, </span>
+<span id="cb6-80"><a href="#cb6-80" aria-hidden="true" tabindex="-1"></a>    <span class="at">metric_class =</span> <span class="st">'brier_skill_score'</span></span>
+<span id="cb6-81"><a href="#cb6-81" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-82"><a href="#cb6-82" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>  yardstick<span class="sc">::</span><span class="fu">check_prob_metric</span>(truth, estimate, case_weights, estimator)</span>
+<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (na_rm) {</span>
+<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a>    result <span class="ot">&lt;-</span> yardstick<span class="sc">::</span><span class="fu">yardstick_remove_missing</span>(truth, estimate, case_weights)</span>
+<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>    truth <span class="ot">&lt;-</span> result<span class="sc">$</span>truth</span>
+<span id="cb6-89"><a href="#cb6-89" aria-hidden="true" tabindex="-1"></a>    estimate <span class="ot">&lt;-</span> result<span class="sc">$</span>estimate</span>
+<span id="cb6-90"><a href="#cb6-90" aria-hidden="true" tabindex="-1"></a>    case_weights <span class="ot">&lt;-</span> result<span class="sc">$</span>case_weights</span>
+<span id="cb6-91"><a href="#cb6-91" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (yardstick<span class="sc">::</span><span class="fu">yardstick_any_missing</span>(truth, estimate, case_weights)) {</span>
+<span id="cb6-92"><a href="#cb6-92" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(<span class="cn">NA_real_</span>)</span>
+<span id="cb6-93"><a href="#cb6-93" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-94"><a href="#cb6-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-95"><a href="#cb6-95" aria-hidden="true" tabindex="-1"></a>  <span class="fu">brier_skill_score_estimator_impl</span>(</span>
+<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> truth,</span>
+<span id="cb6-97"><a href="#cb6-97" aria-hidden="true" tabindex="-1"></a>    <span class="at">estimate =</span> estimate,</span>
+<span id="cb6-98"><a href="#cb6-98" aria-hidden="true" tabindex="-1"></a>    <span class="at">ref_estimate =</span> ref_estimate,</span>
+<span id="cb6-99"><a href="#cb6-99" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> event_level,</span>
+<span id="cb6-100"><a href="#cb6-100" aria-hidden="true" tabindex="-1"></a>    <span class="at">case_weights =</span> case_weights</span>
+<span id="cb6-101"><a href="#cb6-101" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-104"><a href="#cb6-104" aria-hidden="true" tabindex="-1"></a>brier_skill_score.data.frame <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb6-105"><a href="#cb6-105" aria-hidden="true" tabindex="-1"></a>    data, </span>
+<span id="cb6-106"><a href="#cb6-106" aria-hidden="true" tabindex="-1"></a>    truth, </span>
+<span id="cb6-107"><a href="#cb6-107" aria-hidden="true" tabindex="-1"></a>    ...,</span>
+<span id="cb6-108"><a href="#cb6-108" aria-hidden="true" tabindex="-1"></a>    <span class="at">na_rm =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb6-109"><a href="#cb6-109" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> yardstick<span class="sc">:::</span><span class="fu">yardstick_event_level</span>(),</span>
+<span id="cb6-110"><a href="#cb6-110" aria-hidden="true" tabindex="-1"></a>    <span class="at">case_weights =</span> <span class="cn">NULL</span></span>
+<span id="cb6-111"><a href="#cb6-111" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb6-112"><a href="#cb6-112" aria-hidden="true" tabindex="-1"></a>  yardstick<span class="sc">::</span><span class="fu">prob_metric_summarizer</span>(</span>
+<span id="cb6-113"><a href="#cb6-113" aria-hidden="true" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">'brier_skill_score'</span>,</span>
+<span id="cb6-114"><a href="#cb6-114" aria-hidden="true" tabindex="-1"></a>    <span class="at">fn =</span> brier_skill_score_vec,</span>
+<span id="cb6-115"><a href="#cb6-115" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> data,</span>
+<span id="cb6-116"><a href="#cb6-116" aria-hidden="true" tabindex="-1"></a>    <span class="at">truth =</span> <span class="sc">!!</span>rlang<span class="sc">::</span><span class="fu">enquo</span>(truth),</span>
+<span id="cb6-117"><a href="#cb6-117" aria-hidden="true" tabindex="-1"></a>    ...,</span>
+<span id="cb6-118"><a href="#cb6-118" aria-hidden="true" tabindex="-1"></a>    <span class="at">na_rm =</span> na_rm,</span>
+<span id="cb6-119"><a href="#cb6-119" aria-hidden="true" tabindex="-1"></a>    <span class="at">event_level =</span> event_level,</span>
+<span id="cb6-120"><a href="#cb6-120" aria-hidden="true" tabindex="-1"></a>    <span class="at">case_weights =</span> <span class="sc">!!</span>rlang<span class="sc">::</span><span class="fu">enquo</span>(case_weights),</span>
+<span id="cb6-121"><a href="#cb6-121" aria-hidden="true" tabindex="-1"></a>    <span class="at">fn_options =</span> <span class="fu">list</span>(</span>
+<span id="cb6-122"><a href="#cb6-122" aria-hidden="true" tabindex="-1"></a>      <span class="at">ref_estimate =</span> ref_estimate</span>
+<span id="cb6-123"><a href="#cb6-123" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb6-124"><a href="#cb6-124" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-125"><a href="#cb6-125" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-126"><a href="#cb6-126" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-127"><a href="#cb6-127" aria-hidden="true" tabindex="-1"></a><span class="do">## The BSS is more intuitive to caluclate using the match non-win rate.</span></span>
+<span id="cb6-128"><a href="#cb6-128" aria-hidden="true" tabindex="-1"></a><span class="do">##   Accordingly, we'll use .pred_no for our probability.</span></span>
+<span id="cb6-129"><a href="#cb6-129" aria-hidden="true" tabindex="-1"></a>REF_ESTIMATE <span class="ot">&lt;-</span> matches <span class="sc">|&gt;</span> </span>
+<span id="cb6-130"><a href="#cb6-130" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">count</span>(target) <span class="sc">|&gt;</span> </span>
+<span id="cb6-131"><a href="#cb6-131" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">prop =</span> n <span class="sc">/</span> <span class="fu">sum</span>(n)) <span class="sc">|&gt;</span> </span>
+<span id="cb6-132"><a href="#cb6-132" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(target <span class="sc">!=</span> <span class="st">'yes'</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb6-133"><a href="#cb6-133" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">pull</span>(prop)</span>
+<span id="cb6-134"><a href="#cb6-134" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-135"><a href="#cb6-135" aria-hidden="true" tabindex="-1"></a>raw_brier_skill_score <span class="ot">&lt;-</span> <span class="fu">brier_skill_score_vec</span>(</span>
+<span id="cb6-136"><a href="#cb6-136" aria-hidden="true" tabindex="-1"></a>  <span class="at">truth =</span> calibrated<span class="sc">$</span>target,</span>
+<span id="cb6-137"><a href="#cb6-137" aria-hidden="true" tabindex="-1"></a>  <span class="at">estimate =</span> calibrated<span class="sc">$</span>.raw_pred_no,</span>
+<span id="cb6-138"><a href="#cb6-138" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref_estimate =</span> REF_ESTIMATE</span>
+<span id="cb6-139"><a href="#cb6-139" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-140"><a href="#cb6-140" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-141"><a href="#cb6-141" aria-hidden="true" tabindex="-1"></a>calibrated_brier_skill_score <span class="ot">&lt;-</span> <span class="fu">brier_skill_score_vec</span>(</span>
+<span id="cb6-142"><a href="#cb6-142" aria-hidden="true" tabindex="-1"></a>  <span class="at">truth =</span> calibrated<span class="sc">$</span>target,</span>
+<span id="cb6-143"><a href="#cb6-143" aria-hidden="true" tabindex="-1"></a>  <span class="at">estimate =</span> calibrated<span class="sc">$</span>.pred_no,</span>
+<span id="cb6-144"><a href="#cb6-144" aria-hidden="true" tabindex="-1"></a>  <span class="at">ref_estimate =</span> REF_ESTIMATE</span>
+<span id="cb6-145"><a href="#cb6-145" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-146"><a href="#cb6-146" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-147"><a href="#cb6-147" aria-hidden="true" tabindex="-1"></a>compared_brier_skill_scores <span class="ot">&lt;-</span> <span class="fu">round</span>(</span>
+<span id="cb6-148"><a href="#cb6-148" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(</span>
+<span id="cb6-149"><a href="#cb6-149" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Un-calibrated'</span> <span class="ot">=</span> raw_brier_skill_score,</span>
+<span id="cb6-150"><a href="#cb6-150" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Calibrated'</span> <span class="ot">=</span> calibrated_brier_skill_score</span>
+<span id="cb6-151"><a href="#cb6-151" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb6-152"><a href="#cb6-152" aria-hidden="true" tabindex="-1"></a>  <span class="dv">3</span></span>
+<span id="cb6-153"><a href="#cb6-153" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -570,8 +617,79 @@ cookieconsent.run({
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Un-calibrated    Calibrated </span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;         0.196         0.205</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Indeed, we have (marginally) improved the original pre-match win probabilities.</p>
-<p>I should note that the <code>{probably}</code> package offers <code>cal_validate_*()</code> functions to help with deciphering whether a calibrated model is truly better than the original. That set of functions uses a more robust and valid technique that I have here.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
+<p>Indeed, we have (marginally) improved the original pre-match win probabilities. But this approach is arguably a little naive–we’ve only re-assessed the entire data set a single time without accounting for potential uncertainties.</p>
+<p>Fortunately, the <code>{probably}</code> package provides <a href="https://probably.tidymodels.org/reference/index.html#calibration-validation">the <code>cal_validate_*()</code> family</a> of functions. These functions allow for a more rigorous assessment of whether the calibration enhances the original probabilities. We can generate resamples from the original data and then compute the average and standard error for our chosen metrics. This lets us compare the calibrated and uncalibrated probabilities more effectively.</p>
+<p>Let’s do just that, using <a href="https://en.wikipedia.org/wiki/Cross-validation_(statistics)">cross-validation</a> with 10 folds and 10 repeats We’ll again use BSS to evaluate the model probabilities.</p>
+<div class="cell">
+<details>
+<summary>Robustly evaluate=ing calibrator</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>sets <span class="ot">&lt;-</span> rsample<span class="sc">::</span><span class="fu">vfold_cv</span>(</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  matches, </span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">v =</span> <span class="dv">10</span>, </span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">repeats =</span> <span class="dv">10</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="do">## "fixed" in the sense that we're pre-defining the reference estimate.</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="do">##   I'm not sure there's another way of going about this when working in conjunction `yardstick::metric_set()` and `probably::cal_validate_*()`</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="do">##   with</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>fixed_brier_skill_score <span class="ot">&lt;-</span> <span class="cf">function</span>(...) {</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">brier_skill_score</span>(</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">ref_estimate =</span> REF_ESTIMATE,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>    ...</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>fixed_brier_skill_score <span class="ot">&lt;-</span> <span class="cf">function</span>(data, ...) {</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">UseMethod</span>(<span class="st">'brier_skill_score'</span>)</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>fixed_brier_skill_score <span class="ot">&lt;-</span> yardstick<span class="sc">::</span><span class="fu">new_prob_metric</span>(</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>  fixed_brier_skill_score,</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">direction =</span> <span class="st">'maximize'</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>eval_metrics <span class="ot">&lt;-</span> yardstick<span class="sc">::</span><span class="fu">metric_set</span>(</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>  fixed_brier_skill_score</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>validation <span class="ot">&lt;-</span> probably<span class="sc">::</span><span class="fu">cal_validate_beta</span>(</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>  sets,</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">truth =</span> target,</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>  <span class="at">metrics =</span> eval_metrics</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>validation_metrics <span class="ot">&lt;-</span> validation <span class="sc">|&gt;</span> </span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>  tune<span class="sc">::</span><span class="fu">collect_metrics</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>  <span class="do">## i think the `.config` column is bugged (it just says "config" for all rows?)</span></span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span>dplyr<span class="sc">::</span><span class="fu">any_of</span>(<span class="st">'.config'</span>))</span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>validation_metrics</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>validation_metrics</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 6</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   .metric           .type        .estimator  mean     n std_err</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;             &lt;chr&gt;        &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 brier_skill_score uncalibrated binary     0.196   100 0.00494</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 brier_skill_score calibrated   binary     0.202   100 0.00628</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We find that the calibrator does indeed offer a “significant” improvement when assessed through this more statistically rigorous method. Specifically, the mean BSS of the validation set, minus one standard error, exceeds the mean of the uncalibrated BSS by more than one standard error.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>pivoted_validation_metrics <span class="ot">&lt;-</span> validation_metrics <span class="sc">|&gt;</span> </span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    .type,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    mean,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">lower =</span> mean <span class="sc">-</span> std_err,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">upper =</span> mean <span class="sc">+</span> std_err</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>pivoted_validation_metrics</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 4</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   .type         mean lower upper</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;        &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 uncalibrated 0.196 0.191 0.201</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 calibrated   0.202 0.196 0.209</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
 </section>
 <section id="conclusion" class="level2">
@@ -595,20 +713,11 @@ No matching items
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>The <a href="https://www.tidymodels.org/learn/models/calibration"><code>{tidymodels}</code> guide</a> breaks down the traditional modeling workflow into three steps:</p>
-<blockquote class="blockquote">
-<ul>
-<li>the pre-processing stage (e.g., feature engineering, normalization, etc.)</li>
-<li>model fitting (actually training the model)</li>
-<li>post-processing (such as optimizing a probability threshold)</li>
-</ul>
-</blockquote>
-<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></li>
+<li id="fn1"><p>The <a href="https://www.tidymodels.org/learn/models/calibration"><code>{tidymodels}</code> guide</a> breaks down the traditional modeling workflow into three steps:<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn2"><p>Sticking with the basics, I use the defaults for <code>num_breaks</code> (10) and <code>conf_level</code> (0.9).<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn3"><p>We don’t have a skew problem in this context, but it’s good to note when a Beta calibration might provide meaningful benefits over other calibration methods.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn4"><p>I’ve discussed BSS in <a href="../../posts/opta-xg-model-calibration">a prior post on expected goals model calibration</a> and <a href="../../posts/epl-xpts-simulation-1">another post on expected goals match-implied win probabilities</a>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>In this case, I choose to use the observed match win rate as the reference model.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>The <code>cal_validate_*()</code> function resample a holdout set, compute ROC AUC and Brier score, and calculate standard error of the performance metrics.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

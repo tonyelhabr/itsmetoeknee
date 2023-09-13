@@ -2,7 +2,7 @@
 title: Calibrating Binary Probabilities
 description: Using calibration to improve classifier model performance
 date: 2023-09-11
-date-modified: 2023-09-14
+date-modified: 2023-09-12
 categories:
   - r
   - soccer
@@ -34,7 +34,7 @@ One of my favorite (and relatively new) packages in the [`{tidymodels}` ecosyste
 
 I'll be using the pre-match win probabilities from [FiveThirtyEight](https://data.fivethirtyeight.com/#soccer-spi) ([RIP](https://twitter.com/ryanabest/status/1672013407908667392)). Specifically, I'll subset their plethora of historical projections to two women's leagues: the [Women's Super League (WSL)](https://en.wikipedia.org/wiki/Women%27s_Super_League) in England and the [National Women's Soccer League (NWSL)](https://en.wikipedia.org/wiki/National_Women%27s_Soccer_League) in the U.S. I have a suspicion that the model probabilities are not as calibrated as they could be, as [has been observed that gender-agnostic models](https://statsbomb.com/articles/soccer/analytics-and-modelling-in-womens-football/) in soccer can be less performant for the women's game.
 
-To keep things simple, I'm going to treat this as a [binary classification](https://en.wikipedia.org/wiki/Binary_classification) task, where matches are the "positive" outcome (`"yes"`), and losses and draw are grouped as the "negative" outcome (`"no"`).
+To keep things simple, I'm going to treat this as a [binary classification](https://en.wikipedia.org/wiki/Binary_classification) task, where matches are the "positive" outcome (`"yes"`), and losses and draws are grouped as the "negative" outcome (`"no"`).
 
 ```{r}
 #| label: data-pull
@@ -96,7 +96,7 @@ We start with the ["diagnosis"](https://www.tidymodels.org/learn/models/calibrat
 
 [^2]: Sticking with the basics, I use the defaults for `num_breaks` (10) and `conf_level` (0.9).
 
-This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin's range. Ideally, if our predictions are calibrated, the curve produced should match up with a straight diagonal line, i.e. a 45 degree slope passing through (0,0) and (1,1). As a bonus, the `probably::cal_plot_*` family of functions even provides confidence intervals about the calibration curve.
+This function neatly divides the range of predicted probabilities from zero to one into distinct bins. For each bin, it calculates the observed event rate using data that has probabilities falling within that bin's range. Ideally, if our predictions are calibrated, the curve produced should match up with a straight diagonal line, i.e. a 45-degree slope passing through (0,0) and (1,1). As a bonus, the `probably::cal_plot_*` family of functions even provides confidence intervals about the calibration curve.
 
 ```{r}
 #| label: cal_plot_breaks
@@ -370,11 +370,11 @@ ggplot2::ggsave(
 
 ![](raw-calibration.png)
 
-Indeed, it looks like there is some room for improvement with the match probabilities. It seems that the FiveThirtyEight model over-predicts when the actual win rate is low, broadly below 20%; and, likewise, it tends to under-predict when the true win rate is really greater than 60%
+Indeed, it looks like there is some room for improvement with the match probabilities. It seems that the [FiveThirtyEight](https://fivethirtyeight.com/) model over-predicts when the actual win rate is low, broadly below 20%; and, likewise, it tends to under-predict when the true win rate is really greater than 60%
 
 ### Remediation
 
-Now we move on the ["remedation"](https://www.tidymodels.org/learn/models/calibration/#remediation) step. That is, we fit a model with the binary outcome as the target variable and the probability estimate as the lone input feature. `{probably}` offers several options with the `cal_estimate_*()` of functions.
+Now we move on to the ["remedation"](https://www.tidymodels.org/learn/models/calibration/#remediation) step. That is, we fit a model, a "calibrator", with the binary outcome as the target variable and the probability estimate as the lone input feature. `{probably}` offers several options with [the `cal_estimate_*()` set of functions](https://probably.tidymodels.org/reference/index.html#calibration-validation).
 
 I've opted for [Beta calibration](https://probably.tidymodels.org/reference/cal_estimate_beta.html), although [logistic calibration](https://probably.tidymodels.org/reference/cal_estimate_logistic.html) would work fine here as well. Beta calibration is a little more flexible, and, consequently, [can provide superior probability estimates](https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-11/issue-2/Beyond-sigmoids--How-to-obtain-well-calibrated-probabilities-from/10.1214/17-EJS1338SI.full), especially when the target distribution is skewed.[^3]
 
@@ -489,7 +489,7 @@ ggplot2::ggsave(
 
 We observe that the calibrator has increased point estimates on the lower end of the spectrum and decreased estimates on the upper end of the spectrum. The calibration has seemingly fine-tuned under-predicting and over-predicting behavior from the original model.
 
-To really see the change that remediaton model has made, we can re-make our calibration curve plot, adding the remediated, or "calibrated", curve along side the original "un-calibrated" curve.
+To see the change that calibrator has made, we can re-make our calibration curve plot, adding the "calibrated" curve alongside the original "un-calibrated" curve.
 
 ```{r}
 #| label: compared_calibration_plot
@@ -556,83 +556,25 @@ To quantitatively describe the difference in calibration between the two models,
 #| code-summary: Brier Skill Score (BSS) calculation
 library(yardstick)
 library(rlang)
-brier_score <- function(data, ...) {
-  UseMethod('brier_score')
-}
-
-brier_score <- yardstick::new_prob_metric(brier_score, direction = 'minimize')
-
-brier_score_vec <- function(truth, estimate, na_rm = TRUE, event_level, ...) {
-  
-  brier_score_impl <- function(truth, estimate, event_level, ...) {
-    truth <- 1 - (as.numeric(truth) - 1)
-    
-    if (event_level == 'second') {
-      truth <- 1 - truth
-    }
-    
-    mean((truth - estimate)^2)
-  }
-  
-  if (length(estimate) == 1) {
-    estimate <- rep(estimate, length(truth))
-  }
-  
-  yardstick::metric_vec_template(
-    metric_impl = brier_score_impl,
-    truth = truth,
-    estimate = estimate,
-    na_rm = na_rm,
-    cls = c('factor', 'numeric'),
-    estimator = 'binary',
-    event_level = event_level,
-    ...
-  )
-}
-
-brier_score.data.frame <- function(data, truth, estimate, na_rm = TRUE, event_level = 'first', ...) {
-  yardstick::metric_summarizer(
-    metric_nm = 'brier_score',
-    metric_fn = brier_score_vec,
-    data = data,
-    truth = !!rlang::enquo(truth),
-    estimate = !!rlang::enquo(estimate),
-    na_rm = na_rm,
-    event_level = event_level,
-    ...
-  )
-}
 
 brier_skill_score <- function(data, ...) {
   UseMethod('brier_skill_score')
 }
 
-brier_skill_score <- yardstick::new_prob_metric(brier_skill_score, direction = 'maximize')
+brier_skill_score <- yardstick::new_prob_metric(
+  brier_skill_score, 
+  direction = 'maximize'
+)
 
-brier_skill_score_vec <- function(truth, estimate, ref_estimate, na_rm = TRUE, event_level, ...) {
-  
-  brier_skill_score_impl <- function(truth, estimate, ref_estimate, event_level, ...) {
-    truth_quo <- rlang::enquo(truth)
+bss <- function(
+    truth, 
+    estimate, 
+    ref_estimate, 
+    event_level,
+    case_weights,
+    ...
+) {
     
-    estimate_bs <- brier_score_vec(
-      truth = truth,
-      estimate = estimate,
-      na_rm = na_rm,
-      event_level = event_level,
-      ...
-    )
-    
-    ref_bs <- brier_score_vec(
-      truth = truth,
-      estimate = ref_estimate,
-      na_rm = na_rm,
-      event_level = event_level,
-      ...
-    )
-    
-    1 - (estimate_bs / ref_bs)
-  }
-  
   if (length(estimate) == 1) {
     estimate <- rep(estimate, length(truth))
   }
@@ -641,66 +583,121 @@ brier_skill_score_vec <- function(truth, estimate, ref_estimate, na_rm = TRUE, e
     ref_estimate <- rep(ref_estimate, length(truth))
   }
   
-  yardstick::metric_vec_template(
-    metric_impl = brier_skill_score_impl,
+  estimate_brier_score <- brier_class_vec(
+    truth = truth,
+    estimate = estimate,
+    event_level = event_level,
+    case_weights = case_weights,
+    ...
+  )
+  
+  ref_brier_score <- brier_class_vec(
+    truth = truth,
+    estimate = ref_estimate,
+    event_level = event_level,
+    case_weights = case_weights,
+    ...
+  )
+  
+  1 - (estimate_brier_score / ref_brier_score)
+}
+
+brier_skill_score_estimator_impl <- function(
+    truth, 
+    estimate, 
+    ref_estimate, 
+    event_level,
+    case_weights
+) {
+  bss(
     truth = truth,
     estimate = estimate,
     ref_estimate = ref_estimate,
-    cls = c('factor', 'numeric'),
-    estimator = 'binary',
     event_level = event_level,
-    ...
+    case_weights = case_weights
   )
 }
 
-brier_skill_score.data.frame <- function(data, truth, estimate, ref_estimate, ...) {
-  yardstick::metric_summarizer(
-    metric_nm = 'brier_skill_score',
-    metric_fn = brier_skill_score_vec,
+
+brier_skill_score_vec <- function(
+    truth, 
+    estimate, 
+    ref_estimate, 
+    na_rm = TRUE, 
+    event_level = yardstick:::yardstick_event_level(),
+    case_weights = NULL, 
+    ...
+) {
+  
+  yardstick:::abort_if_class_pred(truth)
+  
+  estimator <- yardstick::finalize_estimator(
+    truth, 
+    metric_class = 'brier_skill_score'
+  )
+  
+  yardstick::check_prob_metric(truth, estimate, case_weights, estimator)
+  
+  if (na_rm) {
+    result <- yardstick::yardstick_remove_missing(truth, estimate, case_weights)
+    
+    truth <- result$truth
+    estimate <- result$estimate
+    case_weights <- result$case_weights
+  } else if (yardstick::yardstick_any_missing(truth, estimate, case_weights)) {
+    return(NA_real_)
+  }
+
+  brier_skill_score_estimator_impl(
+    truth = truth,
+    estimate = estimate,
+    ref_estimate = ref_estimate,
+    event_level = event_level,
+    case_weights = case_weights
+  )
+}
+
+brier_skill_score.data.frame <- function(
+    data, 
+    truth, 
+    ...,
+    na_rm = TRUE,
+    event_level = yardstick:::yardstick_event_level(),
+    case_weights = NULL
+) {
+  yardstick::prob_metric_summarizer(
+    name = 'brier_skill_score',
+    fn = brier_skill_score_vec,
     data = data,
     truth = !!rlang::enquo(truth),
-    estimate = !!rlang::enquo(estimate),
-    # na_rm = na_rm,
-    # event_level = event_level,
-    metric_fn_options = list(
-      ref_estimate = rlang::enquo(ref_estimate)
-    ),
-    ...
+    ...,
+    na_rm = na_rm,
+    event_level = event_level,
+    case_weights = !!rlang::enquo(case_weights),
+    fn_options = list(
+      ref_estimate = ref_estimate
+    )
   )
 }
 
-ref_estimate <- matches |> 
+## The BSS is more intuitive to caluclate using the match non-win rate.
+##   Accordingly, we'll use .pred_no for our probability.
+REF_ESTIMATE <- matches |> 
   dplyr::count(target) |> 
   dplyr::mutate(prop = n / sum(n)) |> 
-  dplyr::filter(target == 'yes') |> 
+  dplyr::filter(target != 'yes') |> 
   dplyr::pull(prop)
-
-brier_score_vec(
-  truth = calibrated$target,
-  estimate = calibrated$.raw_pred_yes,
-  ref_estimate = ref_estimate,
-  event_level = 'second'
-)
-
-brier_score_vec(
-  truth = calibrated$target,
-  estimate = calibrated$.pred_yes,
-  ref_estimate = ref_estimate,
-  event_level = 'second'
-)
 
 raw_brier_skill_score <- brier_skill_score_vec(
   truth = calibrated$target,
-  estimate = calibrated$.raw_pred_yes,
-  ref_estimate = ref_estimate,
-  event_level = 'second'
+  estimate = calibrated$.raw_pred_no,
+  ref_estimate = REF_ESTIMATE
 )
 
 calibrated_brier_skill_score <- brier_skill_score_vec(
   truth = calibrated$target,
-  estimate = calibrated$.pred_yes,
-  ref_estimate = ref_estimate,
-  event_level = 'second'
+  estimate = calibrated$.pred_no,
+  ref_estimate = REF_ESTIMATE
 )
 
 compared_brier_skill_scores <- round(
@@ -726,44 +723,94 @@ compared_brier_skill_scores
 #>         0.196         0.205
 ```
 
-Indeed, we have (marginally) improved the original pre-match win probabilities.
+Indeed, we have (marginally) improved the original pre-match win probabilities. But this approach is arguably a little naive--we've only re-assessed the entire data set a single time without accounting for potential uncertainties.
 
-I should note that the `{probably}` package offers `cal_validate_*()` functions to help with deciphering whether a calibrated model is truly better than the original. That set of functions uses a more robust and valid technique that I have here.[^6]
+Fortunately, the `{probably}` package provides [the `cal_validate_*()` family](https://probably.tidymodels.org/reference/index.html#calibration-validation) of functions. These functions allow for a more rigorous assessment of whether the calibration enhances the original probabilities. We can generate resamples from the original data and then compute the average and standard error for our chosen metrics. This lets us compare the calibrated and uncalibrated probabilities more effectively.
 
-[^6]: The `cal_validate_*()` function resample a holdout set, compute ROC AUC and Brier score, and calculate standard error of the performance metrics.
+Let's do just that, using [cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)) with 10 folds and 10 repeats We'll again use BSS to evaluate the model probabilities.
 
 ```{r}
-#| label: cal_validate_beta
+#| label: validation_metrics
 #| code-fold: true
-#| code-summary: Using probably::cal_validate_beta
-
+#| code-summary: Robustly evaluate=ing calibrator
 set.seed(42)
-sets <- rsample::vfold_cv(matches)
-
-fixed_brier_skill_score <- purrr::partial(
-  brier_skill_score,
-  ref_estimate = !!ref_estimate
+sets <- rsample::vfold_cv(
+  matches, 
+  v = 10, 
+  repeats = 10
 )
+
+## "fixed" in the sense that we're pre-defining the reference estimate.
+##   I'm not sure there's another way of going about this when working in conjunction `yardstick::metric_set()` and `probably::cal_validate_*()`
+##   with
+fixed_brier_skill_score <- function(...) {
+  brier_skill_score(
+    ref_estimate = REF_ESTIMATE,
+    ...
+  )
+}
+
+fixed_brier_skill_score <- function(data, ...) {
+  UseMethod('brier_skill_score')
+}
+
+fixed_brier_skill_score <- yardstick::new_prob_metric(
+  fixed_brier_skill_score,
+  direction = 'maximize'
+)
+
 eval_metrics <- yardstick::metric_set(
-  brier_skill_score,
-  yardstick::brier_class
+  fixed_brier_skill_score
 )
 
 validation <- probably::cal_validate_beta(
   sets,
   truth = target,
-  metrics = eval_metrics,
-  # estimate = starts_with('.pred'),
-  event_level = 'second'
+  metrics = eval_metrics
 )
 
-collect_metrics(validation)
+validation_metrics <- validation |> 
+  tune::collect_metrics() |> 
+  ## i think the `.config` column is bugged (it just says "config" for all rows?)
+  dplyr::select(-dplyr::any_of('.config'))
+validation_metrics
+```
 
-# debugonce(tune:::collect_predictions.tune_results)
-segment_logistic %>%
-  rsample::vfold_cv() %>%
-  cal_validate_beta(Class, save_pred = TRUE) |> 
-  collect_predictions()
+```{r}
+#| label: validation_metrics-save
+#| include: false
+qs::qsave(validation_metrics, file.path(PROJ_DIR, 'validation_metrics.qs'))
+```
+
+```{r}
+#| label: validation_metrics-show
+#| code-fold: false
+validation_metrics
+#> # A tibble: 2 × 6
+#>   .metric           .type        .estimator  mean     n std_err
+#>   <chr>             <chr>        <chr>      <dbl> <int>   <dbl>
+#> 1 brier_skill_score uncalibrated binary     0.196   100 0.00494
+#> 2 brier_skill_score calibrated   binary     0.202   100 0.00628
+```
+
+We find that the calibrator does indeed offer a "significant" improvement when assessed through this more statistically rigorous method. Specifically, the mean BSS of the validation set, minus one standard error, exceeds the mean of the uncalibrated BSS by more than one standard error.
+
+```{r}
+#| label: pivoted_validation_metrics
+#| code-fold: false
+pivoted_validation_metrics <- validation_metrics |> 
+  dplyr::transmute(
+    .type,
+    mean,
+    lower = mean - std_err,
+    upper = mean + std_err
+  )
+pivoted_validation_metrics
+#> # A tibble: 2 × 4
+#>   .type         mean lower upper
+#>   <chr>        <dbl> <dbl> <dbl>
+#> 1 uncalibrated 0.196 0.191 0.201
+#> 2 calibrated   0.202 0.196 0.209
 ```
 
 ## Conclusion
