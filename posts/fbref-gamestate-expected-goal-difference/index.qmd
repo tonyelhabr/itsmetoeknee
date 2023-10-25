@@ -1,0 +1,1103 @@
+---
+title: Game state with FBref data
+description: Calculating expected goal difference (xGD) with respect to game state, using FBref data.
+date: 2023-10-27
+categories:
+  - r
+  - soccer
+image: 2023-mls-xgd-p90.png
+execute: 
+  code-fold: true
+  eval: false
+  include: true
+  echo: true
+---
+
+## Introduction
+
+Soccer is a discrete, low scoring game. Whether a team is leading, trailing, or tied with its opponent--["game state"](https://theathletic.com/2730755/2021/07/28/the-athletics-football-analytics-glossary-explaining-xg-ppda-field-tilt-and-how-to-use-them/)--at a given point in the game can heavily influence the way that the team approaches the rest of the game. Thus, it can be useful to contextualize other statistics, like [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/).
+
+Teams that are heavy favorites in a match may opt to play defensively if they get a large lead, which can result in fewer shots and a lower xG accumulated, which would typically be seen as "bad". However, if we contextualize the shot and xG rates by recognizing that the favored team, for example, was ahead by 3 goals for over half of the match, then we should probably put less weighting in the traditionally "bad" rates.
+
+Seems intuitive, right? Well, then why don't we see numbers contextualized by game state more often? Well, it can lead to biases. We may tend to over-attribute numbers to tactical style. Further, and to the point of this whole blog post, it's not all that trivial to calculate!
+
+So that's what this post is for. I'll show how to calculate a statistic--my choice, just to make it extra difficult, is expected goals difference (xGD), your expected goals minus your opponent's expected goals--with respect to the game state, using data from [FBref](https://fbref.com/).
+
+## Data pull
+
+The 2023 Major League Soccer (MLS) regular season just ended, and I'm interested to see what we might learn about the teams who qualified for playoffs when looking at their game state figures.
+
+To begin, we pull raw FBref data from pre-saved `{worldfootballR}` release data, starting with match shots.
+
+```{r}
+#| label: raw_shots
+## data scrape
+library(worldfootballR)  ## version: 0.6.4.9
+
+## data manipulation
+library(dplyr)
+library(lubridate)
+library(tidyr)
+
+COUNTRY <- 'USA'
+GENDER <- 'M'
+TIER <- '1st'
+SEASON_END_YEAR <- 2023
+
+raw_shots <- worldfootballR::load_fb_match_shooting(
+  country = COUNTRY,
+  gender = GENDER,
+  tier = TIER,
+  season_end_year = SEASON_END_YEAR
+)
+```
+
+```{r}
+#| label: raw_shots-save
+#| include: false
+# library(qs)
+PROJ_DIR <- 'posts/fbref-gamestate-expected-goal-difference'
+qs::qsave(raw_shots, file.path(PROJ_DIR, 'raw_shots.qs'))
+```
+
+```{r}
+#| label: raw_shots-glimpse
+#| code-fold: false
+dplyr::glimpse(raw_shots)
+#> Rows: 15,277
+#> Columns: 23
+#> $ MatchURL         <chr> "https://fbref.com/en/matches/48a684ed/Nashville-S…
+#> $ Date             <chr> "2023-02-25", "2023-02-25", "2023-02-25", "2023-02…
+#> $ Squad            <chr> "Nashville", "Nashville", "Nashville", "Nashville"…
+#> $ Home_Away        <chr> "Home", "Home", "Home", "Home", "Home", "Home", "H…
+#> $ Match_Half       <dbl> 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2,…
+#> $ Minute           <chr> "6", "13", "31", "34", "45+1", "51", "73", "80", "…
+#> $ Player           <chr> "Jacob Shaffelburg", "Sean Davis", "Teal Bunbury",…
+#> $ Player_Href      <chr> "/en/players/339a2561/Jacob-Shaffelburg", "/en/pla…
+#> $ xG               <chr> "0.39", "0.09", "0.03", "0.25", "0.04", "0.02", "0…
+#> $ PSxG             <chr> "0.47", "", "0.06", "0.74", "", "", "", "0.96", ""…
+#> $ Outcome          <chr> "Saved", "Off Target", "Saved", "Goal", "Off Targe…
+#> $ Distance         <chr> "16", "18", "29", "8", "17", "25", "28", "11", "22…
+#> $ `Body Part`      <chr> "Right Foot", "Left Foot", "Right Foot", "Right Fo…
+#> $ Notes            <chr> "", "Volley", "Deflected", "Volley", "", "", "", "…
+#> $ Player_SCA_1     <chr> "Randall Leal", "Aníbal Godoy", "Jacob Shaffelburg…
+#> $ Event_SCA_1      <chr> "Pass (Live)", "Pass (Live)", "Pass (Live)", "Pass…
+#> $ Player_SCA_2     <chr> "Walker Zimmerman", "Jack Maher", "Joe Willis", "T…
+#> $ Event_SCA_2      <chr> "Pass (Live)", "Pass (Live)", "Pass (Live)", "Foul…
+#> $ Competition_Name <chr> "Major League Soccer", "Major League Soccer", "Maj…
+#> $ Gender           <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", …
+#> $ Country          <chr> "USA", "USA", "USA", "USA", "USA", "USA", "USA", "…
+#> $ Tier             <chr> "1st", "1st", "1st", "1st", "1st", "1st", "1st", "…
+#> $ Season_End_Year  <int> 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 20…
+```
+
+Given a match URL like [this](https://fbref.com/en/matches/82503f4e/Atlanta-United-Inter-Miami-September-16-2023-Major-League-Soccer), `worldfootballR::load_fb_match_shooting()` provides data from the "Shots" table on the page.
+
+![](match-shots.png)
+
+While it might seem like the shots table is all we'd need to calculate expected goal difference (xGD), FBref's match shot log table doesn't include own goals. Nonetheless, we can use `worldfootballR::load_fb_match_summary()` to extract timestamps for own goals from the "Match Summary" timeline.
+
+![](match-summary.png)
+
+```{r}
+#| label: raw_match_summaries
+raw_match_summaries <- worldfootballR::load_fb_match_summary(
+  country = COUNTRY,
+  gender = GENDER,
+  tier = TIER,
+  season_end_year = SEASON_END_YEAR
+)
+dplyr::glimpse(raw_match_summaries)
+```
+
+```{r}
+#| label: raw_match_summaries-save
+#| include: false
+qs::qsave(raw_match_summaries, file.path(PROJ_DIR, 'raw_match_summaries.qs'))
+```
+
+```{r}
+#| label: raw_match_summaries-glimpse
+#| code-fold: false
+dplyr::glimpse(raw_match_summaries)
+#> Rows: 9,565
+#> Columns: 33
+#> $ MatchURL          <chr> "https://fbref.com/en/matches/48a684ed/Nashville-…
+#> $ League            <chr> "Major League Soccer", "Major League Soccer", "Ma…
+#> $ Match_Date        <chr> "2023-02-25", "2023-02-25", "2023-02-25", "2023-0…
+#> $ Matchweek         <chr> "Major League Soccer (Regular Season)", "Major Le…
+#> $ Home_Team         <chr> "Nashville SC", "Nashville SC", "Nashville SC", "…
+#> $ Home_Formation    <chr> "4-2-3-1", "4-2-3-1", "4-2-3-1", "4-2-3-1", "4-2-…
+#> $ Home_Score        <dbl> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2…
+#> $ Home_xG           <dbl> 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3,…
+#> $ Home_Goals        <chr> "Walker Zimmerman · 34&rsquor; Jacob Shaffelburg …
+#> $ Home_Yellow_Cards <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",…
+#> $ Home_Red_Cards    <chr> "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",…
+#> $ Away_Team         <chr> "New York City FC", "New York City FC", "New York…
+#> $ Away_Formation    <chr> "4-2-3-1", "4-2-3-1", "4-2-3-1", "4-2-3-1", "4-2-…
+#> $ Away_Score        <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1…
+#> $ Away_xG           <dbl> 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4,…
+#> $ Away_Goals        <chr> "", "", "", "", "", "", "", "", "", "", "", "", "…
+#> $ Away_Yellow_Cards <chr> "4", "4", "4", "4", "4", "4", "4", "4", "4", "4",…
+#> $ Away_Red_Cards    <chr> "0", "0", "0", "0", "0", "0", "0", "0", "0", "0",…
+#> $ Game_URL          <chr> "https://fbref.com/en/matches/48a684ed/Nashville-…
+#> $ Team              <chr> "New York City FC", "Nashville SC", "Nashville SC…
+#> $ Home_Away         <chr> "Away", "Home", "Home", "Away", "Away", "Home", "…
+#> $ Event_Time        <dbl> 28, 34, 58, 62, 70, 72, 74, 75, 80, 82, 82, 83, 9…
+#> $ Is_Pens           <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, …
+#> $ Event_Half        <dbl> 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2…
+#> $ Event_Type        <chr> "Yellow Card", "Goal", "Yellow Card", "Yellow Car…
+#> $ Event_Players     <chr> "Braian Cufré", "Walker Zimmerman Assist: Fafà Pi…
+#> $ Score_Progression <chr> "0:0", "1:0", "1:0", "1:0", "1:0", "1:0", "1:0", …
+#> $ Penalty_Number    <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ Competition_Name  <chr> "Major League Soccer", "Major League Soccer", "Ma…
+#> $ Gender            <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M",…
+#> $ Country           <chr> "USA", "USA", "USA", "USA", "USA", "USA", "USA", …
+#> $ Tier              <chr> "1st", "1st", "1st", "1st", "1st", "1st", "1st", …
+#> $ Season_End_Year   <int> 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2…
+```
+
+## Data wrangling
+
+Now we start to clean up the raw data. Starting with the match summary data, we:
+
+1.  Create a `match_id` field, to make it easy to join this data set with the shots data set.
+2.  Clean up the time fields, `minutes` and `minutes_added`.
+3.  Rename existing columns.
+
+```{r}
+#| label: match_summaries
+## Extract the from "47880eb7" from "https://fbref.com/en/matches/47880eb7/Liverpool-Manchester-City-November-10-2019-Premier-League"
+extract_fbref_match_id <- function(match_url) {
+  basename(dirname(match_url))
+}
+
+match_summaries <- raw_match_summaries |> 
+  dplyr::group_by(MatchURL) |> 
+  dplyr::mutate(
+    match_summary_rn = dplyr::row_number(dplyr::desc(Event_Time)),
+    match_has_no_penalties = all(Event_Type != 'Penalty')
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    match_has_no_goals = Away_Score == 0 & Home_Score == 0
+  ) |> 
+  ## Drop non-shot events, e.g. card and substitution events. 
+  ##   Always keep the first timeline event, so that we're not accidentally dropping matches.
+  dplyr::filter(
+    Event_Type %in% c('Goal', 'Own Goal', 'Penalty') | 
+      ## don't drop games with no goals
+      (match_has_no_goals & match_has_no_penalties & match_summary_rn == 1)
+  ) |> 
+  dplyr::transmute(
+    match_id = extract_fbref_match_id(MatchURL),
+    season = Season_End_Year,
+    gender = Gender,
+    tier = Tier,
+    date = lubridate::ymd(Match_Date),
+    home_team = Home_Team ,
+    away_team = Away_Team,
+    period = as.integer(Event_Half),
+    ## ensure that minutes always has a value
+    minutes = dplyr::case_when(
+      period == 1L & Event_Time > 45L ~ 45L, 
+      period == 2L & Event_Time > 90L ~ 90L,
+      .default = Event_Time
+    ) |> as.integer(),
+    minutes_added = dplyr::case_when(
+      period == 1L & Event_Time > 45 ~ Event_Time - 45L, 
+      period == 2L & Event_Time > 90 ~ Event_Time - 90L,
+      .default = NA_integer_
+    ),
+    home_g = as.integer(gsub('[:].*$', '', Score_Progression)), ## after event
+    away_g = as.integer(gsub('^.*[:]', '', Score_Progression)),
+    is_own_goal = Event_Type == 'Own Goal',
+    team = Team,
+    player = Event_Players
+  )
+```
+
+```{r}
+#| label: match_summaries-save
+#| include: false
+qs::qsave(match_summaries, file.path(PROJ_DIR, 'match_summaries.qs'))
+```
+
+```{r}
+#| label: match_summaries-glimpse
+#| code-fold: false
+dplyr::glimpse(match_summaries)
+#> Rows: 1,752
+#> Columns: 15
+#> $ match_id      <chr> "48a684ed", "48a684ed", "1861e533", "1861e533", "1861…
+#> $ season        <int> 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023,…
+#> $ gender        <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M", "M"…
+#> $ tier          <chr> "1st", "1st", "1st", "1st", "1st", "1st", "1st", "1st…
+#> $ date          <date> 2023-02-25, 2023-02-25, 2023-02-25, 2023-02-25, 2023…
+#> $ home_team     <chr> "Nashville SC", "Nashville SC", "FC Cincinnati", "FC …
+#> $ away_team     <chr> "New York City FC", "New York City FC", "Houston Dyna…
+#> $ period        <int> 1, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 2, 2, 1, 1,…
+#> $ minutes       <int> 34, 80, 19, 45, 48, 48, 12, 39, 90, 90, 28, 45, 52, 7…
+#> $ minutes_added <dbl> NA, NA, NA, 2, NA, NA, NA, NA, 3, 9, NA, 3, NA, NA, N…
+#> $ home_g        <int> 1, 2, 1, 1, 2, 0, 0, 0, 1, 2, 0, 1, 2, 3, 4, 1, 0, 1,…
+#> $ away_g        <int> 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1,…
+#> $ is_own_goal   <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALS…
+#> $ team          <chr> "Nashville SC", "Nashville SC", "FC Cincinnati", "Hou…
+#> $ player        <chr> "Walker Zimmerman Assist: Fafà Picault", "Jacob Shaff…
+```
+
+Next, we start to clean up the shots data frame. The data wrangling is similar.
+
+```{r}
+#| label: shots
+shots <- raw_shots |> 
+  dplyr::transmute(
+    match_id = extract_fbref_match_id(MatchURL),
+    period = as.integer(Match_Half),
+    ## convert "45+2" to "45"
+    minutes = ifelse(
+      grepl('[+]', Minute),
+      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\1', Minute)), 
+      as.integer(Minute)
+    ),
+    ## convert "45+2" to "2"
+    minutes_added = ifelse(
+      grepl('[+]', Minute), 
+      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\2', Minute)), 
+      NA_integer_
+    ),
+    is_home = Home_Away == 'Home',
+    team = Squad,
+    player = Player,
+    is_goal = Outcome == 'Goal',
+    xg = as.double(xG)
+  )
+```
+
+```{r}
+#| label: shots-save
+#| include: false
+qs::qsave(shots, file.path(PROJ_DIR, 'shots.qs'))
+```
+
+```{r}
+#| label: shots-glimpse
+#| code-fold: false
+dplyr::glimpse(shots)
+#> Rows: 15,277
+#> Columns: 9
+#> $ match_id      <chr> "48a684ed", "48a684ed", "48a684ed", "48a684ed", "48a6…
+#> $ period        <int> 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 2,…
+#> $ minutes       <int> 6, 13, 31, 34, 45, 51, 73, 80, 83, 19, 30, 41, 45, 48…
+#> $ minutes_added <int> NA, NA, NA, NA, 1, NA, NA, NA, NA, NA, NA, NA, 2, NA,…
+#> $ is_home       <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE,…
+#> $ team          <chr> "Nashville", "Nashville", "Nashville", "Nashville", "…
+#> $ player        <chr> "Jacob Shaffelburg", "Sean Davis", "Teal Bunbury", "W…
+#> $ is_goal       <lgl> FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE,…
+#> $ xg            <dbl> 0.39, 0.09, 0.03, 0.25, 0.04, 0.02, 0.02, 0.45, 0.04,…
+```
+
+### Accounting for Own goals
+
+Now, for the ugliest part of all this shot data wrangling--handling own goals.
+
+First, we inject "synthetic" records into the shots data for every case where the match summary indicates that there is an own goal.
+
+```{r}
+#| label: shots_with_own_goals
+shots_with_own_goals <- dplyr::bind_rows(
+  shots |> 
+    dplyr::transmute(
+      match_id,
+      period,
+      minutes,
+      minutes_added,
+      is_home,
+      team,
+      player,
+      is_goal,
+      xg,
+      is_own_goal = FALSE
+    ),
+  ## synthetic events for own goals
+  match_summaries |> 
+    dplyr::filter(
+      is_own_goal
+    ) |> 
+    dplyr::transmute(
+      match_id,
+      period,
+      minutes,
+      minutes_added,
+      is_home = team == home_team,
+      team,
+      player,
+      is_goal = TRUE,
+      xg = NA_real_,
+      is_own_goal = TRUE
+    )
+)
+```
+
+Next, we add proper, cleaned columns for goals and xG.
+
+```{r}
+#| label: clean_shots
+clean_shots <- shots_with_own_goals |> 
+  ## To get meta-information about the game
+  dplyr::inner_join(
+    match_summaries |>
+      dplyr::distinct(match_id, home_team, away_team),
+    by = dplyr::join_by(match_id),
+    relationship = 'many-to-one'
+  ) |> 
+  dplyr::mutate(
+    home_g = dplyr::case_when(
+      ## Note that fotmob would list the away team for an own goal but fbref 
+      ##   lists the home team
+      (is_goal | is_own_goal) & is_home ~ 1L,
+      is_own_goal & is_home ~ 1L,
+      TRUE ~ 0L
+    ),
+    away_g = dplyr::case_when(
+      (is_goal | is_own_goal) & !is_home ~ 1L,
+      TRUE ~ 0L
+    ),
+    home_xg = dplyr::case_when(
+      is_home ~ dplyr::coalesce(xg, 0),
+      TRUE ~ 0L ## even for own goals
+    ),
+    away_xg = dplyr::case_when(
+      !is_home ~ dplyr::coalesce(xg, 0),
+      TRUE ~ 0L
+    )
+  ) |>
+  dplyr::group_by(match_id) |>
+  ## Differentiate between shots in the same minute.
+  dplyr::mutate(
+    shot_idx = dplyr::row_number((minutes + dplyr::coalesce(minutes_added, 0L)))
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::transmute(
+    shot_id = sprintf('%s-%02d', match_id, shot_idx),
+    match_id,
+    period,
+    minutes,
+    minutes_added,
+    is_home,
+    is_goal,
+    is_own_goal,
+    player,
+    home_team,
+    away_team,
+    home_g,
+    away_g,
+    home_xg,
+    away_xg
+  )
+```
+
+```{r}
+#| label: clean_shots-save
+#| include: false
+qs::qsave(clean_shots, file.path(PROJ_DIR, 'clean_shots.qs'))
+```
+
+```{r}
+#| label: clean_shots-glimpse
+#| code-fold: false
+dplyr::glimpse(clean_shots)
+#> Rows: 15,335
+#> Columns: 15
+#> $ shot_id       <chr> "48a684ed-01", "48a684ed-02", "48a684ed-05", "48a684e…
+#> $ match_id      <chr> "48a684ed", "48a684ed", "48a684ed", "48a684ed", "48a6…
+#> $ period        <int> 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 2,…
+#> $ minutes       <int> 6, 13, 31, 34, 45, 51, 73, 80, 83, 19, 30, 41, 45, 48…
+#> $ minutes_added <dbl> NA, NA, NA, NA, 1, NA, NA, NA, NA, NA, NA, NA, 2, NA,…
+#> $ is_home       <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE,…
+#> $ is_goal       <lgl> FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, TRUE,…
+#> $ is_own_goal   <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALS…
+#> $ player        <chr> "Jacob Shaffelburg", "Sean Davis", "Teal Bunbury", "W…
+#> $ home_team     <chr> "Nashville SC", "Nashville SC", "Nashville SC", "Nash…
+#> $ away_team     <chr> "New York City FC", "New York City FC", "New York Cit…
+#> $ home_g        <int> 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+#> $ away_g        <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+#> $ home_xg       <dbl> 0.39, 0.09, 0.03, 0.25, 0.04, 0.02, 0.02, 0.45, 0.04,…
+#> $ away_xg       <dbl> 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00,…
+```
+
+### Double Counting Shot Events
+
+Up to this point, we have one record per shot. But, to calculate goals and expected goals (xG) conceded for any given team at any given point in a game, we can make our lives easier by "double counting" each shot event, once from each team's perspective.
+
+To do that, we first re-assign ("re-stack") teams and goals based on the home and away teams' perspectives.
+
+```{r}
+#| label: restacked_shots
+restacked_shots <- dplyr::bind_rows(
+  clean_shots |> 
+    dplyr::filter(is_home) |> 
+    dplyr::transmute(
+      shot_id,
+      match_id,
+      period,
+      minutes,
+      minutes_added,
+      is_home,
+      is_goal,
+      is_own_goal,
+      player,
+      team = home_team,
+      opponent = away_team,
+      g = home_g,
+      g_conceded = away_g,
+      xg = home_xg,
+      xg_conceded = away_xg
+    ),
+  clean_shots |> 
+    dplyr::filter(!is_home) |> 
+    dplyr::transmute(
+      shot_id,
+      match_id,
+      period,
+      minutes,
+      minutes_added,
+      is_home,
+      is_goal,
+      is_own_goal,
+      player,
+      team = away_team,
+      opponent = home_team,
+      g = away_g,
+      g_conceded = home_g,
+      xg = away_xg,
+      xg_conceded = home_xg
+    )
+)
+```
+
+Then, we replicate the whole data frame, indicating whether we're looking at the shot events from a given team's **p**oint **o**f **v**iew (`pov = "primary"`) or their opponents' point of view (`"secondary"`).
+
+```{r}
+#| label: doublecounted_restacked_shots
+doublecounted_restacked_shots <- dplyr::bind_rows(
+  restacked_shots |> dplyr::mutate(pov = 'primary', .before = 1),
+  restacked_shots |> 
+    ## re-assign to temporary variable names first, so that way we don't accidentlaly overwrite information
+    dplyr::rename(
+      team1 = team,
+      team2 = opponent,
+      g1 = g,
+      g2 = g_conceded,
+      xg1 = xg,
+      xg2 = xg_conceded
+    ) |> 
+    ## then formally re-assign columns
+    dplyr::rename(
+      team = team2,
+      opponent = team1,
+      g = g2,
+      g_conceded = g1,
+      xg = xg2,
+      xg_conceded = xg1
+    ) |> 
+    dplyr::mutate(
+      is_home = !is_home
+    ) |> 
+    dplyr::mutate(
+      pov = 'secondary',
+      .before = 1
+    )
+) |> 
+  dplyr::arrange(match_id, shot_id, pov)
+```
+
+```{r}
+#| label: doublecounted_restacked_shots-save
+#| include: false
+qs::qsave(doublecounted_restacked_shots, file.path(PROJ_DIR, 'doublecounted_restacked_shots.qs'))
+```
+
+```{r}
+#| label: doublecounted_restacked_shots-glimpse
+#| code-fold: false
+dplyr::glimpse(doublecounted_restacked_shots)
+#> Rows: 30,670
+#> Columns: 16
+#> $ pov           <chr> "primary", "secondary", "primary", "secondary", "prim…
+#> $ shot_id       <chr> "00069d73-01", "00069d73-01", "00069d73-02", "00069d7…
+#> $ match_id      <chr> "00069d73", "00069d73", "00069d73", "00069d73", "0006…
+#> $ period        <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,…
+#> $ minutes       <int> 2, 2, 4, 4, 9, 9, 20, 20, 24, 24, 32, 32, 34, 34, 35,…
+#> $ minutes_added <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ is_home       <lgl> TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, T…
+#> $ is_goal       <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALS…
+#> $ is_own_goal   <lgl> FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALS…
+#> $ player        <chr> "Hany Mukhtar", "Hany Mukhtar", "Teal Bunbury", "Teal…
+#> $ team          <chr> "Nashville SC", "Chicago Fire", "Nashville SC", "Chic…
+#> $ opponent      <chr> "Chicago Fire", "Nashville SC", "Chicago Fire", "Nash…
+#> $ g             <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+#> $ g_conceded    <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+#> $ xg            <dbl> 0.04, 0.00, 0.17, 0.00, 0.02, 0.00, 0.12, 0.00, 0.05,…
+#> $ xg_conceded   <dbl> 0.00, 0.04, 0.00, 0.17, 0.00, 0.02, 0.00, 0.12, 0.00,…
+```
+
+### Calculating Cumulative Goals
+
+Next, we calculate cumulative goals and xG scored and conceded.
+
+```{r}
+#| label: cumu_doublecounted_restacked_shots
+cumu_doublecounted_restacked_shots <- doublecounted_restacked_shots |> 
+  dplyr::group_by(match_id, team) |> 
+  dplyr::mutate(
+    dplyr::across(
+      c(g, g_conceded),
+      list(cumu = cumsum)
+    )
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    gamestate = g_cumu - g_conceded_cumu
+  )
+```
+
+And then we bring everything together to create a singular data frame from which it is straightforward to calculate xGD with respect to game state.[^1]
+
+[^1]: Keep in mind that the xG associated with a shot that is scored and changes the game state should be associated with the pre-shot game state, not the post-shot game state.
+
+```{r}
+#| label: gamestate_shots
+ORDERED_gamestate_LABELS <- c('Trailing', 'Tied', 'Leading')
+gamestate_shots <- cumu_doublecounted_restacked_shots |> 
+  dplyr::inner_join(
+    match_summaries |> 
+      dplyr::distinct(
+        match_id,
+        season,
+        date,
+        home_team,
+        away_team
+      ),
+    by = dplyr::join_by(match_id)
+  ) |> 
+  dplyr::transmute(
+    pov,
+    match_id,
+    season,
+    date,
+    home_team,
+    away_team,
+    team,
+    player,
+    shot_id,
+    period,
+    minutes,
+    minutes_added,
+    time = minutes + dplyr::coalesce(minutes_added, 0L),
+    xg,
+    xgd = xg - xg_conceded,
+    gamestate = cut(
+      gamestate,
+      breaks = c(-Inf, -1, 0, Inf),
+      labels = ORDERED_gamestate_LABELS
+    )
+  ) |> 
+  dplyr::group_by(match_id, team) |> 
+  dplyr::arrange(shot_id, .by_group = TRUE) |> 
+  dplyr::mutate(
+    pre_shot_gamestate = dplyr::lag(gamestate, default = ORDERED_gamestate_LABELS[2])
+  ) |> 
+  dplyr::ungroup()
+```
+
+```{r}
+#| label: gamestate_shots-save
+#| include: false
+qs::qsave(gamestate_shots, file.path(PROJ_DIR, 'gamestate_shots.qs'))
+```
+
+```{r}
+#| label: gamestate_shots-glimpse
+#| code-fold: false
+dplyr::glimpse(gamestate_shots)
+#> Rows: 30,670
+#> Columns: 17
+#> $ pov                <chr> "secondary", "secondary", "secondary", "secondar…
+#> $ match_id           <chr> "00069d73", "00069d73", "00069d73", "00069d73", …
+#> $ season             <int> 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, …
+#> $ date               <date> 2023-05-06, 2023-05-06, 2023-05-06, 2023-05-06,…
+#> $ home_team          <chr> "Nashville SC", "Nashville SC", "Nashville SC", …
+#> $ away_team          <chr> "Chicago Fire", "Chicago Fire", "Chicago Fire", …
+#> $ team               <chr> "Chicago Fire", "Chicago Fire", "Chicago Fire", …
+#> $ player             <chr> "Hany Mukhtar", "Teal Bunbury", "Hany Mukhtar", …
+#> $ shot_id            <chr> "00069d73-01", "00069d73-02", "00069d73-03", "00…
+#> $ period             <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, …
+#> $ minutes            <int> 2, 4, 9, 20, 24, 32, 34, 35, 39, 40, 41, 42, 45,…
+#> $ minutes_added      <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ time               <dbl> 2, 4, 9, 20, 24, 32, 34, 35, 39, 40, 41, 42, 45,…
+#> $ xg                 <dbl> 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, …
+#> $ xgd                <dbl> -0.04, -0.17, -0.02, -0.12, -0.05, -0.08, -0.04,…
+#> $ gamestate          <fct> Tied, Tied, Tied, Tied, Tied, Tied, Tied, Tied, …
+#> $ pre_shot_gamestate <fct> Tied, Tied, Tied, Tied, Tied, Tied, Tied, Tied, …
+```
+
+### Padding end-of-match events
+
+Oh wait! We should probably account for length of time spent in a game state when contextualizing xGD. To do that properly, we should add more synthetic records for end of halves.
+
+Unfortunately, FBref does not provide the exact ending minute of each half, as far as I know. Thus, we'll "pad" our data with artificial records to mark the end of halves--the 45th minute in the first half / 90th minute in the second half--using some heuristics.
+
+1.  If there are no shots after the last regular minute in a half, we add 3 minutes. (3 minutes is about the median amount of minutes allocated for extra time.)
+2.  If the last shot is after the last regular minute in a half, we take the maximum of
+
+-   Adding 3 minutes beyond the last regular minute (like (1)) or
+-   Adding one minute beyond the last shot.
+
+```{r}
+#| label: gamestate_shots_and_durations
+LAST_MIN_BUFFER <- 3
+last_min_pad <- gamestate_shots |>
+  dplyr::select(
+    match_id,
+    season,
+    date,
+    team,
+    pre_shot_gamestate,
+    period,
+    time
+  ) |> 
+  dplyr::group_by(match_id, team, period) |>
+  dplyr::slice_max(time, n = 1, with_ties = FALSE) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    xg = 0,
+    xgd = 0,
+    last_regular_min = ifelse(period == 1L, 45L, 90L),
+    time = pmax(last_regular_min + LAST_MIN_BUFFER, time + 1)
+  )
+
+padded_gamestate_shots <- dplyr::bind_rows(
+  gamestate_shots,
+  last_min_pad
+) |> 
+  dplyr::arrange(match_id, time)
+
+gamestate_shots_and_durations <- padded_gamestate_shots |> 
+  dplyr::group_by(match_id, team) |> 
+  dplyr::mutate(
+    prev_period = dplyr::lag(period),
+    prev_time = dplyr::lag(time)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    duration = dplyr::case_when(
+      period == 1L & is.na(prev_period) ~ time - 0L,
+      period == 2L & period != prev_period ~ time - 45L,
+      TRUE ~ time - prev_time
+    )
+  )
+```
+
+```{r}
+#| label: gamestate_shots_and_durations-save
+#| include: false
+qs::qsave(gamestate_shots_and_durations, file.path(PROJ_DIR, 'gamestate_shots_and_durations.qs'))
+```
+
+```{r}
+#| label: gamestate_shots_and_durations-glimpse
+#| code-fold: false
+dplyr::glimpse(gamestate_shots_and_durations)
+#> Rows: 32,642
+#> Columns: 21
+#> $ pov                <chr> "secondary", "primary", "secondary", "primary", …
+#> $ match_id           <chr> "00069d73", "00069d73", "00069d73", "00069d73", …
+#> $ season             <int> 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, …
+#> $ date               <date> 2023-05-06, 2023-05-06, 2023-05-06, 2023-05-06,…
+#> $ home_team          <chr> "Nashville SC", "Nashville SC", "Nashville SC", …
+#> $ away_team          <chr> "Chicago Fire", "Chicago Fire", "Chicago Fire", …
+#> $ team               <chr> "Chicago Fire", "Nashville SC", "Chicago Fire", …
+#> $ player             <chr> "Hany Mukhtar", "Hany Mukhtar", "Teal Bunbury", …
+#> $ shot_id            <chr> "00069d73-01", "00069d73-01", "00069d73-02", "00…
+#> $ period             <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+#> $ minutes            <int> 2, 2, 4, 4, 9, 9, 20, 20, 24, 24, 32, 32, 34, 34…
+#> $ minutes_added      <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ time               <dbl> 2, 2, 4, 4, 9, 9, 20, 20, 24, 24, 32, 32, 34, 34…
+#> $ xg                 <dbl> 0.00, 0.04, 0.00, 0.17, 0.00, 0.02, 0.00, 0.12, …
+#> $ xgd                <dbl> -0.04, 0.04, -0.17, 0.17, -0.02, 0.02, -0.12, 0.…
+#> $ gamestate          <fct> Tied, Tied, Tied, Tied, Tied, Tied, Tied, Tied, …
+#> $ pre_shot_gamestate <fct> Tied, Tied, Tied, Tied, Tied, Tied, Tied, Tied, …
+#> $ last_regular_min   <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ prev_period        <int> NA, NA, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+#> $ prev_time          <dbl> NA, NA, 2, 2, 4, 4, 9, 9, 20, 20, 24, 24, 32, 32…
+#> $ duration           <dbl> 2, 2, 2, 2, 5, 5, 11, 11, 4, 4, 8, 8, 2, 2, 1, 1…
+```
+
+## Data analysis
+
+As the saying goes, "80% of data analysis/science is data cleaning". Well, that rings true here, as all we need to do at this point is perform a few common `{dplyr}` and `{tidyr}` actions to arrive at xGD by game state. Oh, and we should contextualize game state xGD by how long a team has spent in each game state (`duration`).
+
+```{r}
+#| label: agg_gamestate_xgd
+agg_gamestate_xgd <- gamestate_shots_and_durations |> 
+  dplyr::group_by(team, pre_shot_gamestate) |> 
+  dplyr::summarize(
+    dplyr::across(
+      c(
+        xgd,
+        duration
+      ),
+      \(.x) sum(.x, na.rm = TRUE)
+    )
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    xgd_p90 = xgd * 90 / duration
+  ) |> 
+  dplyr::group_by(team) |> 
+  dplyr::mutate(
+    prop_duration = duration / sum(duration)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::select(
+    team,
+    pre_shot_gamestate,
+    xgd_p90,
+    prop_duration
+  )
+```
+
+```{r}
+#| label: agg_gamestate_xgd-save
+#| include: false
+qs::qsave(agg_gamestate_xgd, file.path(PROJ_DIR, 'agg_gamestate_xgd.qs'))
+```
+
+```{r}
+#| label: agg_gamestate_xgd-glimpse
+#| code-fold: false
+agg_gamestate_xgd
+#> # A tibble: 87 × 4
+#>    team           pre_shot_gamestate  xgd_p90 prop_duration
+#>    <chr>          <fct>                 <dbl>         <dbl>
+#>  1 Atlanta United Trailing            0.277           0.266
+#>  2 Atlanta United Tied               -0.00208         0.385
+#>  3 Atlanta United Leading             0.262           0.350
+#>  4 Austin FC      Trailing            0.0287          0.271
+#>  5 Austin FC      Tied               -0.0978          0.508
+#>  6 Austin FC      Leading            -0.474           0.221
+#>  7 CF Montréal    Trailing           -1.20            0.376
+#>  8 CF Montréal    Tied               -0.388           0.400
+#>  9 CF Montréal    Leading             0.327           0.223
+#> 10 Charlotte FC   Trailing           -0.0656          0.212
+#> # ℹ 77 more rows
+```
+
+We did all that work, so let's make a pretty graph that conveys both
+
+1.  the proportion of time spent in a given game state
+2.  the xGD per 90 per game state
+
+for every team.
+
+```{r}
+#| label: xgd_p90
+## logo scraping
+library(httr)
+library(jsonlite)
+
+## plotting
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
+library(grid)
+library(scales)
+
+TAG_LABEL <- htmltools::tagList(
+  htmltools::tags$span(htmltools::HTML(enc2utf8('&#xf099;')), style = 'font-family:fb'),
+  htmltools::tags$span('@TonyElHabr'),
+)
+CAPTION_LABEL <- '**Data**: Opta via fbref.'
+SUBTITLE_LABEL <- 'MLS, 2023 Season'
+PLOT_RESOLUTION <- 300
+WHITISH_FOREGROUND_COLOR <- 'white'
+COMPLEMENTARY_FOREGROUND_COLOR <- '#cbcbcb'
+BLACKISH_BACKGROUND_COLOR <- '#1c1c1c'
+COMPLEMENTARY_BACKGROUND_COLOR <- '#4d4d4d'
+FONT <- 'Titillium Web'
+sysfonts::font_add_google(FONT, FONT)
+## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = PLOT_RESOLUTION)
+
+ggplot2::theme_set(ggplot2::theme_minimal())
+ggplot2::theme_update(
+  text = ggplot2::element_text(family = FONT),
+  title = ggplot2::element_text(size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title = ggtext::element_markdown(face = 'bold', size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title.position = 'plot',
+  plot.subtitle = ggtext::element_markdown(size = 16, color = COMPLEMENTARY_FOREGROUND_COLOR),
+  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
+  axis.title.x = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.y = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.line = ggplot2::element_blank(),
+  strip.text = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0),
+  legend.position = 'top',
+  legend.text = ggplot2::element_text(size = 12, color = WHITISH_FOREGROUND_COLOR, face = 'plain'),
+  legend.title = ggplot2::element_text(size = 12, color = WHITISH_FOREGROUND_COLOR, face = 'bold'),
+  panel.grid.major = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor.x = ggplot2::element_blank(),
+  panel.grid.minor.y = ggplot2::element_blank(),
+  plot.margin = ggplot2::margin(10, 20, 10, 20),
+  plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
+  plot.caption = ggtext::element_markdown(size = 10, color = WHITISH_FOREGROUND_COLOR, hjust = 0, face = 'plain'),
+  plot.caption.position = 'plot',
+  plot.tag = ggtext::element_markdown(size = 10, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
+  plot.tag.position = c(0.99, 0.01),
+  panel.spacing.x = grid::unit(2, 'lines'),
+  panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
+)
+ggplot2::update_geom_defaults('text', list(color = WHITISH_FOREGROUND_COLOR, size = 12 / .pt))
+
+GAMESTATE_PAL <- c(
+  'Trailing' = '#ef3e36',
+  'Tied' = COMPLEMENTARY_FOREGROUND_COLOR,
+  'Leading' = '#17bebb'
+)
+
+## There is a way to get team logos from FBref, but they have a white background 
+##   by default, and making the background transparent for a plot with a dark
+##   background is kind of a pain in the ass. So let's pull images from fotmob.
+## This function is basically a minified version of what used to exist as
+##   worldfootballR::fotmob_get_league_tables(). I rely on FBref and fotmob listing
+##   teams in the same order alphabetically, which works fine for the MLS. A
+##   better, scalable strategy for binding team names between sources is to
+##   order teams by points / placement in the standings.
+
+get_fotmob_mls_standings <- function() {
+  url <- 'https://www.fotmob.com/api/leagues?id=130'
+  resp <- httr::GET(url)
+  cont <- httr::content(resp, as = 'text')
+  result <- jsonlite::fromJSON(cont)
+  table_init <- result$table$data
+  tables <- dplyr::bind_rows(table_init$tables)
+  tables$table$all[[3]] |> 
+    dplyr::transmute(
+      team = name,
+      team_id = id,
+      pts,
+      logo_url = sprintf('https://images.fotmob.com/image_resources/logo/teamlogo/%s.png', team_id)
+    )
+}
+
+fotmob_mls_standings <- get_fotmob_mls_standings()
+team_logos <- agg_gamestate_xgd |> 
+  dplyr::distinct(team) |> 
+  dplyr::arrange(team) |> 
+  ## Lucky for us, MLS team names line up with the fotmob names alphabetically.
+  dplyr::bind_cols(
+    fotmob_mls_standings |> 
+      dplyr::arrange(team) |> 
+      dplyr::select(path = logo_url, pts)
+  )
+
+agg_gamestate_xgd_with_logos <- agg_gamestate_xgd |> 
+  dplyr::inner_join(
+    team_logos |> 
+      dplyr::select(
+        team,
+        pts,
+        path
+      ),
+    by = dplyr::join_by(team)
+  ) |> 
+  dplyr::mutate(
+    label = glue::glue("{team} <img src='{path}' width='15' height='15'/>")
+  ) |> 
+  dplyr::select(-path)
+
+agg_gamestate_xgd_with_logos |>
+  filter(pre_shot_gamestate == 'Tied') |> 
+  mutate(
+    across(
+      c(prop_duration, pts, xgd_p90), 
+      list(rnk = \(.x) row_number(desc(.x)))
+    ),
+    d = prop_duration_rnk - pts_rnk
+  ) |> 
+  arrange(
+    desc(abs(d))
+  )
+
+team_label_order <- agg_gamestate_xgd_with_logos |> 
+  dplyr::filter(
+    pre_shot_gamestate == 'Leading'
+  ) |> 
+  dplyr::arrange(prop_duration) |> 
+  dplyr::pull(team)
+
+prepped_agg_gamestate_xgd <- agg_gamestate_xgd_with_logos |> 
+  dplyr::mutate(
+    dplyr::across(
+      team,
+      \(.x) factor(.x, levels = team_label_order)
+    )
+  ) |> 
+  dplyr::arrange(team, desc(pre_shot_gamestate)) |> 
+  dplyr::group_by(team) |> 
+  dplyr::mutate(
+    cumu_prop_duration = cumsum(prop_duration)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    half_cumu_prop_duration = cumu_prop_duration - 0.5 * prop_duration
+  )
+
+xgd_p90_plot <- prepped_agg_gamestate_xgd |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = prop_duration,
+    y = team
+  ) +
+  ggplot2::scale_y_discrete(
+    name = '',
+    labels = prepped_agg_gamestate_xgd |>
+      dplyr::distinct(team, label) |>
+      tibble::deframe()
+  ) +
+  ggplot2::theme(
+    axis.text.y = ggtext::element_markdown(margin = grid::unit(c(0, 0, 0, 0), 'pt')),
+  ) +
+  ggplot2::geom_col(
+    show.legend = FALSE,
+    alpha = 0.8,
+    ggplot2::aes(
+      fill = pre_shot_gamestate
+    )
+  ) +
+  ggplot2::geom_text(
+    family = FONT,
+    size = 12 / ggplot2::.pt,
+    fontface = 'bold',
+    color = WHITISH_FOREGROUND_COLOR,
+    data = dplyr::filter(prepped_agg_gamestate_xgd, xgd_p90 >= 0),
+    ggplot2::aes(
+      x = half_cumu_prop_duration,
+      y = team,
+      label = scales::number(xgd_p90, accuracy = 0.01, style_positive = 'plus')
+    )
+  ) +
+  ggplot2::geom_text(
+    family = FONT,
+    size = 12 / ggplot2::.pt,
+    fontface = 'bold.italic',
+    color = BLACKISH_BACKGROUND_COLOR,
+    data = dplyr::filter(prepped_agg_gamestate_xgd, xgd_p90 < 0),
+    ggplot2::aes(
+      x = half_cumu_prop_duration,
+      y = team,
+      label = scales::number(xgd_p90, accuracy = 0.01)
+    )
+  ) +
+  ggplot2::scale_x_continuous(
+    labels = scales::percent_format(accuracy = 1),
+    expand = c(0.01, 0.01)
+  ) +
+  ggplot2::scale_fill_manual(
+    values = GAMESTATE_PAL
+  ) +
+  ggplot2::theme(
+    panel.grid.major.y = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    legend.position = 'top'
+  ) +
+  ggplot2::labs(
+    title = glue::glue("(xG - xG Conceded) per 90 when <span style='color:{GAMESTATE_PAL[['Leading']]}'>Leading</span>, <span style='color:{GAMESTATE_PAL[['Tied']]}'>Tied</span>, and <span style='color:{GAMESTATE_PAL[['Trailing']]}'>Trailing</spna>"),
+    subtitle = SUBTITLE_LABEL,
+    y = NULL,
+    tag = TAG_LABEL,
+    caption = CAPTION_LABEL,
+    x = '% of Match Time'
+  )
+xgd_p90_plot
+
+xgd_p90_plot_path <- file.path(PROJ_DIR, '2023-mls-xgd-p90.png')
+ggplot2::ggsave(
+  xgd_p90_plot,
+  filename = xgd_p90_plot_path,
+  width = 8,
+  height = 8
+)
+
+## https://themockup.blog/posts/2019-01-09-add-a-logo-to-your-plot/
+add_logo <- function(
+    plot_path,
+    logo_path,
+    logo_scale = 0.1,
+    idx_x = 0.01, ## right-hand side
+    idx_y = 0.99, ## top of plot
+    adjust_x = ifelse(idx_x < 0.5, TRUE, FALSE),
+    adjust_y = ifelse(idx_y < 0.5, TRUE, FALSE)
+) {
+  plot <- magick::image_read(plot_path)
+  logo_raw <- magick::image_read(logo_path)
+  
+  plot_height <- magick::image_info(plot)$height
+  plot_width <- magick::image_info(plot)$width
+  
+  logo <- magick::image_scale(
+    logo_raw,
+    as.character(round(plot_width * logo_scale))
+  )
+  
+  info <- magick::image_info(logo)
+  logo_width <- info$width
+  logo_height <- info$height
+  
+  x_pos <- plot_width - idx_x * plot_width
+  y_pos <- plot_height - idx_y * plot_height
+  
+  if (isTRUE(adjust_x)) {
+    x_pos <- x_pos - logo_width
+  }
+  
+  if (isTRUE(adjust_y)) {
+    y_pos <- y_pos - logo_height
+  }
+  
+  offset <- paste0('+', x_pos, '+', y_pos)
+  
+  new_plot <- magick::image_composite(plot, logo, offset = offset)
+  ext <- tools::file_ext(plot_path)
+  rgx_ext <- sprintf('[.]%s$', ext)
+  
+  magick::image_write(
+    new_plot,
+    plot_path
+  )
+}
+
+add_logo(
+  xgd_p90_plot_path,
+  logo_path = file.path(PROJ_DIR, 'mls-logo-black-and-white.png'),
+  logo_scale = 0.06
+)
+```
+
+![](2023-mls-xgd-p90.png)
+
+So, what can we learn from this perspective?
+
+1.  [Columbus](https://en.wikipedia.org/wiki/Columbus_Crew), who [finished](https://www.fotmob.com/leagues/130/overview/mls?season=2023) with the third most points, look to be the most dominant team all-around. They have the most time spent leading (43%), and are one of only two teams with a positive xGD rate in every game state.
+2.  [Cincinnati](https://en.wikipedia.org/wiki/FC_Cincinnati)--the team that ended up with the most points in the regular season--don't seem to be quite as dominant--they are 11th in terms of time spent leading (30%). On the other hand, they do have the best xGD per 90 rate (+0.60) out of all teams in neutral ("Tied") game states, which is the most common game state across most teams.
+3.  [Orlando City](https://en.wikipedia.org/wiki/Orlando_City_SC), who finished with the second most points, have a relatively bad xGD rate in neutral game states (-0.21). This may be something to be concerned about it in the playoffs, where the margins are tight.
+4.  [Sporting KC](https://en.wikipedia.org/wiki/Sporting_Kansas_City) have the fourth-most time spent leading (35%) and one of the better xGD rates when leading (+0.40), but ended up 8th in the Western Conference after accumulating just the 16th most points across all 29 teams. They could be a team to watch out for in the playoffs if they can get a lead early in their matches.
+
+## Conclusion
+
+As we've seen, calculating stats with respect to game state using data from the biggest public provider of soccer info is... not exactly straightforward. But the additional layers of insights that we can glean from contextualizing with game state can be rewarding.
