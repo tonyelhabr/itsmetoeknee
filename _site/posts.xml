@@ -10,7 +10,7 @@
 <atom:link href="https://tonyelhabr.rbind.io/posts.xml" rel="self" type="application/rss+xml"/>
 <description></description>
 <generator>quarto-1.2.335</generator>
-<lastBuildDate>Fri, 27 Oct 2023 05:00:00 GMT</lastBuildDate>
+<lastBuildDate>Wed, 25 Oct 2023 05:00:00 GMT</lastBuildDate>
 <item>
   <title>Game state with FBref data</title>
   <dc:creator>Tony ElHabr</dc:creator>
@@ -21,14 +21,14 @@
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
-<p>Soccer is a discrete, low scoring game. Whether a team is leading, trailing, or tied with its opponent–<a href="https://theathletic.com/2730755/2021/07/28/the-athletics-football-analytics-glossary-explaining-xg-ppda-field-tilt-and-how-to-use-them/">“game state”</a>–at a given point in the game can heavily influence the way that the team approaches the rest of the game. Thus, it can be useful to contextualize other statistics, like <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a>.</p>
-<p>Teams that are heavy favorites in a match may opt to play defensively if they get a large lead, which can result in fewer shots and a lower xG accumulated, which would typically be seen as “bad”. However, if we contextualize the shot and xG rates by recognizing that the favored team, for example, was ahead by 3 goals for over half of the match, then we should probably put less weighting in the traditionally “bad” rates.</p>
-<p>Seems intuitive, right? Well, then why don’t we see numbers contextualized by game state more often? Well, it can lead to biases. We may tend to over-attribute numbers to tactical style. Further, and to the point of this whole blog post, it’s not all that trivial to calculate!</p>
-<p>So that’s what this post is for. I’ll show how to calculate a statistic–my choice, just to make it extra difficult, is expected goals difference (xGD), your expected goals minus your opponent’s expected goals–with respect to the game state, using data from <a href="https://fbref.com/">FBref</a>.</p>
+<p>Soccer, a game defined by its discrete, low-scoring nature, thrives on the dynamics of the <a href="https://statsbomb.com/articles/soccer/game-states-and-loss-aversion/">“game state”</a>. Whether a team is leading, trailing, or level with their opponent at a specific moment can wield a profound influence on their tactical choices and overall approach. It’s the kind of context that can shed new light on key statistics like shots and <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a>.</p>
+<p>Consider this scenario: a team enters a match as heavy favorites, and they gain a substantial lead early on. As they switch to a more defensive strategy–“loss aversion”–the number of shots taken and xG accumulated may appear unexpectedly low, potentially raising eyebrows. But when you factor in that this favored team spent more than half the game with a comfortable 3-goal lead, those seemingly “poor” statistics suddenly take on a different meaning.</p>
+<p>The idea seems straightforward, right? Yet, game state analysis remains somewhat underutilized in the world of soccer analytics. Why is that? Well, it’s not without its challenges. Contextualizing numbers according to game state can introduce biases, leading us to over-attribute outcomes to tactical choices. Moreover, the calculations involved can be far from trivial.</p>
+<p>So that’s what this post is for. I’ll walk through how to calculate expected goals difference (xGD)<sup>1</sup>–the difference between your team’s expected goals and your opponent’s–with respect to the game state, using data from <a href="https://fbref.com/">FBref</a>.</p>
 </section>
 <section id="data-pull" class="level2">
 <h2 class="anchored" data-anchor-id="data-pull">Data pull</h2>
-<p>The 2023 Major League Soccer (MLS) regular season just ended, and I’m interested to see what we might learn about the teams who qualified for playoffs when looking at their game state figures.</p>
+<p>The 2023 Major League Soccer (MLS) regular season just ended, and I’m interested to see what we might learn about the teams who qualified for playoffs. So, naturally, I’ve chosen to focus on this past MLS season for our game state calculations.</p>
 <p>To begin, we pull raw FBref data from pre-saved <code>{worldfootballR}</code> release data, starting with match shots.</p>
 <div class="cell">
 <details>
@@ -227,7 +227,7 @@ font-style: italic;">## after event</span></span>
 <span id="cb6-17"><span class="co" style="color: #5E5E5E;">#&gt; $ team          &lt;chr&gt; "Nashville SC", "Nashville SC", "FC Cincinnati", "Hou…</span></span>
 <span id="cb6-18"><span class="co" style="color: #5E5E5E;">#&gt; $ player        &lt;chr&gt; "Walker Zimmerman Assist: Fafà Picault", "Jacob Shaff…</span></span></code></pre></div>
 </div>
-<p>Next, we start to clean up the shots data frame. The data wrangling is similar.</p>
+<p>Next, we start to clean up the <code>shots</code> data frame. The data wrangling is similar.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -274,7 +274,7 @@ font-style: italic;">## convert "45+2" to "2"</span></span>
 <section id="accounting-for-own-goals" class="level3">
 <h3 class="anchored" data-anchor-id="accounting-for-own-goals">Accounting for Own goals</h3>
 <p>Now, for the ugliest part of all this shot data wrangling–handling own goals.</p>
-<p>First, we inject “synthetic” records into the shots data for every case where the match summary indicates that there is an own goal.</p>
+<p>First, we inject “synthetic” records into the <code>shots</code> data for every case where the match summary indicates that there is an own goal.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -526,7 +526,7 @@ font-style: italic;">## then formally re-assign columns</span></span>
 <span id="cb15-12">  )</span></code></pre></div>
 </details>
 </div>
-<p>And then we bring everything together to create a singular data frame from which it is straightforward to calculate xGD with respect to game state.<sup>1</sup></p>
+<p>And then we bring everything together to create a singular data frame from which it is straightforward to calculate xGD with respect to game state.<sup>2</sup></p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -598,16 +598,16 @@ font-style: italic;">## then formally re-assign columns</span></span>
 </section>
 <section id="padding-end-of-match-events" class="level3">
 <h3 class="anchored" data-anchor-id="padding-end-of-match-events">Padding end-of-match events</h3>
-<p>Oh wait! We should probably account for length of time spent in a game state when contextualizing xGD. To do that properly, we should add more synthetic records for end of halves.</p>
+<p>Oh, wait! We should probably account for the amount of time spent in a game state when contextualizing xGD. To do that properly, we should add more synthetic records for the end of halves.</p>
 <p>Unfortunately, FBref does not provide the exact ending minute of each half, as far as I know. Thus, we’ll “pad” our data with artificial records to mark the end of halves–the 45th minute in the first half / 90th minute in the second half–using some heuristics.</p>
 <ol type="1">
 <li>If there are no shots after the last regular minute in a half, we add 3 minutes. (3 minutes is about the median amount of minutes allocated for extra time.)</li>
-<li>If the last shot is after the last regular minute in a half, we take the maximum of</li>
-</ol>
+<li>If the last shot is after the last regular minute in a half, we take the maximum of:
 <ul>
 <li>Adding 3 minutes beyond the last regular minute (like (1)) or</li>
 <li>Adding one minute beyond the last shot.</li>
-</ul>
+</ul></li>
+</ol>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -733,12 +733,12 @@ font-style: italic;">## then formally re-assign columns</span></span>
 <span id="cb21-14"><span class="co" style="color: #5E5E5E;">#&gt; 10 Charlotte FC   Trailing           -0.0656          0.212</span></span>
 <span id="cb21-15"><span class="co" style="color: #5E5E5E;">#&gt; # ℹ 77 more rows</span></span></code></pre></div>
 </div>
-<p>We did all that work, so let’s make a pretty graph that conveys both</p>
+<p>We did all that work, so let’s make a pretty graph that conveys both:</p>
 <ol type="1">
-<li>the proportion of time spent in a given game state</li>
-<li>the xGD per 90 per game state</li>
+<li>the proportion of time spent in a given game state, and</li>
+<li>the xGD <a href="https://statsbomb.com/articles/soccer/an-introduction-to-the-per-90-metric/">per 90</a> per game state</li>
 </ol>
-<p>for every team.</p>
+<p>for every team. Keep in mind that an xGD per 90 of +0.50 means that you’re accumulating half a goal’s worth of shot quality more than you’re giving up over the course of a game. While this number may seem small, that’s quite a good number over the course of an entire season.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -1046,10 +1046,10 @@ font-style: italic;">## top of plot</span></span>
 <p><img src="https://tonyelhabr.rbind.io/posts/fbref-gamestate-expected-goal-difference/2023-mls-xgd-p90.png" class="img-fluid"></p>
 <p>So, what can we learn from this perspective?</p>
 <ol type="1">
-<li><a href="https://en.wikipedia.org/wiki/Columbus_Crew">Columbus</a>, who <a href="https://www.fotmob.com/leagues/130/overview/mls?season=2023">finished</a> with the third most points, look to be the most dominant team all-around. They have the most time spent leading (43%), and are one of only two teams with a positive xGD rate in every game state.</li>
-<li><a href="https://en.wikipedia.org/wiki/FC_Cincinnati">Cincinnati</a>–the team that ended up with the most points in the regular season–don’t seem to be quite as dominant–they are 11th in terms of time spent leading (30%). On the other hand, they do have the best xGD per 90 rate (+0.60) out of all teams in neutral (“Tied”) game states, which is the most common game state across most teams.</li>
-<li><a href="https://en.wikipedia.org/wiki/Orlando_City_SC">Orlando City</a>, who finished with the second most points, have a relatively bad xGD rate in neutral game states (-0.21). This may be something to be concerned about it in the playoffs, where the margins are tight.</li>
-<li><a href="https://en.wikipedia.org/wiki/Sporting_Kansas_City">Sporting KC</a> have the fourth-most time spent leading (35%) and one of the better xGD rates when leading (+0.40), but ended up 8th in the Western Conference after accumulating just the 16th most points across all 29 teams. They could be a team to watch out for in the playoffs if they can get a lead early in their matches.</li>
+<li><a href="https://en.wikipedia.org/wiki/Columbus_Crew">Columbus</a>, who <a href="https://www.fotmob.com/leagues/130/overview/mls?season=2023">finished</a> with the third most points, looks to be the most dominant team all-around. They have the most time spent leading (43%) and are one of only three teams with a positive xGD rate in every game state.</li>
+<li><a href="https://en.wikipedia.org/wiki/FC_Cincinnati">Cincinnati</a>–the team that ended up with the most points in the regular season–is 11th in terms of time spent leading (30%). On the other hand, they do have the best xGD per 90 rate (+0.60) out of all teams in neutral (“Tied”) game states, which is the most common game state on average.</li>
+<li><a href="https://en.wikipedia.org/wiki/Orlando_City_SC">Orlando City</a>, who finished with the second most points, has a relatively poor xGD rate in neutral game states (-0.21). This may be something to be concerned about it in the playoffs, where matches can be tighter.</li>
+<li><a href="https://en.wikipedia.org/wiki/Sporting_Kansas_City">Sporting KC</a> has the fourth-most time spent leading (35%) and one of the better xGD rates when leading (+0.40), but ended up 8th in the Western Conference after accumulating just the 16th most points across all 29 teams. They could be a team to watch out for in the playoffs if they can get a lead early in their matches.</li>
 </ol>
 </section>
 <section id="conclusion" class="level2">
@@ -1071,13 +1071,14 @@ No matching items
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>Keep in mind that the xG associated with a shot that is scored and changes the game state should be associated with the pre-shot game state, not the post-shot game state.↩︎</p></li>
+<li id="fn1"><p>I like xGD because it captures a lot of information about how your team is playing relative to your opponent. Your team could be putting up a lot of shots, each with a decent amount of xG (i.e.&nbsp;“shot quality”), but if you’re conceding even more shots than you’ve taken and/or the quality of those shots are better than yours, then you’re really not performing all that well. This would be reflected with a negative xGD. Respected analysts like <a href="https://twitter.com/MC_of_A">Michael Caley</a> also seem to like <a href="https://twitter.com/MC_of_A/status/1716474802259574848">using xGD</a> for diagnosing performance.↩︎</p></li>
+<li id="fn2"><p>Keep in mind that the xG associated with a shot that is scored and changes the game state should be associated with the pre-shot game state, not the post-shot game state.↩︎</p></li>
 </ol>
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
   <guid>https://tonyelhabr.rbind.io/posts/fbref-gamestate-expected-goal-difference/index.html</guid>
-  <pubDate>Fri, 27 Oct 2023 05:00:00 GMT</pubDate>
+  <pubDate>Wed, 25 Oct 2023 05:00:00 GMT</pubDate>
   <media:content url="https://tonyelhabr.rbind.io/posts/fbref-gamestate-expected-goal-difference/2023-mls-xgd-p90.png" medium="image" type="image/png" height="144" width="144"/>
 </item>
 <item>
