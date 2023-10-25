@@ -1135,7 +1135,7 @@ cookieconsent.run({
 <span id="cb22-112"><a href="#cb22-112" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(team)</span>
 <span id="cb22-113"><a href="#cb22-113" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb22-114"><a href="#cb22-114" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb22-115"><a href="#cb22-115" aria-hidden="true" tabindex="-1"></a>    <span class="at">label =</span> glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{team} &lt;img src='{path}' width='15' height='15'/&gt;"</span>)</span>
+<span id="cb22-115"><a href="#cb22-115" aria-hidden="true" tabindex="-1"></a>    <span class="at">label =</span> glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"&lt;span style='font-size:12px;color:{WHITISH_FOREGROUND_COLOR}'&gt;{team}&lt;/span&gt; &lt;span style='font-size:9px;color:{COMPLEMENTARY_FOREGROUND_COLOR}'&gt;{pts} pts&lt;/span&gt; &lt;img src='{path}' width='14' height='14'/&gt;"</span>)</span>
 <span id="cb22-116"><a href="#cb22-116" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb22-117"><a href="#cb22-117" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span>path)</span>
 <span id="cb22-118"><a href="#cb22-118" aria-hidden="true" tabindex="-1"></a></span>
@@ -1235,11 +1235,11 @@ cookieconsent.run({
 <span id="cb22-212"><a href="#cb22-212" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">'top'</span></span>
 <span id="cb22-213"><a href="#cb22-213" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
 <span id="cb22-214"><a href="#cb22-214" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">labs</span>(</span>
-<span id="cb22-215"><a href="#cb22-215" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"(xG - xG Conceded) per 90 when &lt;span style='color:{GAMESTATE_PAL[['Leading']]}'&gt;Leading&lt;/span&gt;, &lt;span style='color:{GAMESTATE_PAL[['Tied']]}'&gt;Tied&lt;/span&gt;, and &lt;span style='color:{GAMESTATE_PAL[['Trailing']]}'&gt;Trailing&lt;/spna&gt;"</span>),</span>
+<span id="cb22-215"><a href="#cb22-215" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"xGD per 90 when &lt;span style='color:{GAMESTATE_PAL[['Leading']]}'&gt;Leading&lt;/span&gt;, &lt;span style='color:{GAMESTATE_PAL[['Tied']]}'&gt;Tied&lt;/span&gt;, and &lt;span style='color:{GAMESTATE_PAL[['Trailing']]}'&gt;Trailing&lt;/spna&gt;"</span>),</span>
 <span id="cb22-216"><a href="#cb22-216" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> SUBTITLE_LABEL,</span>
 <span id="cb22-217"><a href="#cb22-217" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="cn">NULL</span>,</span>
 <span id="cb22-218"><a href="#cb22-218" aria-hidden="true" tabindex="-1"></a>    <span class="at">tag =</span> TAG_LABEL,</span>
-<span id="cb22-219"><a href="#cb22-219" aria-hidden="true" tabindex="-1"></a>    <span class="at">caption =</span> CAPTION_LABEL,</span>
+<span id="cb22-219"><a href="#cb22-219" aria-hidden="true" tabindex="-1"></a>    <span class="at">caption =</span> <span class="fu">paste0</span>(CAPTION_LABEL, <span class="st">'&lt;br/&gt;**xGD**: Expected goals for minus expected goals conceded'</span>),</span>
 <span id="cb22-220"><a href="#cb22-220" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">'% of Match Time'</span></span>
 <span id="cb22-221"><a href="#cb22-221" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb22-222"><a href="#cb22-222" aria-hidden="true" tabindex="-1"></a>xgd_p90_plot</span>
@@ -1310,10 +1310,13 @@ cookieconsent.run({
 <p><img src="2023-mls-xgd-p90.png" class="img-fluid"></p>
 <p>So, what can we learn from this perspective?</p>
 <ol type="1">
-<li><a href="https://en.wikipedia.org/wiki/Columbus_Crew">Columbus</a>, who <a href="https://www.fotmob.com/leagues/130/overview/mls?season=2023">finished</a> with the third most points, looks to be the most dominant team all-around. They have the most time spent leading (43%) and are one of only three teams with a positive xGD rate in every game state.</li>
+<li><a href="https://en.wikipedia.org/wiki/Columbus_Crew">Columbus</a>, who <a href="https://www.fotmob.com/leagues/130/table/mls?season=2023">finished</a> with the third most points, looks to be the most dominant team all-around. They have the most time spent leading (43%) and are one of only three teams with a positive xGD rate in every game state.</li>
 <li><a href="https://en.wikipedia.org/wiki/FC_Cincinnati">Cincinnati</a>–the team that ended up with the most points in the regular season–is 11th in terms of time spent leading (30%). On the other hand, they do have the best xGD per 90 rate (+0.60) out of all teams in neutral (“Tied”) game states, which is the most common game state on average.</li>
 <li><a href="https://en.wikipedia.org/wiki/Orlando_City_SC">Orlando City</a>, who finished with the second most points, has a relatively poor xGD rate in neutral game states (-0.21). This may be something to be concerned about it in the playoffs, where matches can be tighter.</li>
 <li><a href="https://en.wikipedia.org/wiki/Sporting_Kansas_City">Sporting KC</a> has the fourth-most time spent leading (35%) and one of the better xGD rates when leading (+0.40), but ended up 8th in the Western Conference after accumulating just the 16th most points across all 29 teams. They could be a team to watch out for in the playoffs if they can get a lead early in their matches.</li>
+<li><a href="https://en.wikipedia.org/wiki/New_York_Red_Bulls">New York Red Bulls</a> squeaked into the playoffs, but have a really strong xGD rate (+0.98) when tied. They may be a team to look out to overperform their seeding.</li>
+<li><a href="https://en.wikipedia.org/wiki/Los_Angeles_FC">Los Anegeles FC</a>, like Columbus, is one of the only teams to have a positive xGD in all game states. In fact, they have the strongest xGD in positive game states (+0.97). Evidently, they look to continue to attack once they get a lead.</li>
+<li><a href="https://en.wikipedia.org/wiki/St._Louis_City_SC">St.&nbsp;Louis City</a>, as analytics folks will tell you, has overperformed in its inaugural season. While they finished with the most points in the Western Conference, the underlying numbers–the negative xGD in all game states–suggest that they could be in for a rude awakening in the playoffs.</li>
 </ol>
 </section>
 <section id="conclusion" class="level2">

@@ -918,7 +918,7 @@ agg_gamestate_xgd_with_logos <- agg_gamestate_xgd |>
     by = dplyr::join_by(team)
   ) |> 
   dplyr::mutate(
-    label = glue::glue("{team} <img src='{path}' width='15' height='15'/>")
+    label = glue::glue("<span style='font-size:12px;color:{WHITISH_FOREGROUND_COLOR}'>{team}</span> <span style='font-size:9px;color:{COMPLEMENTARY_FOREGROUND_COLOR}'>{pts} pts</span> <img src='{path}' width='14' height='14'/>")
   ) |> 
   dplyr::select(-path)
 
@@ -1018,11 +1018,11 @@ xgd_p90_plot <- prepped_agg_gamestate_xgd |>
     legend.position = 'top'
   ) +
   ggplot2::labs(
-    title = glue::glue("(xG - xG Conceded) per 90 when <span style='color:{GAMESTATE_PAL[['Leading']]}'>Leading</span>, <span style='color:{GAMESTATE_PAL[['Tied']]}'>Tied</span>, and <span style='color:{GAMESTATE_PAL[['Trailing']]}'>Trailing</spna>"),
+    title = glue::glue("xGD per 90 when <span style='color:{GAMESTATE_PAL[['Leading']]}'>Leading</span>, <span style='color:{GAMESTATE_PAL[['Tied']]}'>Tied</span>, and <span style='color:{GAMESTATE_PAL[['Trailing']]}'>Trailing</spna>"),
     subtitle = SUBTITLE_LABEL,
     y = NULL,
     tag = TAG_LABEL,
-    caption = CAPTION_LABEL,
+    caption = paste0(CAPTION_LABEL, '<br/>**xGD**: Expected goals for minus expected goals conceded'),
     x = '% of Match Time'
   )
 xgd_p90_plot
@@ -1094,10 +1094,13 @@ add_logo(
 
 So, what can we learn from this perspective?
 
-1.  [Columbus](https://en.wikipedia.org/wiki/Columbus_Crew), who [finished](https://www.fotmob.com/leagues/130/overview/mls?season=2023) with the third most points, looks to be the most dominant team all-around. They have the most time spent leading (43%) and are one of only three teams with a positive xGD rate in every game state.
+1.  [Columbus](https://en.wikipedia.org/wiki/Columbus_Crew), who [finished](https://www.fotmob.com/leagues/130/table/mls?season=2023) with the third most points, looks to be the most dominant team all-around. They have the most time spent leading (43%) and are one of only three teams with a positive xGD rate in every game state.
 2.  [Cincinnati](https://en.wikipedia.org/wiki/FC_Cincinnati)--the team that ended up with the most points in the regular season--is 11th in terms of time spent leading (30%). On the other hand, they do have the best xGD per 90 rate (+0.60) out of all teams in neutral ("Tied") game states, which is the most common game state on average.
 3.  [Orlando City](https://en.wikipedia.org/wiki/Orlando_City_SC), who finished with the second most points, has a relatively poor xGD rate in neutral game states (-0.21). This may be something to be concerned about it in the playoffs, where matches can be tighter.
 4.  [Sporting KC](https://en.wikipedia.org/wiki/Sporting_Kansas_City) has the fourth-most time spent leading (35%) and one of the better xGD rates when leading (+0.40), but ended up 8th in the Western Conference after accumulating just the 16th most points across all 29 teams. They could be a team to watch out for in the playoffs if they can get a lead early in their matches.
+5.  [New York Red Bulls](https://en.wikipedia.org/wiki/New_York_Red_Bulls) squeaked into the playoffs, but have a really strong xGD rate (+0.98) when tied. They may be a team to look out to overperform their seeding.
+6.  [Los Anegeles FC](https://en.wikipedia.org/wiki/Los_Angeles_FC), like Columbus, is one of the only teams to have a positive xGD in all game states. In fact, they have the strongest xGD in positive game states (+0.97). Evidently, they look to continue to attack once they get a lead.
+7.  [St. Louis City](https://en.wikipedia.org/wiki/St._Louis_City_SC), as analytics folks will tell you, has overperformed in its inaugural season. While they finished with the most points in the Western Conference, the underlying numbers--the negative xGD in all game states--suggest that they could be in for a rude awakening in the playoffs.
 
 ## Conclusion
 
