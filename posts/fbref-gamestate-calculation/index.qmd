@@ -1,0 +1,26 @@
+---
+title: Game state calculations with FBref data
+description: Calculating expected goal difference (xGD) with respect to game state, using FBref data.
+date: 2023-11-01
+categories:
+  - r
+  - soccer
+image: gamestate-xgd.png
+execute: 
+  code-fold: true
+  eval: false
+  include: true
+  echo: true
+---
+
+## Introduction
+
+Soccer is a discrete, low scoring game. Whether a team is leading, trailing, or tied with its opponent--[**"game state"**](https://theathletic.com/2730755/2021/07/28/the-athletics-football-analytics-glossary-explaining-xg-ppda-field-tilt-and-how-to-use-them/)--at a given point in the game can heavily influence the way that the team approaches the rest of the game. Thus, it can be useful to contextualize other statistics, like [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/).
+
+Teams that are heavy favorites in a match may opt to play defensively if they get a large lead, which can result in fewer shots and a lower xG accumulated, which would typically be seen as "bad". However, if we contextualize the shot and xG rates by recognizing that the favored team, for example, was ahead by 3 goals for over half of the match, then we should probably put less weighting in the traditionally "bad" rates.
+
+Seems intuitive, right? Well, then why don't we see numbers contextualized by game state more often? Well, it can lead to biases. We may tend to over-attribute numbers to tactical style. Further, and to the point of this whole blog post, it's not all that trivial to calculate!
+
+So that's what this post is for. I'll show how to calculate a statistic--my choice, just to make it extra difficult, is expected goals difference (xGD), i.e. your expected goals minus your opponent's expected goals--with respect to the game state, using data from [FBref](https://fbref.com/).
+
+### Background
