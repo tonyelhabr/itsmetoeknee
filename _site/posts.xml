@@ -97,8 +97,7 @@ font-style: italic;">## data manipulation</span></span>
 <span id="cb3-3">  <span class="at" style="color: #657422;">gender =</span> GENDER,</span>
 <span id="cb3-4">  <span class="at" style="color: #657422;">tier =</span> TIER,</span>
 <span id="cb3-5">  <span class="at" style="color: #657422;">season_end_year =</span> SEASON_END_YEAR</span>
-<span id="cb3-6">)</span>
-<span id="cb3-7">dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">glimpse</span>(raw_match_summaries)</span></code></pre></div>
+<span id="cb3-6">)</span></code></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -829,7 +828,7 @@ font-style: italic;">##   better, scalable strategy for binding team names betwe
 <span id="cb22-75"><span class="do" style="color: #5E5E5E;
 font-style: italic;">##   order teams by points / placement in the standings.</span></span>
 <span id="cb22-76"></span>
-<span id="cb22-77">get_fotmob_mls_standings <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>() {</span>
+<span id="cb22-77">get_fotmob_standings <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>() {</span>
 <span id="cb22-78">  url <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="st" style="color: #20794D;">'https://www.fotmob.com/api/leagues?id=130'</span></span>
 <span id="cb22-79">  resp <span class="ot" style="color: #003B4F;">&lt;-</span> httr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">GET</span>(url)</span>
 <span id="cb22-80">  cont <span class="ot" style="color: #003B4F;">&lt;-</span> httr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">content</span>(resp, <span class="at" style="color: #657422;">as =</span> <span class="st" style="color: #20794D;">'text'</span>)</span>
@@ -845,14 +844,14 @@ font-style: italic;">##   order teams by points / placement in the standings.</s
 <span id="cb22-90">    )</span>
 <span id="cb22-91">}</span>
 <span id="cb22-92"></span>
-<span id="cb22-93">fotmob_mls_standings <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">get_fotmob_mls_standings</span>()</span>
+<span id="cb22-93">fotmob_standings <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">get_fotmob_standings</span>()</span>
 <span id="cb22-94">team_logos <span class="ot" style="color: #003B4F;">&lt;-</span> agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb22-95">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">distinct</span>(team) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb22-96">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(team) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb22-97">  <span class="do" style="color: #5E5E5E;
 font-style: italic;">## Lucky for us, MLS team names line up with the fotmob names alphabetically.</span></span>
 <span id="cb22-98">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">bind_cols</span>(</span>
-<span id="cb22-99">    fotmob_mls_standings <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-99">    fotmob_standings <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb22-100">      dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(team) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb22-101">      dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">select</span>(<span class="at" style="color: #657422;">path =</span> logo_url, pts)</span>
 <span id="cb22-102">  )</span>
@@ -872,175 +871,162 @@ font-style: italic;">## Lucky for us, MLS team names line up with the fotmob nam
 <span id="cb22-116">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
 <span id="cb22-117">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">select</span>(<span class="sc" style="color: #5E5E5E;">-</span>path)</span>
 <span id="cb22-118"></span>
-<span id="cb22-119">agg_gamestate_xgd_with_logos <span class="sc" style="color: #5E5E5E;">|&gt;</span></span>
-<span id="cb22-120">  <span class="fu" style="color: #4758AB;">filter</span>(pre_shot_gamestate <span class="sc" style="color: #5E5E5E;">==</span> <span class="st" style="color: #20794D;">'Tied'</span>) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-121">  <span class="fu" style="color: #4758AB;">mutate</span>(</span>
-<span id="cb22-122">    <span class="fu" style="color: #4758AB;">across</span>(</span>
-<span id="cb22-123">      <span class="fu" style="color: #4758AB;">c</span>(prop_duration, pts, xgd_p90), </span>
-<span id="cb22-124">      <span class="fu" style="color: #4758AB;">list</span>(<span class="at" style="color: #657422;">rnk =</span> \(.x) <span class="fu" style="color: #4758AB;">row_number</span>(<span class="fu" style="color: #4758AB;">desc</span>(.x)))</span>
-<span id="cb22-125">    ),</span>
-<span id="cb22-126">    <span class="at" style="color: #657422;">d =</span> prop_duration_rnk <span class="sc" style="color: #5E5E5E;">-</span> pts_rnk</span>
-<span id="cb22-127">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-128">  <span class="fu" style="color: #4758AB;">arrange</span>(</span>
-<span id="cb22-129">    <span class="fu" style="color: #4758AB;">desc</span>(<span class="fu" style="color: #4758AB;">abs</span>(d))</span>
-<span id="cb22-130">  )</span>
-<span id="cb22-131"></span>
-<span id="cb22-132">team_label_order <span class="ot" style="color: #003B4F;">&lt;-</span> agg_gamestate_xgd_with_logos <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-133">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(</span>
-<span id="cb22-134">    pre_shot_gamestate <span class="sc" style="color: #5E5E5E;">==</span> <span class="st" style="color: #20794D;">'Leading'</span></span>
-<span id="cb22-135">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-136">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(prop_duration) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-137">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">pull</span>(team)</span>
-<span id="cb22-138"></span>
-<span id="cb22-139">prepped_agg_gamestate_xgd <span class="ot" style="color: #003B4F;">&lt;-</span> agg_gamestate_xgd_with_logos <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-140">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">mutate</span>(</span>
-<span id="cb22-141">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">across</span>(</span>
-<span id="cb22-142">      team,</span>
-<span id="cb22-143">      \(.x) <span class="fu" style="color: #4758AB;">factor</span>(.x, <span class="at" style="color: #657422;">levels =</span> team_label_order)</span>
-<span id="cb22-144">    )</span>
-<span id="cb22-145">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-146">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(team, <span class="fu" style="color: #4758AB;">desc</span>(pre_shot_gamestate)) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-147">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(team) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-148">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">mutate</span>(</span>
-<span id="cb22-149">    <span class="at" style="color: #657422;">cumu_prop_duration =</span> <span class="fu" style="color: #4758AB;">cumsum</span>(prop_duration)</span>
-<span id="cb22-150">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-151">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ungroup</span>() <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-152">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">mutate</span>(</span>
-<span id="cb22-153">    <span class="at" style="color: #657422;">half_cumu_prop_duration =</span> cumu_prop_duration <span class="sc" style="color: #5E5E5E;">-</span> <span class="fl" style="color: #AD0000;">0.5</span> <span class="sc" style="color: #5E5E5E;">*</span> prop_duration</span>
-<span id="cb22-154">  )</span>
-<span id="cb22-155"></span>
-<span id="cb22-156">xgd_p90_plot <span class="ot" style="color: #003B4F;">&lt;-</span> prepped_agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
-<span id="cb22-157">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ggplot</span>() <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-158">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">aes</span>(</span>
-<span id="cb22-159">    <span class="at" style="color: #657422;">x =</span> prop_duration,</span>
-<span id="cb22-160">    <span class="at" style="color: #657422;">y =</span> team</span>
-<span id="cb22-161">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-162">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">scale_y_discrete</span>(</span>
-<span id="cb22-163">    <span class="at" style="color: #657422;">name =</span> <span class="st" style="color: #20794D;">''</span>,</span>
-<span id="cb22-164">    <span class="at" style="color: #657422;">labels =</span> prepped_agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;">|&gt;</span></span>
-<span id="cb22-165">      dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">distinct</span>(team, label) <span class="sc" style="color: #5E5E5E;">|&gt;</span></span>
-<span id="cb22-166">      tibble<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">deframe</span>()</span>
-<span id="cb22-167">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-168">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">theme</span>(</span>
-<span id="cb22-169">    <span class="at" style="color: #657422;">axis.text.y =</span> ggtext<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">element_markdown</span>(<span class="at" style="color: #657422;">margin =</span> grid<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">unit</span>(<span class="fu" style="color: #4758AB;">c</span>(<span class="dv" style="color: #AD0000;">0</span>, <span class="dv" style="color: #AD0000;">0</span>, <span class="dv" style="color: #AD0000;">0</span>, <span class="dv" style="color: #AD0000;">0</span>), <span class="st" style="color: #20794D;">'pt'</span>)),</span>
-<span id="cb22-170">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-171">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">geom_col</span>(</span>
-<span id="cb22-172">    <span class="at" style="color: #657422;">show.legend =</span> <span class="cn" style="color: #8f5902;">FALSE</span>,</span>
-<span id="cb22-173">    <span class="at" style="color: #657422;">alpha =</span> <span class="fl" style="color: #AD0000;">0.8</span>,</span>
-<span id="cb22-174">    ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">aes</span>(</span>
-<span id="cb22-175">      <span class="at" style="color: #657422;">fill =</span> pre_shot_gamestate</span>
-<span id="cb22-176">    )</span>
-<span id="cb22-177">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-178">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">geom_text</span>(</span>
-<span id="cb22-179">    <span class="at" style="color: #657422;">family =</span> FONT,</span>
-<span id="cb22-180">    <span class="at" style="color: #657422;">size =</span> <span class="dv" style="color: #AD0000;">12</span> <span class="sc" style="color: #5E5E5E;">/</span> ggplot2<span class="sc" style="color: #5E5E5E;">::</span>.pt,</span>
-<span id="cb22-181">    <span class="at" style="color: #657422;">fontface =</span> <span class="st" style="color: #20794D;">'bold'</span>,</span>
-<span id="cb22-182">    <span class="at" style="color: #657422;">color =</span> WHITISH_FOREGROUND_COLOR,</span>
-<span id="cb22-183">    <span class="at" style="color: #657422;">data =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(prepped_agg_gamestate_xgd, xgd_p90 <span class="sc" style="color: #5E5E5E;">&gt;=</span> <span class="dv" style="color: #AD0000;">0</span>),</span>
-<span id="cb22-184">    ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">aes</span>(</span>
-<span id="cb22-185">      <span class="at" style="color: #657422;">x =</span> half_cumu_prop_duration,</span>
-<span id="cb22-186">      <span class="at" style="color: #657422;">y =</span> team,</span>
-<span id="cb22-187">      <span class="at" style="color: #657422;">label =</span> scales<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">number</span>(xgd_p90, <span class="at" style="color: #657422;">accuracy =</span> <span class="fl" style="color: #AD0000;">0.01</span>, <span class="at" style="color: #657422;">style_positive =</span> <span class="st" style="color: #20794D;">'plus'</span>)</span>
-<span id="cb22-188">    )</span>
-<span id="cb22-189">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-190">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">geom_text</span>(</span>
-<span id="cb22-191">    <span class="at" style="color: #657422;">family =</span> FONT,</span>
-<span id="cb22-192">    <span class="at" style="color: #657422;">size =</span> <span class="dv" style="color: #AD0000;">12</span> <span class="sc" style="color: #5E5E5E;">/</span> ggplot2<span class="sc" style="color: #5E5E5E;">::</span>.pt,</span>
-<span id="cb22-193">    <span class="at" style="color: #657422;">fontface =</span> <span class="st" style="color: #20794D;">'bold.italic'</span>,</span>
-<span id="cb22-194">    <span class="at" style="color: #657422;">color =</span> BLACKISH_BACKGROUND_COLOR,</span>
-<span id="cb22-195">    <span class="at" style="color: #657422;">data =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(prepped_agg_gamestate_xgd, xgd_p90 <span class="sc" style="color: #5E5E5E;">&lt;</span> <span class="dv" style="color: #AD0000;">0</span>),</span>
-<span id="cb22-196">    ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">aes</span>(</span>
-<span id="cb22-197">      <span class="at" style="color: #657422;">x =</span> half_cumu_prop_duration,</span>
-<span id="cb22-198">      <span class="at" style="color: #657422;">y =</span> team,</span>
-<span id="cb22-199">      <span class="at" style="color: #657422;">label =</span> scales<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">number</span>(xgd_p90, <span class="at" style="color: #657422;">accuracy =</span> <span class="fl" style="color: #AD0000;">0.01</span>)</span>
-<span id="cb22-200">    )</span>
-<span id="cb22-201">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-202">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">scale_x_continuous</span>(</span>
-<span id="cb22-203">    <span class="at" style="color: #657422;">labels =</span> scales<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">percent_format</span>(<span class="at" style="color: #657422;">accuracy =</span> <span class="dv" style="color: #AD0000;">1</span>),</span>
-<span id="cb22-204">    <span class="at" style="color: #657422;">expand =</span> <span class="fu" style="color: #4758AB;">c</span>(<span class="fl" style="color: #AD0000;">0.01</span>, <span class="fl" style="color: #AD0000;">0.01</span>)</span>
-<span id="cb22-205">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-206">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">scale_fill_manual</span>(</span>
-<span id="cb22-207">    <span class="at" style="color: #657422;">values =</span> GAMESTATE_PAL</span>
-<span id="cb22-208">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-209">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">theme</span>(</span>
-<span id="cb22-210">    <span class="at" style="color: #657422;">panel.grid.major.y =</span> ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">element_blank</span>(),</span>
-<span id="cb22-211">    <span class="at" style="color: #657422;">panel.grid.major.x =</span> ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">element_blank</span>(),</span>
-<span id="cb22-212">    <span class="at" style="color: #657422;">legend.position =</span> <span class="st" style="color: #20794D;">'top'</span></span>
-<span id="cb22-213">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
-<span id="cb22-214">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">labs</span>(</span>
-<span id="cb22-215">    <span class="at" style="color: #657422;">title =</span> glue<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">glue</span>(<span class="st" style="color: #20794D;">"xGD per 90 when &lt;span style='color:{GAMESTATE_PAL[['Leading']]}'&gt;Leading&lt;/span&gt;, &lt;span style='color:{GAMESTATE_PAL[['Tied']]}'&gt;Tied&lt;/span&gt;, and &lt;span style='color:{GAMESTATE_PAL[['Trailing']]}'&gt;Trailing&lt;/spna&gt;"</span>),</span>
-<span id="cb22-216">    <span class="at" style="color: #657422;">subtitle =</span> SUBTITLE_LABEL,</span>
-<span id="cb22-217">    <span class="at" style="color: #657422;">y =</span> <span class="cn" style="color: #8f5902;">NULL</span>,</span>
-<span id="cb22-218">    <span class="at" style="color: #657422;">tag =</span> TAG_LABEL,</span>
-<span id="cb22-219">    <span class="at" style="color: #657422;">caption =</span> <span class="fu" style="color: #4758AB;">paste0</span>(CAPTION_LABEL, <span class="st" style="color: #20794D;">'&lt;br/&gt;**xGD**: Expected goals for minus expected goals conceded'</span>),</span>
-<span id="cb22-220">    <span class="at" style="color: #657422;">x =</span> <span class="st" style="color: #20794D;">'% of Match Time'</span></span>
-<span id="cb22-221">  )</span>
-<span id="cb22-222">xgd_p90_plot</span>
-<span id="cb22-223"></span>
-<span id="cb22-224">xgd_p90_plot_path <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">file.path</span>(PROJ_DIR, <span class="st" style="color: #20794D;">'2023-mls-xgd-p90.png'</span>)</span>
-<span id="cb22-225">ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ggsave</span>(</span>
-<span id="cb22-226">  xgd_p90_plot,</span>
-<span id="cb22-227">  <span class="at" style="color: #657422;">filename =</span> xgd_p90_plot_path,</span>
-<span id="cb22-228">  <span class="at" style="color: #657422;">width =</span> <span class="dv" style="color: #AD0000;">8</span>,</span>
-<span id="cb22-229">  <span class="at" style="color: #657422;">height =</span> <span class="dv" style="color: #AD0000;">8</span></span>
-<span id="cb22-230">)</span>
-<span id="cb22-231"></span>
-<span id="cb22-232"><span class="do" style="color: #5E5E5E;
+<span id="cb22-119">team_label_order <span class="ot" style="color: #003B4F;">&lt;-</span> agg_gamestate_xgd_with_logos <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-120">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(</span>
+<span id="cb22-121">    pre_shot_gamestate <span class="sc" style="color: #5E5E5E;">==</span> <span class="st" style="color: #20794D;">'Leading'</span></span>
+<span id="cb22-122">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-123">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(prop_duration) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-124">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">pull</span>(team)</span>
+<span id="cb22-125"></span>
+<span id="cb22-126">prepped_agg_gamestate_xgd <span class="ot" style="color: #003B4F;">&lt;-</span> agg_gamestate_xgd_with_logos <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-127">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">mutate</span>(</span>
+<span id="cb22-128">    dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">across</span>(</span>
+<span id="cb22-129">      team,</span>
+<span id="cb22-130">      \(.x) <span class="fu" style="color: #4758AB;">factor</span>(.x, <span class="at" style="color: #657422;">levels =</span> team_label_order)</span>
+<span id="cb22-131">    )</span>
+<span id="cb22-132">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-133">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">arrange</span>(team, <span class="fu" style="color: #4758AB;">desc</span>(pre_shot_gamestate)) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-134">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">group_by</span>(team) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-135">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">mutate</span>(</span>
+<span id="cb22-136">    <span class="at" style="color: #657422;">cumu_prop_duration =</span> <span class="fu" style="color: #4758AB;">cumsum</span>(prop_duration)</span>
+<span id="cb22-137">  ) <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-138">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ungroup</span>() <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-139">  dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">mutate</span>(</span>
+<span id="cb22-140">    <span class="at" style="color: #657422;">half_cumu_prop_duration =</span> cumu_prop_duration <span class="sc" style="color: #5E5E5E;">-</span> <span class="fl" style="color: #AD0000;">0.5</span> <span class="sc" style="color: #5E5E5E;">*</span> prop_duration</span>
+<span id="cb22-141">  )</span>
+<span id="cb22-142"></span>
+<span id="cb22-143">xgd_p90_plot <span class="ot" style="color: #003B4F;">&lt;-</span> prepped_agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;">|&gt;</span> </span>
+<span id="cb22-144">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ggplot</span>() <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-145">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">aes</span>(</span>
+<span id="cb22-146">    <span class="at" style="color: #657422;">x =</span> prop_duration,</span>
+<span id="cb22-147">    <span class="at" style="color: #657422;">y =</span> team</span>
+<span id="cb22-148">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-149">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">scale_y_discrete</span>(</span>
+<span id="cb22-150">    <span class="at" style="color: #657422;">name =</span> <span class="st" style="color: #20794D;">''</span>,</span>
+<span id="cb22-151">    <span class="at" style="color: #657422;">labels =</span> prepped_agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;">|&gt;</span></span>
+<span id="cb22-152">      dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">distinct</span>(team, label) <span class="sc" style="color: #5E5E5E;">|&gt;</span></span>
+<span id="cb22-153">      tibble<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">deframe</span>()</span>
+<span id="cb22-154">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-155">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">theme</span>(</span>
+<span id="cb22-156">    <span class="at" style="color: #657422;">axis.text.y =</span> ggtext<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">element_markdown</span>(<span class="at" style="color: #657422;">margin =</span> grid<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">unit</span>(<span class="fu" style="color: #4758AB;">c</span>(<span class="dv" style="color: #AD0000;">0</span>, <span class="dv" style="color: #AD0000;">0</span>, <span class="dv" style="color: #AD0000;">0</span>, <span class="dv" style="color: #AD0000;">0</span>), <span class="st" style="color: #20794D;">'pt'</span>)),</span>
+<span id="cb22-157">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-158">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">geom_col</span>(</span>
+<span id="cb22-159">    <span class="at" style="color: #657422;">show.legend =</span> <span class="cn" style="color: #8f5902;">FALSE</span>,</span>
+<span id="cb22-160">    <span class="at" style="color: #657422;">alpha =</span> <span class="fl" style="color: #AD0000;">0.8</span>,</span>
+<span id="cb22-161">    ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">aes</span>(</span>
+<span id="cb22-162">      <span class="at" style="color: #657422;">fill =</span> pre_shot_gamestate</span>
+<span id="cb22-163">    )</span>
+<span id="cb22-164">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-165">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">geom_text</span>(</span>
+<span id="cb22-166">    <span class="at" style="color: #657422;">family =</span> FONT,</span>
+<span id="cb22-167">    <span class="at" style="color: #657422;">size =</span> <span class="dv" style="color: #AD0000;">12</span> <span class="sc" style="color: #5E5E5E;">/</span> ggplot2<span class="sc" style="color: #5E5E5E;">::</span>.pt,</span>
+<span id="cb22-168">    <span class="at" style="color: #657422;">fontface =</span> <span class="st" style="color: #20794D;">'bold'</span>,</span>
+<span id="cb22-169">    <span class="at" style="color: #657422;">color =</span> WHITISH_FOREGROUND_COLOR,</span>
+<span id="cb22-170">    <span class="at" style="color: #657422;">data =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(prepped_agg_gamestate_xgd, xgd_p90 <span class="sc" style="color: #5E5E5E;">&gt;=</span> <span class="dv" style="color: #AD0000;">0</span>),</span>
+<span id="cb22-171">    ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">aes</span>(</span>
+<span id="cb22-172">      <span class="at" style="color: #657422;">x =</span> half_cumu_prop_duration,</span>
+<span id="cb22-173">      <span class="at" style="color: #657422;">y =</span> team,</span>
+<span id="cb22-174">      <span class="at" style="color: #657422;">label =</span> scales<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">number</span>(xgd_p90, <span class="at" style="color: #657422;">accuracy =</span> <span class="fl" style="color: #AD0000;">0.01</span>, <span class="at" style="color: #657422;">style_positive =</span> <span class="st" style="color: #20794D;">'plus'</span>)</span>
+<span id="cb22-175">    )</span>
+<span id="cb22-176">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-177">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">geom_text</span>(</span>
+<span id="cb22-178">    <span class="at" style="color: #657422;">family =</span> FONT,</span>
+<span id="cb22-179">    <span class="at" style="color: #657422;">size =</span> <span class="dv" style="color: #AD0000;">12</span> <span class="sc" style="color: #5E5E5E;">/</span> ggplot2<span class="sc" style="color: #5E5E5E;">::</span>.pt,</span>
+<span id="cb22-180">    <span class="at" style="color: #657422;">fontface =</span> <span class="st" style="color: #20794D;">'bold.italic'</span>,</span>
+<span id="cb22-181">    <span class="at" style="color: #657422;">color =</span> BLACKISH_BACKGROUND_COLOR,</span>
+<span id="cb22-182">    <span class="at" style="color: #657422;">data =</span> dplyr<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">filter</span>(prepped_agg_gamestate_xgd, xgd_p90 <span class="sc" style="color: #5E5E5E;">&lt;</span> <span class="dv" style="color: #AD0000;">0</span>),</span>
+<span id="cb22-183">    ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">aes</span>(</span>
+<span id="cb22-184">      <span class="at" style="color: #657422;">x =</span> half_cumu_prop_duration,</span>
+<span id="cb22-185">      <span class="at" style="color: #657422;">y =</span> team,</span>
+<span id="cb22-186">      <span class="at" style="color: #657422;">label =</span> scales<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">number</span>(xgd_p90, <span class="at" style="color: #657422;">accuracy =</span> <span class="fl" style="color: #AD0000;">0.01</span>)</span>
+<span id="cb22-187">    )</span>
+<span id="cb22-188">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-189">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">scale_x_continuous</span>(</span>
+<span id="cb22-190">    <span class="at" style="color: #657422;">labels =</span> scales<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">percent_format</span>(<span class="at" style="color: #657422;">accuracy =</span> <span class="dv" style="color: #AD0000;">1</span>),</span>
+<span id="cb22-191">    <span class="at" style="color: #657422;">expand =</span> <span class="fu" style="color: #4758AB;">c</span>(<span class="fl" style="color: #AD0000;">0.01</span>, <span class="fl" style="color: #AD0000;">0.01</span>)</span>
+<span id="cb22-192">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-193">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">scale_fill_manual</span>(</span>
+<span id="cb22-194">    <span class="at" style="color: #657422;">values =</span> GAMESTATE_PAL</span>
+<span id="cb22-195">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-196">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">theme</span>(</span>
+<span id="cb22-197">    <span class="at" style="color: #657422;">panel.grid.major.y =</span> ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">element_blank</span>(),</span>
+<span id="cb22-198">    <span class="at" style="color: #657422;">panel.grid.major.x =</span> ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">element_blank</span>(),</span>
+<span id="cb22-199">    <span class="at" style="color: #657422;">legend.position =</span> <span class="st" style="color: #20794D;">'top'</span></span>
+<span id="cb22-200">  ) <span class="sc" style="color: #5E5E5E;">+</span></span>
+<span id="cb22-201">  ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">labs</span>(</span>
+<span id="cb22-202">    <span class="at" style="color: #657422;">title =</span> glue<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">glue</span>(<span class="st" style="color: #20794D;">"xGD per 90 when &lt;span style='color:{GAMESTATE_PAL[['Leading']]}'&gt;Leading&lt;/span&gt;, &lt;span style='color:{GAMESTATE_PAL[['Tied']]}'&gt;Tied&lt;/span&gt;, and &lt;span style='color:{GAMESTATE_PAL[['Trailing']]}'&gt;Trailing&lt;/spna&gt;"</span>),</span>
+<span id="cb22-203">    <span class="at" style="color: #657422;">subtitle =</span> SUBTITLE_LABEL,</span>
+<span id="cb22-204">    <span class="at" style="color: #657422;">y =</span> <span class="cn" style="color: #8f5902;">NULL</span>,</span>
+<span id="cb22-205">    <span class="at" style="color: #657422;">tag =</span> TAG_LABEL,</span>
+<span id="cb22-206">    <span class="at" style="color: #657422;">caption =</span> <span class="fu" style="color: #4758AB;">paste0</span>(CAPTION_LABEL, <span class="st" style="color: #20794D;">'&lt;br/&gt;**xGD**: Expected goals for minus expected goals conceded'</span>),</span>
+<span id="cb22-207">    <span class="at" style="color: #657422;">x =</span> <span class="st" style="color: #20794D;">'% of Match Time'</span></span>
+<span id="cb22-208">  )</span>
+<span id="cb22-209">xgd_p90_plot</span>
+<span id="cb22-210"></span>
+<span id="cb22-211">xgd_p90_plot_path <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">file.path</span>(PROJ_DIR, <span class="st" style="color: #20794D;">'2023-mls-xgd-p90.png'</span>)</span>
+<span id="cb22-212">ggplot2<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">ggsave</span>(</span>
+<span id="cb22-213">  xgd_p90_plot,</span>
+<span id="cb22-214">  <span class="at" style="color: #657422;">filename =</span> xgd_p90_plot_path,</span>
+<span id="cb22-215">  <span class="at" style="color: #657422;">width =</span> <span class="dv" style="color: #AD0000;">8</span>,</span>
+<span id="cb22-216">  <span class="at" style="color: #657422;">height =</span> <span class="dv" style="color: #AD0000;">8</span></span>
+<span id="cb22-217">)</span>
+<span id="cb22-218"></span>
+<span id="cb22-219"><span class="do" style="color: #5E5E5E;
 font-style: italic;">## https://themockup.blog/posts/2019-01-09-add-a-logo-to-your-plot/</span></span>
-<span id="cb22-233">add_logo <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(</span>
-<span id="cb22-234">    plot_path,</span>
-<span id="cb22-235">    logo_path,</span>
-<span id="cb22-236">    <span class="at" style="color: #657422;">logo_scale =</span> <span class="fl" style="color: #AD0000;">0.1</span>,</span>
-<span id="cb22-237">    <span class="at" style="color: #657422;">idx_x =</span> <span class="fl" style="color: #AD0000;">0.01</span>, <span class="do" style="color: #5E5E5E;
+<span id="cb22-220">add_logo <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="cf" style="color: #003B4F;">function</span>(</span>
+<span id="cb22-221">    plot_path,</span>
+<span id="cb22-222">    logo_path,</span>
+<span id="cb22-223">    <span class="at" style="color: #657422;">logo_scale =</span> <span class="fl" style="color: #AD0000;">0.1</span>,</span>
+<span id="cb22-224">    <span class="at" style="color: #657422;">idx_x =</span> <span class="fl" style="color: #AD0000;">0.01</span>, <span class="do" style="color: #5E5E5E;
 font-style: italic;">## right-hand side</span></span>
-<span id="cb22-238">    <span class="at" style="color: #657422;">idx_y =</span> <span class="fl" style="color: #AD0000;">0.99</span>, <span class="do" style="color: #5E5E5E;
+<span id="cb22-225">    <span class="at" style="color: #657422;">idx_y =</span> <span class="fl" style="color: #AD0000;">0.99</span>, <span class="do" style="color: #5E5E5E;
 font-style: italic;">## top of plot</span></span>
-<span id="cb22-239">    <span class="at" style="color: #657422;">adjust_x =</span> <span class="fu" style="color: #4758AB;">ifelse</span>(idx_x <span class="sc" style="color: #5E5E5E;">&lt;</span> <span class="fl" style="color: #AD0000;">0.5</span>, <span class="cn" style="color: #8f5902;">TRUE</span>, <span class="cn" style="color: #8f5902;">FALSE</span>),</span>
-<span id="cb22-240">    <span class="at" style="color: #657422;">adjust_y =</span> <span class="fu" style="color: #4758AB;">ifelse</span>(idx_y <span class="sc" style="color: #5E5E5E;">&lt;</span> <span class="fl" style="color: #AD0000;">0.5</span>, <span class="cn" style="color: #8f5902;">TRUE</span>, <span class="cn" style="color: #8f5902;">FALSE</span>)</span>
-<span id="cb22-241">) {</span>
-<span id="cb22-242">  plot <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_read</span>(plot_path)</span>
-<span id="cb22-243">  logo_raw <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_read</span>(logo_path)</span>
-<span id="cb22-244">  </span>
-<span id="cb22-245">  plot_height <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_info</span>(plot)<span class="sc" style="color: #5E5E5E;">$</span>height</span>
-<span id="cb22-246">  plot_width <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_info</span>(plot)<span class="sc" style="color: #5E5E5E;">$</span>width</span>
-<span id="cb22-247">  </span>
-<span id="cb22-248">  logo <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_scale</span>(</span>
-<span id="cb22-249">    logo_raw,</span>
-<span id="cb22-250">    <span class="fu" style="color: #4758AB;">as.character</span>(<span class="fu" style="color: #4758AB;">round</span>(plot_width <span class="sc" style="color: #5E5E5E;">*</span> logo_scale))</span>
-<span id="cb22-251">  )</span>
-<span id="cb22-252">  </span>
-<span id="cb22-253">  info <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_info</span>(logo)</span>
-<span id="cb22-254">  logo_width <span class="ot" style="color: #003B4F;">&lt;-</span> info<span class="sc" style="color: #5E5E5E;">$</span>width</span>
-<span id="cb22-255">  logo_height <span class="ot" style="color: #003B4F;">&lt;-</span> info<span class="sc" style="color: #5E5E5E;">$</span>height</span>
+<span id="cb22-226">    <span class="at" style="color: #657422;">adjust_x =</span> <span class="fu" style="color: #4758AB;">ifelse</span>(idx_x <span class="sc" style="color: #5E5E5E;">&lt;</span> <span class="fl" style="color: #AD0000;">0.5</span>, <span class="cn" style="color: #8f5902;">TRUE</span>, <span class="cn" style="color: #8f5902;">FALSE</span>),</span>
+<span id="cb22-227">    <span class="at" style="color: #657422;">adjust_y =</span> <span class="fu" style="color: #4758AB;">ifelse</span>(idx_y <span class="sc" style="color: #5E5E5E;">&lt;</span> <span class="fl" style="color: #AD0000;">0.5</span>, <span class="cn" style="color: #8f5902;">TRUE</span>, <span class="cn" style="color: #8f5902;">FALSE</span>)</span>
+<span id="cb22-228">) {</span>
+<span id="cb22-229">  plot <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_read</span>(plot_path)</span>
+<span id="cb22-230">  logo_raw <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_read</span>(logo_path)</span>
+<span id="cb22-231">  </span>
+<span id="cb22-232">  plot_height <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_info</span>(plot)<span class="sc" style="color: #5E5E5E;">$</span>height</span>
+<span id="cb22-233">  plot_width <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_info</span>(plot)<span class="sc" style="color: #5E5E5E;">$</span>width</span>
+<span id="cb22-234">  </span>
+<span id="cb22-235">  logo <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_scale</span>(</span>
+<span id="cb22-236">    logo_raw,</span>
+<span id="cb22-237">    <span class="fu" style="color: #4758AB;">as.character</span>(<span class="fu" style="color: #4758AB;">round</span>(plot_width <span class="sc" style="color: #5E5E5E;">*</span> logo_scale))</span>
+<span id="cb22-238">  )</span>
+<span id="cb22-239">  </span>
+<span id="cb22-240">  info <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_info</span>(logo)</span>
+<span id="cb22-241">  logo_width <span class="ot" style="color: #003B4F;">&lt;-</span> info<span class="sc" style="color: #5E5E5E;">$</span>width</span>
+<span id="cb22-242">  logo_height <span class="ot" style="color: #003B4F;">&lt;-</span> info<span class="sc" style="color: #5E5E5E;">$</span>height</span>
+<span id="cb22-243">  </span>
+<span id="cb22-244">  x_pos <span class="ot" style="color: #003B4F;">&lt;-</span> plot_width <span class="sc" style="color: #5E5E5E;">-</span> idx_x <span class="sc" style="color: #5E5E5E;">*</span> plot_width</span>
+<span id="cb22-245">  y_pos <span class="ot" style="color: #003B4F;">&lt;-</span> plot_height <span class="sc" style="color: #5E5E5E;">-</span> idx_y <span class="sc" style="color: #5E5E5E;">*</span> plot_height</span>
+<span id="cb22-246">  </span>
+<span id="cb22-247">  <span class="cf" style="color: #003B4F;">if</span> (<span class="fu" style="color: #4758AB;">isTRUE</span>(adjust_x)) {</span>
+<span id="cb22-248">    x_pos <span class="ot" style="color: #003B4F;">&lt;-</span> x_pos <span class="sc" style="color: #5E5E5E;">-</span> logo_width</span>
+<span id="cb22-249">  }</span>
+<span id="cb22-250">  </span>
+<span id="cb22-251">  <span class="cf" style="color: #003B4F;">if</span> (<span class="fu" style="color: #4758AB;">isTRUE</span>(adjust_y)) {</span>
+<span id="cb22-252">    y_pos <span class="ot" style="color: #003B4F;">&lt;-</span> y_pos <span class="sc" style="color: #5E5E5E;">-</span> logo_height</span>
+<span id="cb22-253">  }</span>
+<span id="cb22-254">  </span>
+<span id="cb22-255">  offset <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">paste0</span>(<span class="st" style="color: #20794D;">'+'</span>, x_pos, <span class="st" style="color: #20794D;">'+'</span>, y_pos)</span>
 <span id="cb22-256">  </span>
-<span id="cb22-257">  x_pos <span class="ot" style="color: #003B4F;">&lt;-</span> plot_width <span class="sc" style="color: #5E5E5E;">-</span> idx_x <span class="sc" style="color: #5E5E5E;">*</span> plot_width</span>
-<span id="cb22-258">  y_pos <span class="ot" style="color: #003B4F;">&lt;-</span> plot_height <span class="sc" style="color: #5E5E5E;">-</span> idx_y <span class="sc" style="color: #5E5E5E;">*</span> plot_height</span>
-<span id="cb22-259">  </span>
-<span id="cb22-260">  <span class="cf" style="color: #003B4F;">if</span> (<span class="fu" style="color: #4758AB;">isTRUE</span>(adjust_x)) {</span>
-<span id="cb22-261">    x_pos <span class="ot" style="color: #003B4F;">&lt;-</span> x_pos <span class="sc" style="color: #5E5E5E;">-</span> logo_width</span>
-<span id="cb22-262">  }</span>
-<span id="cb22-263">  </span>
-<span id="cb22-264">  <span class="cf" style="color: #003B4F;">if</span> (<span class="fu" style="color: #4758AB;">isTRUE</span>(adjust_y)) {</span>
-<span id="cb22-265">    y_pos <span class="ot" style="color: #003B4F;">&lt;-</span> y_pos <span class="sc" style="color: #5E5E5E;">-</span> logo_height</span>
-<span id="cb22-266">  }</span>
-<span id="cb22-267">  </span>
-<span id="cb22-268">  offset <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">paste0</span>(<span class="st" style="color: #20794D;">'+'</span>, x_pos, <span class="st" style="color: #20794D;">'+'</span>, y_pos)</span>
-<span id="cb22-269">  </span>
-<span id="cb22-270">  new_plot <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_composite</span>(plot, logo, <span class="at" style="color: #657422;">offset =</span> offset)</span>
-<span id="cb22-271">  ext <span class="ot" style="color: #003B4F;">&lt;-</span> tools<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">file_ext</span>(plot_path)</span>
-<span id="cb22-272">  rgx_ext <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">sprintf</span>(<span class="st" style="color: #20794D;">'[.]%s$'</span>, ext)</span>
-<span id="cb22-273">  </span>
-<span id="cb22-274">  magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_write</span>(</span>
-<span id="cb22-275">    new_plot,</span>
-<span id="cb22-276">    plot_path</span>
-<span id="cb22-277">  )</span>
-<span id="cb22-278">}</span>
-<span id="cb22-279"></span>
-<span id="cb22-280"><span class="fu" style="color: #4758AB;">add_logo</span>(</span>
-<span id="cb22-281">  xgd_p90_plot_path,</span>
-<span id="cb22-282">  <span class="at" style="color: #657422;">logo_path =</span> <span class="fu" style="color: #4758AB;">file.path</span>(PROJ_DIR, <span class="st" style="color: #20794D;">'mls-logo-black-and-white.png'</span>),</span>
-<span id="cb22-283">  <span class="at" style="color: #657422;">logo_scale =</span> <span class="fl" style="color: #AD0000;">0.06</span></span>
-<span id="cb22-284">)</span></code></pre></div>
+<span id="cb22-257">  new_plot <span class="ot" style="color: #003B4F;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_composite</span>(plot, logo, <span class="at" style="color: #657422;">offset =</span> offset)</span>
+<span id="cb22-258">  ext <span class="ot" style="color: #003B4F;">&lt;-</span> tools<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">file_ext</span>(plot_path)</span>
+<span id="cb22-259">  rgx_ext <span class="ot" style="color: #003B4F;">&lt;-</span> <span class="fu" style="color: #4758AB;">sprintf</span>(<span class="st" style="color: #20794D;">'[.]%s$'</span>, ext)</span>
+<span id="cb22-260">  </span>
+<span id="cb22-261">  magick<span class="sc" style="color: #5E5E5E;">::</span><span class="fu" style="color: #4758AB;">image_write</span>(</span>
+<span id="cb22-262">    new_plot,</span>
+<span id="cb22-263">    plot_path</span>
+<span id="cb22-264">  )</span>
+<span id="cb22-265">}</span>
+<span id="cb22-266"></span>
+<span id="cb22-267"><span class="fu" style="color: #4758AB;">add_logo</span>(</span>
+<span id="cb22-268">  xgd_p90_plot_path,</span>
+<span id="cb22-269">  <span class="at" style="color: #657422;">logo_path =</span> <span class="fu" style="color: #4758AB;">file.path</span>(PROJ_DIR, <span class="st" style="color: #20794D;">'mls-logo-black-and-white.png'</span>),</span>
+<span id="cb22-270">  <span class="at" style="color: #657422;">logo_scale =</span> <span class="fl" style="color: #AD0000;">0.06</span></span>
+<span id="cb22-271">)</span></code></pre></div>
 </details>
 </div>
 <p><img src="https://tonyelhabr.rbind.io/posts/fbref-gamestate-expected-goal-difference/2023-mls-xgd-p90.png" class="img-fluid"></p>

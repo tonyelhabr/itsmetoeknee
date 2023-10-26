@@ -111,7 +111,6 @@ raw_match_summaries <- worldfootballR::load_fb_match_summary(
   tier = TIER,
   season_end_year = SEASON_END_YEAR
 )
-dplyr::glimpse(raw_match_summaries)
 ```
 
 ```{r}
@@ -882,7 +881,7 @@ GAMESTATE_PAL <- c(
 ##   better, scalable strategy for binding team names between sources is to
 ##   order teams by points / placement in the standings.
 
-get_fotmob_mls_standings <- function() {
+get_fotmob_standings <- function() {
   url <- 'https://www.fotmob.com/api/leagues?id=130'
   resp <- httr::GET(url)
   cont <- httr::content(resp, as = 'text')
@@ -898,13 +897,13 @@ get_fotmob_mls_standings <- function() {
     )
 }
 
-fotmob_mls_standings <- get_fotmob_mls_standings()
+fotmob_standings <- get_fotmob_standings()
 team_logos <- agg_gamestate_xgd |> 
   dplyr::distinct(team) |> 
   dplyr::arrange(team) |> 
   ## Lucky for us, MLS team names line up with the fotmob names alphabetically.
   dplyr::bind_cols(
-    fotmob_mls_standings |> 
+    fotmob_standings |> 
       dplyr::arrange(team) |> 
       dplyr::select(path = logo_url, pts)
   )
@@ -923,19 +922,6 @@ agg_gamestate_xgd_with_logos <- agg_gamestate_xgd |>
     label = glue::glue("<span style='font-size:12px;color:{WHITISH_FOREGROUND_COLOR}'>{team}</span> <span style='font-size:9px;color:{COMPLEMENTARY_FOREGROUND_COLOR}'>{pts} pts</span> <img src='{path}' width='14' height='14'/>")
   ) |> 
   dplyr::select(-path)
-
-agg_gamestate_xgd_with_logos |>
-  filter(pre_shot_gamestate == 'Tied') |> 
-  mutate(
-    across(
-      c(prop_duration, pts, xgd_p90), 
-      list(rnk = \(.x) row_number(desc(.x)))
-    ),
-    d = prop_duration_rnk - pts_rnk
-  ) |> 
-  arrange(
-    desc(abs(d))
-  )
 
 team_label_order <- agg_gamestate_xgd_with_logos |> 
   dplyr::filter(
