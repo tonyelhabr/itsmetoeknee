@@ -15,11 +15,11 @@ execute:
 
 ## Introduction
 
-Soccer, a game defined by its discrete, low-scoring nature, thrives on the dynamics of the ["game state"](https://statsbomb.com/articles/soccer/game-states-and-loss-aversion/). Whether a team is leading, trailing, or level with their opponent at a specific moment can wield a profound influence on their tactical choices and overall approach. It's the kind of context that can shed new light on key statistics like shots and [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/).
+Soccer is a game defined by its discrete, low-scoring nature, where the dynamics of a match are often dictated by the ["game state"](https://statsbomb.com/articles/soccer/game-states-and-loss-aversion/). Whether a team is leading, trailing, or level with their opponent at a specific moment can often influence how aggressively a team plays. Contextualizing statistics like [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/) can shed new light on how we evaluate team performance.
 
-Consider this scenario: a team enters a match as heavy favorites, and they gain a substantial lead early on. As they switch to a more defensive strategy--"loss aversion"--the number of shots taken and xG accumulated may appear unexpectedly low, potentially raising eyebrows. But when you factor in that this favored team spent more than half the game with a comfortable 3-goal lead, those seemingly "poor" statistics suddenly take on a different meaning.
+Consider this scenario: a team enters a match as the underdog. They play aggressively early on, getting a few shots on target and eventually scoring, taking a 1-0 lead going into halftime. After the half, they decide to switch into a more defensive scheme, pulling everyone back towards their 18-yard box when the opponent has the ball. They end the match with no additional shots or xG accumulated, but they win the game. While their secondhalf statistics look poor because they ["parked the bus"](https://www.youtube.com/watch?v=7LF-K-ta9PI), they arguably increased their odds of winning. If we consider the game state when looking at the winning team's statistics, we can reason about why their xG looks poor.
 
-The idea seems straightforward, right? Yet, game state analysis remains somewhat underutilized in the world of soccer analytics. Why is that? Well, it's not without its challenges. Contextualizing numbers according to game state can introduce biases, leading us to over-attribute outcomes to tactical choices. Moreover, the calculations involved can be far from trivial.
+So, game state is useful, right? Yet, game state analysis remains somewhat under-utilized in soccer analytics, in my opinion. Why is that? Well, it's not without its challenges. Contextualizing numbers according to game state can introduce biases, leading us to over-attribute outcomes to tactical choices. Moreover, the calculations involved can be far from trivial.
 
 So that's what this post is for. I'll walk through how to calculate expected goals difference (xGD)[^1]--the difference between your team's expected goals and your opponent's--with respect to the game state, using data from [FBref](https://fbref.com/).
 
@@ -29,12 +29,14 @@ So that's what this post is for. I'll walk through how to calculate expected goa
 
 The 2023 Major League Soccer (MLS) regular season just ended, and I'm interested to see what we might learn about the teams who qualified for playoffs. So, naturally, I've chosen to focus on this past MLS season for our game state calculations.
 
-To begin, we pull raw FBref data from pre-saved `{worldfootballR}` release data, starting with match shots.
+To begin[^2], we pull raw FBref data from pre-saved `{worldfootballR}` release data, starting with match shots.
+
+[^2]: All code is intentionally hidden by default in this post, but can easily be viewed via toggles. There's a decent amount of it, and it can be distracting upon first read.
 
 ```{r}
 #| label: raw_shots
 ## data scrape
-library(worldfootballR)  ## version: 0.6.4.9
+library(worldfootballR) ## version: 0.6.4.9
 
 ## data manipulation
 library(dplyr)
@@ -564,9 +566,9 @@ cumu_doublecounted_restacked_shots <- doublecounted_restacked_shots |>
   )
 ```
 
-And then we bring everything together to create a singular data frame from which it is straightforward to calculate xGD with respect to game state.[^2]
+And then we bring everything together to create a singular data frame from which it is straightforward to calculate xGD with respect to game state.[^3]
 
-[^2]: Keep in mind that the xG associated with a shot that is scored and changes the game state should be associated with the pre-shot game state, not the post-shot game state.
+[^3]: Keep in mind that the xG associated with a shot that is scored and changes the game state should be associated with the pre-shot game state, not the post-shot game state.
 
 ```{r}
 #| label: gamestate_shots

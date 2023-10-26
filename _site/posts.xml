@@ -21,21 +21,21 @@
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
-<p>Soccer, a game defined by its discrete, low-scoring nature, thrives on the dynamics of the <a href="https://statsbomb.com/articles/soccer/game-states-and-loss-aversion/">“game state”</a>. Whether a team is leading, trailing, or level with their opponent at a specific moment can wield a profound influence on their tactical choices and overall approach. It’s the kind of context that can shed new light on key statistics like shots and <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a>.</p>
-<p>Consider this scenario: a team enters a match as heavy favorites, and they gain a substantial lead early on. As they switch to a more defensive strategy–“loss aversion”–the number of shots taken and xG accumulated may appear unexpectedly low, potentially raising eyebrows. But when you factor in that this favored team spent more than half the game with a comfortable 3-goal lead, those seemingly “poor” statistics suddenly take on a different meaning.</p>
-<p>The idea seems straightforward, right? Yet, game state analysis remains somewhat underutilized in the world of soccer analytics. Why is that? Well, it’s not without its challenges. Contextualizing numbers according to game state can introduce biases, leading us to over-attribute outcomes to tactical choices. Moreover, the calculations involved can be far from trivial.</p>
+<p>Soccer is a game defined by its discrete, low-scoring nature, where the dynamics of a match are often dictated by the <a href="https://statsbomb.com/articles/soccer/game-states-and-loss-aversion/">“game state”</a>. Whether a team is leading, trailing, or level with their opponent at a specific moment can often influence how aggressively a team plays. Contextualizing statistics like <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a> can shed new light on how we evaluate team performance.</p>
+<p>Consider this scenario: a team enters a match as the underdog. They play aggressively early on, getting a few shots on target and eventually scoring, taking a 1-0 lead going into halftime. After the half, they decide to switch into a more defensive scheme, pulling everyone back towards their 18-yard box when the opponent has the ball. They end the match with no additional shots or xG accumulated, but they win the game. While their secondhalf statistics look poor because they <a href="https://www.youtube.com/watch?v=7LF-K-ta9PI">“parked the bus”</a>, they arguably increased their odds of winning. If we consider the game state when looking at the winning team’s statistics, we can reason about why their xG looks poor.</p>
+<p>So, game state is useful, right? Yet, game state analysis remains somewhat under-utilized in soccer analytics, in my opinion. Why is that? Well, it’s not without its challenges. Contextualizing numbers according to game state can introduce biases, leading us to over-attribute outcomes to tactical choices. Moreover, the calculations involved can be far from trivial.</p>
 <p>So that’s what this post is for. I’ll walk through how to calculate expected goals difference (xGD)<sup>1</sup>–the difference between your team’s expected goals and your opponent’s–with respect to the game state, using data from <a href="https://fbref.com/">FBref</a>.</p>
 </section>
 <section id="data-pull" class="level2">
 <h2 class="anchored" data-anchor-id="data-pull">Data pull</h2>
 <p>The 2023 Major League Soccer (MLS) regular season just ended, and I’m interested to see what we might learn about the teams who qualified for playoffs. So, naturally, I’ve chosen to focus on this past MLS season for our game state calculations.</p>
-<p>To begin, we pull raw FBref data from pre-saved <code>{worldfootballR}</code> release data, starting with match shots.</p>
+<p>To begin<sup>2</sup>, we pull raw FBref data from pre-saved <code>{worldfootballR}</code> release data, starting with match shots.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="do" style="color: #5E5E5E;
 font-style: italic;">## data scrape</span></span>
-<span id="cb1-2"><span class="fu" style="color: #4758AB;">library</span>(worldfootballR)  <span class="do" style="color: #5E5E5E;
+<span id="cb1-2"><span class="fu" style="color: #4758AB;">library</span>(worldfootballR) <span class="do" style="color: #5E5E5E;
 font-style: italic;">## version: 0.6.4.9</span></span>
 <span id="cb1-3"></span>
 <span id="cb1-4"><span class="do" style="color: #5E5E5E;
@@ -526,7 +526,7 @@ font-style: italic;">## then formally re-assign columns</span></span>
 <span id="cb15-12">  )</span></code></pre></div>
 </details>
 </div>
-<p>And then we bring everything together to create a singular data frame from which it is straightforward to calculate xGD with respect to game state.<sup>2</sup></p>
+<p>And then we bring everything together to create a singular data frame from which it is straightforward to calculate xGD with respect to game state.<sup>3</sup></p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -1075,7 +1075,8 @@ No matching items
 
 <ol>
 <li id="fn1"><p>I like xGD because it captures a lot of information about how your team is playing relative to your opponent. Your team could be putting up a lot of shots, each with a decent amount of xG (i.e.&nbsp;“shot quality”), but if you’re conceding even more shots than you’ve taken and/or the quality of those shots are better than yours, then you’re really not performing all that well. This would be reflected with a negative xGD. Respected analysts like <a href="https://twitter.com/MC_of_A">Michael Caley</a> also seem to like <a href="https://twitter.com/MC_of_A/status/1716474802259574848">using xGD</a> for diagnosing performance.↩︎</p></li>
-<li id="fn2"><p>Keep in mind that the xG associated with a shot that is scored and changes the game state should be associated with the pre-shot game state, not the post-shot game state.↩︎</p></li>
+<li id="fn2"><p>All code is intentionally hidden by default in this post, but can easily be viewed via toggles. There’s a decent amount of it, and it can be distracting upon first read.↩︎</p></li>
+<li id="fn3"><p>Keep in mind that the xG associated with a shot that is scored and changes the game state should be associated with the pre-shot game state, not the post-shot game state.↩︎</p></li>
 </ol>
 </section></div> ]]></description>
   <category>r</category>
