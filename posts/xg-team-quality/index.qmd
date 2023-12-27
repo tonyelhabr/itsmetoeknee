@@ -1,0 +1,320 @@
+---
+title: Should we account for team quality in an xG model?
+description: "F**king around (with an xG model) and finding out"
+date: 2023-12-31
+categories:
+  - r
+  - soccer
+image: image.png
+draft: true
+execute: 
+  code-fold: false
+  eval: false
+  include: true
+  echo: true
+---
+
+## Introduction
+
+"Should we account for team quality in an [xG model](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/)?" From a purely epistemic point of view, my opinion is "no". (See Discussion section later.) But I thought it might be fun to entertain the question from a quantitative perspective. If we add features for team strength to an xG model, can we improve the model's (1) predictive performance and (2) [calibration](/posts/probability-calibration)?
+
+### Motivation
+
+This write-up is inspired by [Ryan Brill](https://twitter.com/RyanBrill_)'s recent [presentation on fourth-down decision-making in the National Football League (NFL)](https://youtu.be/uS4XxQ0LVfE?si=BnmzeePnk3R5uiY3&t=361). He points out that [expected points (EP)](https://www.nfeloapp.com/analysis/expected-points-added-epa-nfl/) models in the NFL have a [selection bias](https://en.wikipedia.org/wiki/Selection_bias) problem--they tend to under-rate the probability of a positive outcome for "good" teams and over-rate such outcomes for "bad" teams.
+
+For those of us that have a good sense of how expected goals (xG) work in soccer, we know that this phenomenon also occurs in our beloved sport. [Lars Maurath](https://github.com/larsmaurath) has [a great deep-dive](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) looking into expected goals underestimation for strong teams in the [Big 5 European leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats). The plot below (copied shamelessly from Lars' post) shows that a naive xG model consistently under-predicts Barcelona's goals over the course of the season, for seasons from 2007/08 to 2018/19. Even [StatsBomb](https://statsbomb.com/)'s model--which is more sophisticated--tends to underestimate the true cumulative goal total!
+
+![](barcelona-cumulative-xg.png)
+
+## Data + Analysis
+
+I'll be using event data that I've ingested with the [`{socceraction}` package](https://github.com/ML-KULeuven/socceraction) (which I've made available [here](https://github.com/tonyelhabr/socceraction-streamlined/releases)!) for the 2013/14 to 2022/23 [English Premier League (EPL)](https://www.premierleague.com/) seasons. We'll focus on just "open-play" shots, i.e. shots excluding penalties and those taken from set pieces.
+
+As for the measure of team quality, I've scraped [Elo](https://en.wikipedia.org/wiki/Elo_rating_system) ratings from [ClubElo](http://clubelo.com/). I've chosen Elo because provides a intuitive, sport-agnostic measure of relative skill. Also, it is calculated independent of the events that take place in a game, so correlation with measures of shot volume, quality, etc. are only coincidental. (It was also fairly easy to retrieve!)
+
+```{r}
+#| label: data-pull
+read_parquet_from_url <- function(url) {
+  load <- curl::curl_fetch_memory(url)
+  arrow::read_parquet(load$content)
+}
+
+REPO <- 'tonyelhabr/socceraction-streamlined'
+read_socceraction_parquet_release <- function(name, tag) {
+  url <- sprintf('https://github.com/%s/releases/download/%s/%s.parquet', REPO, tag, name)
+  read_parquet_from_url(url)
+}
+
+read_socceraction_parquet_releases <- function(name, tag = 'data-processed') {
+  purrr::map_dfr(
+    2013:2022,
+    \(season_start_year) {
+      basename <- sprintf('8-%s-%s', season_start_year, name)
+      message(basename)
+      read_socceraction_parquet_release(basename, tag = tag)
+    }
+  )
+}
+
+read_socceraction_parquet <- function(name, branch = 'main') {
+  url <- sprintf('https://github.com/%s/raw/%s/%s.parquet', REPO, branch, name)
+  read_parquet_from_url(url)
+}
+
+x <- read_socceraction_parquet_releases('x')
+y <- read_socceraction_parquet_releases('y')
+actions <- read_socceraction_parquet_releases('actions')
+games <- read_socceraction_parquet_releases('games') |> 
+  dplyr::mutate(
+    date = lubridate::date(game_date)
+  )
+team_elo <- read_socceraction_parquet('data/final/8/2013-2022/clubelo-ratings')
+
+open_play_shots <- games |>
+  dplyr::transmute(
+    season_id,
+    game_id,
+    date,
+    home_team_id,
+    away_team_id
+  ) |> 
+  dplyr::inner_join(
+    x |> 
+      dplyr::filter(type_shot_a0 == 1) |> 
+      dplyr::select(
+        game_id,
+        action_id,
+        
+        ## features
+        start_x_a0,
+        start_y_a0,
+        start_dist_to_goal_a0,
+        start_angle_to_goal_a0,
+        type_dribble_a1,
+        type_pass_a1,
+        type_cross_a1,
+        type_corner_crossed_a1,
+        type_shot_a1,
+        type_freekick_crossed_a1,
+        bodypart_foot_a0,
+        bodypart_head_a0,
+        bodypart_other_a0
+      ) |> 
+      dplyr::mutate(
+        dplyr::across(-c(game_id, action_id), as.integer)
+      ),
+    by = dplyr::join_by(game_id),
+    relationship = 'many-to-many'
+  ) |> 
+  dplyr::inner_join(
+    y |> 
+      dplyr::transmute(
+        game_id, 
+        action_id,
+        scores = ifelse(scores, 'yes', 'no') |> factor(levels = c('yes', 'no'))
+      ),
+    by = dplyr::join_by(game_id, action_id)
+  ) |> 
+  dplyr::inner_join(
+    actions |> 
+      dplyr::select(
+        game_id,
+        action_id,
+        team_id,
+        player_id
+      ),
+    by = dplyr::join_by(game_id, action_id)
+  ) |> 
+  dplyr::left_join(
+    team_elo |> dplyr::select(date, home_team_id = team_id, home_elo = elo),
+    by = dplyr::join_by(date, home_team_id)
+  ) |> 
+  dplyr::left_join(
+    team_elo |> dplyr::select(date, away_team_id = team_id, away_elo = elo),
+    by = dplyr::join_by(date, away_team_id)
+  ) |> 
+  dplyr::transmute(
+    date,
+    season_id,
+    game_id,
+    team_id,
+    opponent_team_id = ifelse(team_id == home_team_id, away_team_id, home_team_id),
+    action_id,
+
+    scores,
+    
+    elo = ifelse(team_id == home_team_id, home_elo, away_elo),
+    opponent_elo = ifelse(team_id == home_team_id, away_elo, home_elo),
+    elo_diff = elo - opponent_elo,
+    
+    start_x_a0,
+    start_y_a0,
+    start_dist_to_goal_a0,
+    start_angle_to_goal_a0,
+    type_dribble_a1,
+    type_pass_a1,
+    type_cross_a1,
+    type_corner_crossed_a1,
+    type_shot_a1,
+    type_freekick_crossed_a1,
+    bodypart_foot_a0,
+    bodypart_head_a0,
+    bodypart_other_a0
+  )
+```
+
+```{r}
+#| label: data-pull-save
+#| include: false
+# library(qs)
+PROJ_DIR <- 'posts/xg-team-quality'
+qs::qsave(open_play_shots, file.path(PROJ_DIR, 'open_play_shots.qs'))
+```
+
+The open play shot data looks like this.
+
+```{r}
+#| label: glimpse-data-pull
+#| code-fold: false
+dplyr::glimpse(open_play_shots)
+#> Rows: 92,322
+#> Columns: 23
+#> $ date                     <date> 2012-08-18, 2012-08-18, 2012-08-18, 2012-…
+#> $ season_id                <int> 2013, 2013, 2013, 2013, 2013, 2013, 2013, …
+#> $ game_id                  <int> 614051, 614051, 614051, 614051, 614051, 61…
+#> $ team_id                  <int> 16, 13, 16, 13, 13, 13, 13, 13, 13, 13, 16…
+#> $ opponent_team_id         <dbl> 13, 16, 13, 16, 16, 16, 16, 16, 16, 16, 13…
+#> $ action_id                <int> 109, 123, 276, 436, 502, 517, 541, 573, 61…
+#> $ scores                   <fct> no, no, no, no, no, no, no, no, no, no, no…
+#> $ elo                      <dbl> 1669.172, 1827.481, 1669.172, 1827.481, 18…
+#> $ opponent_elo             <dbl> 1827.481, 1669.172, 1827.481, 1669.172, 16…
+#> $ elo_diff                 <dbl> -158.3093, 158.3093, -158.3093, 158.3093, …
+#> $ start_x_a0               <int> 99, 77, 83, 91, 97, 88, 79, 94, 78, 72, 75…
+#> $ start_y_a0               <int> 45, 33, 38, 41, 29, 34, 49, 33, 31, 31, 28…
+#> $ start_dist_to_goal_a0    <int> 12, 27, 21, 15, 8, 16, 29, 10, 26, 32, 30,…
+#> $ start_angle_to_goal_a0   <int> 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, …
+#> $ type_dribble_a1          <int> 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, …
+#> $ type_pass_a1             <int> 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, …
+#> $ type_cross_a1            <int> 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, …
+#> $ type_corner_crossed_a1   <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+#> $ type_shot_a1             <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+#> $ type_freekick_crossed_a1 <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+#> $ bodypart_foot_a0         <int> 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, …
+#> $ bodypart_head_a0         <int> 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, …
+#> $ bodypart_other_a0        <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+```
+
+We'll set aside the shots from the 7 seasons from 2013/14 to 2019/20 for our training set, and the 3 seasons from 2020/21 to 2022/23 for our test set.
+
+For features, we'll use the following for our base model:
+
+-   location of the shot (`start_dist_to_goal_a0` and `start_angle_to_goal_a0`)[^1]
+-   type of action leading to the shot (`type_dribble_a1`, etc.)
+-   body part with which the shot was taken (`bodypart_foot_a0`, etc.)
+
+[^1]: One could get a bit more nuance by adding the `x` and `y`
+
+For the ELO model, we'll add two additional features
+
+-   `elo`: the ELO of the team of the shot-taker
+-   `elo_diff`: the difference in the ELO of the shot-taking team and the opposing team
+
+The two variables are meant to capture the absolute and relative quality of a team.
+
+```{r}
+#| label: model-train
+#| code-summary: Setting up the model
+split <- rsample::make_splits(
+  open_play_shots |> dplyr::filter(season_id %in% c(2013L:2019L)),
+  open_play_shots |> dplyr::filter(season_id %in% c(2020L:2022L))
+)
+
+rec_elo <- recipes::recipe(
+  scores ~ 
+    elo +
+    elo_diff +
+    start_dist_to_goal_a0 +
+    start_angle_to_goal_a0 +
+    type_dribble_a1 +
+    type_pass_a1 +
+    type_cross_a1 +
+    type_corner_crossed_a1 +
+    type_shot_a1 +
+    type_freekick_crossed_a1 +
+    bodypart_foot_a0 +
+    bodypart_head_a0 +
+    bodypart_other_a0,
+  data = rsample::training(split)
+)
+
+rec_base <- rec_elo |> 
+  recipes::step_rm(elo, elo_diff)
+
+## Specifications from an offline tuning approach
+spec_base <- parsnip::boost_tree(
+  trees = 500,
+  learn_rate = 0.01,
+  tree_depth = 12,
+  min_n = 20, 
+  loss_reduction = 0.0009316,
+  sample_size = 0.2373513,
+  mtry = 11,
+  stop_iter = 36
+) |>
+  parsnip::set_engine('xgboost') |> 
+  parsnip::set_mode('classification')
+
+elo_features <- rec_elo |> recipes::prep() |> recipes::juice() |> colnames()
+
+spec_elo <- parsnip::boost_tree(
+  trees = 500,
+  learn_rate = 0.01,
+  tree_depth = 13,
+  min_n = 31, 
+  loss_reduction = 0.0006153,
+  sample_size = 0.3222589,
+  mtry = 12,
+  stop_iter = 47
+) |>
+  parsnip::set_engine(
+    'xgboost', 
+    monotone_constraints = !!ifelse(elo_features %in% c('elo', 'elo_diff'), 1, 0)
+  ) |> 
+  parsnip::set_mode('classification')
+
+wf_base <- workflows::workflow(
+  preprocessor = rec_base,
+  spec = spec_base
+)
+
+wf_elo <- workflows::workflow(
+  preprocessor = rec_elo,
+  spec = spec_elo
+)
+
+
+met_set <- yardstick::metric_set(
+  fixed_brier_skill_score,
+  yardstick::f_meas,
+  yardstick::accuracy, 
+  yardstick::roc_auc
+)
+
+val_and_test <- dplyr::bind_rows(val, test)
+last_fit_base <- tune::last_fit(
+  wf_base,
+  split = split,
+  metrics = met_set
+)
+
+last_fit_elo <- tune::last_fit(
+  wf_elo,
+  split = split,
+  metrics = met_set
+)
+
+```
+
+## Discussion
+
+## Conclusion
