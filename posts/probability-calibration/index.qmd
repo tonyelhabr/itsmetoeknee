@@ -743,7 +743,7 @@ sets <- rsample::vfold_cv(
 ## "fixed" in the sense that we're pre-defining the reference estimate.
 ##   I'm not sure there's another way of going about this when working in conjunction `yardstick::metric_set()` and `probably::cal_validate_*()`
 ##   with
-fixed_brier_skill_score <- function(...) {
+fixed_brier_skill_score.data.frame <- function(...) {
   brier_skill_score(
     ref_estimate = REF_ESTIMATE,
     ...
@@ -751,7 +751,7 @@ fixed_brier_skill_score <- function(...) {
 }
 
 fixed_brier_skill_score <- function(data, ...) {
-  UseMethod('brier_skill_score')
+  UseMethod('fixed_brier_skill_score')
 }
 
 fixed_brier_skill_score <- yardstick::new_prob_metric(
