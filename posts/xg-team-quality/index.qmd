@@ -70,14 +70,61 @@ library(vip)
 
 ## Plotting
 library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
 library(scales)
+
+TAG_LABEL <- htmltools::tagList(
+  htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
+  htmltools::tags$span("@TonyElHabr"),
+)
+SUBTITLE_LABEL <- 'English Premier League, 2012/13 - 2022/23'
+PLOT_RESOLUTION <- 300
+WHITISH_FOREGROUND_COLOR <- 'white'
+COMPLEMENTARY_FOREGROUND_COLOR <- '#cbcbcb' # '#f1f1f1'
+BLACKISH_BACKGROUND_COLOR <- '#1c1c1c'
+COMPLEMENTARY_BACKGROUND_COLOR <- '#4d4d4d'
+FONT <- 'Titillium Web'
+sysfonts::font_add_google(FONT, FONT)
+## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = PLOT_RESOLUTION)
+
+ggplot2::theme_set(ggplot2::theme_minimal())
+ggplot2::theme_update(
+  text = ggplot2::element_text(family = FONT),
+  title = ggplot2::element_text(size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title = ggtext::element_markdown(face = 'bold', size = 20, color = WHITISH_FOREGROUND_COLOR),
+  plot.title.position = 'plot',
+  plot.subtitle = ggtext::element_markdown(size = 16, color = COMPLEMENTARY_FOREGROUND_COLOR),
+  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
+  # axis.title = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.x = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.y = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.line = ggplot2::element_blank(),
+  strip.text = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0),
+  panel.grid.major = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor.x = ggplot2::element_blank(),
+  panel.grid.minor.y = ggplot2::element_blank(),
+  plot.margin = ggplot2::margin(10, 20, 10, 20),
+  plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
+  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain'),
+  plot.caption.position = 'plot',
+  plot.tag = ggtext::element_markdown(size = 10, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
+  plot.tag.position = c(0.99, 0.01),
+  panel.spacing.x = grid::unit(2, 'lines'),
+  panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
+)
 ```
 
 ```{r}
 #| label: data-pull
 #| code-fold: true
 #| code-summary: Retrieve and wrangle data
-
 read_parquet_from_url <- function(url) {
   load <- curl::curl_fetch_memory(url)
   arrow::read_parquet(load$content)
@@ -265,6 +312,71 @@ split <- rsample::make_splits(
 train <- rsample::training(split)
 test <- rsample::testing(split)
 ```
+
+It's worth spotlighting Elo a bit more, since it's the novel feature here. Below is a look at the distribution of the Elo (1 observation = 1 team prior to a game in each season, so about 38 matches x 20 teams x 10 seasons).
+
+```{r}
+#| label: elo-hist
+#| include: false
+elo_hist <- open_play_shots |> 
+  dplyr::distinct(game_id, elo) |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = elo
+  ) +
+  ggplot2::geom_histogram(binwidth = 25, fill = 'white') +
+  ggplot2::labs(
+    title = 'Distribution of Elo',
+    subtitle = SUBTITLE_LABEL,
+    y = 'Count',
+    x = 'Elo',
+    caption =  'Each point represents the pre-match Elo of a given team.<br/>There are 10 seasons x 380 matches x 2 sides = 7.6k data points in total.',
+    tag = TAG_LABEL
+  )
+ggplot2::ggsave(
+  elo_hist,
+  filename = file.path(PROJ_DIR, 'elo-hist.png'),
+  device = 'png',
+  width = 7,
+  height = 7 / 1.5
+)
+```
+
+![](elo-hist.png)
+
+Man City tends to sustain an Elo greater than 1850 and bottom-table teams tend to have Elos less than 1650.
+
+```{r}
+#| label: elo-diff-hist
+#| include: false
+elo_diff_hist <- open_play_shots |> 
+  dplyr::distinct(game_id, elo_diff) |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = elo_diff
+  ) +
+  ggplot2::geom_histogram(binwidth = 25, fill = 'white') +
+  ggplot2::theme(
+    plot.title = ggtext::element_markdown(size = 19)
+  ) +
+  ggplot2::labs(
+    title = 'Distribution of the Difference in Elo Between Opponents',
+    subtitle = SUBTITLE_LABEL,
+    y = 'Count',
+    x = 'Elo',
+    caption = 'Each point represents the pre-match difference between two teams.<br/>There are 10 seasons x 380 matches x 2 sides = 7.6k data points in total.',
+    tag = TAG_LABEL
+  )
+ggplot2::ggsave(
+  elo_diff_hist,
+  filename = file.path(PROJ_DIR, 'elo-diff-hist.png'),
+  device = 'png',
+  width = 7,
+  height = 7 / 1.5
+)
+```
+
+![](elo-diff-hist.png)
 
 ## Model Training
 
