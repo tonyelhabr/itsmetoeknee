@@ -617,8 +617,6 @@ spec <- parsnip::boost_tree(
   parsnip::set_engine('xgboost') |> 
   parsnip::set_mode('classification')
 
-elo_features <- rec_elo |> recipes::prep() |> recipes::juice() |> colnames()
-
 grid <- dials::grid_latin_hypercube(
   dials::tree_depth(),
   dials::min_n(range = c(5L, 40L)),
@@ -684,10 +682,7 @@ MODEL_TYPES <- c(
 select_best_model <- function(tuned_results, model_type) {
   tuned_results |>
     workflowsets::extract_workflow_set_result(model_type) |> 
-    ## ugh, i don't like when models are chosen with super small `min_n`
-    ##   since they tend to be more naive. i'll do my own version of `select_best` here.
-    # tune::select_best(metric = 'xg_brier_skill_score') |>
-    tune::show_best('xg_brier_skill_score') |> 
+    tune::select_best(metric = 'xg_brier_skill_score') |>
     dplyr::filter(min_n >= 5) |> 
     dplyr::slice(1) |> 
     dplyr::transmute(
@@ -729,12 +724,12 @@ This post isn't meant to be so much about the why's and how's of model tuning an
 ::: {.callout-note collapse="true"}
 ## Model hyperparameters
 
-For reproducibility, the chosen hyperparameters are as follows.
+For reproducibility, the chosen hyperparameters are as follows. By coincidence, the same hyper-parameters are chosen. (Only 50 combinations were evaluated.)
 
 | model_type    | mtry | min_n | tree_depth | loss_reduction | sample_size | stop_iter |
 |:--------------|-----:|------:|-----------:|---------------:|------------:|----------:|
-| Base          |   10 |    10 |          5 |      0.6247507 |   0.4397286 |        18 |
-| Elo-augmented |   10 |    10 |          5 |      0.6247507 |   0.4397286 |        18 |
+| Base          |    7 |    17 |          6 |              0 |   0.4641502 |        50 |
+| Elo-augmented |    7 |    17 |          6 |              0 |   0.4641502 |        50 |
 
 The number of `trees` and `learning_rate` were pre-defined to be 500 and 0.01 respectively.
 :::
@@ -781,19 +776,19 @@ We should look to see that the xG models are behaving is expected. One way of do
 
 In bespoke models, feature importance can be enlightening, as it tell us which features are contributing most to the predicted outcomes. In this case, I know that shot distance should be the most important feature (by far), as this is found to be the most important features in other similar "basic" public xG models, such as [this](https://github.com/AnshChoudhary/xGModel/blob/main/expected-goals-model-xg.ipynb) and [this](https://github.com/ML-KULeuven/soccer_xg/blob/master/notebooks/4-creating-custom-xg-pipelines.ipynb).
 
+I like to use [SHAP values](https://christophm.github.io/interpretable-ml-book/shap.html) for feature importance since [they have nice "local" explanations and are found to be consistent in their "global" structure](https://liuyanguu.github.io/post/2019/07/18/visualization-of-shap-for-xgboost/).
+
+::: {.callout-note collapse="true"}
+## SHAP values
+
+SHAP values quantify the impact of each feature in a predictive model on the model's output. For a binary classification task like ours, SHAP values are expressed on a 0-1 scale.
+
+A SHAP value of 0.9 for a specific feature in a binary classification model doesn't mean that the feature contributes 90% to the prediction, nor does it directly imply that the predicted probability is 90%. Instead, it indicates that this particular feature contributes a value of 0.9 to the shift from the baseline prediction (usually the average of the training data's output) to the specific model output for that observation.
+:::
+
 ```{r}
 #| label: var-imp-base
 #| include: false
-extract_n_features_from_last_fit <- function(last_fit) {
-  last_fit |>
-    dplyr::pull(.workflow) |> 
-    purrr::pluck(1) |> 
-    workflows::extract_recipe() |> 
-    base::summary() |> 
-    dplyr::filter(role == 'predictor') |> 
-    nrow()
-}
-
 FEATURE_LABELS <- c(
   'elo' = 'Elo',
   'elo_diff' = 'Elo difference',
@@ -810,27 +805,23 @@ FEATURE_LABELS <- c(
   'bodypart_other_a0' = 'Bodypart = other'
 )
 
-
-plot_var_imp_from_last_importance <- function(last_fit) {
+plot_var_imp_from_last_importance <- function(shap_long) {
   
-  n_features <- extract_n_features_from_last_fit(last_fit)
-  last_fit |> 
-    workflows::extract_fit_parsnip() |>
-    vip::vi(
-      method = 'model'
-    ) |> 
+  ## effectively SHAPforxgboost::shap.plot.summary(kind = 'bar')
+  imp <- SHAPforxgboost:::shap.importance(shap_long)
+  imp |> 
+    tibble::as_tibble() |> 
     dplyr::transmute(
-      term = forcats::fct_reorder(FEATURE_LABELS[Variable], Importance),
-      importance = Importance
+      variable = forcats::fct_reorder(FEATURE_LABELS[variable], mean_abs_shap),
+      mean_abs_shap
     ) |> 
     ggplot2::ggplot() +
     ggplot2::aes(
-      x = importance,
-      y = term
+      x = mean_abs_shap,
+      y = variable
     ) +
     ggplot2::geom_segment(
       ggplot2::aes(
-        group = term,
         x = 0,
         xend = importance,
         y = term,
@@ -845,26 +836,53 @@ plot_var_imp_from_last_importance <- function(last_fit) {
     ggplot2::geom_text(
       family = FONT,
       color = WHITISH_FOREGROUND_COLOR,
-      ggplot2::aes(label = scales::percent(importance, accuracy = 0.1)),
+      ggplot2::aes(label = scales::number(importance, accuracy = 0.001)),
       size = 12 / ggplot2::.pt,
       hjust = 0,
       nudge_x = 0.05
     ) +
     ggplot2::scale_x_continuous(
-      labels = scales::percent,
-      limits = c(0.0, 1)
+      limits = c(0, 1)
     ) +
     ggplot2::labs(
       title = 'Feature importance',
-      x = 'Feature importance',
-      y = NULL
+      x = 'mean(|SHAP value|)',
+      y = NULL,
+      caption = 'mean(|SHAP value|) = average impact on model output magnitude.'
     ) +
     ggplot2::theme(
       panel.grid.major.y = ggplot2::element_blank()
     )
 }
+## Don't use too much data so as to speed up the `pdp::partial` call.
+sampled_test <- test |> 
+  dplyr::filter(season_id == 2022)
 
-var_imp_base <- plot_var_imp_from_last_importance(last_base_fit) +
+bake_recipe <- function(rec, new_data) {
+  rec |>
+    recipes::prep() |>
+    recipes::bake(new_data = new_data) |> 
+    ## pdp::partial complains if the target variable is included
+    dplyr::select(-scores)
+}
+
+baked_base_data <- bake_recipe(rec_base, sampled_test)
+baked_elo_data <- bake_recipe(rec_elo, sampled_test)
+
+base_model_object <- hardhat::extract_fit_engine(last_base_fit)
+elo_model_object <- hardhat::extract_fit_engine(last_elo_fit)
+
+shap_long_base <- SHAPforxgboost::shap.prep(
+  xgb_model = base_model_object,
+  X_train = as.matrix(baked_base_data)
+)
+
+shap_long_elo <- SHAPforxgboost::shap.prep(
+  xgb_model = elo_model_object,
+  X_train = as.matrix(baked_elo_data)
+)
+
+var_imp_base <- plot_var_imp_from_last_importance(shap_long_base) +
   ggplot2::labs(
     subtitle = 'Base xG model'
   )
@@ -905,17 +923,6 @@ Further, we can verify that the Elo-augmented model predicts xG in a manner that
 ```{r}
 #| label: elo-pdp-plot
 #| include: false
-## Don't use too much data so as to speed up the `pdp::partial` call.
-sampled_test <- test |> 
-  dplyr::filter(season_id == 2022)
-
-baked_elo_data <- rec_elo |>
-  recipes::prep() |>
-  recipes::bake(new_data = sampled_test) |> 
-  ## pdp::partial complains if the target variable is included
-  dplyr::select(-scores)
-
-elo_model_object <- hardhat::extract_fit_engine(last_elo_fit)
 elo_pdp <- pdp::partial(
   elo_model_object,
   train = baked_elo_data,
@@ -957,7 +964,7 @@ ggplot2::ggsave(
 
 ![](elo-pdp.png)
 
-::: callout-note
+::: {.callout-note collapse="true"}
 Keep in mind that this shows just the average effect. On individual shots, the role of Elo could be stronger or weaker. And the range of the curve is constrained by the averaging--individual model outputs may be much lower than 12% or higher than 16% (i.e. the extremes of the y-axis).
 :::
 
@@ -1269,5 +1276,19 @@ ggplot2::ggsave(
 The table above indeed provides evidence for the miscalibration phenomenon--the "base" xG model tends to predict higher xG compared to actual goals scores for teams with lower Elo compared to higher Elo.
 
 ## Discussion
+
+We've seen that there is no clear evidence that accounting for team quality improves an xG model. Sure, it can provide value to an xG model--see the feature importance for the Elo-augmented model--but it's effectively just providing a difference kind of nuance that would be otherwise captures by other traditional xG features.
+
+Sso naturally one may ask--what about player quality? Or goalkeeper quality? While I do think those would be a little more useful in terms of making a better xG model, the better question is whether we should be accounting for these kinds of "quality" features at all. I think "no", mostly due to the its typical and potential applications.
+
+An xG model cannot be used to "intervene" with shots in real-time like a fourth-down model might be "actively" used to make a choice in the NFL. An NFL coach probably wants a model to incorporate their team's strength so as to make an informed decision about whether to go for it.
+
+In contrast, xG models are most commonly used in a "passive" manner, to understand how a team or a specific player might be performing compared to expectation. Soccer coaches and analysts often look at the actual goals scored minus the expected goals accumulated (the "residual") to diagnose under- and over-performance. Yes, they also look at expected goals in a more broad manner to get a sense of where and how they can get better shots, but that is not real-time in the same sense that a fourth-down decision is made in real-time.
+
+Arguably incorporating team or player quality into an xG model can make interpretation more difficult, at least in the manner that we typically use xG to contextualize a game or a season. (xGods please forgive me for looking at single-game xG.) As an extreme example, let's say that we add an "Is Messi?" feature to an xG model (not unlike what Ryan suggested with Justin Tucker in his presentation) to achieve a slightly more accurate xG model. (The model will learn that Messi has historically converted shots into goals at rates higher than nearly all other players.) But then your game- and season-level analysis may need change.
+
+I may look at an Inter Miami game where they "lost" on actual goals, let's say 2 to 1, AND "lost" on xG, let's say 0.9 to 1.7, and think "oh, that's a fair result". But if Messi took 4 shots and we're using an expected goals model with the "Is Messi?" feature, the Inter Miami xG might appear to be 2.2, perhaps leading to a different take on the game---"that was Inter Miami's game, but they failed to convert on some key chances".
+
+tldr: Building in "quality" features into a model used to evaluate quality (of shots) arguably leads to circular reasoning. I prefer xG to be agnostic to team or player quality, at least in the current paradigm of soccer analytics, where we often use xG to evaluate the quality of teams and players.
 
 ## Conclusion
