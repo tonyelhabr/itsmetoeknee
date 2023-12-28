@@ -604,31 +604,24 @@ xg_brier_skill_score <- yardstick::new_prob_metric(
 ## Useful reference: https://jlaw.netlify.app/2022/01/24/predicting-when-kickers-get-iced-with-tidymodels/
 TREES <- 500
 LEARN_RATE <- 0.01
-define_xgboost_spec <- function(...) {
-  parsnip::boost_tree(
-    trees = !!TREES,
-    learn_rate = !!LEARN_RATE,
-    tree_depth = tune::tune(),
-    min_n = tune::tune(), 
-    loss_reduction = tune::tune(),
-    sample_size = tune::tune(), 
-    mtry = tune::tune(),
-    stop_iter = tune::tune()
-  ) |>
-    parsnip::set_engine('xgboost', ...) |> 
-    parsnip::set_mode('classification')
-}
-
-spec_base <- define_xgboost_spec()
+spec <- parsnip::boost_tree(
+  trees = !!TREES,
+  learn_rate = !!LEARN_RATE,
+  tree_depth = tune::tune(),
+  min_n = tune::tune(), 
+  loss_reduction = tune::tune(),
+  sample_size = tune::tune(), 
+  mtry = tune::tune(),
+  stop_iter = tune::tune()
+) |>
+  parsnip::set_engine('xgboost') |> 
+  parsnip::set_mode('classification')
 
 elo_features <- rec_elo |> recipes::prep() |> recipes::juice() |> colnames()
-spec_elo <- define_xgboost_spec(
-  monotone_constraints = !!ifelse(elo_features %in% c('elo', 'elo_diff'), 1, 0)
-)
 
 grid <- dials::grid_latin_hypercube(
   dials::tree_depth(),
-  dials::min_n(),
+  dials::min_n(range = c(5L, 40L)),
   dials::loss_reduction(),
   sample_size = dials::sample_prop(),
   dials::finalize(dials::mtry(), train),
@@ -641,17 +634,14 @@ wf_sets <- workflowsets::workflow_set(
     base = rec_base, 
     elo = rec_elo
   ),
-  ## Separate specs because we want monotonic constraints on the Elo model
   models = list(
-    model = spec_base,
-    model = spec_elo
+    model = spec
   ),
   cross = FALSE
 )
 
 control <- finetune::control_race(
   save_pred = TRUE,
-  # burn_in = 2,
   parallel_over = 'everything',
   save_workflow = TRUE,
   verbose = TRUE
@@ -1035,6 +1025,23 @@ ggplot2::ggsave(
 ![](elo-pdp-2d.png)
 
 As we should expect, predicted shot conversion is higher for strong teams and for teams that are stronger than their opponent.
+
+```{r}
+#| label: shap
+#| include: false
+shap_long <- SHAPforxgboost::shap.prep(
+  xgb_model = elo_model_object, 
+  X_train = as.matrix(baked_elo_data)
+)
+shap.plot.summary(shap_long)
+shap_pdp <- SHAPforxgboost::shap.plot.dependence(
+  data_long = shap_long, 
+  x = 'elo_diff', 
+  y = 'elo_diff', 
+  color_feature = 'elo_diff'
+)
+shap_pdp
+```
 
 ### Model Evaluation
 
