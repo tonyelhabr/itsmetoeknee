@@ -15,13 +15,15 @@ execute:
 
 ## Introduction
 
-"Should we account for team quality in an [xG model](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/)?" From a purely philosophical point of view, my opinion is "no". (See Discussion section later.) But I thought it might be fun to entertain the question from a quantitative perspective. If we add features for team strength to an xG model, can we improve the model's (1) predictive performance and (2) [calibration](https://tonyelhabr.rbind.io/posts/probability-calibration/)?
+"Should we account for team quality in an [xG model](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/)?" From a purely philosophical point of view, my opinion is "no"--I think that xG models should be a purely "descriptive", agnostic to player and team abilities, as well as other non-event factors such as game state.
+
+But I thought it might be fun to entertain the question from a quantitative perspective. If we add features for team strength to an xG model, can we meaningfully improve the model's overall predictive performance and [calibration](https://tonyelhabr.rbind.io/posts/probability-calibration/) (with respect to team quality)?
 
 ### Motivation
 
 This write-up is inspired by [Ryan Brill](https://twitter.com/RyanBrill_)'s recent [presentation on fourth-down decision-making in the National Football League (NFL)](https://youtu.be/uS4XxQ0LVfE?si=BnmzeePnk3R5uiY3&t=361). He points out that [expected points (EP)](https://www.nfeloapp.com/analysis/expected-points-added-epa-nfl/) models in the NFL have a [selection bias](https://en.wikipedia.org/wiki/Selection_bias) problem--they tend to under-rate the probability of a positive outcome for "good" teams and over-rate such outcomes for "bad" teams.
 
-For those of us that have a good sense of how expected goals (xG) work in soccer, we know that this phenomenon also occurs in our beloved sport. [Lars Maurath](https://github.com/larsmaurath) has [a great deep-dive](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) looking into expected goals underestimation for strong teams in the [Big 5 European leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats). The plot below (copied shamelessly from Lars' post) shows that a naive xG model consistently under-predicts Barcelona's goals over the course of the season, for seasons from 2007/08 to 2018/19. Even [StatsBomb](https://statsbomb.com/)'s model--which is more sophisticated--tends to underestimate the true cumulative goal total!
+Expected goals (xG) in soccer also show signs of this phenomenon. [Lars Maurath](https://github.com/larsmaurath) has [a great deep-dive](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) looking into expected goals under-estimation for strong teams in the [Big 5 European leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats). The plot below (copied shamelessly from Lars' post) shows that a naive xG model consistently under-predicts Barcelona's goals over the course of the season, for seasons from 2007/08 to 2018/19. Even [StatsBomb](https://statsbomb.com/)'s model--which is more sophisticated--tends to underestimate the true cumulative goal total!
 
 ![](barcelona-cumulative-xg.png)
 
@@ -29,14 +31,14 @@ For those of us that have a good sense of how expected goals (xG) work in soccer
 
 ### Data
 
-I'll be using event data that I've ingested with the [`{socceraction}` package](https://github.com/ML-KULeuven/socceraction) (which I've made available [here](https://github.com/tonyelhabr/socceraction-streamlined/releases)!) for the 2013/14 through 2022/23 [English Premier League (EPL)](https://www.premierleague.com/) seasons. We'll focus on just "open-play" shots, i.e. shots excluding penalties and those taken from set pieces.
+I'll be using event data that I've ingested with the [`{socceraction}` package](https://github.com/ML-KULeuven/socceraction) (which I've made available [here](https://github.com/tonyelhabr/socceraction-streamlined/releases)!) for the 2013/14 through 2022/23 [English Premier League (EPL)](https://www.premierleague.com/) seasons. I'll focus on just "open-play" shots, i.e. shots excluding penalties and those taken from set pieces.
 
-As for the measure of team quality, I've scraped [Elo](https://en.wikipedia.org/wiki/Elo_rating_system) ratings from [ClubElo](http://clubelo.com/). I've chosen Elo because provides a intuitive, sport-agnostic measure of relative skill. Also, it is calculated independent of the events that take place in a game, so correlation with measures of shot volume, quality, etc. are only coincidental. (It was also fairly easy to retrieve!)
+But we also need some measure of team quality. To that end, I've scraped [Elo](https://en.wikipedia.org/wiki/Elo_rating_system) ratings from [ClubElo](http://clubelo.com/). I've chosen Elo because provides a intuitive, sport-agnostic measure of relative skill. Also, it is calculated independent of the events that take place in a game, so correlation with measures of shot volume, quality, etc. are only coincidental. (It was also fairly easy to retrieve!)
 
 ```{r}
 #| label: setup
 #| code-fold: true
-#| code-summary: Libraries
+#| code-summary: Package imports and other setup
 
 ## Data retrieval
 library(curl)
@@ -345,7 +347,10 @@ ggplot2::ggsave(
 
 ![](elo-hist.png)
 
-Man City tends to sustain an Elo greater than 1850 and bottom-table teams tend to have Elos less than 1650.
+To make Elo values feel a bit more tangible, note that:
+
+-   Man City tends to sustain an Elo greater than 1850 (arguably the best team in the EPL for the past decade).
+-   Bottom-table teams tend to have Elos less than 1650.
 
 ```{r}
 #| label: elo-diff-hist
@@ -382,7 +387,7 @@ The pre-match difference team Elos follows a normal-ish distribution, with most 
 
 ### Model Training
 
-The feature set for our "base" xG model will consist of the following:
+The feature set for our "base" xG model consists of the following:
 
 -   location of the shot (distance and angle of the shot to the center of the goal mouth)[^1].
 -   type of action leading to the shot.
@@ -392,7 +397,7 @@ The feature set for our "base" xG model will consist of the following:
 
 These features are essentially what [all xG models](https://fbref.com/en/expected-goals-model-explained/) have in common, although the exact implementation differs. Data providers such as [Opta also account for information](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) that is not captured in traditional event data, such as the position of the goalkeeper.
 
-For the Elo-augmented model, we'll add two additional features:
+For the team-quality-adjusted (or "Elo-augmented") model, I'll add two additional features:
 
 -   `elo`: the Elo of the team of the shot-taker.
 -   `elo_diff`: the difference in the ELO of the shot-taking team and the opposing team.
@@ -402,7 +407,7 @@ The former is meant to capture the opponent-agnostic quality of a team, while th
 ```{r}
 #| label: model-recipes
 #| code-fold: true
-#| code-summary: Setting up the model
+#| code-summary: Setting up the models
 rec_elo <- recipes::recipe(
   scores ~ 
     elo +
@@ -425,11 +430,11 @@ rec_base <- rec_elo |>
   recipes::step_rm(elo, elo_diff)
 ```
 
-We'll be using [xgboost](https://xgboost.readthedocs.io/en/stable/) for our model, the state-of-the-art for tabular machine learning tasks. (It's also the type of model used by providers like Opta.) We'll choose [hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)) using [an efficient grid search](https://finetune.tidymodels.org/index.html). We'll evaluate models with the [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)), using a dummy model that predicts 12% conversion for all shots to compute our reference Brier score.[^2]
+I'll be using [xgboost](https://xgboost.readthedocs.io/en/stable/) for our model, the state-of-the-art framework for tabular machine learning tasks. (It's also the type of model used by providers like Opta.) I'll choose [hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)) using [an efficient grid search](https://finetune.tidymodels.org/index.html), evaluating models with the [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)). For the reference Brier score for BSS, I'll use a dummy model that predicts 12% conversion for all shots.[^2]
 
 [^2]: 12% is approximately the observed shot conversion rate in the whole data set.
 
-::: callout-note
+::: {.callout-note collapse="true"}
 ## Brier skill score (BSS)
 
 If this isn't the first blog post you've read of mine, you probably know that [I love to use BSS](https://tonyelhabr.rbind.io/posts/opta-xg-model-calibration) for classification tasks, especially for xG models.
@@ -442,7 +447,7 @@ Keep in mind that a higher BSS is ideal. A perfect model would have a BSS of 1; 
 ```{r}
 #| label: brier-skill-score-implementation
 #| code-fold: true
-#| code-summary: Brier skill score implementation
+#| code-summary: Functions for Brier skill score
 ## See also: probability-calibration
 brier_skill_score <- function(data, ...) {
   UseMethod('brier_skill_score')
@@ -675,7 +680,7 @@ qs::qsave(tuned_results, file.path(PROJ_DIR, 'tuned_results2.qs'))
 ```{r}
 #| label: tune-models-read
 #| include: false
-tuned_results <- qs::qread(file.path(PROJ_DIR, 'tuned_results.qs'))
+tuned_results <- qs::qread(file.path(PROJ_DIR, 'tuned_results2.qs'))
 ```
 
 ```{r}
@@ -689,10 +694,21 @@ MODEL_TYPES <- c(
 select_best_model <- function(tuned_results, model_type) {
   tuned_results |>
     workflowsets::extract_workflow_set_result(model_type) |> 
-    ## TODO
-    # tune::select_best(metric = 'xg_brier_skill_score') |> 
-    tune::select_best(metric = 'f_meas') |> 
-    dplyr::mutate(model_type = MODEL_TYPES[model_type])
+    ## ugh, i don't like when models are chosen with super small `min_n`
+    ##   since they tend to be more naive. i'll do my own version of `select_best` here.
+    # tune::select_best(metric = 'xg_brier_skill_score') |>
+    tune::show_best('xg_brier_skill_score') |> 
+    dplyr::filter(min_n >= 5) |> 
+    dplyr::slice(1) |> 
+    dplyr::transmute(
+      model_type = MODEL_TYPES[model_type],
+      mtry,
+      min_n,
+      tree_depth, 
+      loss_reduction,
+      sample_size,
+      stop_iter
+    )
 }
 
 best_base_set <- select_best_model(tuned_results, 'base_model')
@@ -715,18 +731,20 @@ dplyr::bind_rows(
 ```
 
 ::: callout-warning
-This post isn't meant to be so much about the why's and how's of model tuning and training, so I've spared commentary on the code. Nonetheless, the code is available for those interested.
+## Model tuning procedure
+
+This post isn't meant to be so much about the why's and how's of model tuning and training, so I've spared commentary on the code.
 :::
 
 ::: {.callout-note collapse="true"}
-## Model Hyperparameters
+## Model hyperparameters
 
 For reproducibility, the chosen hyperparameters are as follows.
 
-| model_type | mtry | min_n | tree_depth | loss_reduction | sample_size | stop_iter |
-|:-----------|-----:|------:|-----------:|---------------:|------------:|----------:|
-| base       |   13 |    35 |          7 |      0.0010687 |   0.2217629 |        11 |
-| elo        |   14 |     9 |         14 |      0.0000274 |   0.8725705 |        14 |
+| model_type    | mtry | min_n | tree_depth | loss_reduction | sample_size | stop_iter |
+|:--------------|-----:|------:|-----------:|---------------:|------------:|----------:|
+| Base          |   10 |    10 |          5 |      0.6247507 |   0.4397286 |        18 |
+| Elo-augmented |   10 |    10 |          5 |      0.6247507 |   0.4397286 |        18 |
 
 The number of `trees` and `learning_rate` were pre-defined to be 500 and 0.01 respectively.
 :::
@@ -742,15 +760,15 @@ Finally, we fit singular models on the entire training set. These are the models
 finalize_tuned_results <- function(tuned_results, model_type) {
   best_set <- select_best_model(tuned_results, model_type)
   tuned_results |>
-    hardhat::extract_workflow(paste0(model_type, '_model')) |>
+    hardhat::extract_workflow(model_type) |>
     tune::finalize_workflow(best_base_set) |> 
     tune::last_fit(
       split,
       metrics = yardstick::metric_set(xg_brier_skill_score)
     )
 }
-last_base_fit <- finalize_tuned_results(tuned_results, 'base')
-last_elo_fit <- finalize_tuned_results(tuned_results, 'elo')
+last_base_fit <- finalize_tuned_results(tuned_results, 'base_model')
+last_elo_fit <- finalize_tuned_results(tuned_results, 'elo_model')
 ```
 
 ```{r}
@@ -769,10 +787,104 @@ last_elo_fit <- qs::qread(file.path(PROJ_DIR, 'last_elo_fit.qs'))
 
 ### Feature Importance
 
-We should look to see that the xG models are behaving is expected. One way of doing so is to look at the feature importance. In novel modeling cases, feature importance can be enlightening, as it tell us which features are contributing most to the predicted outcomes. In this case, I know that shot distance and angle should be two of the most important features (by far), as these are found to be the most important features in other similar "basic" public xG models, such as [this](https://github.com/AnshChoudhary/xGModel/blob/main/expected-goals-model-xg.ipynb) and [this](https://github.com/ML-KULeuven/soccer_xg/blob/master/notebooks/4-creating-custom-xg-pipelines.ipynb).
+We should look to see that the xG models are behaving is expected. One way of doing so is to look at the feature importance.
+
+In bespoke models, feature importance can be enlightening, as it tell us which features are contributing most to the predicted outcomes. In this case, I know that shot distance should be the most important feature (by far), as this is found to be the most important features in other similar "basic" public xG models, such as [this](https://github.com/AnshChoudhary/xGModel/blob/main/expected-goals-model-xg.ipynb) and [this](https://github.com/ML-KULeuven/soccer_xg/blob/master/notebooks/4-creating-custom-xg-pipelines.ipynb).
 
 ```{r}
+#| label: var-imp-base
+#| include: false
+extract_n_features_from_last_fit <- function(last_fit) {
+  last_fit |>
+    dplyr::pull(.workflow) |> 
+    purrr::pluck(1) |> 
+    workflows::extract_recipe() |> 
+    base::summary() |> 
+    dplyr::filter(role == 'predictor') |> 
+    nrow()
+}
 
+FEATURE_LABELS <- c(
+  'elo' = 'Elo',
+  'elo_diff' = 'Elo difference',
+  'start_dist_to_goal_a0' = 'Distance to goal',
+  'start_angle_to_goal_a0' = 'Angle to goal',
+  'type_dribble_a1' = 'Prev. action = dribble',
+  'type_pass_a1' = 'Prev. action = pass',
+  'type_cross_a1' = 'Prev. action = cross',
+  'type_corner_crossed_a1' = 'Prev. action = crossed corner',
+  'type_shot_a1' = 'Prev. action = shot',
+  'type_freekick_crossed_a1' = 'Prev. action = crossed freekick',
+  'bodypart_foot_a0' = 'Bodypart = foot',
+  'bodypart_head_a0' = 'Bodypart = head',
+  'bodypart_other_a0' = 'Bodypart = other'
+)
+
+
+plot_var_imp_from_last_importance <- function(last_fit) {
+  
+  n_features <- extract_n_features_from_last_fit(last_fit)
+  last_fit |> 
+    workflows::extract_fit_parsnip() |>
+    vip::vi(
+      method = 'model'
+    ) |> 
+    dplyr::transmute(
+      term = forcats::fct_reorder(FEATURE_LABELS[Variable], Importance),
+      importance = Importance
+    ) |> 
+    ggplot2::ggplot() +
+    ggplot2::aes(
+      x = importance,
+      y = term
+    ) +
+    ggplot2::geom_segment(
+      ggplot2::aes(
+        group = term,
+        x = 0,
+        xend = importance,
+        y = term,
+        yend = term
+      ),
+      color = WHITISH_FOREGROUND_COLOR
+    ) +
+    ggplot2::geom_point(
+      size = 3,
+      color = WHITISH_FOREGROUND_COLOR
+    ) +
+    ggplot2::geom_text(
+      family = FONT,
+      color = WHITISH_FOREGROUND_COLOR,
+      ggplot2::aes(label = scales::percent(importance, accuracy = 0.1)),
+      size = 12 / ggplot2::.pt,
+      hjust = 0,
+      nudge_x = 0.05
+    ) +
+    ggplot2::scale_x_continuous(
+      labels = scales::percent,
+      limits = c(0.0, 1)
+    ) +
+    ggplot2::labs(
+      title = 'Feature importance',
+      x = 'Feature importance',
+      y = NULL
+    ) +
+    ggplot2::theme(
+      panel.grid.major.y = ggplot2::element_blank()
+    )
+}
+
+var_imp_base <- plot_var_imp_from_last_importance(last_base_fit) +
+  ggplot2::labs(
+    subtitle = 'Base xG model'
+  )
+
+ggplot2::ggsave(
+  var_imp_base,
+  filename = file.path(PROJ_DIR, 'var-imp-base.png'),
+  width = 7,
+  height = 7
+)
 ```
 
 ![](var-imp-base.png)
@@ -781,7 +893,22 @@ Indeed, this is exactly what we see with the base xG model.
 
 Now, if we make the same plot for our team-quality-adjusted xG model, we see that Elo and Elo difference are the second and third most important features! That's pretty interesting.
 
-Further, we can verify that the Elo-augmented model predicts xG in a manner that matches intuition using [partial dependence plots]((https://christophm.github.io/interpretable-ml-book/pdp.html)) (PDP). We should see that the augmented model predicts higher xG for teams with higher Elo.[^4]
+```{r}
+#| label: var-imp-elo
+var_imp_elo <- plot_var_imp_from_last_importance(last_elo_fit) +
+  ggplot2::labs(
+    subtitle = 'Elo-augmented xG model'
+  )
+
+ggplot2::ggsave(
+  var_imp_elo,
+  filename = file.path(PROJ_DIR, 'var-imp-elo.png'),
+  width = 7,
+  height = 7
+)
+```
+
+Further, we can verify that the Elo-augmented model predicts xG in a manner that matches intuition using [partial dependence plots](https://christophm.github.io/interpretable-ml-book/pdp.html) (PDP). We should see that the augmented model predicts higher xG for teams with higher Elo.[^4]
 
 [^4]: Partial dependence plots aren't quite the gold standard for model interpretability, but I find them useful for getting a sense of the orientation and magnitude of a feature's effect, particularly for non-linear modeling techniques like gradient boosting.
 
@@ -867,22 +994,37 @@ elo_pdp_2d_plot <- tibble::as_tibble(elo_pdp_2d) |>
     x = elo,
     y = elo_diff
   ) +
-  ggplot2::geom_path(
-    color = 'white',
-    linewidth = 1.5
+  ggplot2::geom_tile(
+    ggplot2::aes(
+      fill = yhat
+    )
   ) +
-  ggplot2::scale_y_continuous(
-    labels = scales::percent
+  ggplot2::guides(
+    fill = ggplot2::guide_legend(
+      title = 'Model prediction (xG)'
+    )
+  ) +
+  ggplot2::scale_fill_viridis_c(
+    option = 'B',
+    begin = 0.2,
+    end = 0.9
   ) +
   ggplot2::labs(
-    title = 'Marginal effect of Elo and Elo difference on predicted xG',
+    title = 'Average marginal effect of Elo and Elo difference<br/>on predicted xG',
     subtitle = 'Elo-augmented xG model',
     x = 'Elo',
     y = 'Elo difference'
+  ) + 
+  ggplot2::theme(
+    panel.grid.major.x = ggplot2::element_blank(),
+    panel.grid.major.y = ggplot2::element_blank(),
+    axis.ticks.x = ggplot2::element_line(color = WHITISH_FOREGROUND_COLOR),
+    axis.ticks.y = ggplot2::element_line(color = WHITISH_FOREGROUND_COLOR),
+    axis.ticks.length = grid::unit(0.3, 'cm')
   )
 
 ggplot2::ggsave(
-  elo_pdp_plot,
+  elo_pdp_2d_plot,
   filename = file.path(PROJ_DIR, 'elo-pdp-2d.png'),
   device = 'png',
   width = 7,
@@ -912,12 +1054,12 @@ dplyr::bind_rows(
   knitr::kable(digits = 3)
 ```
 
-| model_type | brier_skill_score |
-|:-----------|------------------:|
-| base       |             0.104 |
-| elo        |             0.092 |
+| model_type    | brier_skill_score |
+|:--------------|------------------:|
+| Base          |             0.107 |
+| Elo-augmented |             0.106 |
 
-So, alas, it looks like there's effectively no difference between the models.[^6] In fact, the team quality adjusted model performs worse on the test set!
+So, alas, it looks like there's basically no difference between the models![^6]
 
 [^6]: One could run a bootstrap analysis to prove this with more statistical rigor, but I'll leave that as an exercise for the eager reader.
 
@@ -926,8 +1068,7 @@ But BSS is just one, wholistic measure. We also wanted to look at the calibratio
 ```{r}
 #| label: test-set-calibration
 #| include: false
-#| label: compared_calibration_plot
-#| include: false
+
 # elo_breaks <- c(1400, 1650, 1700, 1750, 1800, 1850, 1900, 2000, 2100)
 elo_breaks <- c(1400, 1650, 1700, 1750, 1850, 1950, 2100)
 # elo_labels <- c(
