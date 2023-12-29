@@ -49,6 +49,7 @@ library(qs) ## local dev
 library(dplyr)
 library(purrr)
 library(lubridate)
+library(forcats)
 
 ## Modeling
 library(rsample)
@@ -66,8 +67,7 @@ library(finetune)
 ## Model diagnostics
 library(rlang)
 library(yardstick)
-library(pdp)
-library(vip)
+library(SHAPforxgboost)
 
 ## Plotting
 library(ggplot2)
@@ -76,6 +76,7 @@ library(showtext)
 library(ggtext)
 library(htmltools)
 library(scales)
+library(grid)
 
 PROJ_DIR <- 'posts/xg-team-quality'
 
@@ -715,16 +716,10 @@ dplyr::bind_rows(
   knitr::kable()
 ```
 
-::: callout-warning
-## Model tuning procedure
-
-This post isn't meant to be so much about the why's and how's of model tuning and training, so I've spared commentary on the code.
-:::
-
 ::: {.callout-note collapse="true"}
 ## Model hyperparameters
 
-For reproducibility, the chosen hyperparameters are as follows. By coincidence, the same hyper-parameters are chosen. (Only 50 combinations were evaluated.)
+For reproducibility, the chosen hyperparameters are as follows.[^3] By coincidence, the same hyper-parameters are chosen. (Only 50 combinations were evaluated.)
 
 | model_type    | mtry | min_n | tree_depth | loss_reduction | sample_size | stop_iter |
 |:--------------|-----:|------:|-----------:|---------------:|------------:|----------:|
@@ -734,9 +729,9 @@ For reproducibility, the chosen hyperparameters are as follows. By coincidence, 
 The number of `trees` and `learning_rate` were pre-defined to be 500 and 0.01 respectively.
 :::
 
-Finally, we fit singular models on the entire training set. These are the models that we'll use to evaluate the effect of team quality on xG.[^3]
+[^3]: This post isn't meant to be so much about the why's and how's of model tuning and training, so I've spared commentary on the code.
 
-[^3]: The hyperparameter search evaluated models fit on portions (or "folds") of the training data in a [cross-validation procedure](https://scikit-learn.org/stable/modules/cross_validation.html). We should fit one "final" model with all of the training data, per [best practice](https://tune.tidymodels.org/reference/last_fit.html).
+After identifying our optimal hyperparameters, we fit singular models on the entire training set. These are the models that we'll use to evaluate the effect of team quality on xG.
 
 ```{r}
 #| label: last-fits
@@ -893,7 +888,17 @@ ggplot2::ggsave(
   width = 7,
   height = 7
 )
+```
 
+![](var-imp-base.png)
+
+Indeed, this is exactly what we see with the base xG model.
+
+Now, if we make the same plot and add the aggregate SHAP values for our team-quality-adjusted xG model, we see that Elo and Elo difference terms are in the middle of the pack in terms of feature importance. That's pretty interesting. That indicates that these features aren't super influential, on average.
+
+```{r}
+#| label: var-imp-compared
+#| include: false
 MODEL_TYPE_PAL <- c(
   'Base' = '#ffbf00', 
   'Elo-augmented' = '#e83f6f'
@@ -908,17 +913,7 @@ mean_abs_shap_compared <- dplyr::bind_rows(
     variable = factor(variable, levels(mean_abs_shap_elo$variable)),
     mean_abs_shap
   )
-```
 
-![](var-imp-base.png)
-
-Indeed, this is exactly what we see with the base xG model.
-
-Now, if we make the same plot for our team-quality-adjusted xG model, we see that Elo and Elo difference terms are in the middle of the pack in terms of feature importnace. That's pretty interesting.
-
-```{r}
-#| label: var-imp-compared
-#| include: false
 mean_abs_shap_compared_plot <- mean_abs_shap_compared |> 
   ggplot2::ggplot() +
   ggplot2::aes(
@@ -968,7 +963,6 @@ mean_abs_shap_compared_plot <- mean_abs_shap_compared |>
     title = 'Feature importance comparison',
     subtitle = glue::glue('<b><span style="color:{MODEL_TYPE_PAL["Base"]}">Base</span></b> vs. <b><span style="color:{MODEL_TYPE_PAL["Elo-augmented"]}">Elo-augmented</span></b> xG model')
   )
-mean_abs_shap_compared_plot
 
 ggplot2::ggsave(
   mean_abs_shap_compared_plot,
@@ -978,47 +972,49 @@ ggplot2::ggsave(
 )
 ```
 
-Further, we can verify that the Elo-augmented model predicts xG in a manner that matches intuition using [partial dependence plots](https://christophm.github.io/interpretable-ml-book/pdp.html) (PDP). We should see that the augmented model predicts higher xG for teams with higher Elo.[^4]
+Further, we can verify that the Elo-augmented model predicts xG in a manner that matches intuition using [SHAP dependence plots](https://christophm.github.io/interpretable-ml-book/shap.html#shap-dependence-plot). We should see that the SHAP values are higher when Elo is higher and when Elo difference is higher.[^4]
 
 [^4]: Partial dependence plots aren't quite the gold standard for model interpretability, but I find them useful for getting a sense of the orientation and magnitude of a feature's effect, particularly for non-linear modeling techniques like gradient boosting.
 
 ```{r}
 #| label: elo-pdp-plot
 #| include: false
-elo_pdp <- pdp::partial(
-  elo_model_object,
-  train = baked_elo_data,
-  pred.var = 'elo',
-  type = 'classification',
-  plot = FALSE,
-  prob = TRUE,
-  trim.outliers = TRUE
-)
-
-elo_pdp_plot <- tibble::as_tibble(elo_pdp) |> 
+elo_pdp_plot <- shap_long_elo |> 
+  tibble::as_tibble() |> 
+  dplyr::filter(variable %in% c('elo', 'elo_diff')) |> 
+  dplyr::transmute(
+    variable = FEATURE_LABELS[as.character(variable)],
+    feature_value = rfvalue,
+    shap_value = value
+  ) |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = elo,
-    y = yhat
+    x = feature_value,
+    y = shap_value
   ) +
-  ggplot2::geom_path(
-    color = 'white',
+  ggplot2::facet_wrap(~variable, scales = 'free_x') +
+  ggplot2::geom_jitter(
+    color = WHITISH_FOREGROUND_COLOR,
+    size = 0.5,
+    alpha = 0.5
+  ) +
+  ggplot2::geom_smooth(
+    formula = formula(y ~ x),
+    method = 'loess',
+    se = FALSE,
+    color = 'cyan',
     linewidth = 1.5
   ) +
-  ggplot2::scale_y_continuous(
-    labels = scales::percent
-  ) +
   ggplot2::labs(
-    title = 'Average marginal effect of Elo on predicted xG',
+    title = 'SHAP dependence plot for Elo features',
     subtitle = 'Elo-augmented xG model',
-    x = 'Elo',
-    y = 'xG'
+    x = 'Feature value',
+    y = 'SHAP value'
   )
 
 ggplot2::ggsave(
   elo_pdp_plot,
   filename = file.path(PROJ_DIR, 'elo-pdp.png'),
-  device = 'png',
   width = 7,
   height = 7 / 1.5
 )
@@ -1026,95 +1022,9 @@ ggplot2::ggsave(
 
 ![](elo-pdp.png)
 
-::: {.callout-note collapse="true"}
-Keep in mind that this shows just the average effect. On individual shots, the role of Elo could be stronger or weaker. And the range of the curve is constrained by the averaging--individual model outputs may be much lower than 12% or higher than 16% (i.e. the extremes of the y-axis).
-:::
-
-The PDP for the Elo difference feature looks similar, so I've omitted it. Nonetheless, we can go one layer deeper and look at the average marginal effect of Elo and Elo difference simultaneously.[^5]
-
-[^5]: Note that the average marginal effect in the 2-D PDP below is shown via color instead of the y-axis.
-
-```{r}
-#| label: elo-pdp-2d-plot
-#| include: false
-elo_pdp_2d <- pdp::partial(
-  elo_model_object,
-  train = baked_elo_data,
-  pred.var = c('elo', 'elo_diff'),
-  type = 'classification',
-  plot = FALSE,
-  prob = TRUE,
-  trim.outliers = TRUE
-)
-
-elo_pdp_2d_plot <- tibble::as_tibble(elo_pdp_2d) |> 
-  ggplot2::ggplot() +
-  ggplot2::aes(
-    x = elo,
-    y = elo_diff
-  ) +
-  ggplot2::geom_tile(
-    ggplot2::aes(
-      fill = yhat
-    )
-  ) +
-  ggplot2::guides(
-    fill = ggplot2::guide_legend(
-      title = 'Model prediction (xG)'
-    )
-  ) +
-  ggplot2::scale_fill_viridis_c(
-    option = 'B',
-    begin = 0.2,
-    end = 0.9
-  ) +
-  ggplot2::labs(
-    title = 'Average marginal effect of Elo and Elo difference<br/>on predicted xG',
-    subtitle = 'Elo-augmented xG model',
-    x = 'Elo',
-    y = 'Elo difference'
-  ) + 
-  ggplot2::theme(
-    panel.grid.major.x = ggplot2::element_blank(),
-    panel.grid.major.y = ggplot2::element_blank(),
-    axis.ticks.x = ggplot2::element_line(color = WHITISH_FOREGROUND_COLOR),
-    axis.ticks.y = ggplot2::element_line(color = WHITISH_FOREGROUND_COLOR),
-    axis.ticks.length = grid::unit(0.3, 'cm')
-  )
-
-ggplot2::ggsave(
-  elo_pdp_2d_plot,
-  filename = file.path(PROJ_DIR, 'elo-pdp-2d.png'),
-  device = 'png',
-  width = 7,
-  height = 7
-)
-```
-
-![](elo-pdp-2d.png)
-
-As we should expect, predicted shot conversion is higher for strong teams and for teams that are stronger than their opponent.
-
-```{r}
-#| label: shap
-#| include: false
-shap_long <- SHAPforxgboost::shap.prep(
-  xgb_model = elo_model_object, 
-  X_train = as.matrix(baked_elo_data)
-)
-shap.plot.summary(shap_long)
-shap_pdp <- SHAPforxgboost::shap.plot.dependence(
-  data_long = shap_long, 
-  x = 'elo_diff', 
-  y = 'elo_diff', 
-  color_feature = 'elo_diff'
-)
-shap_pdp
-```
-
 ### Model Evaluation
 
-Let's take a look at whether the Elo-augmented model has a higher BSS than the "base" model.
+Aggregate SHAP values indicate that our two Elo features aren't playing a big role in contributing to model predictions, although the features do indeed contribute in the way that we'd expect, i.e. higher feature values -\> higher predicted xG. But SHAP values are just telling us about how and why a model makes certain predictions. What about the performance of the Elo-augmented model compared to the base xG model?
 
 ```{r}
 #| label: test-set-metrics
@@ -1127,54 +1037,52 @@ dplyr::bind_rows(
     model_type,
     brier_skill_score = .estimate
   ) |> 
-  knitr::kable(digits = 3)
+  knitr::kable(digits = 4)
 ```
 
 | model_type    | brier_skill_score |
 |:--------------|------------------:|
-| Base          |             0.107 |
-| Elo-augmented |             0.106 |
+| Base          |            0.1058 |
+| Elo-augmented |            0.1056 |
 
-So, alas, it looks like there's basically no difference between the models![^6]
+Well, at least in terms of BSS, it looks like there's basically no difference between the models![^5]
 
-[^6]: One could run a bootstrap analysis to prove this with more statistical rigor, but I'll leave that as an exercise for the eager reader.
+[^5]: One could run a bootstrap analysis to prove this with more statistical rigor, but I'll leave that as an exercise for the eager reader.
 
-But BSS is just one, wholistic measure. We also wanted to look at the calibration of an xG model that accounts for team quality might look compared to that of a traditional xG model. To put that into context, let's circle back to the premise that xG models under-estimate the shot conversion of strong teams.
+But that's just one, wholistic measure. How well calibrated is the Elo-augmented model compared to the traditional xG model? Does the augmented model demonstrate better performance across the whole range of shot conversion probabilities?
 
 ```{r}
 #| label: test-set-calibration
 #| include: false
-
-# elo_breaks <- c(1400, 1650, 1700, 1750, 1800, 1850, 1900, 2000, 2100)
 elo_breaks <- c(1400, 1650, 1700, 1750, 1850, 1950, 2100)
-# elo_labels <- c(
-#   paste0('<=', min(init_elo_breaks)), 
-#   init_elo_breaks[1:(length(init_elo_breaks) - 1)], 
-#   paste0('>', max(init_elo_breaks))
-# )
+elo_diff_breaks <- c(-500, -250, -150, -50, 50, 150, 250, 500)
 preds <- dplyr::bind_rows(
-  # tune::collect_predictions(last_base_fit) |> dplyr::mutate(model_type = 'base'),
-  # tune::collect_predictions(last_elo_fit) |> dplyr::mutate(model_type = 'elo')
-  broom::augment(last_base_fit) |> dplyr::mutate(model_type = 'base'),
-  broom::augment(last_elo_fit) |> dplyr::mutate(model_type = 'elo')
+  broom::augment(last_base_fit) |> dplyr::mutate(model_type = 'Base'),
+  broom::augment(last_elo_fit) |> dplyr::mutate(model_type = 'Elo-augmented')
 ) |> 
   dplyr::transmute(
     model_type,
+    season_id,
     elo,
     elo_group = cut(
       elo, 
       breaks = elo_breaks, 
-      # labels = elo_labels,
       dig.lab = 4,
+      include.lower = TRUE
+    ),
+    elo_diff,
+    elo_diff_group = cut(
+      elo_diff, 
+      breaks = elo_diff_breaks, 
+      dig.lab = 3,
       include.lower = TRUE
     ),
     scores,
     .pred_yes
   )
-# preds |> count(elo_group)
 
 calibration <- preds |> 
-  tidyr::nest(data = -c(model_type, elo_group)) |> 
+  tidyr::nest(data = -c(model_type, elo_diff_group)) |> 
   dplyr::mutate(
     calibration = purrr::map(
       data,
@@ -1186,16 +1094,8 @@ calibration <- preds |>
         purrr::pluck('data')
     )
   ) |> 
-  dplyr::select(model_type, elo_group, calibration) |> 
+  dplyr::select(model_type, elo_diff_group, calibration) |> 
   tidyr::unnest(calibration)
-
-# elo_levels <- levels(preds$elo_group)
-# elo_pal <- setNames(
-#   viridisLite::turbo(
-#     length(elo_levels) + 2
-#   )[2:(2 + length(elo_levels))],
-#   elo_levels
-# )
 
 compared_calibration_plot <- calibration |> 
   ggplot2::ggplot() +
@@ -1204,7 +1104,7 @@ compared_calibration_plot <- calibration |>
     y = event_rate,
     color = model_type
   ) +
-  ggplot2::facet_wrap(~elo_group, scales = 'fixed') +
+  ggplot2::facet_wrap(~elo_diff_group, scales = 'fixed') +
   ggplot2::geom_line() +
   ggplot2::geom_point(
     ggplot2::aes(size = total)
@@ -1212,11 +1112,11 @@ compared_calibration_plot <- calibration |>
   ggplot2::scale_color_manual(
     values = MODEL_TYPE_PAL
   ) +
+  ggplot2::scale_size_continuous(
+    labels = scales::comma
+  ) +
   ggplot2::guides(
-    color = ggplot2::guide_legend(
-      title = '',
-      override.aes = list(linewidth = 3)
-    ),
+    color = 'none',
     size = ggplot2::guide_legend(
       title = '# of shots',
       override.aes = list(color = WHITISH_FOREGROUND_COLOR)
@@ -1240,9 +1140,9 @@ compared_calibration_plot <- calibration |>
     data = data.frame(
       elo_group = '(1400,1650]',
       x = 0.45,
-      xend = 0.35,
-      y = 0.6,
-      yend = 0.7
+      xend = 0.4,
+      y = 0.5,
+      yend = 0.55
     ),
     arrow = grid::arrow(length = grid::unit(6, 'pt'), type = 'closed'),
     color = WHITISH_FOREGROUND_COLOR,
@@ -1258,9 +1158,9 @@ compared_calibration_plot <- calibration |>
     inherit.aes = FALSE,
     data = data.frame(
       elo_group = '(1400,1650]',
-      x = 0.55,
-      xend = 0.65,
-      y = 0.4,
+      x = 0.65,
+      xend = 0.7,
+      y = 0.35,
       yend = 0.3
     ),
     arrow = grid::arrow(length = grid::unit(6, 'pt'), type = 'closed'),
@@ -1277,9 +1177,9 @@ compared_calibration_plot <- calibration |>
     inherit.aes = FALSE,
     data = data.frame(
       elo_group = '(1400,1650]',
-      x = 0.35,
-      y = 0.75,
-      label = '*Model under-predicts*'
+      x = 0.4,
+      y = 0.7,
+      label = '*Model<br/>under-predicts*'
     ),
     fill = NA, label.color = NA,
     label.padding = grid::unit(rep(0, 1), 'pt'),
@@ -1298,9 +1198,9 @@ compared_calibration_plot <- calibration |>
     inherit.aes = FALSE,
     data = data.frame(
       elo_group = '(1400,1650]',
-      x = 0.65,
-      y = 0.25,
-      label = '*Model over-predicts*'
+      x = 0.7,
+      y = 0.1,
+      label = '*Model<br/>over-predicts*'
     ),
     fill = NA, label.color = NA,
     label.padding = grid::unit(rep(0, 1), 'pt'),
@@ -1316,11 +1216,11 @@ compared_calibration_plot <- calibration |>
     )
   ) +
   ggplot2::labs(
-    title = 'Calibration of xG models',
+    title = 'Calibration of xG models given Elo of shooting team',
+    subtitle = glue::glue('<b><span style="color:{MODEL_TYPE_PAL["Base"]}">Base</span></b> vs. <b><span style="color:{MODEL_TYPE_PAL["Elo-augmented"]}">Elo-augmented</span></b> xG model'),
     y = 'Actual shot conversion rate',
     x = 'Model prediction (xG)'
   )
-compared_calibration_plot
 
 ggplot2::ggsave(
   compared_calibration_plot,
@@ -1328,6 +1228,48 @@ ggplot2::ggsave(
   width = 10,
   height = 7
 )
+```
+
+Visually, I wouldn't say there's any significant difference between the calibration curves. A plot of calibration given various buckets for Elo difference would lead to the same conclusion--the Elo-augmented model isn't notably more calibrated.
+
+We can verify this in a more direct fashion by looking at observed goals minus xG (xGD) for each model, splitting by groups of Elo and Elo difference. If the xGD is closer for the Elo-augmented model for various buckets
+
+```{r}
+preds |> 
+  dplyr::group_by(model_type, elo_group) |> 
+  dplyr::summarize(
+    g = sum(scores == 'yes'),
+    xg = sum(.pred_yes)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    xgd = g - xg
+  ) |> 
+  tidyr::pivot_wider(
+    names_from = model_type,
+    values_from = c(xg, xgd)
+  )
+
+preds |> 
+  dplyr::group_by(model_type, elo_diff_group) |> 
+  dplyr::summarize(
+    g = sum(scores == 'yes'),
+    xg = sum(.pred_yes)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    xgd = g - xg
+  ) |> 
+  dplyr::select(
+    model_type,
+    elo_diff_group,
+    g,
+    xgd
+  ) |> 
+  tidyr::pivot_wider(
+    names_from = model_type,
+    values_from = xgd
+  )
 ```
 
 The table above indeed provides evidence for the miscalibration phenomenon--the "base" xG model tends to predict higher xG compared to actual goals scores for teams with lower Elo compared to higher Elo.
