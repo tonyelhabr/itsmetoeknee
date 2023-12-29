@@ -805,11 +805,10 @@ FEATURE_LABELS <- c(
   'bodypart_other_a0' = 'Bodypart = other'
 )
 
-plot_var_imp_from_last_importance <- function(shap_long) {
+plot_mean_abs_shap <- function(shap_importance) {
   
   ## effectively SHAPforxgboost::shap.plot.summary(kind = 'bar')
-  imp <- SHAPforxgboost:::shap.importance(shap_long)
-  imp |> 
+  shap_importance |> 
     tibble::as_tibble() |> 
     dplyr::transmute(
       variable = forcats::fct_reorder(FEATURE_LABELS[variable], mean_abs_shap),
@@ -823,9 +822,9 @@ plot_var_imp_from_last_importance <- function(shap_long) {
     ggplot2::geom_segment(
       ggplot2::aes(
         x = 0,
-        xend = importance,
-        y = term,
-        yend = term
+        xend = mean_abs_shap,
+        y = variable,
+        yend = variable
       ),
       color = WHITISH_FOREGROUND_COLOR
     ) +
@@ -836,7 +835,7 @@ plot_var_imp_from_last_importance <- function(shap_long) {
     ggplot2::geom_text(
       family = FONT,
       color = WHITISH_FOREGROUND_COLOR,
-      ggplot2::aes(label = scales::number(importance, accuracy = 0.001)),
+      ggplot2::aes(label = scales::number(mean_abs_shap, accuracy = 0.01)),
       size = 12 / ggplot2::.pt,
       hjust = 0,
       nudge_x = 0.05
@@ -854,6 +853,7 @@ plot_var_imp_from_last_importance <- function(shap_long) {
       panel.grid.major.y = ggplot2::element_blank()
     )
 }
+
 ## Don't use too much data so as to speed up the `pdp::partial` call.
 sampled_test <- test |> 
   dplyr::filter(season_id == 2022)
@@ -882,14 +882,126 @@ shap_long_elo <- SHAPforxgboost::shap.prep(
   X_train = as.matrix(baked_elo_data)
 )
 
-var_imp_base <- plot_var_imp_from_last_importance(shap_long_base) +
+get_mean_abs_shap <- function(shap_long) {
+  SHAPforxgboost:::shap.importance(shap_long) |> 
+    tibble::as_tibble() |> 
+    dplyr::transmute(
+      ## shap.importance returns a factor!
+      variable = forcats::fct_reorder(FEATURE_LABELS[as.character(variable)], mean_abs_shap),
+      mean_abs_shap
+    )
+}
+
+mean_abs_shap_base <- get_mean_abs_shap(shap_long_base)
+mean_abs_shap_elo <- get_mean_abs_shap(shap_long_elo)
+
+mean_abs_shap_constants <- list(
+  ggplot2::scale_x_continuous(
+    limits = c(0, 1)
+  ),
+  ggplot2::labs(
+    title = 'Feature importance',
+    x = 'mean(|SHAP value|)',
+    y = NULL,
+    caption = 'mean(|SHAP value|) = average impact on model output magnitude.'
+  ),
+  ggplot2::theme(
+    panel.grid.major.y = ggplot2::element_blank()
+  )
+)
+
+mean_abs_shap_base_plot <- mean_abs_shap_base |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = mean_abs_shap,
+    y = variable
+  ) +
+  # ggplot2::geom_segment(
+  #   ggplot2::aes(
+  #     x = 0,
+  #     xend = mean_abs_shap,
+  #     y = variable,
+  #     yend = variable
+  #   ),
+  #   color = WHITISH_FOREGROUND_COLOR
+  # ) +
+  # ggplot2::geom_point(
+  #   size = 3,
+  #   color = WHITISH_FOREGROUND_COLOR
+  # ) +
+  ggplot2::geom_col(
+    ggplot2::aes(
+      x = mean_abs_shap,
+      y = variable
+    ),
+    fill = WHITISH_FOREGROUND_COLOR
+  ) +
+  ggplot2::geom_text(
+    family = FONT,
+    color = WHITISH_FOREGROUND_COLOR,
+    ggplot2::aes(label = scales::number(mean_abs_shap, accuracy = 0.01)),
+    size = 12 / ggplot2::.pt,
+    hjust = 0,
+    nudge_x = 0.05
+  ) +
+  mean_abs_shap_constants +
   ggplot2::labs(
     subtitle = 'Base xG model'
   )
 
 ggplot2::ggsave(
-  var_imp_base,
+  mean_abs_shap_base_plot,
   filename = file.path(PROJ_DIR, 'var-imp-base.png'),
+  width = 7,
+  height = 7
+)
+
+mean_abs_shap_compared <- dplyr::bind_rows(
+  mean_abs_shap_base |> dplyr::mutate(model_type = 'Base'),
+  mean_abs_shap_elo |> dplyr::mutate(model_type = 'Elo-augmented')
+) |> 
+  tidyr::complete(model_type, variable) |> 
+  dplyr::transmute(
+    model_type,
+    variable = factor(variable, levels(mean_abs_shap_elo$variable)),
+    mean_abs_shap
+  )
+
+mean_abs_shap_compared_plot <- mean_abs_shap_compared |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = mean_abs_shap,
+    y = variable,
+    fill = model_type
+  ) +
+  ggplot2::geom_col(
+    ggplot2::aes(
+      x = mean_abs_shap,
+      y = variable
+    ),
+    position = ggplot2::position_dodge2(padding = 0.2)
+  ) +
+  ggplot2::geom_text(
+    data = mean_abs_shap_compared |> dplyr::filter(model_type == 'Elo-augmented'),
+    family = FONT,
+    ggplot2::aes(
+      color = model_type,
+      label = scales::number(mean_abs_shap, accuracy = 0.01)
+    ),
+    size = 10 / ggplot2::.pt,
+    hjust = 0,
+    nudge_x = 0.05,
+    nudge_y = -0.05
+  ) +
+  mean_abs_shap_constants +
+  ggplot2::labs(
+    subtitle = 'Base vs. Elo-augmented xG model'
+  )
+mean_abs_shap_compared_plot
+
+ggplot2::ggsave(
+  mean_abs_shap_compared_plot,
+  filename = file.path(PROJ_DIR, 'var-imp-compared.png'),
   width = 7,
   height = 7
 )
