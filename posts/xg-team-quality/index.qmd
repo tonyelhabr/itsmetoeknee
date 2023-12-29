@@ -805,55 +805,6 @@ FEATURE_LABELS <- c(
   'bodypart_other_a0' = 'Bodypart = other'
 )
 
-plot_mean_abs_shap <- function(shap_importance) {
-  
-  ## effectively SHAPforxgboost::shap.plot.summary(kind = 'bar')
-  shap_importance |> 
-    tibble::as_tibble() |> 
-    dplyr::transmute(
-      variable = forcats::fct_reorder(FEATURE_LABELS[variable], mean_abs_shap),
-      mean_abs_shap
-    ) |> 
-    ggplot2::ggplot() +
-    ggplot2::aes(
-      x = mean_abs_shap,
-      y = variable
-    ) +
-    ggplot2::geom_segment(
-      ggplot2::aes(
-        x = 0,
-        xend = mean_abs_shap,
-        y = variable,
-        yend = variable
-      ),
-      color = WHITISH_FOREGROUND_COLOR
-    ) +
-    ggplot2::geom_point(
-      size = 3,
-      color = WHITISH_FOREGROUND_COLOR
-    ) +
-    ggplot2::geom_text(
-      family = FONT,
-      color = WHITISH_FOREGROUND_COLOR,
-      ggplot2::aes(label = scales::number(mean_abs_shap, accuracy = 0.01)),
-      size = 12 / ggplot2::.pt,
-      hjust = 0,
-      nudge_x = 0.05
-    ) +
-    ggplot2::scale_x_continuous(
-      limits = c(0, 1)
-    ) +
-    ggplot2::labs(
-      title = 'Feature importance',
-      x = 'mean(|SHAP value|)',
-      y = NULL,
-      caption = 'mean(|SHAP value|) = average impact on model output magnitude.'
-    ) +
-    ggplot2::theme(
-      panel.grid.major.y = ggplot2::element_blank()
-    )
-}
-
 ## Don't use too much data so as to speed up the `pdp::partial` call.
 sampled_test <- test |> 
   dplyr::filter(season_id == 2022)
@@ -900,7 +851,6 @@ mean_abs_shap_constants <- list(
     limits = c(0, 1)
   ),
   ggplot2::labs(
-    title = 'Feature importance',
     x = 'mean(|SHAP value|)',
     y = NULL,
     caption = 'mean(|SHAP value|) = average impact on model output magnitude.'
@@ -916,19 +866,6 @@ mean_abs_shap_base_plot <- mean_abs_shap_base |>
     x = mean_abs_shap,
     y = variable
   ) +
-  # ggplot2::geom_segment(
-  #   ggplot2::aes(
-  #     x = 0,
-  #     xend = mean_abs_shap,
-  #     y = variable,
-  #     yend = variable
-  #   ),
-  #   color = WHITISH_FOREGROUND_COLOR
-  # ) +
-  # ggplot2::geom_point(
-  #   size = 3,
-  #   color = WHITISH_FOREGROUND_COLOR
-  # ) +
   ggplot2::geom_col(
     ggplot2::aes(
       x = mean_abs_shap,
@@ -942,10 +879,11 @@ mean_abs_shap_base_plot <- mean_abs_shap_base |>
     ggplot2::aes(label = scales::number(mean_abs_shap, accuracy = 0.01)),
     size = 12 / ggplot2::.pt,
     hjust = 0,
-    nudge_x = 0.05
+    nudge_x = 0.02
   ) +
   mean_abs_shap_constants +
   ggplot2::labs(
+    title = 'Feature importance',
     subtitle = 'Base xG model'
   )
 
@@ -956,6 +894,10 @@ ggplot2::ggsave(
   height = 7
 )
 
+MODEL_TYPE_PAL <- c(
+  'Base' = '#ffbf00', 
+  'Elo-augmented' = '#e83f6f'
+)
 mean_abs_shap_compared <- dplyr::bind_rows(
   mean_abs_shap_base |> dplyr::mutate(model_type = 'Base'),
   mean_abs_shap_elo |> dplyr::mutate(model_type = 'Elo-augmented')
@@ -966,7 +908,17 @@ mean_abs_shap_compared <- dplyr::bind_rows(
     variable = factor(variable, levels(mean_abs_shap_elo$variable)),
     mean_abs_shap
   )
+```
 
+![](var-imp-base.png)
+
+Indeed, this is exactly what we see with the base xG model.
+
+Now, if we make the same plot for our team-quality-adjusted xG model, we see that Elo and Elo difference terms are in the middle of the pack in terms of feature importnace. That's pretty interesting.
+
+```{r}
+#| label: var-imp-compared
+#| include: false
 mean_abs_shap_compared_plot <- mean_abs_shap_compared |> 
   ggplot2::ggplot() +
   ggplot2::aes(
@@ -979,7 +931,19 @@ mean_abs_shap_compared_plot <- mean_abs_shap_compared |>
       x = mean_abs_shap,
       y = variable
     ),
-    position = ggplot2::position_dodge2(padding = 0.2)
+    position = ggplot2::position_dodge2(padding = 0.2, reverse = TRUE)
+  ) +
+  ggplot2::geom_text(
+    data = mean_abs_shap_compared |> dplyr::filter(model_type == 'Base'),
+    family = FONT,
+    ggplot2::aes(
+      color = model_type,
+      label = scales::number(mean_abs_shap, accuracy = 0.01)
+    ),
+    size = 10 / ggplot2::.pt,
+    hjust = 0,
+    nudge_x = 0.02,
+    nudge_y = +0.25
   ) +
   ggplot2::geom_text(
     data = mean_abs_shap_compared |> dplyr::filter(model_type == 'Elo-augmented'),
@@ -990,39 +954,25 @@ mean_abs_shap_compared_plot <- mean_abs_shap_compared |>
     ),
     size = 10 / ggplot2::.pt,
     hjust = 0,
-    nudge_x = 0.05,
-    nudge_y = -0.05
+    nudge_x = 0.02,
+    nudge_y = -0.25
+  ) +
+  ggplot2::scale_color_manual(values = MODEL_TYPE_PAL) +
+  ggplot2::scale_fill_manual(values = MODEL_TYPE_PAL) +
+  ggplot2::guides(
+    color = 'none',
+    fill = 'none'
   ) +
   mean_abs_shap_constants +
   ggplot2::labs(
-    subtitle = 'Base vs. Elo-augmented xG model'
+    title = 'Feature importance comparison',
+    subtitle = glue::glue('<b><span style="color:{MODEL_TYPE_PAL["Base"]}">Base</span></b> vs. <b><span style="color:{MODEL_TYPE_PAL["Elo-augmented"]}">Elo-augmented</span></b> xG model')
   )
 mean_abs_shap_compared_plot
 
 ggplot2::ggsave(
   mean_abs_shap_compared_plot,
   filename = file.path(PROJ_DIR, 'var-imp-compared.png'),
-  width = 7,
-  height = 7
-)
-```
-
-![](var-imp-base.png)
-
-Indeed, this is exactly what we see with the base xG model.
-
-Now, if we make the same plot for our team-quality-adjusted xG model, we see that Elo and Elo difference are the second and third most important features! That's pretty interesting.
-
-```{r}
-#| label: var-imp-elo
-var_imp_elo <- plot_var_imp_from_last_importance(last_elo_fit) +
-  ggplot2::labs(
-    subtitle = 'Elo-augmented xG model'
-  )
-
-ggplot2::ggsave(
-  var_imp_elo,
-  filename = file.path(PROJ_DIR, 'var-imp-elo.png'),
   width = 7,
   height = 7
 )
@@ -1247,11 +1197,6 @@ calibration <- preds |>
 #   elo_levels
 # )
 
-CAL_COLORS <- c(
-  'Base' = '#ef426f', 
-  'Elo-augmented' = '#00b2a9'
-)
-
 compared_calibration_plot <- calibration |> 
   ggplot2::ggplot() +
   ggplot2::aes(
@@ -1265,7 +1210,7 @@ compared_calibration_plot <- calibration |>
     ggplot2::aes(size = total)
   ) +
   ggplot2::scale_color_manual(
-    values = CAL_COLORS
+    values = MODEL_TYPE_PAL
   ) +
   ggplot2::guides(
     color = ggplot2::guide_legend(
