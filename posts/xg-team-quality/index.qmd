@@ -5,7 +5,7 @@ date: 2023-12-29
 categories:
   - r
   - soccer
-image: compared-calibration.png
+image: var-imp-compared.png
 execute: 
   code-fold: false
   eval: false
@@ -23,11 +23,9 @@ But I thought it might be fun to entertain the question from a quantitative pers
 
 This write-up is inspired by [Ryan Brill](https://twitter.com/RyanBrill_)'s recent [presentation on fourth-down decision-making in the National Football League (NFL)](https://youtu.be/uS4XxQ0LVfE?si=BnmzeePnk3R5uiY3&t=361). He points out that [expected points (EP)](https://www.nfeloapp.com/analysis/expected-points-added-epa-nfl/) models in the NFL have a [selection bias](https://en.wikipedia.org/wiki/Selection_bias) problem--they tend to under-rate the probability of a positive outcome for "good" teams and over-rate such outcomes for "bad" teams.
 
-Expected goals (xG) in soccer also suffer from this bias. [Lars Maurath](https://github.com/larsmaurath) has [a great deep-dive](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) looking into expected goals under-estimation for strong teams in the [Big 5 European leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats). The plot below (copied shamelessly from Lars' post) shows that a naive xG model consistently under-predicts Barcelona's goals over the course of the season, for seasons from 2007/08 to 2018/19. Even [StatsBomb](https://statsbomb.com/)'s model--which is more sophisticated--tends to underestimate the true cumulative goal total!
+Expected goals (xG) in soccer also suffer from this bias. [Lars Maurath](https://github.com/larsmaurath) has [a great deep-dive](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) looking into expected goals under-estimation for strong teams like [Barcelona](https://fbref.com/en/squads/206d90db/Barcelona-Stats).
 
-![](barcelona-cumulative-xg.png)
-
-This is evident in the [English Premier League (EPL)](https://en.wikipedia.org/wiki/Premier_League) as well. The [end-of-season table for the 2022/23 season](https://fbref.com/en/comps/9/2022-2023/2022-2023-Premier-League-Stats) shows that xGD, i.e. goals (G) minus xG, is very positive for the top 6 teams and very negative for the bottom 6 teams.
+This phenomenon is evident in the [English Premier League (EPL)](https://en.wikipedia.org/wiki/Premier_League) as well. The [end-of-season table for the 2022/23 season](https://fbref.com/en/comps/9/2022-2023/2022-2023-Premier-League-Stats) shows that xGD, i.e. goals (G) minus xG, is very positive for the top 6 teams and very negative for the bottom 6 teams.
 
 ```{r}
 #| label: epl-table-2023
@@ -372,7 +370,7 @@ ggplot2::ggsave(
 
 To make Elo values feel a bit more tangible, note that:
 
--   Man City--arguably the best team in the EPL for the past decade--has sustained an Elo greater than 1850 for a majority of the past decade.
+-   [Man City](https://fbref.com/en/squads/206d90db/Barcelona-Stats)--arguably the best team in the EPL for the past decade--has sustained an Elo greater than 1850 for a majority of the past decade.
 -   Bottom-table teams often in the [relegation](https://en.wikipedia.org/wiki/Promotion_and_relegation) battle tend to have Elos less than 1650.
 
 ```{r}
@@ -1295,6 +1293,6 @@ Further, I've been assuming that looking at xGD will always be the primary way t
 
 I pursued a quantitative analysis to evaluate whether accounting for team strength directly in an expected goals model in soccer might improve predictiveness and calibration, inspired by observed biases in American football's expected points models. Despite SHAP plots indicating some value in Elo-augmented models, the overall performance metrics and calibration plots showed negligible differences compared to the base xG model.
 
-On the surface, this is a little at odds with [Lars Maurath's ex-post finding](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) that team quality is useful for explaining xGD, which matches my intuition. However, my ex-ante approach is fairly straightforward and has limitations. Perhaps with better feature engineering and additional features like goalkeeper position, we might find that accounting for team quality directly does improve an xG model.
+On the surface, this is a little at odds with [Lars Maurath's ex-post finding](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) that team quality is useful for explaining xGD, which matches my intuition. However, as Lars points out, that team quality is highly correlated with shot volume, and team quality may just be a mask for the effect of highly skilled players with superior finishing capabilities. So, perhaps with better feature engineering--e.g. shots per 90 in the prior N matches, weekly wages of the shot-taker or the shot-taking team--I could prove that directly accounting for team strength can improve an xG model.
 
-The most natural area of future research would be to analyze how measures of player quality might improve an xG model. There is some [prior art](https://statsbomb.com/wp-content/uploads/2022/09/Tahmeed-Tureen-and-Sigrid-Olthof-%E2%80%93-Estimated-Player-Impact-EPI-Quantifying-The-Effects-Of-Individual-Players-On-Football-Actions-Using-Hierarchical-Statistical-Models.pdf) on this, so it would be wise to identify how one could contribute something novel to that work.
+Given all my questions and speculations about the role of player quality with respect to xG calibration, perhaps it's not surprising that the most natural area of future research would be to evaluate how measures of player skill might improve an xG model. There is some [prior art](https://statsbomb.com/wp-content/uploads/2022/09/Tahmeed-Tureen-and-Sigrid-Olthof-%E2%80%93-Estimated-Player-Impact-EPI-Quantifying-The-Effects-Of-Individual-Players-On-Football-Actions-Using-Hierarchical-Statistical-Models.pdf) on this, so it would be wise to identify how one could contribute something novel to that work.
