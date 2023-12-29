@@ -1,11 +1,11 @@
 ---
 title: Should we account for team quality in an xG model?
 description: "Finnicking around (with an xG model) and finding out"
-date: 2023-12-31
+date: 2023-12-29
 categories:
   - r
   - soccer
-image: elo-pdp.png
+image: compared-calibration.png
 execute: 
   code-fold: false
   eval: false
@@ -15,9 +15,9 @@ execute:
 
 ## Introduction
 
-"Should we account for team quality in an [xG model](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/)?" From a purely philosophical point of view, my opinion is "no"--I think that xG models should be agnostic to player and team abilities, even if we were to find that accounting for shot-taker or team identity improve the performance of the model.
+"Should we account for team quality in an [xG model](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/)?" From a purely philosophical point of view, my opinion is "no"--I think that xG models should be agnostic to player and team abilities, even if we were to find that accounting for shot-taker or team identity improves the performance of the model.
 
-But I thought it might be fun to entertain the question from a quantitative perspective. If we add features for team strength to an xG model, can we meaningfully improve the model's overall predictive performance and [calibration](https://tonyelhabr.rbind.io/posts/probability-calibration/) (with respect to team quality)?
+But I thought it might be fun to entertain the question from a quantitative perspective. If we add features for team strength to an xG model, can we meaningfully improve the model's overall predictive performance and [calibration](https://tonyelhabr.rbind.io/posts/probability-calibration/)?
 
 ### Motivation
 
@@ -27,19 +27,61 @@ Expected goals (xG) in soccer also suffer from this bias. [Lars Maurath](https:/
 
 ![](barcelona-cumulative-xg.png)
 
-Lars does an "ex-post" analysis (evaluating the "residual" of goals minus expected goals) to arrive at his conclusion that team quality does seem to explain large deviations between goals and expected goals for top teams
+This is evident in the [English Premier League (EPL)](https://en.wikipedia.org/wiki/Premier_League) as well. The [end-of-season table for the 2022/23 season](https://fbref.com/en/comps/9/2022-2023/2022-2023-Premier-League-Stats) shows that xGD, i.e. goals (G) minus xG, is very positive for the top 6 teams and very negative for the bottom 6 teams.
+
+```{r}
+#| label: epl-table-2023
+#| include: false
+table <- worldfootballR::fb_season_team_stats(
+  country = 'ENG', 
+  gender = 'M',
+  tier = '1st', 
+  season_end_year = 2023,
+  stat_type = 'league_table'
+)
+
+table |> 
+  dplyr::arrange(dplyr::desc(Pts)) |> 
+  dplyr::transmute(Team = Squad, Points = Pts, G = GA, xG = xG, xGD) |> 
+  knitr::kable()
+```
+
+| Team            | Points |   G |   xG |   xGD |
+|:----------------|-------:|----:|-----:|------:|
+| Manchester City |     89 |  33 | 78.6 |  46.5 |
+| Arsenal         |     84 |  43 | 71.9 |  29.9 |
+| Manchester Utd  |     75 |  43 | 67.7 |  17.3 |
+| Newcastle Utd   |     71 |  33 | 72.0 |  32.4 |
+| Liverpool       |     67 |  47 | 72.6 |  21.7 |
+| Brighton        |     62 |  53 | 73.3 |  23.1 |
+| Aston Villa     |     61 |  46 | 50.2 |  -2.2 |
+| Tottenham       |     60 |  63 | 57.1 |   7.4 |
+| Brentford       |     59 |  46 | 56.8 |   6.8 |
+| Fulham          |     52 |  53 | 46.2 | -17.6 |
+| Crystal Palace  |     45 |  49 | 39.3 |  -8.8 |
+| Chelsea         |     44 |  47 | 49.5 |  -3.0 |
+| Wolves          |     41 |  58 | 36.8 | -23.1 |
+| West Ham        |     40 |  55 | 49.2 |  -3.9 |
+| Bournemouth     |     39 |  71 | 38.6 | -25.3 |
+| Nott'ham Forest |     38 |  68 | 39.3 | -24.9 |
+| Everton         |     36 |  57 | 45.2 | -20.5 |
+| Leicester City  |     34 |  68 | 50.6 | -12.8 |
+| Leeds United    |     31 |  78 | 47.4 | -19.8 |
+| Southampton     |     25 |  73 | 37.7 | -23.3 |
+
+Lars does an "ex-post" analysis--evaluating the "residual" of expected goals, or xGD--to arrive at his conclusion that team quality does seem to explain large deviations between goals and expected goals for top teams.
 
 > \[W\]hen conditioning on... team quality (Elo ranking) I do not find this bias in either naive or sophisticated models
 
-I'm curious to see if we can arrive at a related conclusion in a more direct, "ex-ante" fashion. Can we reduce the under-estimation of goals for strong teams by directly accounting for team quality in an xG model?
+I'm curious to see if we can arrive at a related conclusion in a more direct, "ex-ante" fashion. Can we reduce the underestimation of goals for strong teams by directly accounting for team quality in an xG model?
 
 ## Analysis and Results
 
 ### Data
 
-I'll be using event data that I've ingested with the [`{socceraction}` package](https://github.com/ML-KULeuven/socceraction) (which I've made available [here](https://github.com/tonyelhabr/socceraction-streamlined/releases)!) for the 2013/14 through 2022/23 [English Premier League (EPL)](https://www.premierleague.com/) seasons. I'll focus on just "open-play" shots, i.e. shots excluding penalties and those taken from set pieces.
+I'll be using event data that I've ingested with the [`{socceraction}` package](https://github.com/ML-KULeuven/socceraction) (which I've made available [here](https://github.com/tonyelhabr/socceraction-streamlined/releases)!) for the 2013/14 through 2022/23 EPL seasons. I'll focus on just "open-play" shots, i.e. shots excluding penalties and those taken from set pieces.
 
-But we also need some measure of team quality. To that end, I've scraped [Elo](https://en.wikipedia.org/wiki/Elo_rating_system) ratings from [ClubElo](http://clubelo.com/). I've chosen Elo because provides a intuitive, sport-agnostic measure of relative skill. Also, it is calculated independent of the events that take place in a game, so correlation with measures of shot volume, quality, etc. are only coincidental. (It was also fairly easy to retrieve!)
+Additionally, I've scraped [Elo](https://en.wikipedia.org/wiki/Elo_rating_system) ratings from [ClubElo](http://clubelo.com/) for my measure of team quality. I've chosen Elo because it provides an intuitive, sport-agnostic measure of relative skill. Also, it is calculated independent of the events that take place in a game, so any correlation with measures of shot volume, quality, etc. are only coincidental. (It was also fairly easy to retrieve and is what Lars used to gauge "top" teams in a quantitative way.)
 
 ```{r}
 #| label: setup
@@ -50,9 +92,11 @@ But we also need some measure of team quality. To that end, I've scraped [Elo](h
 library(curl)
 library(arrow)
 library(qs) ## local dev
+library(worldfootballR)
 
 ## Data manipulation
 library(dplyr)
+library(tidyr)
 library(purrr)
 library(lubridate)
 library(forcats)
@@ -83,6 +127,8 @@ library(ggtext)
 library(htmltools)
 library(scales)
 library(grid)
+library(glue)
+library(knitr)
 
 PROJ_DIR <- 'posts/xg-team-quality'
 
@@ -278,39 +324,6 @@ qs::qsave(open_play_shots, file.path(PROJ_DIR, 'open_play_shots.qs'))
 open_play_shots <- qs::qread(file.path(PROJ_DIR, 'open_play_shots.qs'))
 ```
 
-The open play shot data looks like this.
-
-```{r}
-#| label: glimpse-data-pull
-#| code-fold: false
-dplyr::glimpse(open_play_shots)
-#> Rows: 92,322
-#> Columns: 21
-#> $ date                     <date> 2012-08-18, 2012-08-18, 2012-08-18, 2012-…
-#> $ season_id                <int> 2013, 2013, 2013, 2013, 2013, 2013, 2013, …
-#> $ game_id                  <int> 614051, 614051, 614051, 614051, 614051, 61…
-#> $ team_id                  <int> 16, 13, 16, 13, 13, 13, 13, 13, 13, 13, 16…
-#> $ opponent_team_id         <dbl> 13, 16, 13, 16, 16, 16, 16, 16, 16, 16, 13…
-#> $ action_id                <int> 109, 123, 276, 436, 502, 517, 541, 573, 61…
-#> $ scores                   <fct> no, no, no, no, no, no, no, no, no, no, no…
-#> $ elo                      <dbl> 1669.172, 1827.481, 1669.172, 1827.481, 18…
-#> $ opponent_elo             <dbl> 1827.481, 1669.172, 1827.481, 1669.172, 16…
-#> $ elo_diff                 <dbl> -158.3093, 158.3093, -158.3093, 158.3093, …
-#> $ start_dist_to_goal_a0    <int> 12, 27, 21, 15, 8, 16, 29, 10, 26, 32, 30,…
-#> $ start_angle_to_goal_a0   <int> 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, …
-#> $ type_dribble_a1          <int> 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, …
-#> $ type_pass_a1             <int> 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, …
-#> $ type_cross_a1            <int> 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, …
-#> $ type_corner_crossed_a1   <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-#> $ type_shot_a1             <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-#> $ type_freekick_crossed_a1 <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-#> $ bodypart_foot_a0         <int> 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, …
-#> $ bodypart_head_a0         <int> 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, …
-#> $ bodypart_other_a0        <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
-```
-
-We'll set aside the shots from the 7 seasons from 2013/14 to 2019/20 for our training set, and the 3 seasons from 2020/21 to 2022/23 for our test set.
-
 ```{r}
 #| label: split-data
 #| code-fold: true
@@ -324,11 +337,13 @@ train <- rsample::training(split)
 test <- rsample::testing(split)
 ```
 
-It's worth spotlighting Elo a bit more, since it's the novel feature here. Below is a look at the distribution of pre-match Elo over the course of the entire data set.
+It's worth spotlighting Elo a bit more since it's the novel feature here. Below is a look at the distribution of pre-match Elo over the course of the entire data set.
 
 ```{r}
 #| label: elo-hist
 #| include: false
+CLUBELO_CAPTION <- 'Elo from clubelo.com.'
+ELO_HIST_CAPTION <- paste0('Each point represents the pre-match Elo of a given team.<br/>There are 10 seasons x 380 matches x 2 sides = 7.6k data points in total.<br/>', CLUBELO_CAPTION)
 elo_hist <- open_play_shots |> 
   dplyr::distinct(game_id, elo) |> 
   ggplot2::ggplot() +
@@ -341,7 +356,8 @@ elo_hist <- open_play_shots |>
     subtitle = SUBTITLE_LABEL,
     y = 'Count',
     x = 'Elo',
-    caption =  'Each point represents the pre-match Elo of a given team.<br/>There are 10 seasons x 380 matches x 2 sides = 7.6k data points in total.'
+    caption =  ELO_HIST_CAPTION,
+    tag = TAG_LABEL
   )
 ggplot2::ggsave(
   elo_hist,
@@ -356,8 +372,8 @@ ggplot2::ggsave(
 
 To make Elo values feel a bit more tangible, note that:
 
--   Man City tends to sustain an Elo greater than 1850 (arguably the best team in the EPL for the past decade).
--   Bottom-table teams tend to have Elos less than 1650.
+-   Man City--arguably the best team in the EPL for the past decade--has sustained an Elo greater than 1850 for a majority of the past decade.
+-   Bottom-table teams often in the [relegation](https://en.wikipedia.org/wiki/Promotion_and_relegation) battle tend to have Elos less than 1650.
 
 ```{r}
 #| label: elo-diff-hist
@@ -377,7 +393,8 @@ elo_diff_hist <- open_play_shots |>
     subtitle = SUBTITLE_LABEL,
     y = 'Count',
     x = 'Elo',
-    caption = 'Each point represents the pre-match difference between two teams.<br/>There are 10 seasons x 380 matches x 2 sides = 7.6k data points in total.'
+    caption = gsub('Elo', 'Elo difference between teams', ELO_HIST_CAPTION),
+   tag = TAG_LABEL
   )
 ggplot2::ggsave(
   elo_diff_hist,
@@ -437,7 +454,7 @@ rec_base <- rec_elo |>
   recipes::step_rm(elo, elo_diff)
 ```
 
-I'll be using [xgboost](https://xgboost.readthedocs.io/en/stable/) for our model, the state-of-the-art framework for tabular machine learning tasks. (It's also the type of model used by providers like Opta.) I'll choose [hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)) using [an efficient grid search](https://finetune.tidymodels.org/index.html), evaluating models with the [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)). For the reference Brier score for BSS, I'll use a dummy model that predicts 12% conversion for all shots.[^2]
+I'll be using [xgboost](https://xgboost.readthedocs.io/en/stable/) for my xG models. xgboost is the state-of-the-art framework for tabular machine learning tasks that's used by data and model providers like Opta. I'll choose [hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)) using [an efficient grid search](https://finetune.tidymodels.org/index.html), evaluating models with the [Brier skill score (BSS)](https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)). For the reference Brier score for BSS, I'll use a dummy model that predicts 12% conversion for all shots.[^2]
 
 [^2]: 12% is approximately the observed shot conversion rate in the whole data set.
 
@@ -669,13 +686,13 @@ tuned_results <- workflowsets::workflow_map(
 ```{r}
 #| label: tune-models-save
 #| include: false
-qs::qsave(tuned_results, file.path(PROJ_DIR, 'tuned_results2.qs'))
+qs::qsave(tuned_results, file.path(PROJ_DIR, 'tuned_results.qs'))
 ```
 
 ```{r}
 #| label: tune-models-read
 #| include: false
-tuned_results <- qs::qread(file.path(PROJ_DIR, 'tuned_results2.qs'))
+tuned_results <- qs::qread(file.path(PROJ_DIR, 'tuned_results.qs'))
 ```
 
 ```{r}
@@ -690,8 +707,6 @@ select_best_model <- function(tuned_results, model_type) {
   tuned_results |>
     workflowsets::extract_workflow_set_result(model_type) |> 
     tune::select_best(metric = 'xg_brier_skill_score') |>
-    dplyr::filter(min_n >= 5) |> 
-    dplyr::slice(1) |> 
     dplyr::transmute(
       model_type = MODEL_TYPES[model_type],
       mtry,
@@ -737,12 +752,10 @@ The number of `trees` and `learning_rate` were pre-defined to be 500 and 0.01 re
 
 [^3]: This post isn't meant to be so much about the why's and how's of model tuning and training, so I've spared commentary on the code.
 
-After identifying our optimal hyperparameters, we fit singular models on the entire training set. These are the models that we'll use to evaluate the effect of team quality on xG.
-
 ```{r}
 #| label: last-fits
 #| code-fold: true
-#| code-summary: Fit models on entire training set after choosing best hyper-parameters
+#| code-summary: Fit models on the entire training set after choosing the hyperparameters
 finalize_tuned_results <- function(tuned_results, model_type) {
   best_set <- select_best_model(tuned_results, model_type)
   tuned_results |>
@@ -773,9 +786,9 @@ last_elo_fit <- qs::qread(file.path(PROJ_DIR, 'last_elo_fit.qs'))
 
 ### Feature Importance
 
-We should verify to see that the fitted xG models are behaving is expected. One way of doing so is to look at the feature importance.
+We should verify to see that the fitted xG models are behaving as expected. One way of doing so is to look at the importance of the features for model predictions.
 
-In bespoke models, feature importance can be enlightening, as it tell us which features are contributing most to the predicted outcomes. In this case, I know that shot distance should be the most important feature (by far), as this is found to be the most important features in other similar "basic" public xG models, such as [this](https://github.com/AnshChoudhary/xGModel/blob/main/expected-goals-model-xg.ipynb) and [this](https://github.com/ML-KULeuven/soccer_xg/blob/master/notebooks/4-creating-custom-xg-pipelines.ipynb).
+In bespoke models (like the Elo-augmented model), feature importance can be enlightening, as it tell us which features are contributing most to the predicted outcomes. For the base model, I know that shot distance should be the most important feature (by far), as this is found to be the most important features in other similar "basic" public xG models, such as [this one](https://github.com/AnshChoudhary/xGModel/blob/main/expected-goals-model-xg.ipynb) and [this one](https://github.com/ML-KULeuven/soccer_xg/blob/master/notebooks/4-creating-custom-xg-pipelines.ipynb).
 
 I like to use [SHAP values](https://christophm.github.io/interpretable-ml-book/shap.html) for feature importance since [they have nice "local" explanations and are found to be consistent in their "global" structure](https://liuyanguu.github.io/post/2019/07/18/visualization-of-shap-for-xgboost/).
 
@@ -824,18 +837,18 @@ baked_elo_data <- bake_recipe(rec_elo, sampled_test)
 base_model_object <- hardhat::extract_fit_engine(last_base_fit)
 elo_model_object <- hardhat::extract_fit_engine(last_elo_fit)
 
-shap_long_base <- SHAPforxgboost::shap.prep(
+shap_prepped_base <- SHAPforxgboost::shap.prep(
   xgb_model = base_model_object,
   X_train = as.matrix(baked_base_data)
 )
 
-shap_long_elo <- SHAPforxgboost::shap.prep(
+shap_prepped_elo <- SHAPforxgboost::shap.prep(
   xgb_model = elo_model_object,
   X_train = as.matrix(baked_elo_data)
 )
 
-get_mean_abs_shap <- function(shap_long) {
-  SHAPforxgboost:::shap.importance(shap_long) |> 
+get_mean_abs_shap <- function(shap_prepped) {
+  SHAPforxgboost:::shap.importance(shap_prepped) |> 
     tibble::as_tibble() |> 
     dplyr::transmute(
       ## shap.importance returns a factor!
@@ -844,8 +857,8 @@ get_mean_abs_shap <- function(shap_long) {
     )
 }
 
-mean_abs_shap_base <- get_mean_abs_shap(shap_long_base)
-mean_abs_shap_elo <- get_mean_abs_shap(shap_long_elo)
+mean_abs_shap_base <- get_mean_abs_shap(shap_prepped_base)
+mean_abs_shap_elo <- get_mean_abs_shap(shap_prepped_elo)
 
 mean_abs_shap_constants <- list(
   ggplot2::scale_x_continuous(
@@ -858,6 +871,10 @@ mean_abs_shap_constants <- list(
   ),
   ggplot2::theme(
     panel.grid.major.y = ggplot2::element_blank()
+  ),
+  ggplot2::labs(
+    caption = paste0('**Data**: ', SUBTITLE_LABEL, '. ', CLUBELO_CAPTION),
+    tag = TAG_LABEL
   )
 )
 
@@ -987,7 +1004,7 @@ Further, we can verify that the Elo-augmented model predicts xG in a manner that
 ```{r}
 #| label: elo-pdp-plot
 #| include: false
-elo_pdp_plot <- shap_long_elo |> 
+elo_pdp_plot <- shap_prepped_elo |> 
   tibble::as_tibble() |> 
   dplyr::filter(variable %in% c('elo', 'elo_diff')) |> 
   dplyr::transmute(
@@ -1017,7 +1034,9 @@ elo_pdp_plot <- shap_long_elo |>
     title = 'SHAP dependence plot for Elo features',
     subtitle = 'Elo-augmented xG model',
     x = 'Feature value',
-    y = 'SHAP value'
+    y = 'SHAP value',
+    caption = paste0('**Data**: ', SUBTITLE_LABEL, '. ', CLUBELO_CAPTION),
+    tag = TAG_LABEL
   )
 
 ggplot2::ggsave(
@@ -1036,32 +1055,32 @@ Indeed, this is generally what we observe, although the relationships aren't qui
 
 ### Model Evaluation
 
-So aggregate SHAP values indicate that our two Elo features aren't playing a big role in contributing to model predictions, although the features do indeed contribute in the way that we'd expectG. But SHAP values are just telling us about how and why a model makes certain predictions. What about the performance of the Elo-augmented model compared to the base xG model?
+So aggregate SHAP values indicate that our two Elo features aren't playing a big role in contributing to model predictions, although the features do indeed contribute in the way that we'd expect. But SHAP values are just telling us about how and why a model makes certain predictions. What about the performance of the Elo-augmented model compared to the base xG model?
 
 ```{r}
 #| label: test-set-metrics
 #| include: false
 dplyr::bind_rows(
-  tune::collect_metrics(last_base_fit) |> dplyr::mutate(model_type = 'Base'),
-  tune::collect_metrics(last_elo_fit) |> dplyr::mutate(model_type = 'Elo-augmented')
+  tune::collect_metrics(last_base_fit) |> dplyr::mutate(`Model Type` = 'Base'),
+  tune::collect_metrics(last_elo_fit) |> dplyr::mutate(`Model Type` = 'Elo-augmented')
 ) |> 
   dplyr::transmute(
-    model_type,
-    brier_skill_score = .estimate
+    `Model Type`,
+    `Brier Skill Score` = .estimate
   ) |> 
   knitr::kable(digits = 4)
 ```
 
-| model_type    | brier_skill_score |
+| Model Type    | Brier Skill Score |
 |:--------------|------------------:|
 | Base          |            0.1058 |
 | Elo-augmented |            0.1056 |
 
-Well, at least in terms of BSS, it looks like there's basically no difference between the models![^6]
+Well, at least in terms of BSS, it looks like there's basically no difference between the models.[^6]
 
 [^6]: One could run a bootstrap analysis to prove this with more statistical rigor, but I'll leave that as an exercise for the eager reader.
 
-But that's just one, wholistic measure. How well calibrated is the Elo-augmented model compared to the traditional xG model? Does the augmented model demonstrate better performance across the whole range of shot conversion probabilities?
+But that's just one, holistic measure. How well-calibrated is the Elo-augmented model compared to the traditional xG model? Does the augmented model demonstrate better performance across the whole range of shot conversion probabilities?
 
 ```{r}
 #| label: test-set-calibration
@@ -1094,7 +1113,7 @@ preds <- dplyr::bind_rows(
   )
 
 calibration <- preds |> 
-  tidyr::nest(data = -c(model_type, elo_diff_group)) |> 
+  tidyr::nest(data = -c(model_type, elo_group)) |> 
   dplyr::mutate(
     calibration = purrr::map(
       data,
@@ -1106,7 +1125,7 @@ calibration <- preds |>
         purrr::pluck('data')
     )
   ) |> 
-  dplyr::select(model_type, elo_diff_group, calibration) |> 
+  dplyr::select(model_type, elo_group, calibration) |> 
   tidyr::unnest(calibration)
 
 compared_calibration_plot <- calibration |> 
@@ -1116,7 +1135,7 @@ compared_calibration_plot <- calibration |>
     y = event_rate,
     color = model_type
   ) +
-  ggplot2::facet_wrap(~elo_diff_group, scales = 'fixed') +
+  ggplot2::facet_wrap(~elo_group, scales = 'fixed') +
   ggplot2::geom_line() +
   ggplot2::geom_point(
     ggplot2::aes(size = total)
@@ -1151,8 +1170,8 @@ compared_calibration_plot <- calibration |>
     inherit.aes = FALSE,
     data = data.frame(
       elo_group = '(1400,1650]',
-      x = 0.45,
-      xend = 0.4,
+      x = 0.35,
+      xend = 0.3,
       y = 0.5,
       yend = 0.55
     ),
@@ -1189,7 +1208,7 @@ compared_calibration_plot <- calibration |>
     inherit.aes = FALSE,
     data = data.frame(
       elo_group = '(1400,1650]',
-      x = 0.4,
+      x = 0.3,
       y = 0.7,
       label = '*Model<br/>under-predicts*'
     ),
@@ -1231,7 +1250,9 @@ compared_calibration_plot <- calibration |>
     title = 'Calibration of xG models given Elo of shooting team',
     subtitle = glue::glue('<b><span style="color:{MODEL_TYPE_PAL["Base"]}">Base</span></b> vs. <b><span style="color:{MODEL_TYPE_PAL["Elo-augmented"]}">Elo-augmented</span></b> xG model'),
     y = 'Actual shot conversion rate',
-    x = 'Model prediction (xG)'
+    x = 'Model prediction (xG)',
+    caption = paste0('**Data**: ', SUBTITLE_LABEL, '. ', CLUBELO_CAPTION),
+    tag = TAG_LABEL
   )
 
 ggplot2::ggsave(
@@ -1248,22 +1269,32 @@ Visually, I wouldn't say there's any significant difference between the calibrat
 
 ## Discussion
 
-We've seen that there is no clear evidence that accounting for team quality improves an xG model. Sure, it can provide value to an xG model--as shown with the SHAP plots for the Elo-augmented model--but it's effectively just providing a difference kind of information that could be otherwise captured by other traditional xG features.
+We've seen that there is no clear evidence that accounting for team quality improves an xG model. Sure, it can provide value to an xG model--as shown with the SHAP plots for the Elo-augmented model--but it's effectively just providing a different kind of information that could be otherwise captured by other traditional xG features.
 
-So naturally one may ask--what about player quality? Or goalkeeper quality? What if we get more specific about the measures of quality (more specific than team)?
+So naturally one may ask--what about player quality? Or goalkeeper quality? What if we get more specific about the measures of quality (more specific than the team strength)?
 
-While I do think those would be a little more useful in terms of making a better xG model (I have tested this myself), the better question is whether we should be accounting for these kinds of "quality" features at all. My view is "no". I say "no" (although I do think it's fine for NFL EP models) due to the manner in which xG models are typically applied (or not applied).
+While I do think those would be a little more useful in terms of making a better xG model, the better question is whether we should be accounting for these kinds of "quality" features at all. say "no"--although I do think it's fine for NFL EP models--due to the manner in which xG models are typically applied.
 
-An xG model cannot be used to "intervene" with shots in real-time like a fourth-down model might be "actively" used to make a choice in the NFL. An NFL coach probably wants a model to incorporate their team's strength so as to make an informed decision about whether to go for it.
+### Application of xG in soccer vs. EP in American football
 
-In contrast, xG models are more commonly used in a "passive" manner, to understand how a team or a specific player might be performing compared to expectation. Soccer coaches and analysts often look at the actual goals scored minus the expected goals accumulated (the "residual") to diagnose under- and over-performance. Yes, they also look at expected goals in a more broad manner to get a sense of where and how they can get better shots or where they are giving up high-quality shots, but that kind of insight is not acted upon in real-time in the same way that a fourth-down decision is made in real-time.
+Unlike a fourth-down model actively used by NFL coaches to make real-time decisions, an expected goals (xG) model in soccer serves a more passive role. Soccer players lack the luxury of time that NFL coaches have to calculate xG on the fly when deciding whether to take a shot. Instead, xG feels better suited as a retrospective, descriptive measure of actions that have already occurred.
 
-One can make the argument that incorporating team or player quality into an xG model can make interpretation more difficult, at least in the manner that we typically use xG to contextualize a game or a season. (xGods, please forgive me for looking at single-game xG.) As an extreme example, let's say that we add an "Is Messi?" feature to an xG model (not unlike what Ryan suggested with Justin Tucker in his presentation) to achieve a slightly more accurate xG model. That's all fine and dandy, in theory; but then your game- and season-level xG insights would need change.
+Further, one can make the argument that incorporating team or player quality into an xG model can make interpretation more difficult, at least in the manner that we typically use xG to contextualize a game or a season. (xGods, please forgive me for looking at single-game xG.) As an extreme example, let's say that we add an "Is Messi?" feature to an xG model (not unlike what Ryan suggested with Justin Tucker in his presentation) to achieve a slightly more accurate xG model. That's all fine and dandy, in theory; but then your game- and season-level xG insights would need to change.
 
-I may look at an Inter Miami game where they "lost" on actual goals, let's say 2 to 1, *and* "lost" on xG, let's say 0.9 to 1.7, and think "oh, that's a fair result". But if Messi took 4 shots and we're using an expected goals model with the "Is Messi?" feature, the Inter Miami xG might appear to be 2.2, perhaps leading to a different take on the game---"that was Inter Miami's game, but they failed to convert on some key chances".
+I may look at an Inter Miami game where they "lost" on actual goals, let's say 2 to 1, *and* "lost" on xG, let's say 0.9 to 1.7, and think "Oh, that's a fair result". But if Messi took 4 shots and we're using an expected goals model with the "Is Messi?" feature, the Inter Miami xG might appear to be 2.2, perhaps leading to a different take on the game---"that was Inter Miami's game, but they failed to convert on some key chances".
 
-Overall, I'd say that it feels circular (and "wrong") to build in "quality" features into a model used to evaluate shot quality, and, downstream, player and team quality, at least in the current paradigm of soccer analytics. On the other hand, I do see the argument in favor of player and team identity features in xG models, e.g. a RAPM-esque xG model. Such indicator variables allow us to estimate player and team impact directly, as well as the uncertainty for those individual estimates. Assuming the model estimation procedure is sound, a direct estimate of player and team skill is better than relying on the "residual" of goals minus xG, as is typically done.
+Overall, I'd say that it feels circular (and "wrong") to build in "quality" features into a model used to evaluate shot quality, and, downstream, player and team quality, at least in the current paradigm of soccer analytics.
+
+### In favor of team and/or player quality features
+
+On the other hand, I do see the argument in favor of identity features in xG models, e.g. a [RAPM-esque](https://www.youtube.com/watch?v=5WRe6SoBh3g) xG model. Such indicator variables allow us [to estimate player and team impact directly](https://www.youtube.com/watch?v=CzKCMUJ9yV8), as well as the uncertainty for those individual estimates. Assuming the model estimation procedure is sound, a direct estimate of player or team skill is better than relying on the "residual" of goals minus xG, as is typically done.
+
+Further, I've been assuming that looking at xGD will always be the primary way that xG is used to evaluate players. If we can reliably estimate player skill directly with an xG model and can tease out how that effect changes over time, then perhaps we should prefer these kinds of estimates.
 
 ## Conclusion
 
-We found that ...
+I pursued a quantitative analysis to evaluate whether accounting for team strength directly in an expected goals model in soccer might improve predictiveness and calibration, inspired by observed biases in American football's expected points models. Despite SHAP plots indicating some value in Elo-augmented models, the overall performance metrics and calibration plots showed negligible differences compared to the base xG model.
+
+On the surface, this is a little at odds with [Lars Maurath's ex-post finding](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) that team quality is useful for explaining xGD, which matches my intuition. However, my ex-ante approach is fairly straightforward and has limitations. Perhaps with better feature engineering and additional features like goalkeeper position, we might find that accounting for team quality directly does improve an xG model.
+
+The most natural area of future research would be to analyze how measures of player quality might improve an xG model. There is some [prior art](https://statsbomb.com/wp-content/uploads/2022/09/Tahmeed-Tureen-and-Sigrid-Olthof-%E2%80%93-Estimated-Player-Impact-EPI-Quantifying-The-Effects-Of-Individual-Players-On-Football-Actions-Using-Hierarchical-Statistical-Models.pdf) on this, so it would be wise to identify how one could contribute something novel to that work.
