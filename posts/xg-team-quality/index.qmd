@@ -1,6 +1,6 @@
 ---
 title: Should we account for team quality in an xG model?
-description: "F**king around (with an xG model) and finding out"
+description: "Finnicking around (with an xG model) and finding out"
 date: 2023-12-31
 categories:
   - r
@@ -15,7 +15,7 @@ execute:
 
 ## Introduction
 
-"Should we account for team quality in an [xG model](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/)?" From a purely philosophical point of view, my opinion is "no"--I think that xG models should be a purely "descriptive", agnostic to player and team abilities, as well as other non-event factors such as game state.
+"Should we account for team quality in an [xG model](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/)?" From a purely philosophical point of view, my opinion is "no"--I think that xG models should be agnostic to player and team abilities, even if we were to find that accounting for shot-taker or team identity improve the performance of the model.
 
 But I thought it might be fun to entertain the question from a quantitative perspective. If we add features for team strength to an xG model, can we meaningfully improve the model's overall predictive performance and [calibration](https://tonyelhabr.rbind.io/posts/probability-calibration/) (with respect to team quality)?
 
@@ -23,9 +23,15 @@ But I thought it might be fun to entertain the question from a quantitative pers
 
 This write-up is inspired by [Ryan Brill](https://twitter.com/RyanBrill_)'s recent [presentation on fourth-down decision-making in the National Football League (NFL)](https://youtu.be/uS4XxQ0LVfE?si=BnmzeePnk3R5uiY3&t=361). He points out that [expected points (EP)](https://www.nfeloapp.com/analysis/expected-points-added-epa-nfl/) models in the NFL have a [selection bias](https://en.wikipedia.org/wiki/Selection_bias) problem--they tend to under-rate the probability of a positive outcome for "good" teams and over-rate such outcomes for "bad" teams.
 
-Expected goals (xG) in soccer also show signs of this phenomenon. [Lars Maurath](https://github.com/larsmaurath) has [a great deep-dive](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) looking into expected goals under-estimation for strong teams in the [Big 5 European leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats). The plot below (copied shamelessly from Lars' post) shows that a naive xG model consistently under-predicts Barcelona's goals over the course of the season, for seasons from 2007/08 to 2018/19. Even [StatsBomb](https://statsbomb.com/)'s model--which is more sophisticated--tends to underestimate the true cumulative goal total!
+Expected goals (xG) in soccer also suffer from this bias. [Lars Maurath](https://github.com/larsmaurath) has [a great deep-dive](https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/) looking into expected goals under-estimation for strong teams in the [Big 5 European leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats). The plot below (copied shamelessly from Lars' post) shows that a naive xG model consistently under-predicts Barcelona's goals over the course of the season, for seasons from 2007/08 to 2018/19. Even [StatsBomb](https://statsbomb.com/)'s model--which is more sophisticated--tends to underestimate the true cumulative goal total!
 
 ![](barcelona-cumulative-xg.png)
+
+Lars does an "ex-post" analysis (evaluating the "residual" of goals minus expected goals) to arrive at his conclusion that team quality does seem to explain large deviations between goals and expected goals for top teams
+
+> \[W\]hen conditioning on... team quality (Elo ranking) I do not find this bias in either naive or sophisticated models
+
+I'm curious to see if we can arrive at a related conclusion in a more direct, "ex-ante" fashion. Can we reduce the under-estimation of goals for strong teams by directly accounting for team quality in an xG model?
 
 ## Analysis and Results
 
@@ -767,7 +773,7 @@ last_elo_fit <- qs::qread(file.path(PROJ_DIR, 'last_elo_fit.qs'))
 
 ### Feature Importance
 
-We should look to see that the xG models are behaving is expected. One way of doing so is to look at the feature importance.
+We should verify to see that the fitted xG models are behaving is expected. One way of doing so is to look at the feature importance.
 
 In bespoke models, feature importance can be enlightening, as it tell us which features are contributing most to the predicted outcomes. In this case, I know that shot distance should be the most important feature (by far), as this is found to be the most important features in other similar "basic" public xG models, such as [this](https://github.com/AnshChoudhary/xGModel/blob/main/expected-goals-model-xg.ipynb) and [this](https://github.com/ML-KULeuven/soccer_xg/blob/master/notebooks/4-creating-custom-xg-pipelines.ipynb).
 
@@ -892,9 +898,9 @@ ggplot2::ggsave(
 
 ![](var-imp-base.png)
 
-Indeed, this is exactly what we see with the base xG model.
+Indeed, we find that shot distance is the most important feature by far with the base xG model.
 
-Now, if we make the same plot and add the aggregate SHAP values for our team-quality-adjusted xG model, we see that Elo and Elo difference terms are in the middle of the pack in terms of feature importance. That's pretty interesting. That indicates that these features aren't super influential, on average.
+Now, if we make the same plot and add the aggregate SHAP values for our Elo-augmented xG model, we see that Elo and Elo difference terms are in the middle of the pack in terms of feature importance. That's pretty interesting. That indicates that these features aren't super influential, on average.
 
 ```{r}
 #| label: var-imp-compared
@@ -972,6 +978,8 @@ ggplot2::ggsave(
 )
 ```
 
+![](var-imp-compared.png)
+
 Further, we can verify that the Elo-augmented model predicts xG in a manner that matches intuition using [SHAP dependence plots](https://christophm.github.io/interpretable-ml-book/shap.html#shap-dependence-plot). We should see that the SHAP values are higher when Elo is higher and when Elo difference is higher.[^4]
 
 [^4]: Partial dependence plots aren't quite the gold standard for model interpretability, but I find them useful for getting a sense of the orientation and magnitude of a feature's effect, particularly for non-linear modeling techniques like gradient boosting.
@@ -1022,9 +1030,13 @@ ggplot2::ggsave(
 
 ![](elo-pdp.png)
 
+Indeed, this is generally what we observe, although the relationships aren't quite monotonic, as I would have expected.[^5]
+
+[^5]: Of course, I could have forced the xgboost model with the Elo terms to have monotonic behavior for those features. I intentionally didn't do that here so as to not confirm my own biases--that higher xG should generally correspond with higher Elo.
+
 ### Model Evaluation
 
-Aggregate SHAP values indicate that our two Elo features aren't playing a big role in contributing to model predictions, although the features do indeed contribute in the way that we'd expect, i.e. higher feature values -\> higher predicted xG. But SHAP values are just telling us about how and why a model makes certain predictions. What about the performance of the Elo-augmented model compared to the base xG model?
+So aggregate SHAP values indicate that our two Elo features aren't playing a big role in contributing to model predictions, although the features do indeed contribute in the way that we'd expectG. But SHAP values are just telling us about how and why a model makes certain predictions. What about the performance of the Elo-augmented model compared to the base xG model?
 
 ```{r}
 #| label: test-set-metrics
@@ -1045,9 +1057,9 @@ dplyr::bind_rows(
 | Base          |            0.1058 |
 | Elo-augmented |            0.1056 |
 
-Well, at least in terms of BSS, it looks like there's basically no difference between the models![^5]
+Well, at least in terms of BSS, it looks like there's basically no difference between the models![^6]
 
-[^5]: One could run a bootstrap analysis to prove this with more statistical rigor, but I'll leave that as an exercise for the eager reader.
+[^6]: One could run a bootstrap analysis to prove this with more statistical rigor, but I'll leave that as an exercise for the eager reader.
 
 But that's just one, wholistic measure. How well calibrated is the Elo-augmented model compared to the traditional xG model? Does the augmented model demonstrate better performance across the whole range of shot conversion probabilities?
 
@@ -1230,64 +1242,28 @@ ggplot2::ggsave(
 )
 ```
 
+![](compared-calibration.png)
+
 Visually, I wouldn't say there's any significant difference between the calibration curves. A plot of calibration given various buckets for Elo difference would lead to the same conclusion--the Elo-augmented model isn't notably more calibrated.
-
-We can verify this in a more direct fashion by looking at observed goals minus xG (xGD) for each model, splitting by groups of Elo and Elo difference. If the xGD is closer for the Elo-augmented model for various buckets
-
-```{r}
-preds |> 
-  dplyr::group_by(model_type, elo_group) |> 
-  dplyr::summarize(
-    g = sum(scores == 'yes'),
-    xg = sum(.pred_yes)
-  ) |> 
-  dplyr::ungroup() |> 
-  dplyr::mutate(
-    xgd = g - xg
-  ) |> 
-  tidyr::pivot_wider(
-    names_from = model_type,
-    values_from = c(xg, xgd)
-  )
-
-preds |> 
-  dplyr::group_by(model_type, elo_diff_group) |> 
-  dplyr::summarize(
-    g = sum(scores == 'yes'),
-    xg = sum(.pred_yes)
-  ) |> 
-  dplyr::ungroup() |> 
-  dplyr::mutate(
-    xgd = g - xg
-  ) |> 
-  dplyr::select(
-    model_type,
-    elo_diff_group,
-    g,
-    xgd
-  ) |> 
-  tidyr::pivot_wider(
-    names_from = model_type,
-    values_from = xgd
-  )
-```
-
-The table above indeed provides evidence for the miscalibration phenomenon--the "base" xG model tends to predict higher xG compared to actual goals scores for teams with lower Elo compared to higher Elo.
 
 ## Discussion
 
-We've seen that there is no clear evidence that accounting for team quality improves an xG model. Sure, it can provide value to an xG model--see the feature importance for the Elo-augmented model--but it's effectively just providing a difference kind of nuance that would be otherwise captures by other traditional xG features.
+We've seen that there is no clear evidence that accounting for team quality improves an xG model. Sure, it can provide value to an xG model--as shown with the SHAP plots for the Elo-augmented model--but it's effectively just providing a difference kind of information that could be otherwise captured by other traditional xG features.
 
-Sso naturally one may ask--what about player quality? Or goalkeeper quality? While I do think those would be a little more useful in terms of making a better xG model, the better question is whether we should be accounting for these kinds of "quality" features at all. I think "no", mostly due to the its typical and potential applications.
+So naturally one may ask--what about player quality? Or goalkeeper quality? What if we get more specific about the measures of quality (more specific than team)?
+
+While I do think those would be a little more useful in terms of making a better xG model (I have tested this myself), the better question is whether we should be accounting for these kinds of "quality" features at all. My view is "no". I say "no" (although I do think it's fine for NFL EP models) due to the manner in which xG models are typically applied (or not applied).
 
 An xG model cannot be used to "intervene" with shots in real-time like a fourth-down model might be "actively" used to make a choice in the NFL. An NFL coach probably wants a model to incorporate their team's strength so as to make an informed decision about whether to go for it.
 
-In contrast, xG models are most commonly used in a "passive" manner, to understand how a team or a specific player might be performing compared to expectation. Soccer coaches and analysts often look at the actual goals scored minus the expected goals accumulated (the "residual") to diagnose under- and over-performance. Yes, they also look at expected goals in a more broad manner to get a sense of where and how they can get better shots, but that is not real-time in the same sense that a fourth-down decision is made in real-time.
+In contrast, xG models are more commonly used in a "passive" manner, to understand how a team or a specific player might be performing compared to expectation. Soccer coaches and analysts often look at the actual goals scored minus the expected goals accumulated (the "residual") to diagnose under- and over-performance. Yes, they also look at expected goals in a more broad manner to get a sense of where and how they can get better shots or where they are giving up high-quality shots, but that kind of insight is not acted upon in real-time in the same way that a fourth-down decision is made in real-time.
 
-Arguably incorporating team or player quality into an xG model can make interpretation more difficult, at least in the manner that we typically use xG to contextualize a game or a season. (xGods please forgive me for looking at single-game xG.) As an extreme example, let's say that we add an "Is Messi?" feature to an xG model (not unlike what Ryan suggested with Justin Tucker in his presentation) to achieve a slightly more accurate xG model. (The model will learn that Messi has historically converted shots into goals at rates higher than nearly all other players.) But then your game- and season-level analysis may need change.
+One can make the argument that incorporating team or player quality into an xG model can make interpretation more difficult, at least in the manner that we typically use xG to contextualize a game or a season. (xGods, please forgive me for looking at single-game xG.) As an extreme example, let's say that we add an "Is Messi?" feature to an xG model (not unlike what Ryan suggested with Justin Tucker in his presentation) to achieve a slightly more accurate xG model. That's all fine and dandy, in theory; but then your game- and season-level xG insights would need change.
 
-I may look at an Inter Miami game where they "lost" on actual goals, let's say 2 to 1, AND "lost" on xG, let's say 0.9 to 1.7, and think "oh, that's a fair result". But if Messi took 4 shots and we're using an expected goals model with the "Is Messi?" feature, the Inter Miami xG might appear to be 2.2, perhaps leading to a different take on the game---"that was Inter Miami's game, but they failed to convert on some key chances".
+I may look at an Inter Miami game where they "lost" on actual goals, let's say 2 to 1, *and* "lost" on xG, let's say 0.9 to 1.7, and think "oh, that's a fair result". But if Messi took 4 shots and we're using an expected goals model with the "Is Messi?" feature, the Inter Miami xG might appear to be 2.2, perhaps leading to a different take on the game---"that was Inter Miami's game, but they failed to convert on some key chances".
 
-tldr: Building in "quality" features into a model used to evaluate quality (of shots) arguably leads to circular reasoning. I prefer xG to be agnostic to team or player quality, at least in the current paradigm of soccer analytics, where we often use xG to evaluate the quality of teams and players.
+Overall, I'd say that it feels circular (and "wrong") to build in "quality" features into a model used to evaluate shot quality, and, downstream, player and team quality, at least in the current paradigm of soccer analytics. On the other hand, I do see the argument in favor of player and team identity features in xG models, e.g. a RAPM-esque xG model. Such indicator variables allow us to estimate player and team impact directly, as well as the uncertainty for those individual estimates. Assuming the model estimation procedure is sound, a direct estimate of player and team skill is better than relying on the "residual" of goals minus xG, as is typically done.
 
 ## Conclusion
+
+We found that ...
