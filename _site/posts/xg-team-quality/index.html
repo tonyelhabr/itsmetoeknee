@@ -461,7 +461,7 @@ cookieconsent.run({
 </table>
 <p>Lars does an “ex-post” analysis–evaluating the “residual” of expected goals, or xGD–to arrive at his conclusion that team quality does seem to explain large deviations between goals and expected goals for top teams.</p>
 <blockquote class="blockquote">
-<p>[W]hen conditioning on… team quality (Elo ranking) I do not find this bias in either naive or sophisticated models</p>
+<p>[W]hen conditioning on… team quality (Elo ranking) I do not find this bias in either naive or sophisticated models.</p>
 </blockquote>
 <p>I’m curious to see if we can arrive at a related conclusion in a more direct, “ex-ante” fashion. Can we reduce the underestimation of goals for strong teams by directly accounting for team quality in an xG model?</p>
 </section>
@@ -471,7 +471,7 @@ cookieconsent.run({
 <section id="data" class="level3">
 <h3 class="anchored" data-anchor-id="data">Data</h3>
 <p>I’ll be using event data that I’ve ingested with the <a href="https://github.com/ML-KULeuven/socceraction"><code>{socceraction}</code> package</a> (which I’ve made available <a href="https://github.com/tonyelhabr/socceraction-streamlined/releases">here</a>!) for the 2013/14 through 2022/23 EPL seasons. I’ll focus on just “open-play” shots, i.e.&nbsp;shots excluding penalties and those taken from set pieces.</p>
-<p>Additionally, I’ve scraped <a href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo</a> ratings from <a href="http://clubelo.com/">ClubElo</a> for my measure of team quality. I’ve chosen Elo because it provides an intuitive, sport-agnostic measure of relative skill. Also, it is calculated independent of the events that take place in a game, so any correlation with measures of shot volume, quality, etc. are only coincidental. (It was also fairly easy to retrieve and is what Lars used to gauge “top” teams in a quantitative way.)</p>
+<p>I’ve scraped <a href="https://en.wikipedia.org/wiki/Elo_rating_system">Elo</a> ratings from <a href="http://clubelo.com/">ClubElo</a> for my measure of team quality. I’ve chosen Elo because it provides an intuitive, sport-agnostic measure of relative skill. Also, it is calculated independent of the events that take place in a game, so any correlation with measures of shot volume, quality, etc. are only coincidental.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
 <div class="cell">
 <details>
 <summary>Package imports and other setup</summary>
@@ -723,15 +723,15 @@ cookieconsent.run({
 <h3 class="anchored" data-anchor-id="model-training">Model Training</h3>
 <p>The feature set for our “base” xG model consists of the following:</p>
 <ul>
-<li>location of the shot (distance and angle of the shot to the center of the goal mouth)<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>.</li>
+<li>location of the shot (distance and angle of the shot to the center of the goal mouth)<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>.</li>
 <li>type of action leading to the shot.</li>
 <li>body part with which the shot was taken.</li>
 </ul>
 <p>These features are essentially what <a href="https://fbref.com/en/expected-goals-model-explained/">all xG models</a> have in common, although the exact implementation differs. Data providers such as <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">Opta also account for information</a> that is not captured in traditional event data, such as the position of the goalkeeper.</p>
 <p>For the team-quality-adjusted (or “Elo-augmented”) model, I’ll add two additional features:</p>
 <ul>
-<li><code>elo</code>: the Elo of the team of the shot-taker.</li>
-<li><code>elo_diff</code>: the difference in the ELO of the shot-taking team and the opposing team.</li>
+<li>the Elo of the team of the shot-taker.</li>
+<li>the difference in the ELO of the shot-taking team and the opposing team.</li>
 </ul>
 <p>The former is meant to capture the opponent-agnostic quality of a team, while the latter captures the quality of the team relative to their opponent.</p>
 <div class="cell">
@@ -759,7 +759,7 @@ cookieconsent.run({
 <span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  recipes<span class="sc">::</span><span class="fu">step_rm</span>(elo, elo_diff)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>I’ll be using <a href="https://xgboost.readthedocs.io/en/stable/">xgboost</a> for my xG models. xgboost is the state-of-the-art framework for tabular machine learning tasks that’s used by data and model providers like Opta. I’ll choose <a href="https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)">hyperparameters</a> using <a href="https://finetune.tidymodels.org/index.html">an efficient grid search</a>, evaluating models with the <a href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">Brier skill score (BSS)</a>. For the reference Brier score for BSS, I’ll use a dummy model that predicts 12% conversion for all shots.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<p>I’ll be using <a href="https://xgboost.readthedocs.io/en/stable/">xgboost</a> for my xG models. xgboost is the state-of-the-art framework for tabular machine learning tasks that’s used by data and model providers like Opta. I’ll choose <a href="https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)">hyperparameters</a> using <a href="https://finetune.tidymodels.org/index.html">an efficient grid search</a>, evaluating models with the <a href="https://en.wikipedia.org/wiki/Brier_score#Brier_Skill_Score_(BSS)">Brier skill score (BSS)</a>. For the reference Brier score for BSS, I’ll use a dummy model that predicts 12% conversion for all shots.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
@@ -1044,7 +1044,7 @@ Model hyperparameters
 </div>
 <div id="callout-2" class="callout-2-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
-<p>For reproducibility, the chosen hyperparameters are as follows.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> By coincidence, the same hyper-parameters are chosen. (Only 50 combinations were evaluated.)</p>
+<p>For reproducibility, the chosen hyperparameters are as follows.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> By coincidence, the same hyper-parameters are chosen. (Only 50 combinations were evaluated.)</p>
 <table class="table">
 <colgroup>
 <col style="width: 18%">
@@ -1132,10 +1132,10 @@ SHAP values
 </div>
 </div>
 <p><img src="var-imp-base.png" class="img-fluid"></p>
-<p>Indeed, we find that shot distance is the most important feature by far with the base xG model.</p>
+<p>Indeed, we find that shot distance is the most important feature with the base xG model.</p>
 <p>Now, if we make the same plot and add the aggregate SHAP values for our Elo-augmented xG model, we see that Elo and Elo difference terms are in the middle of the pack in terms of feature importance. That’s pretty interesting. That indicates that these features aren’t super influential, on average.</p>
 <p><img src="var-imp-compared.png" class="img-fluid"></p>
-<p>Further, we can verify that the Elo-augmented model predicts xG in a manner that matches intuition using <a href="https://christophm.github.io/interpretable-ml-book/shap.html#shap-dependence-plot">SHAP dependence plots</a>. We should see that the SHAP values are higher when Elo is higher and when Elo difference is higher.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></p>
+<p>Further, we can verify that the Elo-augmented model predicts xG in a manner that matches intuition using <a href="https://christophm.github.io/interpretable-ml-book/shap.html#shap-dependence-plot">SHAP dependence plots</a>. We should see that the SHAP values are higher when Elo is higher and when Elo difference is higher.</p>
 <p><img src="elo-pdp.png" class="img-fluid"></p>
 <p>Indeed, this is generally what we observe, although the relationships aren’t quite monotonic, as I would have expected.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p>
 </section>
@@ -1160,7 +1160,7 @@ SHAP values
 </tr>
 </tbody>
 </table>
-<p>Well, at least in terms of BSS, it looks like there’s basically no difference between the models.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></p>
+<p>Well, at least in terms of BSS, it looks like there’s basically no difference between the models.</p>
 <p>But that’s just one, holistic measure. How well-calibrated is the Elo-augmented model compared to the traditional xG model? Does the augmented model demonstrate better performance across the whole range of shot conversion probabilities?</p>
 <p><img src="compared-calibration.png" class="img-fluid"></p>
 <p>Visually, I wouldn’t say there’s any significant difference between the calibration curves. A plot of calibration given various buckets for Elo difference would lead to the same conclusion–the Elo-augmented model isn’t notably more calibrated.</p>
@@ -1168,26 +1168,26 @@ SHAP values
 </section>
 <section id="discussion" class="level2">
 <h2 class="anchored" data-anchor-id="discussion">Discussion</h2>
-<p>We’ve seen that there is no clear evidence that accounting for team quality improves an xG model. Sure, it can provide value to an xG model–as shown with the SHAP plots for the Elo-augmented model–but it’s effectively just providing a different kind of information that could be otherwise captured by other traditional xG features.</p>
-<p>So naturally one may ask–what about player quality? Or goalkeeper quality? What if we get more specific about the measures of quality (more specific than the team strength)?</p>
+<p>So we’ve seen that there is no clear evidence that accounting for team quality improves an xG model. Sure, it can provide value to an xG model–as shown with the SHAP plots for the Elo-augmented model–but it’s effectively just providing a different kind of information that could be otherwise captured by other traditional xG features.</p>
+<p>So naturally one may ask–what about player quality? Or goalkeeper quality?</p>
 <p>While I do think those would be a little more useful in terms of making a better xG model, the better question is whether we should be accounting for these kinds of “quality” features at all. say “no”–although I do think it’s fine for NFL EP models–due to the manner in which xG models are typically applied.</p>
 <section id="application-of-xg-in-soccer-vs.-ep-in-american-football" class="level3">
 <h3 class="anchored" data-anchor-id="application-of-xg-in-soccer-vs.-ep-in-american-football">Application of xG in soccer vs.&nbsp;EP in American football</h3>
-<p>Unlike a fourth-down model actively used by NFL coaches to make real-time decisions, an expected goals (xG) model in soccer serves a more passive role. Soccer players lack the luxury of time that NFL coaches have to calculate xG on the fly when deciding whether to take a shot. Instead, xG feels better suited as a retrospective, descriptive measure of actions that have already occurred.</p>
-<p>Further, one can make the argument that incorporating team or player quality into an xG model can make interpretation more difficult, at least in the manner that we typically use xG to contextualize a game or a season. (xGods, please forgive me for looking at single-game xG.) As an extreme example, let’s say that we add an “Is Messi?” feature to an xG model (not unlike what Ryan suggested with Justin Tucker in his presentation) to achieve a slightly more accurate xG model. That’s all fine and dandy, in theory; but then your game- and season-level xG insights would need to change.</p>
+<p>Unlike a fourth-down model that can be “actively” used by NFL coaches to make real-time decisions, an xG model in soccer serves a more “passive” role. Soccer players lack the luxury of time that NFL coaches have to calculate xG on the fly when deciding whether to take a shot. Instead, xG feels better suited as a retrospective, descriptive measure of actions that have already occurred.</p>
+<p>Further, one can make the argument that incorporating team or player quality into an xG model can make interpretation more difficult, at least in the manner that we typically use xG to contextualize a game or a season. (xGods, please forgive me for looking at single-game xG.) As an extreme example, let’s say that we add an “Is Messi?” feature to an xG model (not unlike what Ryan suggested with Justin Tucker in his presentation) to achieve a slightly more accurate xG model. That’s all fine in theory; but then your game- and season-level xG insights would need to change.</p>
 <p>I may look at an Inter Miami game where they “lost” on actual goals, let’s say 2 to 1, <em>and</em> “lost” on xG, let’s say 0.9 to 1.7, and think “Oh, that’s a fair result”. But if Messi took 4 shots and we’re using an expected goals model with the “Is Messi?” feature, the Inter Miami xG might appear to be 2.2, perhaps leading to a different take on the game—“that was Inter Miami’s game, but they failed to convert on some key chances”.</p>
-<p>Overall, I’d say that it feels circular (and “wrong”) to build in “quality” features into a model used to evaluate shot quality, and, downstream, player and team quality, at least in the current paradigm of soccer analytics.</p>
+<p>Overall, I’d say that it feels circular to build in “quality” features into a model used to evaluate shot quality, and, downstream, player and team quality, at least in the current paradigm of soccer analytics.</p>
 </section>
 <section id="in-favor-of-team-andor-player-quality-features" class="level3">
 <h3 class="anchored" data-anchor-id="in-favor-of-team-andor-player-quality-features">In favor of team and/or player quality features</h3>
 <p>On the other hand, I do see the argument in favor of identity features in xG models, e.g.&nbsp;a <a href="https://www.youtube.com/watch?v=5WRe6SoBh3g">RAPM-esque</a> xG model. Such indicator variables allow us <a href="https://www.youtube.com/watch?v=CzKCMUJ9yV8">to estimate player and team impact directly</a>, as well as the uncertainty for those individual estimates. Assuming the model estimation procedure is sound, a direct estimate of player or team skill is better than relying on the “residual” of goals minus xG, as is typically done.</p>
-<p>Further, I’ve been assuming that looking at xGD will always be the primary way that xG is used to evaluate players. If we can reliably estimate player skill directly with an xG model and can tease out how that effect changes over time, then perhaps we should prefer these kinds of estimates.</p>
+<p>Further, I’ve been assuming that looking at xGD will always be the primary way that xG is used to evaluate players. If we can reliably estimate player skill directly with an xG model and can tease out how that effect changes over time, then perhaps we should prefer those kinds of estimates.</p>
 </section>
 </section>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
 <p>I pursued a quantitative analysis to evaluate whether accounting for team strength directly in an expected goals model in soccer might improve predictiveness and calibration, inspired by observed biases in American football’s expected points models. Despite SHAP plots indicating some value in Elo-augmented models, the overall performance metrics and calibration plots showed negligible differences compared to the base xG model.</p>
-<p>On the surface, this is a little at odds with <a href="https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/">Lars Maurath’s ex-post finding</a> that team quality is useful for explaining xGD, which matches my intuition. However, as Lars points out, that team quality is highly correlated with shot volume, and team quality may just be a mask for the effect of highly skilled players with superior finishing capabilities. So, perhaps with better feature engineering–e.g.&nbsp;shots per 90 in the prior N matches, weekly wages of the shot-taker or the shot-taking team–I could prove that directly accounting for team strength can improve an xG model.</p>
+<p>On the surface, this is a little at odds with <a href="https://www.thesignificantgame.com/portfolio/do-naive-xg-models-underestimate-expected-goals-for-top-teams/">Lars Maurath’s ex-post finding</a> that team quality is useful for explaining xGD, which matches my intuition. However, as Lars points out, team quality is highly correlated with shot volume, and team quality may just be a mask for the effect of highly skilled players with superior finishing capabilities. So, perhaps with better feature engineering–e.g.&nbsp;shots per 90 in the prior N matches, weekly wages of the shot-taker or the shot-taking team–I could prove that directly accounting for team strength can improve an xG model.</p>
 <p>Given all my questions and speculations about the role of player quality with respect to xG calibration, perhaps it’s not surprising that the most natural area of future research would be to evaluate how measures of player skill might improve an xG model. There is some <a href="https://statsbomb.com/wp-content/uploads/2022/09/Tahmeed-Tureen-and-Sigrid-Olthof-%E2%80%93-Estimated-Player-Impact-EPI-Quantifying-The-Effects-Of-Individual-Players-On-Football-Actions-Using-Hierarchical-Statistical-Models.pdf">prior art</a> on this, so it would be wise to identify how one could contribute something novel to that work.</p>
 
 
@@ -1205,12 +1205,11 @@ No matching items
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>One might get a slightly more performant by adding the <code>x</code> and <code>y</code> coordinates of the shot–to implicitly account for right-footed bias, for example–but I actually prefer not to add those in the model. Such terms can result in slight <a href="https://en.wikipedia.org/wiki/Overfitting">over-fitting</a>, in the presence of other features that provide information about the location of the shot, such as distance and angle. (This is the classical <a href="https://en.wikipedia.org/wiki/Bias%E2%80%93variance_tradeoff">“bias-variance” trade-off</a>.)<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>12% is approximately the observed shot conversion rate in the whole data set.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn3"><p>This post isn’t meant to be so much about the why’s and how’s of model tuning and training, so I’ve spared commentary on the code.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>Partial dependence plots aren’t quite the gold standard for model interpretability, but I find them useful for getting a sense of the orientation and magnitude of a feature’s effect, particularly for non-linear modeling techniques like gradient boosting.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn1"><p>It was also fairly easy to retrieve and is what Lars used to gauge “top” teams in a quantitative way.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>One might get a slightly more performant by adding the <code>x</code> and <code>y</code> coordinates of the shot–to implicitly account for right-footed bias, for example–but I actually prefer not to add those in the model. Such terms can result in slight <a href="https://en.wikipedia.org/wiki/Overfitting">over-fitting</a>, in the presence of other features that provide information about the location of the shot, such as distance and angle. (This is the classical <a href="https://en.wikipedia.org/wiki/Bias%E2%80%93variance_tradeoff">“bias-variance” trade-off</a>.)<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>12% is approximately the observed shot conversion rate in the whole data set.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>This post isn’t meant to be so much about the why’s and how’s of model tuning and training, so I’ve spared commentary on the code.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>Of course, I could have forced the xgboost model with the Elo terms to have monotonic behavior for those features. I intentionally didn’t do that here so as to not confirm my own biases–that higher xG should generally correspond with higher Elo.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>One could run a bootstrap analysis to prove this with more statistical rigor, but I’ll leave that as an exercise for the eager reader.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
