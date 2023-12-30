@@ -1,6 +1,6 @@
 ---
 title: How should we measure manager performance in fantasy football?
-description: "All-play scores, optimal lineup choices, and more"
+description: "All-play team_scores, optimal lineup choices, and more"
 date: 2024-01-02
 categories:
   - r
@@ -21,24 +21,40 @@ If you've played (American) fantasy football, you've probably felt that you have
 But are there other ways you can go about justifying your dissatisfaction? Yes, indeed I can think of three:
 
 1.  **All-play record**: What would your position in the league table be if every team played all other teams in head-to-head matchups every week?
-2.  **Actual points scored compared to projection**: Are you scoring less than your projected total? Is your team under-performing more than other teams compared to their projected scores?
+2.  **Actual points scored compared to projection**: Are you scoring less than your projected total? Is your team under-performing more than other teams compared to their projected team_scores?
 3.  **Points "left on the bench"**: How many points could you have had if you had started the best possible lineup (with the benefit of hindsight)?
 
-I want to look at how we can calculate these things for the past 5 years of my primary fantasy football league. (Yes, like most sickos, I have multiple league). Comparing counter-factual scores should build up some intuition about all the ways that things can go wrong.
+I want to look at how we can calculate these things for the past 5 years of my primary fantasy football league. (Yes, like most sickos, I have multiple league). Comparing counter-factual team_scores should build up some intuition about all the ways that things can go wrong.
 
 ## Analysis and Results
 
 ```{r}
 #| label: setup
+## data ingestion
 library(readr)
+library(qs)
+
+## data manipulation
 library(dplyr)
 library(tidyr)
 
+## tables
 library(gt)
 library(gtExtras)
 
+## plotting
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
+library(ggpath)
+library(scales)
+library(glue)
+
 PROJ_DIR <- 'posts/fantasy-football-performance'
 DATA_DIR <- file.path(PROJ_DIR, 'data')
+source(file.path(PROJ_DIR, 'theme.R'))
 ```
 
 The data comes from the past 2018 - 2023 seasons of my primary fantasy football league. We've had different rule sets and schedule formats (i.e. playoffs started in week 14 prior to 2022 in this league), but for the most part, measures of performance should be mostly agnostic to this.
@@ -68,13 +84,22 @@ franchises <- readr::read_csv(file.path(DATA_DIR, 'franchises-all.csv')) |>
     name = anonymize_name(user_name, franchise_id)
   )
 
-scores <- readr::read_csv(file.path(DATA_DIR, 'team-scores-all.csv')) |> 
-  mutate(
+team_scores <- readr::read_csv(file.path(DATA_DIR, 'team-scores-all.csv')) |> 
+  dplyr::mutate(
     name = anonymize_name(user_name, franchise_id),
     opponent_name = anonymize_name(opponent_user_name, opponent_id)
+  ) |> 
+  dplyr::filter(!is.na(result)) |> 
+  dplyr::group_by(season) |> 
+  dplyr::mutate(
+    max_week = max(week)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    n_games = ifelse(week >= (max_week - 1), 2L, 1L)
   )
 
-actual_records <- scores |> 
+actual_records <- team_scores |> 
   dplyr::mutate(
     w = user_score > opponent_score,
     l = user_score < opponent_score
@@ -90,18 +115,18 @@ actual_records <- scores |>
   dplyr::ungroup()
 
 all_play_records <- tidyr::crossing(
-  scores |> dplyr::distinct(season, week),
+  team_scores |> dplyr::distinct(season, week),
   name = franchises$name,
   opponent_name = franchises$name
 ) |> 
   dplyr::filter(name != opponent_name) |> 
   dplyr::inner_join(
-    scores |>
+    team_scores |>
       dplyr::select(season, week, name, user_score),
     by = dplyr::join_by(season, week, name)
   ) |>
   dplyr::inner_join(
-    scores |> 
+    team_scores |> 
       dplyr::select(
         season,
         week,
@@ -150,19 +175,17 @@ compared_all_play_records <- all_play_records |>
   ) |> 
   dplyr::arrange(w_prop_d)
 
-.zero_centered_hulk_pal <- function(x) {
-  hex_neg = RColorBrewer::brewer.pal(7, 'PRGn')[1:3]
-  hex_pos = RColorBrewer::brewer.pal(7, 'PRGn')[5:7]
-  hex_mid = '#F7F7F7'
+## Inspired by gtExtras::gt_hulk_col_numeric
+.zero_centered_pal <- function(x, negative_colors, positive_colors, zero_color = '#F7F7F7') {
   rng <- range(x, na.rm = TRUE)
   mi <- rng[1]
   ma <- rng[2]
   f_neg <- scales::col_numeric(
-    palette = c(hex_neg, hex_mid),
+    palette = c(negative_colors, zero_color),
     domain = c(mi, 0)
   )
   f_pos <- scales::col_numeric(
-    palette = c(hex_mid, hex_pos),
+    palette = c(zero_color, positive_colors),
     domain = c(0, ma)
   )
   suppressWarnings(
@@ -170,16 +193,28 @@ compared_all_play_records <- all_play_records |>
   )
 }
 
-.gt_zerocentered_hulk_col_numeric <- function(gt_object, columns = NULL) {
+.zero_centered_brewer_pal <- function(x, palette = 'PRGn', n_colors = 7) {
+  colors <- RColorBrewer::brewer.pal(n_colors, palette)
+  function(x) {
+    .zero_centered_pal(
+      x,
+      negative_colors = colors[1:floor(n_colors / 2)],
+      positive_colors = colors[ceiling((n_colors + 2) / 2):n_colors]
+    )
+  }
+}
+
+.gt_zerocentered_brewer_col_numeric <- function(gt_object, columns = NULL, palette = 'PRGn', alpha = 0.9) {
   
   gt::data_color(
     gt_object,
     columns = {{ columns }},
-    fn = .zero_centered_hulk_pal,
-    alpha = 0.9
+    fn = .zero_centered_brewer_pal(palette = palette),
+    alpha = alpha
   )
 }
 
+CAPTION_LABEL <- "Data from Tony's personal league."
 latest_all_play_h2h_gt <- compared_all_play_records |> 
   dplyr::filter(season == max(season)) |> 
   dplyr::arrange(w_prop_d) |> 
@@ -204,7 +239,9 @@ latest_all_play_h2h_gt <- compared_all_play_records |>
     all_play_w_prop ~ 'All Play',
     w_prop_d ~ gt::md('**Δ**')
   ) |> 
-  gtExtras::gt_theme_538() |> 
+  # gtExtras::gt_theme_538() |> 
+  # gtExtras::gt_theme_dark() |> 
+  .gt_theme_538_dark() |> 
   gt::tab_spanner(
     columns = c(actual_w, actual_l),
     label = 'Actual'
@@ -221,9 +258,9 @@ latest_all_play_h2h_gt <- compared_all_play_records |>
     columns = c(actual_w_prop, all_play_w_prop),
     label = 'Win %'
   ) |> 
-  # gtExtras::gt_hulk_col_numeric(
-  .gt_zerocentered_hulk_col_numeric(
-    columns = w_prop_d
+  .gt_zerocentered_brewer_col_numeric(
+    columns = w_prop_d,
+    palette = 'PRGn'
   ) |> 
   gt::fmt_percent(
     columns = dplyr::matches('_prop'),
@@ -234,7 +271,7 @@ latest_all_play_h2h_gt <- compared_all_play_records |>
     subtitle = 'Tony was the most unlucky in the league this season.'
   ) |> 
   gt::tab_footnote(
-    footnote = "Data from Tony's personal league."
+    footnote = CAPTION_LABEL
   )
 
 gtExtras::gtsave_extra(
@@ -287,464 +324,465 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
 ```
 
 ```{=html}
-<div id="ozhntgtebo" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-  <style>@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Cairo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-#ozhntgtebo table {
-  font-family: Cairo, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+<div id="taqpmxfwmz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#taqpmxfwmz table {
+font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
 }
 
-#ozhntgtebo thead, #ozhntgtebo tbody, #ozhntgtebo tfoot, #ozhntgtebo tr, #ozhntgtebo td, #ozhntgtebo th {
-  border-style: none;
+#taqpmxfwmz thead, #taqpmxfwmz tbody, #taqpmxfwmz tfoot, #taqpmxfwmz tr, #taqpmxfwmz td, #taqpmxfwmz th {
+border-style: none;
 }
 
-#ozhntgtebo p {
-  margin: 0;
-  padding: 0;
+#taqpmxfwmz p {
+margin: 0;
+padding: 0;
 }
 
-#ozhntgtebo .new_gt_table {
-  display: table;
-  border-collapse: collapse;
-  line-height: normal;
-  margin-left: auto;
-  margin-right: auto;
-  color: #333333;
-  font-size: 16px;
-  font-weight: 400;
-  font-style: normal;
-  background-color: #FFFFFF;
-  width: auto;
-  border-top-style: none;
-  border-top-width: 3px;
-  border-top-color: #A8A8A8;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #A8A8A8;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
+#taqpmxfwmz .new_gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #FFFFFF;
+font-size: 16px;
+font-weight: 400;
+font-style: normal;
+background-color: #222222;
+width: auto;
+border-top-style: none;
+border-top-width: 3px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #222222;
 }
 
-#ozhntgtebo .new_gt_caption {
-  padding-top: 4px;
-  padding-bottom: 4px;
+#taqpmxfwmz .new_gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
 }
 
-#ozhntgtebo .new_gt_title {
-  color: #333333;
-  font-size: 125%;
-  font-weight: initial;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-color: #FFFFFF;
-  border-bottom-width: 0;
+#taqpmxfwmz .new_gt_title {
+color: #FFFFFF;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #222222;
+border-bottom-width: 0;
 }
 
-#ozhntgtebo .new_gt_subtitle {
-  color: #333333;
-  font-size: 85%;
-  font-weight: initial;
-  padding-top: 3px;
-  padding-bottom: 5px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-top-color: #FFFFFF;
-  border-top-width: 0;
+#taqpmxfwmz .new_gt_subtitle {
+color: #FFFFFF;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #222222;
+border-top-width: 0;
 }
 
-#ozhntgtebo .new_gt_heading {
-  background-color: #FFFFFF;
-  text-align: left;
-  border-bottom-color: #FFFFFF;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
+#taqpmxfwmz .new_gt_heading {
+background-color: #222222;
+text-align: left;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_bottom_border {
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
+#taqpmxfwmz .new_gt_bottom_border {
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_col_headings {
-  border-top-style: none;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #000000;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
+#taqpmxfwmz .new_gt_col_headings {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_col_heading {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: normal;
-  text-transform: inherit;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: bottom;
-  padding-top: 5px;
-  padding-bottom: 6px;
-  padding-left: 5px;
-  padding-right: 5px;
-  overflow-x: hidden;
+#taqpmxfwmz .new_gt_col_heading {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
 }
 
-#ozhntgtebo .new_gt_column_spanner_outer {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: normal;
-  text-transform: inherit;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: 4px;
-  padding-right: 4px;
+#taqpmxfwmz .new_gt_column_spanner_outer {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
 }
 
-#ozhntgtebo .new_gt_column_spanner_outer:first-child {
-  padding-left: 0;
+#taqpmxfwmz .new_gt_column_spanner_outer:first-child {
+padding-left: 0;
 }
 
-#ozhntgtebo .new_gt_column_spanner_outer:last-child {
-  padding-right: 0;
+#taqpmxfwmz .new_gt_column_spanner_outer:last-child {
+padding-right: 0;
 }
 
-#ozhntgtebo .new_gt_column_spanner {
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #000000;
-  vertical-align: bottom;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  overflow-x: hidden;
-  display: inline-block;
-  width: 100%;
+#taqpmxfwmz .new_gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
 }
 
-#ozhntgtebo .new_gt_spanner_row {
-  border-bottom-style: hidden;
+#taqpmxfwmz .new_gt_spanner_row {
+border-bottom-style: hidden;
 }
 
-#ozhntgtebo .new_gt_group_heading {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-top-style: none;
-  border-top-width: 2px;
-  border-top-color: #000000;
-  border-bottom-style: solid;
-  border-bottom-width: 1px;
-  border-bottom-color: #FFFFFF;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: middle;
-  text-align: left;
+#taqpmxfwmz .new_gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
 }
 
-#ozhntgtebo .new_gt_empty_group_heading {
-  padding: 0.5px;
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  border-top-style: none;
-  border-top-width: 2px;
-  border-top-color: #000000;
-  border-bottom-style: solid;
-  border-bottom-width: 1px;
-  border-bottom-color: #FFFFFF;
-  vertical-align: middle;
+#taqpmxfwmz .new_gt_empty_group_heading {
+padding: 0.5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+vertical-align: middle;
 }
 
-#ozhntgtebo .new_gt_from_md > :first-child {
-  margin-top: 0;
+#taqpmxfwmz .new_gt_from_md > :first-child {
+margin-top: 0;
 }
 
-#ozhntgtebo .new_gt_from_md > :last-child {
-  margin-bottom: 0;
+#taqpmxfwmz .new_gt_from_md > :last-child {
+margin-bottom: 0;
 }
 
-#ozhntgtebo .new_gt_row {
-  padding-top: 3px;
-  padding-bottom: 3px;
-  padding-left: 5px;
-  padding-right: 5px;
-  margin: 10px;
-  border-top-style: solid;
-  border-top-width: 1px;
-  border-top-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: middle;
-  overflow-x: hidden;
+#taqpmxfwmz .new_gt_row {
+padding-top: 7px;
+padding-bottom: 7px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
 }
 
-#ozhntgtebo .new_gt_stub {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-right-style: solid;
-  border-right-width: 0px;
-  border-right-color: #FFFFFF;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_stub {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 0px;
+border-right-color: #FFFFFF;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#ozhntgtebo .new_gt_stub_row_group {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-right-style: solid;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  padding-left: 5px;
-  padding-right: 5px;
-  vertical-align: top;
+#taqpmxfwmz .new_gt_stub_row_group {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
 }
 
-#ozhntgtebo .new_gt_row_group_first td {
-  border-top-width: 2px;
+#taqpmxfwmz .new_gt_row_group_first td {
+border-top-width: 2px;
 }
 
-#ozhntgtebo .new_gt_row_group_first th {
-  border-top-width: 2px;
+#taqpmxfwmz .new_gt_row_group_first th {
+border-top-width: 2px;
 }
 
-#ozhntgtebo .new_gt_summary_row {
-  color: #333333;
-  background-color: #FFFFFF;
-  text-transform: inherit;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#ozhntgtebo .new_gt_first_summary_row {
-  border-top-style: solid;
-  border-top-color: #D3D3D3;
+#taqpmxfwmz .new_gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_first_summary_row.thick {
-  border-top-width: 2px;
+#taqpmxfwmz .new_gt_first_summary_row.thick {
+border-top-width: 2px;
 }
 
-#ozhntgtebo .new_gt_last_summary_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
+#taqpmxfwmz .new_gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_grand_summary_row {
-  color: #333333;
-  background-color: #FFFFFF;
-  text-transform: inherit;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_grand_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#ozhntgtebo .new_gt_first_grand_summary_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-top-style: double;
-  border-top-width: 6px;
-  border-top-color: #D3D3D3;
+#taqpmxfwmz .new_gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_last_grand_summary_row_top {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-style: double;
-  border-bottom-width: 6px;
-  border-bottom-color: #D3D3D3;
+#taqpmxfwmz .new_gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_striped {
-  background-color: rgba(128, 128, 128, 0.05);
+#taqpmxfwmz .new_gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ozhntgtebo .new_gt_table_body {
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
+#taqpmxfwmz .new_gt_table_body {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
 }
 
-#ozhntgtebo .new_gt_footnotes {
-  color: #333333;
-  background-color: #FFFFFF;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
+#taqpmxfwmz .new_gt_footnotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_footnote {
-  margin: 0px;
-  font-size: 90%;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#ozhntgtebo .new_gt_sourcenotes {
-  color: #333333;
-  background-color: #FFFFFF;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
+#taqpmxfwmz .new_gt_sourcenotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
 }
 
-#ozhntgtebo .new_gt_sourcenote {
-  font-size: 12px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_sourcenote {
+font-size: 12px;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#ozhntgtebo .new_gt_left {
-  text-align: left;
+#taqpmxfwmz .new_gt_left {
+text-align: left;
 }
 
-#ozhntgtebo .new_gt_center {
-  text-align: center;
+#taqpmxfwmz .new_gt_center {
+text-align: center;
 }
 
-#ozhntgtebo .new_gt_right {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+#taqpmxfwmz .new_gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
 }
 
-#ozhntgtebo .new_gt_font_normal {
-  font-weight: normal;
+#taqpmxfwmz .new_gt_font_normal {
+font-weight: normal;
 }
 
-#ozhntgtebo .new_gt_font_bold {
-  font-weight: bold;
+#taqpmxfwmz .new_gt_font_bold {
+font-weight: bold;
 }
 
-#ozhntgtebo .new_gt_font_italic {
-  font-style: italic;
+#taqpmxfwmz .new_gt_font_italic {
+font-style: italic;
 }
 
-#ozhntgtebo .new_gt_super {
-  font-size: 65%;
+#taqpmxfwmz .new_gt_super {
+font-size: 65%;
 }
 
-#ozhntgtebo .new_gt_footnote_marks {
-  font-size: 75%;
-  vertical-align: 0.4em;
-  position: initial;
+#taqpmxfwmz .new_gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
 }
 
-#ozhntgtebo .new_gt_asterisk {
-  font-size: 100%;
-  vertical-align: 0;
+#taqpmxfwmz .new_gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
 }
 
-#ozhntgtebo .new_gt_indent_1 {
-  text-indent: 5px;
+#taqpmxfwmz .new_gt_indent_1 {
+text-indent: 5px;
 }
 
-#ozhntgtebo .new_gt_indent_2 {
-  text-indent: 10px;
+#taqpmxfwmz .new_gt_indent_2 {
+text-indent: 10px;
 }
 
-#ozhntgtebo .new_gt_indent_3 {
-  text-indent: 15px;
+#taqpmxfwmz .new_gt_indent_3 {
+text-indent: 15px;
 }
 
-#ozhntgtebo .new_gt_indent_4 {
-  text-indent: 20px;
+#taqpmxfwmz .new_gt_indent_4 {
+text-indent: 20px;
 }
 
-#ozhntgtebo .new_gt_indent_5 {
-  text-indent: 25px;
+#taqpmxfwmz .new_gt_indent_5 {
+text-indent: 25px;
 }
 
-#ozhntgtebo tbody tr:last-child {
-  border-bottom: 2px solid #ffffff00;
+#taqpmxfwmz tbody tr:last-child {
+border-bottom: 2px solid #ffffff00;
 }
 </style>
-  <table class="new_gt_table">
+<table class="new_gt_table">
 <thead>
 <tr class="new_gt_heading">
-<td colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: Chivo; font-weight: 700;">2023 All Play records</td>
+<td colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">2023 All Play records</td>
 </tr>
 <tr class="new_gt_heading">
-<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: Chivo; font-weight: 300;">Tony was the most unlucky in the league this season.</td>
+<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Tony was the most unlucky in the league this season.</td>
 </tr>
 <tr class="new_gt_col_headings new_gt_spanner_row">
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="2" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="Player">Player</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="2" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Player">Player</th>
 <th class="new_gt_center new_gt_columns_top_border new_gt_column_spanner_outer" rowspan="1" colspan="2" scope="colgroup" id="Actual">
 <span class="new_gt_column_spanner">Actual</span>
 </th>
@@ -754,15 +792,15 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
 <th class="new_gt_center new_gt_columns_top_border new_gt_column_spanner_outer" rowspan="1" colspan="2" scope="colgroup" id="Win %">
 <span class="new_gt_column_spanner">Win %</span>
 </th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="2" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="&lt;strong&gt;Δ&lt;/strong&gt;"><strong>Δ</strong></th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="2" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="&lt;strong&gt;Δ&lt;/strong&gt;"><strong>Δ</strong></th>
 </tr>
 <tr class="new_gt_col_headings">
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="W">W</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="L">L</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="W">W</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="L">L</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="Actual">Actual</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="All Play">All Play</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="W">W</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="L">L</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="W">W</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="L">L</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Actual">Actual</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="All Play">All Play</th>
 </tr>
 </thead>
 <tbody class="new_gt_table_body">
@@ -893,7 +931,7 @@ total_all_play_h2h_gt <- compared_all_play_records |>
   gt::cols_label(
     name ~ 'Player'
   ) |> 
-  gtExtras::gt_theme_538() |> 
+  .gt_theme_538_dark() |> 
   gt::cols_align(
     columns = name,
     align = 'left'
@@ -910,7 +948,7 @@ total_all_play_h2h_gt <- compared_all_play_records |>
     subtitle = 'Tony has been the second unluckiest since 2018.'
   ) |> 
   gt::tab_footnote(
-    footnote = "Data from Tony's personal league."
+    footnote = CAPTION_LABEL
   )
 
 gt::gtsave(
@@ -922,554 +960,566 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
 ```
 
 ```{=html}
-<div id="mjkvatitfk" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-  <style>@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Cairo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-#mjkvatitfk table {
-  font-family: Cairo, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+<div id="taqpmxfwmz" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#taqpmxfwmz table {
+font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
 }
 
-#mjkvatitfk thead, #mjkvatitfk tbody, #mjkvatitfk tfoot, #mjkvatitfk tr, #mjkvatitfk td, #mjkvatitfk th {
-  border-style: none;
+#taqpmxfwmz thead, #taqpmxfwmz tbody, #taqpmxfwmz tfoot, #taqpmxfwmz tr, #taqpmxfwmz td, #taqpmxfwmz th {
+border-style: none;
 }
 
-#mjkvatitfk p {
-  margin: 0;
-  padding: 0;
+#taqpmxfwmz p {
+margin: 0;
+padding: 0;
 }
 
-#mjkvatitfk .new_gt_table {
-  display: table;
-  border-collapse: collapse;
-  line-height: normal;
-  margin-left: auto;
-  margin-right: auto;
-  color: #333333;
-  font-size: 16px;
-  font-weight: 400;
-  font-style: normal;
-  background-color: #FFFFFF;
-  width: auto;
-  border-top-style: none;
-  border-top-width: 3px;
-  border-top-color: #A8A8A8;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #A8A8A8;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
+#taqpmxfwmz .new_gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #FFFFFF;
+font-size: 16px;
+font-weight: 400;
+font-style: normal;
+background-color: #222222;
+width: auto;
+border-top-style: none;
+border-top-width: 3px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #222222;
 }
 
-#mjkvatitfk .new_gt_caption {
-  padding-top: 4px;
-  padding-bottom: 4px;
+#taqpmxfwmz .new_gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
 }
 
-#mjkvatitfk .new_gt_title {
-  color: #333333;
-  font-size: 125%;
-  font-weight: initial;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-color: #FFFFFF;
-  border-bottom-width: 0;
+#taqpmxfwmz .new_gt_title {
+color: #FFFFFF;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #222222;
+border-bottom-width: 0;
 }
 
-#mjkvatitfk .new_gt_subtitle {
-  color: #333333;
-  font-size: 85%;
-  font-weight: initial;
-  padding-top: 3px;
-  padding-bottom: 5px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-top-color: #FFFFFF;
-  border-top-width: 0;
+#taqpmxfwmz .new_gt_subtitle {
+color: #FFFFFF;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #222222;
+border-top-width: 0;
 }
 
-#mjkvatitfk .new_gt_heading {
-  background-color: #FFFFFF;
-  text-align: left;
-  border-bottom-color: #FFFFFF;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
+#taqpmxfwmz .new_gt_heading {
+background-color: #222222;
+text-align: left;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_bottom_border {
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
+#taqpmxfwmz .new_gt_bottom_border {
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_col_headings {
-  border-top-style: none;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #000000;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
+#taqpmxfwmz .new_gt_col_headings {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_col_heading {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: normal;
-  text-transform: inherit;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: bottom;
-  padding-top: 5px;
-  padding-bottom: 6px;
-  padding-left: 5px;
-  padding-right: 5px;
-  overflow-x: hidden;
+#taqpmxfwmz .new_gt_col_heading {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
 }
 
-#mjkvatitfk .new_gt_column_spanner_outer {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: normal;
-  text-transform: inherit;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: 4px;
-  padding-right: 4px;
+#taqpmxfwmz .new_gt_column_spanner_outer {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
 }
 
-#mjkvatitfk .new_gt_column_spanner_outer:first-child {
-  padding-left: 0;
+#taqpmxfwmz .new_gt_column_spanner_outer:first-child {
+padding-left: 0;
 }
 
-#mjkvatitfk .new_gt_column_spanner_outer:last-child {
-  padding-right: 0;
+#taqpmxfwmz .new_gt_column_spanner_outer:last-child {
+padding-right: 0;
 }
 
-#mjkvatitfk .new_gt_column_spanner {
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #000000;
-  vertical-align: bottom;
-  padding-top: 5px;
-  padding-bottom: 5px;
-  overflow-x: hidden;
-  display: inline-block;
-  width: 100%;
+#taqpmxfwmz .new_gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
 }
 
-#mjkvatitfk .new_gt_spanner_row {
-  border-bottom-style: hidden;
+#taqpmxfwmz .new_gt_spanner_row {
+border-bottom-style: hidden;
 }
 
-#mjkvatitfk .new_gt_group_heading {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-top-style: none;
-  border-top-width: 2px;
-  border-top-color: #000000;
-  border-bottom-style: solid;
-  border-bottom-width: 1px;
-  border-bottom-color: #FFFFFF;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: middle;
-  text-align: left;
+#taqpmxfwmz .new_gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
 }
 
-#mjkvatitfk .new_gt_empty_group_heading {
-  padding: 0.5px;
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  border-top-style: none;
-  border-top-width: 2px;
-  border-top-color: #000000;
-  border-bottom-style: solid;
-  border-bottom-width: 1px;
-  border-bottom-color: #FFFFFF;
-  vertical-align: middle;
+#taqpmxfwmz .new_gt_empty_group_heading {
+padding: 0.5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+vertical-align: middle;
 }
 
-#mjkvatitfk .new_gt_from_md > :first-child {
-  margin-top: 0;
+#taqpmxfwmz .new_gt_from_md > :first-child {
+margin-top: 0;
 }
 
-#mjkvatitfk .new_gt_from_md > :last-child {
-  margin-bottom: 0;
+#taqpmxfwmz .new_gt_from_md > :last-child {
+margin-bottom: 0;
 }
 
-#mjkvatitfk .new_gt_row {
-  padding-top: 3px;
-  padding-bottom: 3px;
-  padding-left: 5px;
-  padding-right: 5px;
-  margin: 10px;
-  border-top-style: solid;
-  border-top-width: 1px;
-  border-top-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 1px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 1px;
-  border-right-color: #D3D3D3;
-  vertical-align: middle;
-  overflow-x: hidden;
+#taqpmxfwmz .new_gt_row {
+padding-top: 7px;
+padding-bottom: 7px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
 }
 
-#mjkvatitfk .new_gt_stub {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-right-style: solid;
-  border-right-width: 0px;
-  border-right-color: #FFFFFF;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_stub {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 0px;
+border-right-color: #FFFFFF;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#mjkvatitfk .new_gt_stub_row_group {
-  color: #333333;
-  background-color: #FFFFFF;
-  font-size: 100%;
-  font-weight: initial;
-  text-transform: inherit;
-  border-right-style: solid;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
-  padding-left: 5px;
-  padding-right: 5px;
-  vertical-align: top;
+#taqpmxfwmz .new_gt_stub_row_group {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
 }
 
-#mjkvatitfk .new_gt_row_group_first td {
-  border-top-width: 2px;
+#taqpmxfwmz .new_gt_row_group_first td {
+border-top-width: 2px;
 }
 
-#mjkvatitfk .new_gt_row_group_first th {
-  border-top-width: 2px;
+#taqpmxfwmz .new_gt_row_group_first th {
+border-top-width: 2px;
 }
 
-#mjkvatitfk .new_gt_summary_row {
-  color: #333333;
-  background-color: #FFFFFF;
-  text-transform: inherit;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#mjkvatitfk .new_gt_first_summary_row {
-  border-top-style: solid;
-  border-top-color: #D3D3D3;
+#taqpmxfwmz .new_gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_first_summary_row.thick {
-  border-top-width: 2px;
+#taqpmxfwmz .new_gt_first_summary_row.thick {
+border-top-width: 2px;
 }
 
-#mjkvatitfk .new_gt_last_summary_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
+#taqpmxfwmz .new_gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_grand_summary_row {
-  color: #333333;
-  background-color: #FFFFFF;
-  text-transform: inherit;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_grand_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#mjkvatitfk .new_gt_first_grand_summary_row {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-top-style: double;
-  border-top-width: 6px;
-  border-top-color: #D3D3D3;
+#taqpmxfwmz .new_gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_last_grand_summary_row_top {
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-left: 5px;
-  padding-right: 5px;
-  border-bottom-style: double;
-  border-bottom-width: 6px;
-  border-bottom-color: #D3D3D3;
+#taqpmxfwmz .new_gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_striped {
-  background-color: rgba(128, 128, 128, 0.05);
+#taqpmxfwmz .new_gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
 }
 
-#mjkvatitfk .new_gt_table_body {
-  border-top-style: solid;
-  border-top-width: 2px;
-  border-top-color: #D3D3D3;
-  border-bottom-style: solid;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
+#taqpmxfwmz .new_gt_table_body {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
 }
 
-#mjkvatitfk .new_gt_footnotes {
-  color: #333333;
-  background-color: #FFFFFF;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
+#taqpmxfwmz .new_gt_footnotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_footnote {
-  margin: 0px;
-  font-size: 90%;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#mjkvatitfk .new_gt_sourcenotes {
-  color: #333333;
-  background-color: #FFFFFF;
-  border-bottom-style: none;
-  border-bottom-width: 2px;
-  border-bottom-color: #D3D3D3;
-  border-left-style: none;
-  border-left-width: 2px;
-  border-left-color: #D3D3D3;
-  border-right-style: none;
-  border-right-width: 2px;
-  border-right-color: #D3D3D3;
+#taqpmxfwmz .new_gt_sourcenotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
 }
 
-#mjkvatitfk .new_gt_sourcenote {
-  font-size: 12px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-left: 5px;
-  padding-right: 5px;
+#taqpmxfwmz .new_gt_sourcenote {
+font-size: 12px;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
 }
 
-#mjkvatitfk .new_gt_left {
-  text-align: left;
+#taqpmxfwmz .new_gt_left {
+text-align: left;
 }
 
-#mjkvatitfk .new_gt_center {
-  text-align: center;
+#taqpmxfwmz .new_gt_center {
+text-align: center;
 }
 
-#mjkvatitfk .new_gt_right {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+#taqpmxfwmz .new_gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
 }
 
-#mjkvatitfk .new_gt_font_normal {
-  font-weight: normal;
+#taqpmxfwmz .new_gt_font_normal {
+font-weight: normal;
 }
 
-#mjkvatitfk .new_gt_font_bold {
-  font-weight: bold;
+#taqpmxfwmz .new_gt_font_bold {
+font-weight: bold;
 }
 
-#mjkvatitfk .new_gt_font_italic {
-  font-style: italic;
+#taqpmxfwmz .new_gt_font_italic {
+font-style: italic;
 }
 
-#mjkvatitfk .new_gt_super {
-  font-size: 65%;
+#taqpmxfwmz .new_gt_super {
+font-size: 65%;
 }
 
-#mjkvatitfk .new_gt_footnote_marks {
-  font-size: 75%;
-  vertical-align: 0.4em;
-  position: initial;
+#taqpmxfwmz .new_gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
 }
 
-#mjkvatitfk .new_gt_asterisk {
-  font-size: 100%;
-  vertical-align: 0;
+#taqpmxfwmz .new_gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
 }
 
-#mjkvatitfk .new_gt_indent_1 {
-  text-indent: 5px;
+#taqpmxfwmz .new_gt_indent_1 {
+text-indent: 5px;
 }
 
-#mjkvatitfk .new_gt_indent_2 {
-  text-indent: 10px;
+#taqpmxfwmz .new_gt_indent_2 {
+text-indent: 10px;
 }
 
-#mjkvatitfk .new_gt_indent_3 {
-  text-indent: 15px;
+#taqpmxfwmz .new_gt_indent_3 {
+text-indent: 15px;
 }
 
-#mjkvatitfk .new_gt_indent_4 {
-  text-indent: 20px;
+#taqpmxfwmz .new_gt_indent_4 {
+text-indent: 20px;
 }
 
-#mjkvatitfk .new_gt_indent_5 {
-  text-indent: 25px;
+#taqpmxfwmz .new_gt_indent_5 {
+text-indent: 25px;
 }
 
-#mjkvatitfk tbody tr:last-child {
-  border-bottom: 2px solid #ffffff00;
+#taqpmxfwmz tbody tr:last-child {
+border-bottom: 2px solid #ffffff00;
 }
 </style>
-  <table class="new_gt_table">
+<table class="new_gt_table">
 <thead>
 <tr class="new_gt_heading">
-<td colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: Chivo; font-weight: 700;">Actual Win % - All Play Win %</td>
+<td colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">2023 All Play records</td>
 </tr>
 <tr class="new_gt_heading">
-<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: Chivo; font-weight: 300;">Tony has been the second unluckiest since 2018.</td>
+<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Tony was the most unlucky in the league this season.</td>
+</tr>
+<tr class="new_gt_col_headings new_gt_spanner_row">
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="2" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Player">Player</th>
+<th class="new_gt_center new_gt_columns_top_border new_gt_column_spanner_outer" rowspan="1" colspan="2" scope="colgroup" id="Actual">
+<span class="new_gt_column_spanner">Actual</span>
+</th>
+<th class="new_gt_center new_gt_columns_top_border new_gt_column_spanner_outer" rowspan="1" colspan="2" scope="colgroup" id="All Play">
+<span class="new_gt_column_spanner">All Play</span>
+</th>
+<th class="new_gt_center new_gt_columns_top_border new_gt_column_spanner_outer" rowspan="1" colspan="2" scope="colgroup" id="Win %">
+<span class="new_gt_column_spanner">Win %</span>
+</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="2" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="&lt;strong&gt;Δ&lt;/strong&gt;"><strong>Δ</strong></th>
 </tr>
 <tr class="new_gt_col_headings">
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="Player">Player</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="2018">2018</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="2019">2019</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="2020">2020</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="2021">2021</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="2022">2022</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="2023">2023</th>
-<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="Total">Total</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="W">W</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="L">L</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="W">W</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="L">L</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Actual">Actual</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="All Play">All Play</th>
 </tr>
 </thead>
 <tbody class="new_gt_table_body">
-<tr><td headers="name" class="new_gt_row new_gt_left">A</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−16%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(183,221,177,0.9); color: #000000;">10%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,220,0.9); color: #000000;">3%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−26%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,220,0.9); color: #000000;">5%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,155,0.9); color: #FFFFFF;">−16%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−7%</td></tr>
 <tr><td headers="name" class="new_gt_row new_gt_left">Tony</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(245,242,245,0.9); color: #000000;">−1%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(162,210,156,0.9); color: #000000;">11%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−21%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(234,219,235,0.9); color: #000000;">−7%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(244,246,243,0.9); color: #000000;">1%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−18%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(149,96,165,0.9); color: #FFFFFF;">−6%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">I</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(247,247,247,0.9); color: #000000;">0%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(212,187,219,0.9); color: #000000;">−10%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(189,225,183,0.9); color: #000000;">6%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(237,224,237,0.9); color: #000000;">−6%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(241,246,239,0.9); color: #000000;">1%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(239,229,240,0.9); color: #000000;">−3%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(234,218,234,0.9); color: #000000;">−2%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">C</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(94,165,98,0.9); color: #FFFFFF;">9%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(194,165,208,0.9); color: #000000;">−13%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(169,130,188,0.9); color: #FFFFFF;">−15%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(243,246,242,0.9); color: #000000;">1%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(221,241,216,0.9); color: #000000;">6%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(233,244,231,0.9); color: #000000;">4%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(239,229,239,0.9); color: #000000;">−1%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">B</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(240,231,240,0.9); color: #000000;">−2%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(237,225,238,0.9); color: #000000;">−5%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(236,224,237,0.9); color: #000000;">−5%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(237,224,237,0.9); color: #000000;">−6%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(165,124,183,0.9); color: #FFFFFF;">−11%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">24%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(242,236,242,0.9); color: #000000;">−1%</td></tr>
+<td headers="actual_w" class="new_gt_row new_gt_right">4</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">11</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">60</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">75</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">27%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">44%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−18%</td></tr>
+<tr><td headers="name" class="new_gt_row new_gt_left">A</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">6</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">9</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">75</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">60</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">40%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">56%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,155,0.9); color: #FFFFFF;">−16%</td></tr>
 <tr><td headers="name" class="new_gt_row new_gt_left">F</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(221,241,216,0.9); color: #000000;">3%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(223,241,218,0.9); color: #000000;">6%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(230,243,227,0.9); color: #000000;">2%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(172,216,166,0.9); color: #000000;">8%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(245,242,245,0.9); color: #000000;">−1%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(182,150,200,0.9); color: #FFFFFF;">−11%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(235,244,233,0.9); color: #000000;">1%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">J</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(178,144,197,0.9); color: #FFFFFF;">−10%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">21%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,220,0.9); color: #000000;">3%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(218,240,213,0.9); color: #000000;">5%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(126,57,140,0.9); color: #FFFFFF;">−15%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,221,0.9); color: #000000;">6%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(233,244,230,0.9); color: #000000;">1%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">D</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(134,195,129,0.9); color: #000000;">7%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(232,214,233,0.9); color: #000000;">−7%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">13%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(185,222,178,0.9); color: #000000;">7%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−15%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(193,227,186,0.9); color: #000000;">10%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(221,241,216,0.9); color: #000000;">2%</td></tr>
+<td headers="actual_w" class="new_gt_row new_gt_right">5</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">10</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">60</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">75</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">33%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">44%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(182,150,200,0.9); color: #FFFFFF;">−11%</td></tr>
+<tr><td headers="name" class="new_gt_row new_gt_left">I</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">7</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">8</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">67</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">68</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">47%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">50%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(239,229,240,0.9); color: #000000;">−3%</td></tr>
 <tr><td headers="name" class="new_gt_row new_gt_left">E</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">11%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−23%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(50,133,67,0.9); color: #FFFFFF;">12%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(160,209,154,0.9); color: #000000;">8%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(172,216,166,0.9); color: #000000;">10%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(244,246,244,0.9); color: #000000;">1%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(201,231,195,0.9); color: #000000;">3%</td></tr>
+<td headers="actual_w" class="new_gt_row new_gt_right">9</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">6</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">80</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">55</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">60%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">59%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(244,246,244,0.9); color: #000000;">1%</td></tr>
 <tr><td headers="name" class="new_gt_row new_gt_left">H</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(245,242,245,0.9); color: #000000;">−1%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(162,210,156,0.9); color: #000000;">11%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(230,243,227,0.9); color: #000000;">2%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">15%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">19%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(239,245,237,0.9); color: #000000;">2%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">9%</td></tr>
+<td headers="actual_w" class="new_gt_row new_gt_right">8</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">7</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">69</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">66</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">53%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">51%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(239,245,237,0.9); color: #000000;">2%</td></tr>
+<tr><td headers="name" class="new_gt_row new_gt_left">C</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">10</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">5</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">85</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">50</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">67%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">63%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(233,244,231,0.9); color: #000000;">4%</td></tr>
+<tr><td headers="name" class="new_gt_row new_gt_left">J</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">7</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">8</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">55</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">80</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">47%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">41%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,221,0.9); color: #000000;">6%</td></tr>
+<tr><td headers="name" class="new_gt_row new_gt_left">D</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">8</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">7</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">58</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">77</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">53%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">43%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(193,227,186,0.9); color: #000000;">10%</td></tr>
+<tr><td headers="name" class="new_gt_row new_gt_left">B</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">11</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">4</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">66</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">69</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">73%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">49%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">24%</td></tr>
 </tbody>
 
 <tfoot class="new_gt_footnotes">
@@ -1483,8 +1533,20 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
 Teams E and H have been fairly fortunate, only facing one season in the past 6 where they ended up with a record that was worse than their all play record.
 
 ```{r}
+#| label: compared-all-play-save
+qs::qsave(compared_all_play_records, file.path(PROJ_DIR, 'compared_all_play_records.qs'))
+```
+
+```{r}
+#| label: compared-all-play-read
+compared_all_play_records <- qs::read(file.path(PROJ_DIR, 'compared_all_play_records.qs'))
+```
+
+```{r}
 #| label: all-play-quantiles
 round(quantile(compared_all_play_records$w_prop_d, c(0.975, 0.025)), 3)
+#>  97.5%   2.5% 
+#>  0.201 -0.223
 ```
 
 The top and bottom 2.5th percentiles of season-long actual win % minus all play win % are about +20% and -22% respectively. This translates to about ±3 wins (depending on how many games your league plays). So, the "back-of-the-napkin" take-away here is that you could be winning or losing 3 more games due to your schedule, in the most extreme cases.
@@ -1498,6 +1560,134 @@ Overall, it's interesting to see that the under- and over-performance doesn't qu
 ```
 
 ### Lost Opportunity
+
+## Discussion
+
+```{r}
+#| label: median-scoring
+median_scoring_records <- team_scores |> 
+  filter(
+    week <= (max_week - 2)
+  ) |> 
+  group_by(season, week) |> 
+  mutate(
+    median_score = median(user_score)
+  ) |> 
+  ungroup() |> 
+  mutate(
+    median_result = ifelse(user_score > median_score, 'W', 'L')
+  ) |> 
+  filter(week <= max_week) |> 
+  group_by(season, name) |> 
+  summarize(
+    orig_wins = sum(result == 'W'),
+    init_median_wins = sum(median_result == 'W')
+  ) |> 
+  ungroup() |> 
+  mutate(
+    median_wins = orig_wins + init_median_wins
+  ) |> 
+  group_by(season) |> 
+  mutate(
+    orig_placing = row_number(desc(orig_wins)),
+    median_placing = row_number(desc(init_median_wins))
+  ) |> 
+  ungroup() |> 
+  arrange(season, orig_placing)
+
+median_scoring_records |> 
+  group_by(name) |> 
+  summarize(
+    placing_d = sum(orig_placing - median_placing),
+    pos_d = sum(median_placing < orig_placing),
+    neg_d = sum(median_placing > orig_placing)
+  ) |> 
+  arrange(desc(placing_d))
+
+median_scoring_records_with_labels <- median_scoring_records |>
+  dplyr::mutate(
+    label = forcats::fct_reorder(
+      paste0(
+        "<b><span style='font-size:12pt'>", 
+        name, 
+        "</span></b> <span style='font-size:9pt'>(", 
+        orig_placing,
+        ## https://albert-rapp.de/posts/ggplot2-tips/08_fonts_and_icons/08_fonts_and_icons.html
+        " <span style='font-family:fa-solid",
+         dplyr::case_when(
+          orig_placing > median_placing ~ ';color:#2feaa8',
+          orig_placing < median_placing ~ ';color:#fb3640',
+          TRUE ~ ''
+        ),
+        "'>&#x",
+        dplyr::case_when(
+          orig_placing  > median_placing ~ 'e098',
+          orig_placing  < median_placing ~ 'e097',
+          TRUE ~ 'f061'
+        ),
+        ';</span> ',
+        median_placing,
+        ')</span>'
+      ),
+      1000 * season - 10 * orig_placing
+    )
+  )
+
+median_scoring_changes_plot <- median_scoring_records_with_labels |>
+  ggplot() +
+  geom_vline(
+    data = tibble(x = c(1, 2)),
+    color = COMPLEMENTARY_BACKGROUND_COLOR,
+    aes(
+      xintercept = x
+    )
+  ) + 
+  geom_segment(
+    color = WHITISH_FOREGROUND_COLOR,
+    # data = median_scoring_records_with_labels |> filter(name != 'Tony'),
+    linewidth = 0.25,
+    aes(
+      x = 1,
+      xend = 2,
+      y = label,
+      yend = 11 - median_placing
+    )
+  ) +
+  geom_segment(
+    color = WHITISH_FOREGROUND_COLOR,
+    data = median_scoring_records_with_labels |> filter(name == 'Tony'),
+    linewidth = 1,
+    aes(
+      x = 1,
+      xend = 2,
+      y = label,
+      yend = 11 - median_placing
+    )
+  ) +
+  facet_wrap(~season, scales = 'free_y') +
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = ggtext::element_markdown(),
+    panel.grid.major = element_blank(),
+    plot.subtitle = element_markdown(size = 14)
+  ) +
+  labs(
+    title = 'Changes in records with median scoring',
+    subtitle = "Does the original placement go up (<span style='font-family:fa-solid;color:#2feaa8'>&#xe098;</span>), down (<span style='font-family:fa-solid;color:#fb3640'>&#xe097;</span>), or stay the same (<span style='font-family:fa-solid'>&#xf061;</span>) with median scoring?",
+    y = NULL,
+    x = NULL,
+    caption = CAPTION_LABEL
+  )
+
+ggsave(
+  median_scoring_changes_plot,
+  filename = file.path(PROJ_DIR, 'median-scoring.png'),
+  width = 8,
+  height = 8
+)
+```
+
+If you count things up on this slope chart, you'll see that I would have moved up in my placement in 3 out of the 6 seasons with the median ranking system. Team C would have benefited the most--they would have moved up the rankings in 4 out of the 6 seasons (and not changed in the other 2), for a total sum of +11 placements (about +2 per season). Team F is on the other end of the spectrum--they're placement would have been lower in 4 of the 6 seasons, for a total ranking change of -11 (about -2 per season).
 
 ## Conclusion
 
