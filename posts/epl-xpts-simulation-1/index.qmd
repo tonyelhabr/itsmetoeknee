@@ -146,11 +146,11 @@ Second, we convert the goal probabilities to singular probabilities for each tea
 #| code-fold: show
 library(gdata)
 outer_prod <- outer(probs_a, probs_b)
-p_a <- sum(upperTriangle(outer_prod))
-p_b <- sum(lowerTriangle(outer_prod))
+p_a <- sum(lowerTriangle(outer_prod))
+p_b <- sum(upperTriangle(outer_prod))
 p_draw <- sum(diag(outer_prod))
 round(c(p_a, p_b, p_draw), 2)
-#> [1] 0.30 0.28 0.42
+#> [1] 0.28 0.30 0.42
 ```
 
 Finally, given the match outcome probabilities, the xPts calculation is straightforward.
@@ -161,10 +161,10 @@ Finally, given the match outcome probabilities, the xPts calculation is straight
 xpts_a <- 3 * p_a + 1 * p_draw
 xpts_b <- 3 * p_b + 1 * p_draw
 round(c(xpts_a, xpts_b), 2)
-#> [1] 1.31 1.27
+#> [1] 1.27 1.31
 ```
 
-For this example, we arrive at the interesting result that, despite the two teams total xG being equal (=0.6), team A has a slightly higher probability of winning. There have been plenty of [explanations](https://hockey-graphs.com/2018/12/19/some-people-were-wrong-on-twitter/) on this "quality vs. quantity" phenomenon, so I won't go into it in detail. Nonetheless, this simple example illustrates why it can be useful to translate xG into another form---doing so can provide a better perspective on match results and, consequently, team placement in the standings.
+For this example, we arrive at the interesting result that, despite the two teams total xG being equal (=0.6), team B has a slightly higher probability of winning. There have been plenty of [explanations](https://hockey-graphs.com/2018/12/19/some-people-were-wrong-on-twitter/) on this "quality vs. quantity" phenomenon, so I won't go into it in detail. Nonetheless, this simple example illustrates why it can be useful to translate xG into another form---doing so can provide a better perspective on match results and, consequently, team placement in the standings.
 
 ### Objectives
 
