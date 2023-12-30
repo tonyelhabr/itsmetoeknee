@@ -4,14 +4,14 @@ description: "All-play scores, optimal lineup choices, and more"
 date: 2024-01-02
 categories:
   - r
-  - American football
+  - football (american)
 draft: true
-image: image.png
+image: latest-all-play-h2h.png
 execute: 
   code-fold: false
   eval: false
-  include: true
-  echo: true
+  include: false
+  echo: false
 ---
 
 ## Introduction
@@ -28,7 +28,281 @@ I want to look at how we can calculate these things for the past 5 years of my p
 
 ## Analysis and Results
 
+```{r}
+#| label: setup
+library(readr)
+library(dplyr)
+library(tidyr)
+
+library(gt)
+library(gtExtras)
+
+PROJ_DIR <- 'posts/fantasy-football-performance'
+DATA_DIR <- file.path(PROJ_DIR, 'data')
+```
+
 ### All-play records
+
+```{r}
+#| label: all-play
+anonymize_name <- function(name, id) {
+  factor(
+    ifelse(id == 7, 'Tony', LETTERS[id]),
+    levels = c(LETTERS[1:6], 'Tony', LETTERS[8:10])
+  )
+}
+
+franchises <- readr::read_csv(file.path(DATA_DIR, 'franchises-all.csv')) |> 
+  transmute(
+    season,
+    franchise_id,
+    name = anonymize_name(user_name, franchise_id)
+  )
+
+scores <- readr::read_csv(file.path(DATA_DIR, 'team-scores-all.csv')) |> 
+  mutate(
+    name = anonymize_name(user_name, franchise_id),
+    opponent_name = anonymize_name(opponent_user_name, opponent_id)
+  )
+
+actual_records <- scores |> 
+  dplyr::mutate(
+    w = user_score > opponent_score,
+    l = user_score < opponent_score
+  ) |> 
+  dplyr::arrange(season) |> 
+  dplyr::group_by(season, name) |> 
+  dplyr::summarize(
+    dplyr::across(
+      c(w, l),
+      sum
+    )
+  ) |> 
+  dplyr::ungroup()
+
+all_play_records <- tidyr::crossing(
+  scores |> dplyr::distinct(season, week),
+  name = franchises$name,
+  opponent_name = franchises$name
+) |> 
+  dplyr::filter(name != opponent_name) |> 
+  dplyr::inner_join(
+    scores |>
+      dplyr::select(season, week, name, user_score),
+    by = dplyr::join_by(season, week, name)
+  ) |>
+  dplyr::inner_join(
+    scores |> 
+      dplyr::select(
+        season,
+        week,
+        opponent_name = name,
+        opponent_score = user_score
+      ),
+    by = dplyr::join_by(season, week, opponent_name)
+  ) |> 
+  dplyr::mutate(
+    w = user_score > opponent_score,
+    l = user_score < opponent_score
+  ) |> 
+  dplyr::group_by(season, name) |> 
+  dplyr::summarize(
+    dplyr::across(
+      c(w, l),
+      sum
+    )
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::arrange(season, dplyr::desc(w))
+
+compared_all_play_records <- all_play_records |> 
+  dplyr::transmute(
+    season,
+    name,
+    all_play_season = season,
+    all_play_w = w,
+    all_play_l = l,
+    all_play_w_prop = w / (w + l)
+  ) |> 
+  dplyr::inner_join(
+    actual_records |> 
+      dplyr::transmute(
+        season,
+        name,
+        actual_w = w,
+        actual_l = l,
+        actual_w_prop = w / (w + l)
+      ),
+    by = dplyr::join_by(season, name),
+    relationship = 'many-to-many'
+  ) |> 
+  dplyr::mutate(
+    w_prop_d = actual_w_prop - all_play_w_prop
+  ) |> 
+  dplyr::arrange(w_prop_d)
+
+.zero_centered_hulk_pal <- function(x) {
+  hex_neg = RColorBrewer::brewer.pal(7, 'PRGn')[1:3]
+  hex_pos = RColorBrewer::brewer.pal(7, 'PRGn')[5:7]
+  hex_mid = '#F7F7F7'
+  rng <- range(x, na.rm = TRUE)
+  mi <- rng[1]
+  ma <- rng[2]
+  f_neg <- scales::col_numeric(
+    palette = c(hex_neg, hex_mid),
+    domain = c(mi, 0)
+  )
+  f_pos <- scales::col_numeric(
+    palette = c(hex_mid, hex_pos),
+    domain = c(0, ma)
+  )
+  suppressWarnings(
+    ifelse(x < 0, f_neg(x), f_pos(x))
+  )
+}
+
+.gt_zerocentered_hulk_col_numeric <- function(gt_object, columns = NULL){
+  
+  gt::data_color(
+    gt_object,
+    columns = {{ columns }},
+    colors = .zero_centered_hulk_pal,
+    alpha = 0.9
+  )
+}
+
+latest_all_play_h2h_gt <- compared_all_play_records |> 
+  dplyr::filter(season == max(season)) |> 
+  dplyr::arrange(w_prop_d) |> 
+  dplyr::select(
+    name,
+    actual_w,
+    actual_l,
+    all_play_w,
+    all_play_l,
+    actual_w_prop,
+    all_play_w_prop,
+    w_prop_d
+  ) |> 
+  gt::gt() |> 
+  gt::cols_label(
+    name ~ 'Player',
+    actual_w ~ 'W',
+    actual_l ~ 'L',
+    all_play_w ~ 'W',
+    all_play_l ~ 'L',
+    actual_w_prop ~ 'Actual',
+    all_play_w_prop ~ 'All Play',
+    w_prop_d ~ gt::md('**Δ**')
+  ) |> 
+  gtExtras::gt_theme_538() |> 
+  gt::tab_spanner(
+    columns = c(actual_w, actual_l),
+    label = 'Actual'
+  ) |> 
+  gt::tab_spanner(
+    columns = c(all_play_w, all_play_l),
+    label = 'All Play'
+  ) |> 
+  gt::tab_spanner(
+    columns = c(actual_w_prop, all_play_w_prop),
+    label = 'Win %'
+  ) |> 
+  # gtExtras::gt_hulk_col_numeric(
+  .gt_zerocentered_hulk_col_numeric(
+    columns = w_prop_d
+  ) |> 
+  gt::fmt_percent(
+    columns = dplyr::matches('_prop'),
+    decimals = 0
+  ) |> 
+  gt::tab_header(
+    title = gt::md('2023 All Play records'),
+    subtitle = 'Tony was the most unlucky in the league this season.'
+  ) |> 
+  gt::tab_footnote(
+    footnote = "Data from Tony's personal league."
+  )
+
+## https://x.com/andreweatherman/status/1738356576476446950?s=20
+# crop_gt <- function(file, whitespace) {
+#   magick::image_read(file) |> 
+#     magick::image_trim() |> 
+#     magick::image_border(
+#       'white',
+#       glue::glue('{whitespace}x{whitespace}')
+#     ) |> 
+#     magick::image_write(file)
+# }
+
+gt::gtsave(
+  latest_all_play_h2h_gt,
+  filename = file.path(PROJ_DIR, 'latest-all-play-h2h.png')
+)
+
+# crop_gt(file.path(PROJ_DIR, 'latest-all-play-h2h.png'), whitespace = 5)
+```
+
+![](latest-all-play-h2h.png)
+
+```{r}
+#| label: all-play-all
+#| include: false
+total_all_play_h2h_gt <- compared_records |> 
+  dplyr::transmute(
+    name,
+    season = as.character(season),
+    w_prop_d
+  ) |> 
+  dplyr::bind_rows(
+    compared_records |> 
+      dplyr::group_by(name) |> 
+      dplyr::summarize(
+        dplyr::across(
+          dplyr::matches('_(w|l)$'),
+          sum
+        )
+      ) |> 
+      dplyr::ungroup() |> 
+      dplyr::transmute(
+        name,
+        season = 'Total',
+        w_prop_d = (actual_w / (actual_w + actual_l)) - (all_play_w / (all_play_w + all_play_l))
+      )
+  ) |> 
+  tidyr::pivot_wider(
+    names_from = season,
+    values_from = w_prop_d,
+    names_sort = TRUE
+  ) |> 
+  dplyr::arrange(-Total) |> 
+  gt::gt() |> 
+  gt::cols_label(
+    name ~ 'Player'
+  ) |> 
+  gtExtras::gt_theme_538() |> 
+  gt::fmt_percent(
+    columns = -c(name),
+    decimals = 0
+  ) |> 
+  .gt_zerocentered_hulk_col_numeric(
+    columns = -c(name)
+  ) |> 
+  gt::tab_header(
+    title = gt::md('Actual Win % - All Play Win %'),
+    subtitle = 'Tony has been the second most unlucky over the past 5 seasons.'
+  ) |> 
+  gt::tab_footnote(
+    footnote = "Data from Tony's personal league."
+  )
+
+gt::gtsave(
+  total_all_play_h2h_gt,
+  filename = file.path(PROJ_DIR, 'total-all-play-h2h.png')
+)
+```
+
+![](total-all-play-h2h.png)
 
 ### Actual vs. projected points
 
