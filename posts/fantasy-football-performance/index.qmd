@@ -1,7 +1,7 @@
 ---
-title: How should we measure manager performance in fantasy football?
-description: "All-play team_scores, optimal lineup choices, and more"
-date: 2024-01-02
+title: Measuring manager performance in fantasy football
+description: "All-play scores, optimal lineup choices, and more"
+date: 2023-12-31
 categories:
   - r
   - football (american)
@@ -50,6 +50,7 @@ library(ggtext)
 library(htmltools)
 library(glue)
 library(stringr)
+library(forcats)
 
 PROJ_DIR <- 'posts/fantasy-football-performance'
 DATA_DIR <- file.path(PROJ_DIR, 'data')
@@ -57,8 +58,6 @@ source(file.path(PROJ_DIR, 'theme.R'))
 ```
 
 The data comes from the past 2018 - 2023 seasons of my primary fantasy football league. We've had different rule sets and schedule formats (i.e. playoffs started in week 14 prior to 2022 in this league), but for the most part, measures of performance should be mostly agnostic to this.
-
-I've anonymized my league mates' names with letters of the alphabet, partly to save readers from viewing oddly-specific jokes, but mostly to focus the analysis on the methods and numbers.
 
 ### All-play records
 
@@ -69,58 +68,63 @@ I felt like I was particularly unlucky with my schedule this past year, and inde
 ```{r}
 #| label: all-play
 ## Won't need sorting most of the time, but it's convenient to have a factor for local debugging
-anonymize_team <- function(team, id) {
-  factor(
-    ifelse(id == 7, 'Tony', LETTERS[id]),
-    levels = c(LETTERS[1:6], 'Tony', LETTERS[8:10])
-  )
-}
+TEAM_NAMES <- c(
+  '1' = 'Juan',
+  '2' = 'Manny',
+  '3' = 'Enrique',
+  '4' = 'Luis',
+  '5' = 'Andrew E.',
+  '6' = 'Drake',
+  '7' = 'Tony',
+  '8' = 'Andrew L.',
+  '9' = 'Brandon',
+  '10' = 'Alan'
+)
 
 leagues <- qs::qread(file.path(DATA_DIR, 'leagues-all.qs'))
-init_n_regular_season_weeks <- leagues |> 
+regular_season_weeks <- leagues |> 
+  rlang::set_names(
+    purrr::map(leagues, \(.x) .x$seasonId)
+  ) |> 
   purrr::map(
     \(.x) {
-      n_regular_season_weeks <- .x$settings$scheduleSettings$matchupPeriods |> 
+      .x$settings$scheduleSettings$matchupPeriods |> 
         purrr::map_int(\(p) length(p)) |> 
         ## our post-seasons always have 2 weeks
         purrr::keep(\(l) l == 1L) |> 
-        length()
-      setNames(
-        n_regular_season_weeks,
-        .x$seasonId
-      )
+        names() |> 
+        as.integer()
     }
   ) |> 
-  purrr::flatten()
-
-n_regular_season_weeks <- tibble::tibble(
-  season = as.integer(names(init_n_regular_season_weeks)),
-  last_regular_season_week = as.integer(unname(init_n_regular_season_weeks))
-)
+  purrr::imap_dfr(
+    \(.x, .y) {
+      tibble::tibble(
+        season = as.integer(.y),
+        week = .x
+      )
+    }
+  )
 
 franchises <- readr::read_csv(file.path(DATA_DIR, 'franchises-all.csv')) |> 
   dplyr::transmute(
     season,
     franchise_id,
     user_name,
-    team = anonymize_team(user_name, franchise_id)
+    team = TEAM_NAMES[as.character(franchise_id)]
   )
 LATEST_SEASON <- max(unique(franchises$season))
 
 team_scores <- readr::read_csv(file.path(DATA_DIR, 'team-scores-all.csv')) |> 
   dplyr::mutate(
-    team = anonymize_team(user_name, franchise_id),
-    opponent_name = anonymize_team(opponent_user_name, opponent_id)
+    team = TEAM_NAMES[as.character(franchise_id)],
+    opponent_team = TEAM_NAMES[as.character(opponent_id)]
+  ) |>
+  ## only complete games
+  # dplyr::filter(!is.na(result)) |> 
+  dplyr::semi_join(
+    regular_season_weeks,
+    by = dplyr::join_by(season, week)
   ) |> 
-  dplyr::filter(!is.na(result)) |> 
-  dplyr::inner_join(
-    n_regular_season_weeks,
-    by = dplyr::join_by(season)
-  ) |> 
-  dplyr::filter(
-    week <= last_regular_season_week
-  ) |> 
-  dplyr::select(-last_regular_season_week) |> 
   ## if we were dealing with multi-week matchup periods, then this would be more useful
   dplyr::mutate(n_weeks_in_matchup = 1L)
 
@@ -142,9 +146,9 @@ actual_records <- team_scores |>
 all_play_records <- tidyr::crossing(
   team_scores |> dplyr::distinct(season, week),
   team = franchises$team,
-  opponent_name = franchises$team
+  opponent_team = franchises$team
 ) |> 
-  dplyr::filter(team != opponent_name) |> 
+  dplyr::filter(team != opponent_team) |> 
   dplyr::inner_join(
     team_scores |>
       dplyr::select(season, week, team, user_score),
@@ -155,10 +159,10 @@ all_play_records <- tidyr::crossing(
       dplyr::select(
         season,
         week,
-        opponent_name = team,
+        opponent_team = team,
         opponent_score = user_score
       ),
-    by = dplyr::join_by(season, week, opponent_name)
+    by = dplyr::join_by(season, week, opponent_team)
   ) |> 
   dplyr::mutate(
     w = user_score > opponent_score,
@@ -239,8 +243,7 @@ compared_all_play_records <- all_play_records |>
   )
 }
 
-CAPTION_LABEL <- "Data from Tony's personal league."
-latest_all_play_h2h_gt <- compared_all_play_records |> 
+latest_all_play_gt <- compared_all_play_records |> 
   dplyr::filter(season == LATEST_SEASON) |> 
   dplyr::arrange(w_prop_d) |> 
   dplyr::select(
@@ -292,17 +295,9 @@ latest_all_play_h2h_gt <- compared_all_play_records |>
     decimals = 0
   ) |> 
   gt::tab_header(
-    title = glue::glue('{LATEST_SEASON} All Play records'),
-    subtitle = 'Tony was the most unlucky in the league this season.'
-  ) |> 
-  gt::tab_footnote(
-    footnote = CAPTION_LABEL
+    title = glue::glue('{LATEST_SEASON} All-Play Records'),
+    subtitle = 'Tony was the most unlucky in the league this past season.'
   )
-
-gtExtras::gtsave_extra(
-  latest_all_play_h2h_gt,
-  filename = file.path(PROJ_DIR, 'latest-all-play-h2h.png')
-)
 
 ## Reference: https://stackoverflow.com/questions/74349523/avoid-quarto-table-style-in-table-that-contains-images
 make_tbl_quarto_robust <- function(tbl) {
@@ -345,466 +340,470 @@ make_tbl_quarto_robust <- function(tbl) {
     gt::html()
 }
 
-make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
+gt::gtsave(
+  latest_all_play_gt,
+  filename = file.path(PROJ_DIR, 'latest-all-play.png')
+)
+make_tbl_quarto_robust(latest_all_play_gt) |> clipr::write_clip()
 ```
 
 ```{=html}
-<div id="qddsbafhds" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+<div id="pkfcenqede" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+  <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-#qddsbafhds table {
-font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
+#pkfcenqede table {
+  font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-#qddsbafhds thead, #qddsbafhds tbody, #qddsbafhds tfoot, #qddsbafhds tr, #qddsbafhds td, #qddsbafhds th {
-border-style: none;
+#pkfcenqede thead, #pkfcenqede tbody, #pkfcenqede tfoot, #pkfcenqede tr, #pkfcenqede td, #pkfcenqede th {
+  border-style: none;
 }
 
-#qddsbafhds p {
-margin: 0;
-padding: 0;
+#pkfcenqede p {
+  margin: 0;
+  padding: 0;
 }
 
-#qddsbafhds .new_gt_table {
-display: table;
-border-collapse: collapse;
-line-height: normal;
-margin-left: auto;
-margin-right: auto;
-color: #FFFFFF;
-font-size: 16px;
-font-weight: 400;
-font-style: normal;
-background-color: #222222;
-width: auto;
-border-top-style: none;
-border-top-width: 3px;
-border-top-color: #A8A8A8;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #222222;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #222222;
+#pkfcenqede .new_gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #222222;
+  width: auto;
+  border-top-style: none;
+  border-top-width: 3px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #222222;
 }
 
-#qddsbafhds .new_gt_caption {
-padding-top: 4px;
-padding-bottom: 4px;
+#pkfcenqede .new_gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
-#qddsbafhds .new_gt_title {
-color: #FFFFFF;
-font-size: 125%;
-font-weight: initial;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-color: #222222;
-border-bottom-width: 0;
+#pkfcenqede .new_gt_title {
+  color: #FFFFFF;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #222222;
+  border-bottom-width: 0;
 }
 
-#qddsbafhds .new_gt_subtitle {
-color: #FFFFFF;
-font-size: 85%;
-font-weight: initial;
-padding-top: 3px;
-padding-bottom: 5px;
-padding-left: 5px;
-padding-right: 5px;
-border-top-color: #222222;
-border-top-width: 0;
+#pkfcenqede .new_gt_subtitle {
+  color: #FFFFFF;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #222222;
+  border-top-width: 0;
 }
 
-#qddsbafhds .new_gt_heading {
-background-color: #222222;
-text-align: left;
-border-bottom-color: #222222;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
+#pkfcenqede .new_gt_heading {
+  background-color: #222222;
+  text-align: left;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_bottom_border {
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
+#pkfcenqede .new_gt_bottom_border {
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_col_headings {
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #D3D3D3;
-border-bottom-style: solid;
-border-bottom-width: 3px;
-border-bottom-color: #FFFFFF;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
+#pkfcenqede .new_gt_col_headings {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_col_heading {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: normal;
-text-transform: inherit;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: bottom;
-padding-top: 5px;
-padding-bottom: 6px;
-padding-left: 5px;
-padding-right: 5px;
-overflow-x: hidden;
+#pkfcenqede .new_gt_col_heading {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
 }
 
-#qddsbafhds .new_gt_column_spanner_outer {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: normal;
-text-transform: inherit;
-padding-top: 0;
-padding-bottom: 0;
-padding-left: 4px;
-padding-right: 4px;
+#pkfcenqede .new_gt_column_spanner_outer {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
-#qddsbafhds .new_gt_column_spanner_outer:first-child {
-padding-left: 0;
+#pkfcenqede .new_gt_column_spanner_outer:first-child {
+  padding-left: 0;
 }
 
-#qddsbafhds .new_gt_column_spanner_outer:last-child {
-padding-right: 0;
+#pkfcenqede .new_gt_column_spanner_outer:last-child {
+  padding-right: 0;
 }
 
-#qddsbafhds .new_gt_column_spanner {
-border-bottom-style: solid;
-border-bottom-width: 3px;
-border-bottom-color: #FFFFFF;
-vertical-align: bottom;
-padding-top: 5px;
-padding-bottom: 5px;
-overflow-x: hidden;
-display: inline-block;
-width: 100%;
+#pkfcenqede .new_gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
 }
 
-#qddsbafhds .new_gt_spanner_row {
-border-bottom-style: hidden;
+#pkfcenqede .new_gt_spanner_row {
+  border-bottom-style: hidden;
 }
 
-#qddsbafhds .new_gt_group_heading {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #222222;
-border-bottom-style: solid;
-border-bottom-width: 1px;
-border-bottom-color: #FFFFFF;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: middle;
-text-align: left;
+#pkfcenqede .new_gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
 }
 
-#qddsbafhds .new_gt_empty_group_heading {
-padding: 0.5px;
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #222222;
-border-bottom-style: solid;
-border-bottom-width: 1px;
-border-bottom-color: #FFFFFF;
-vertical-align: middle;
+#pkfcenqede .new_gt_empty_group_heading {
+  padding: 0.5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: middle;
 }
 
-#qddsbafhds .new_gt_from_md > :first-child {
-margin-top: 0;
+#pkfcenqede .new_gt_from_md > :first-child {
+  margin-top: 0;
 }
 
-#qddsbafhds .new_gt_from_md > :last-child {
-margin-bottom: 0;
+#pkfcenqede .new_gt_from_md > :last-child {
+  margin-bottom: 0;
 }
 
-#qddsbafhds .new_gt_row {
-padding-top: 7px;
-padding-bottom: 7px;
-padding-left: 5px;
-padding-right: 5px;
-margin: 10px;
-border-top-style: solid;
-border-top-width: 1px;
-border-top-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: middle;
-overflow-x: hidden;
+#pkfcenqede .new_gt_row {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
 }
 
-#qddsbafhds .new_gt_stub {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-right-style: solid;
-border-right-width: 0px;
-border-right-color: #FFFFFF;
-padding-left: 5px;
-padding-right: 5px;
+#pkfcenqede .new_gt_stub {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 0px;
+  border-right-color: #FFFFFF;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#qddsbafhds .new_gt_stub_row_group {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-right-style: solid;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
-padding-left: 5px;
-padding-right: 5px;
-vertical-align: top;
+#pkfcenqede .new_gt_stub_row_group {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
 }
 
-#qddsbafhds .new_gt_row_group_first td {
-border-top-width: 2px;
+#pkfcenqede .new_gt_row_group_first td {
+  border-top-width: 2px;
 }
 
-#qddsbafhds .new_gt_row_group_first th {
-border-top-width: 2px;
+#pkfcenqede .new_gt_row_group_first th {
+  border-top-width: 2px;
 }
 
-#qddsbafhds .new_gt_summary_row {
-color: #FFFFFF;
-background-color: #222222;
-text-transform: inherit;
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
+#pkfcenqede .new_gt_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#qddsbafhds .new_gt_first_summary_row {
-border-top-style: solid;
-border-top-color: #D3D3D3;
+#pkfcenqede .new_gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_first_summary_row.thick {
-border-top-width: 2px;
+#pkfcenqede .new_gt_first_summary_row.thick {
+  border-top-width: 2px;
 }
 
-#qddsbafhds .new_gt_last_summary_row {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-style: solid;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
+#pkfcenqede .new_gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_grand_summary_row {
-color: #FFFFFF;
-background-color: #222222;
-text-transform: inherit;
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
+#pkfcenqede .new_gt_grand_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#qddsbafhds .new_gt_first_grand_summary_row {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-top-style: double;
-border-top-width: 6px;
-border-top-color: #D3D3D3;
+#pkfcenqede .new_gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_last_grand_summary_row_top {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-style: double;
-border-bottom-width: 6px;
-border-bottom-color: #D3D3D3;
+#pkfcenqede .new_gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_striped {
-background-color: rgba(128, 128, 128, 0.05);
+#pkfcenqede .new_gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
 }
 
-#qddsbafhds .new_gt_table_body {
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #D3D3D3;
-border-bottom-style: solid;
-border-bottom-width: 2px;
-border-bottom-color: #222222;
+#pkfcenqede .new_gt_table_body {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
 }
 
-#qddsbafhds .new_gt_footnotes {
-color: #FFFFFF;
-background-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
+#pkfcenqede .new_gt_footnotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_footnote {
-margin: 0px;
-font-size: 90%;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
+#pkfcenqede .new_gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#qddsbafhds .new_gt_sourcenotes {
-color: #FFFFFF;
-background-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
+#pkfcenqede .new_gt_sourcenotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
 }
 
-#qddsbafhds .new_gt_sourcenote {
-font-size: 12px;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
+#pkfcenqede .new_gt_sourcenote {
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#qddsbafhds .new_gt_left {
-text-align: left;
+#pkfcenqede .new_gt_left {
+  text-align: left;
 }
 
-#qddsbafhds .new_gt_center {
-text-align: center;
+#pkfcenqede .new_gt_center {
+  text-align: center;
 }
 
-#qddsbafhds .new_gt_right {
-text-align: right;
-font-variant-numeric: tabular-nums;
+#pkfcenqede .new_gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-#qddsbafhds .new_gt_font_normal {
-font-weight: normal;
+#pkfcenqede .new_gt_font_normal {
+  font-weight: normal;
 }
 
-#qddsbafhds .new_gt_font_bold {
-font-weight: bold;
+#pkfcenqede .new_gt_font_bold {
+  font-weight: bold;
 }
 
-#qddsbafhds .new_gt_font_italic {
-font-style: italic;
+#pkfcenqede .new_gt_font_italic {
+  font-style: italic;
 }
 
-#qddsbafhds .new_gt_super {
-font-size: 65%;
+#pkfcenqede .new_gt_super {
+  font-size: 65%;
 }
 
-#qddsbafhds .new_gt_footnote_marks {
-font-size: 75%;
-vertical-align: 0.4em;
-position: initial;
+#pkfcenqede .new_gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
 }
 
-#qddsbafhds .new_gt_asterisk {
-font-size: 100%;
-vertical-align: 0;
+#pkfcenqede .new_gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
 }
 
-#qddsbafhds .new_gt_indent_1 {
-text-indent: 5px;
+#pkfcenqede .new_gt_indent_1 {
+  text-indent: 5px;
 }
 
-#qddsbafhds .new_gt_indent_2 {
-text-indent: 10px;
+#pkfcenqede .new_gt_indent_2 {
+  text-indent: 10px;
 }
 
-#qddsbafhds .new_gt_indent_3 {
-text-indent: 15px;
+#pkfcenqede .new_gt_indent_3 {
+  text-indent: 15px;
 }
 
-#qddsbafhds .new_gt_indent_4 {
-text-indent: 20px;
+#pkfcenqede .new_gt_indent_4 {
+  text-indent: 20px;
 }
 
-#qddsbafhds .new_gt_indent_5 {
-text-indent: 25px;
+#pkfcenqede .new_gt_indent_5 {
+  text-indent: 25px;
 }
 
-#qddsbafhds tbody tr:last-child {
-border-bottom: 2px solid #ffffff00;
+#pkfcenqede tbody tr:last-child {
+  border-bottom: 2px solid #ffffff00;
 }
 </style>
-<table class="new_gt_table">
+  <table class="new_gt_table">
 <thead>
 <tr class="new_gt_heading">
-<td colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">2023 All Play records</td>
+<td colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">2023 All-Play Records</td>
 </tr>
 <tr class="new_gt_heading">
-<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Tony was the most unlucky in the league this season.</td>
+<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Tony was the most unlucky in the league this past season.</td>
 </tr>
 <tr class="new_gt_col_headings new_gt_spanner_row">
 <th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="2" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team">Team</th>
@@ -911,20 +910,15 @@ border-bottom: 2px solid #ffffff00;
 <td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">21%</td></tr>
 </tbody>
 
-<tfoot class="new_gt_footnotes">
-<tr>
-<td class="new_gt_footnote" colspan="8"> Data from Tony's personal league.</td>
-</tr>
-</tfoot>
 </table>
 </div>
 ```
-An 18% difference between my actual record and my all play record feels non-trivial. In fact, in comparing that level of under-performance to the prior seasons, I find that there were only 3 less fortunate outcomes-- -26% for team A in 2021, -23% for team E in 2019, and -21% for myself in 2020!
+A 16% difference between my actual record and my all play record feels non-trivial. In fact, in comparing that level of under-performance to the prior seasons, I find that there were only 6 less fortunate outcomes, including a -29% difference for myself in 2020!
 
 ```{r}
-#| label: all-play-all
+#| label: total-all-play
 #| include: false
-total_all_play_h2h_gt <- compared_all_play_records |> 
+total_all_play <- compared_all_play_records |> 
   dplyr::transmute(
     team,
     season = as.character(season),
@@ -951,7 +945,9 @@ total_all_play_h2h_gt <- compared_all_play_records |>
     values_from = w_prop_d,
     names_sort = TRUE
   ) |> 
-  dplyr::arrange(Total) |> 
+  dplyr::arrange(Total)
+
+total_all_play_gt <- total_all_play |> 
   gt::gt() |> 
   gt::cols_label(
     team ~ 'Team'
@@ -970,478 +966,475 @@ total_all_play_h2h_gt <- compared_all_play_records |>
     palette = 'PRGn'
   ) |> 
   gt::tab_header(
-    title = gt::md('Actual Win % - All Play Win %'),
-    subtitle = 'Tony has been the second unluckiest since 2018.'
-  ) |> 
-  gt::tab_footnote(
-    footnote = CAPTION_LABEL
+    title = 'Actual Win % - All Play Win %',
+    subtitle = 'Juan and Tony have had the most unfair schedules since 2018.'
   )
 
 gt::gtsave(
-  total_all_play_h2h_gt,
-  filename = file.path(PROJ_DIR, 'total-all-play-h2h.png')
+  total_all_play_gt,
+  filename = file.path(PROJ_DIR, 'total-all-play.png')
 )
 
-make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
+make_tbl_quarto_robust(total_all_play_gt) |> clipr::write_clip()
 ```
 
 ```{=html}
-<div id="jduazwbmbu" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+<div id="xltpwrubpj" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+  <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-#jduazwbmbu table {
-font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
+#xltpwrubpj table {
+  font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-#jduazwbmbu thead, #jduazwbmbu tbody, #jduazwbmbu tfoot, #jduazwbmbu tr, #jduazwbmbu td, #jduazwbmbu th {
-border-style: none;
+#xltpwrubpj thead, #xltpwrubpj tbody, #xltpwrubpj tfoot, #xltpwrubpj tr, #xltpwrubpj td, #xltpwrubpj th {
+  border-style: none;
 }
 
-#jduazwbmbu p {
-margin: 0;
-padding: 0;
+#xltpwrubpj p {
+  margin: 0;
+  padding: 0;
 }
 
-#jduazwbmbu .new_gt_table {
-display: table;
-border-collapse: collapse;
-line-height: normal;
-margin-left: auto;
-margin-right: auto;
-color: #FFFFFF;
-font-size: 16px;
-font-weight: 400;
-font-style: normal;
-background-color: #222222;
-width: auto;
-border-top-style: none;
-border-top-width: 3px;
-border-top-color: #A8A8A8;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #222222;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #222222;
+#xltpwrubpj .new_gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #222222;
+  width: auto;
+  border-top-style: none;
+  border-top-width: 3px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #222222;
 }
 
-#jduazwbmbu .new_gt_caption {
-padding-top: 4px;
-padding-bottom: 4px;
+#xltpwrubpj .new_gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
-#jduazwbmbu .new_gt_title {
-color: #FFFFFF;
-font-size: 125%;
-font-weight: initial;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-color: #222222;
-border-bottom-width: 0;
+#xltpwrubpj .new_gt_title {
+  color: #FFFFFF;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #222222;
+  border-bottom-width: 0;
 }
 
-#jduazwbmbu .new_gt_subtitle {
-color: #FFFFFF;
-font-size: 85%;
-font-weight: initial;
-padding-top: 3px;
-padding-bottom: 5px;
-padding-left: 5px;
-padding-right: 5px;
-border-top-color: #222222;
-border-top-width: 0;
+#xltpwrubpj .new_gt_subtitle {
+  color: #FFFFFF;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #222222;
+  border-top-width: 0;
 }
 
-#jduazwbmbu .new_gt_heading {
-background-color: #222222;
-text-align: left;
-border-bottom-color: #222222;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
+#xltpwrubpj .new_gt_heading {
+  background-color: #222222;
+  text-align: left;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_bottom_border {
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
+#xltpwrubpj .new_gt_bottom_border {
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_col_headings {
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #D3D3D3;
-border-bottom-style: solid;
-border-bottom-width: 3px;
-border-bottom-color: #FFFFFF;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
+#xltpwrubpj .new_gt_col_headings {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_col_heading {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: normal;
-text-transform: inherit;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: bottom;
-padding-top: 5px;
-padding-bottom: 6px;
-padding-left: 5px;
-padding-right: 5px;
-overflow-x: hidden;
+#xltpwrubpj .new_gt_col_heading {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
 }
 
-#jduazwbmbu .new_gt_column_spanner_outer {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: normal;
-text-transform: inherit;
-padding-top: 0;
-padding-bottom: 0;
-padding-left: 4px;
-padding-right: 4px;
+#xltpwrubpj .new_gt_column_spanner_outer {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
-#jduazwbmbu .new_gt_column_spanner_outer:first-child {
-padding-left: 0;
+#xltpwrubpj .new_gt_column_spanner_outer:first-child {
+  padding-left: 0;
 }
 
-#jduazwbmbu .new_gt_column_spanner_outer:last-child {
-padding-right: 0;
+#xltpwrubpj .new_gt_column_spanner_outer:last-child {
+  padding-right: 0;
 }
 
-#jduazwbmbu .new_gt_column_spanner {
-border-bottom-style: solid;
-border-bottom-width: 3px;
-border-bottom-color: #FFFFFF;
-vertical-align: bottom;
-padding-top: 5px;
-padding-bottom: 5px;
-overflow-x: hidden;
-display: inline-block;
-width: 100%;
+#xltpwrubpj .new_gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
 }
 
-#jduazwbmbu .new_gt_spanner_row {
-border-bottom-style: hidden;
+#xltpwrubpj .new_gt_spanner_row {
+  border-bottom-style: hidden;
 }
 
-#jduazwbmbu .new_gt_group_heading {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #222222;
-border-bottom-style: solid;
-border-bottom-width: 1px;
-border-bottom-color: #FFFFFF;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: middle;
-text-align: left;
+#xltpwrubpj .new_gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
 }
 
-#jduazwbmbu .new_gt_empty_group_heading {
-padding: 0.5px;
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #222222;
-border-bottom-style: solid;
-border-bottom-width: 1px;
-border-bottom-color: #FFFFFF;
-vertical-align: middle;
+#xltpwrubpj .new_gt_empty_group_heading {
+  padding: 0.5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: middle;
 }
 
-#jduazwbmbu .new_gt_from_md > :first-child {
-margin-top: 0;
+#xltpwrubpj .new_gt_from_md > :first-child {
+  margin-top: 0;
 }
 
-#jduazwbmbu .new_gt_from_md > :last-child {
-margin-bottom: 0;
+#xltpwrubpj .new_gt_from_md > :last-child {
+  margin-bottom: 0;
 }
 
-#jduazwbmbu .new_gt_row {
-padding-top: 7px;
-padding-bottom: 7px;
-padding-left: 5px;
-padding-right: 5px;
-margin: 10px;
-border-top-style: solid;
-border-top-width: 1px;
-border-top-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: middle;
-overflow-x: hidden;
+#xltpwrubpj .new_gt_row {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
 }
 
-#jduazwbmbu .new_gt_stub {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-right-style: solid;
-border-right-width: 0px;
-border-right-color: #FFFFFF;
-padding-left: 5px;
-padding-right: 5px;
+#xltpwrubpj .new_gt_stub {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 0px;
+  border-right-color: #FFFFFF;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#jduazwbmbu .new_gt_stub_row_group {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-right-style: solid;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
-padding-left: 5px;
-padding-right: 5px;
-vertical-align: top;
+#xltpwrubpj .new_gt_stub_row_group {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
 }
 
-#jduazwbmbu .new_gt_row_group_first td {
-border-top-width: 2px;
+#xltpwrubpj .new_gt_row_group_first td {
+  border-top-width: 2px;
 }
 
-#jduazwbmbu .new_gt_row_group_first th {
-border-top-width: 2px;
+#xltpwrubpj .new_gt_row_group_first th {
+  border-top-width: 2px;
 }
 
-#jduazwbmbu .new_gt_summary_row {
-color: #FFFFFF;
-background-color: #222222;
-text-transform: inherit;
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
+#xltpwrubpj .new_gt_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#jduazwbmbu .new_gt_first_summary_row {
-border-top-style: solid;
-border-top-color: #D3D3D3;
+#xltpwrubpj .new_gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_first_summary_row.thick {
-border-top-width: 2px;
+#xltpwrubpj .new_gt_first_summary_row.thick {
+  border-top-width: 2px;
 }
 
-#jduazwbmbu .new_gt_last_summary_row {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-style: solid;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
+#xltpwrubpj .new_gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_grand_summary_row {
-color: #FFFFFF;
-background-color: #222222;
-text-transform: inherit;
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
+#xltpwrubpj .new_gt_grand_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#jduazwbmbu .new_gt_first_grand_summary_row {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-top-style: double;
-border-top-width: 6px;
-border-top-color: #D3D3D3;
+#xltpwrubpj .new_gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_last_grand_summary_row_top {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-style: double;
-border-bottom-width: 6px;
-border-bottom-color: #D3D3D3;
+#xltpwrubpj .new_gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_striped {
-background-color: rgba(128, 128, 128, 0.05);
+#xltpwrubpj .new_gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
 }
 
-#jduazwbmbu .new_gt_table_body {
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #D3D3D3;
-border-bottom-style: solid;
-border-bottom-width: 2px;
-border-bottom-color: #222222;
+#xltpwrubpj .new_gt_table_body {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
 }
 
-#jduazwbmbu .new_gt_footnotes {
-color: #FFFFFF;
-background-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
+#xltpwrubpj .new_gt_footnotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_footnote {
-margin: 0px;
-font-size: 90%;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
+#xltpwrubpj .new_gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#jduazwbmbu .new_gt_sourcenotes {
-color: #FFFFFF;
-background-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
+#xltpwrubpj .new_gt_sourcenotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
 }
 
-#jduazwbmbu .new_gt_sourcenote {
-font-size: 12px;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
+#xltpwrubpj .new_gt_sourcenote {
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#jduazwbmbu .new_gt_left {
-text-align: left;
+#xltpwrubpj .new_gt_left {
+  text-align: left;
 }
 
-#jduazwbmbu .new_gt_center {
-text-align: center;
+#xltpwrubpj .new_gt_center {
+  text-align: center;
 }
 
-#jduazwbmbu .new_gt_right {
-text-align: right;
-font-variant-numeric: tabular-nums;
+#xltpwrubpj .new_gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-#jduazwbmbu .new_gt_font_normal {
-font-weight: normal;
+#xltpwrubpj .new_gt_font_normal {
+  font-weight: normal;
 }
 
-#jduazwbmbu .new_gt_font_bold {
-font-weight: bold;
+#xltpwrubpj .new_gt_font_bold {
+  font-weight: bold;
 }
 
-#jduazwbmbu .new_gt_font_italic {
-font-style: italic;
+#xltpwrubpj .new_gt_font_italic {
+  font-style: italic;
 }
 
-#jduazwbmbu .new_gt_super {
-font-size: 65%;
+#xltpwrubpj .new_gt_super {
+  font-size: 65%;
 }
 
-#jduazwbmbu .new_gt_footnote_marks {
-font-size: 75%;
-vertical-align: 0.4em;
-position: initial;
+#xltpwrubpj .new_gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
 }
 
-#jduazwbmbu .new_gt_asterisk {
-font-size: 100%;
-vertical-align: 0;
+#xltpwrubpj .new_gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
 }
 
-#jduazwbmbu .new_gt_indent_1 {
-text-indent: 5px;
+#xltpwrubpj .new_gt_indent_1 {
+  text-indent: 5px;
 }
 
-#jduazwbmbu .new_gt_indent_2 {
-text-indent: 10px;
+#xltpwrubpj .new_gt_indent_2 {
+  text-indent: 10px;
 }
 
-#jduazwbmbu .new_gt_indent_3 {
-text-indent: 15px;
+#xltpwrubpj .new_gt_indent_3 {
+  text-indent: 15px;
 }
 
-#jduazwbmbu .new_gt_indent_4 {
-text-indent: 20px;
+#xltpwrubpj .new_gt_indent_4 {
+  text-indent: 20px;
 }
 
-#jduazwbmbu .new_gt_indent_5 {
-text-indent: 25px;
+#xltpwrubpj .new_gt_indent_5 {
+  text-indent: 25px;
 }
 
-#jduazwbmbu tbody tr:last-child {
-border-bottom: 2px solid #ffffff00;
+#xltpwrubpj tbody tr:last-child {
+  border-bottom: 2px solid #ffffff00;
 }
 </style>
-<table class="new_gt_table">
+  <table class="new_gt_table">
 <thead>
 <tr class="new_gt_heading">
 <td colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">Actual Win % - All Play Win %</td>
 </tr>
 <tr class="new_gt_heading">
-<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Tony has been the second unluckiest since 2018.</td>
+<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Juan and Tony have had the most unfair schedules since 2018.</td>
 </tr>
 <tr class="new_gt_col_headings">
 <th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team">Team</th>
@@ -1455,7 +1448,7 @@ border-bottom: 2px solid #ffffff00;
 </tr>
 </thead>
 <tbody class="new_gt_table_body">
-<tr><td headers="team" class="new_gt_row new_gt_left">A</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Juan</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(141,83,156,0.9); color: #FFFFFF;">−12%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(110,178,110,0.9); color: #FFFFFF;">15%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(241,233,241,0.9); color: #000000;">−4%</td>
@@ -1471,7 +1464,7 @@ border-bottom: 2px solid #ffffff00;
 <td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(227,242,223,0.9); color: #000000;">5%</td>
 <td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−16%</td>
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(130,64,144,0.9); color: #FFFFFF;">−6%</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">C</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Enrique</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(202,232,196,0.9); color: #000000;">6%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(141,82,156,0.9); color: #FFFFFF;">−19%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(189,159,205,0.9); color: #000000;">−17%</td>
@@ -1479,7 +1472,7 @@ border-bottom: 2px solid #ffffff00;
 <td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(224,242,219,0.9); color: #000000;">6%</td>
 <td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(230,243,227,0.9); color: #000000;">4%</td>
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(209,183,217,0.9); color: #000000;">−3%</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">I</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Brandon</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(241,233,241,0.9); color: #000000;">−2%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(214,190,221,0.9); color: #000000;">−9%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(172,216,166,0.9); color: #000000;">6%</td>
@@ -1487,7 +1480,7 @@ border-bottom: 2px solid #ffffff00;
 <td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(234,244,231,0.9); color: #000000;">3%</td>
 <td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(233,215,234,0.9); color: #000000;">−5%</td>
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(209,183,217,0.9); color: #000000;">−3%</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">F</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Drake</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(237,245,235,0.9); color: #000000;">2%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(218,240,213,0.9); color: #000000;">6%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(134,195,129,0.9); color: #000000;">8%</td>
@@ -1495,7 +1488,7 @@ border-bottom: 2px solid #ffffff00;
 <td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(238,226,238,0.9); color: #000000;">−4%</td>
 <td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF;">−15%</td>
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(228,243,224,0.9); color: #000000;">1%</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">J</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Alan</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−14%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">20%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(192,226,185,0.9); color: #000000;">6%</td>
@@ -1503,7 +1496,7 @@ border-bottom: 2px solid #ffffff00;
 <td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(161,117,179,0.9); color: #FFFFFF;">−15%</td>
 <td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(220,241,215,0.9); color: #000000;">6%</td>
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(226,242,222,0.9); color: #000000;">1%</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">D</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Luis</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">17%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(177,144,197,0.9); color: #FFFFFF;">−14%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">13%</td>
@@ -1511,7 +1504,7 @@ border-bottom: 2px solid #ffffff00;
 <td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−20%</td>
 <td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(157,207,152,0.9); color: #000000;">12%</td>
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(220,241,215,0.9); color: #000000;">2%</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">B</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Manny</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(227,242,223,0.9); color: #000000;">4%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(235,244,232,0.9); color: #000000;">3%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(241,246,239,0.9); color: #000000;">1%</td>
@@ -1519,7 +1512,7 @@ border-bottom: 2px solid #ffffff00;
 <td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(174,140,194,0.9); color: #FFFFFF;">−13%</td>
 <td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">21%</td>
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(213,238,207,0.9); color: #000000;">2%</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">E</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew E.</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(142,199,137,0.9); color: #000000;">10%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−21%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(53,135,69,0.9); color: #FFFFFF;">12%</td>
@@ -1527,7 +1520,7 @@ border-bottom: 2px solid #ffffff00;
 <td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(177,218,171,0.9); color: #000000;">10%</td>
 <td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(217,240,211,0.9); color: #000000;">7%</td>
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(59,139,73,0.9); color: #FFFFFF;">6%</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">H</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew L.</td>
 <td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(130,63,144,0.9); color: #FFFFFF;">−13%</td>
 <td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(148,202,143,0.9); color: #000000;">12%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(228,243,224,0.9); color: #000000;">3%</td>
@@ -1537,15 +1530,10 @@ border-bottom: 2px solid #ffffff00;
 <td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">6%</td></tr>
 </tbody>
 
-<tfoot class="new_gt_footnotes">
-<tr>
-<td class="new_gt_footnote" colspan="8"> Data from Tony's personal league.</td>
-</tr>
-</tfoot>
 </table>
 </div>
 ```
-Teams E and H have been fairly fortunate, only facing one season in the past 6 where they ended up with a record that was worse than their all play record.
+Andrew E. and Andrew L. have been fairly fortunate, only facing one season in the past 6 where they ended up with a record that was worse than their all play record.
 
 ```{r}
 #| label: compared-all-play-save
@@ -1554,7 +1542,7 @@ qs::qsave(compared_all_play_records, file.path(PROJ_DIR, 'compared_all_play_reco
 
 ```{r}
 #| label: compared-all-play-read
-compared_all_play_records <- qs::read(file.path(PROJ_DIR, 'compared_all_play_records.qs'))
+compared_all_play_records <- qs::qread(file.path(PROJ_DIR, 'compared_all_play_records.qs'))
 ```
 
 ```{r}
@@ -1566,9 +1554,15 @@ round(quantile(compared_all_play_records$w_prop_d, c(0.975, 0.025)), 3)
 
 The top and bottom 2.5th percentiles of season-long actual win % minus all play win % are about +21% and -23% respectively. This translates to about ±3 wins in leagues with a 14 game season. So, the "back-of-the-napkin" take-away here is that you could be winning or losing 3 more games due to your schedule, in the most extreme cases.
 
-Overall, it's interesting to see that the under- and over-performance doesn't quite level out even over the course of 6 seasons. (How has Team H consistently gotten favorable schedules?!) Surely we'd see this even out over more and more seasons, but it's noteworthy that even 6 seasons may not be sufficient to achieve long-run schedule fairness.
+Overall, it's interesting to see that the under- and over-performance doesn't quite level out even over the course of 6 seasons. (How has Team H consistently gotten favorable schedules?!) Surely we'd see this even out over more and more seasons, but it's noteworthy that even 6 seasons may not be sufficient to achieve long-run schedule schedule equality
 
 ### Actual vs. projected points
+
+Another way to look at whether a team was "lucky" or not is to compare the points that they scored versus what they were projected to score. [^2] Further, we should look to see whether one's opponents are scoring more than they're projected to score, as this represents another source of variance in scoring. In total, the sum of the differences between one's own actual and projected scores and the difference with the opponents' actual and projected scores presents another way of quantifying misfortune.
+
+[^2]: In most cases, I'd assume that a negative difference between actual and projected scores reflects misfortune (e.g. injury, unexpected lack of playing time), although one can argue that it reflects poor management by the user, i.e. "You should have known not to start that running back against the best rushing defense!". However, projected points should theoretically capture matchup difficulty, so this seems like a weak argument in general.
+
+I would generally expect this measure to be correlated with the rankings of teams by actual win % minus all-play win %, assuming the projected scores are reasonably well calibrated.
 
 ```{r}
 #| label: projected-scores
@@ -1616,10 +1610,6 @@ season_points_above_projected <- team_scores |>
 latest_season_points_above_projected <- season_points_above_projected |> 
   dplyr::filter(season == LATEST_SEASON) 
 
-tony_position <- latest_season_points_above_projected |> 
-  dplyr::filter(team == 'Tony') |> 
-  dplyr::pull(projected_underperformance_rank)
-
 latest_season_points_above_projected_gt <- latest_season_points_above_projected |> 
   dplyr::select(
     team,
@@ -1649,10 +1639,7 @@ latest_season_points_above_projected_gt <- latest_season_points_above_projected 
   ) |> 
   gt::tab_header(
     title = glue::glue('{LATEST_SEASON} Avg. Weekly Actual - Projected Points'),
-    subtitle = glue::glue('Tony was the {scales::ordinal(tony_position)} unluckiest this season.')
-  ) |> 
-  gt::tab_footnote(
-    footnote = CAPTION_LABEL
+    subtitle = gt::html(glue::glue('Brandon was the most misfortunate with performance compared to<br/>projection this past season.'))
   )
 
 gt::gtsave(
@@ -1663,462 +1650,462 @@ make_tbl_quarto_robust(latest_season_points_above_projected_gt) |> clipr::write_
 ```
 
 ```{=html}
-<div id="ywurrtmqnx" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+<div id="xbvegrdkkx" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+  <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-#ywurrtmqnx table {
-font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
+#xbvegrdkkx table {
+  font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-#ywurrtmqnx thead, #ywurrtmqnx tbody, #ywurrtmqnx tfoot, #ywurrtmqnx tr, #ywurrtmqnx td, #ywurrtmqnx th {
-border-style: none;
+#xbvegrdkkx thead, #xbvegrdkkx tbody, #xbvegrdkkx tfoot, #xbvegrdkkx tr, #xbvegrdkkx td, #xbvegrdkkx th {
+  border-style: none;
 }
 
-#ywurrtmqnx p {
-margin: 0;
-padding: 0;
+#xbvegrdkkx p {
+  margin: 0;
+  padding: 0;
 }
 
-#ywurrtmqnx .new_gt_table {
-display: table;
-border-collapse: collapse;
-line-height: normal;
-margin-left: auto;
-margin-right: auto;
-color: #FFFFFF;
-font-size: 16px;
-font-weight: 400;
-font-style: normal;
-background-color: #222222;
-width: auto;
-border-top-style: none;
-border-top-width: 3px;
-border-top-color: #A8A8A8;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #222222;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #222222;
+#xbvegrdkkx .new_gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #222222;
+  width: auto;
+  border-top-style: none;
+  border-top-width: 3px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #222222;
 }
 
-#ywurrtmqnx .new_gt_caption {
-padding-top: 4px;
-padding-bottom: 4px;
+#xbvegrdkkx .new_gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
-#ywurrtmqnx .new_gt_title {
-color: #FFFFFF;
-font-size: 125%;
-font-weight: initial;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-color: #222222;
-border-bottom-width: 0;
+#xbvegrdkkx .new_gt_title {
+  color: #FFFFFF;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #222222;
+  border-bottom-width: 0;
 }
 
-#ywurrtmqnx .new_gt_subtitle {
-color: #FFFFFF;
-font-size: 85%;
-font-weight: initial;
-padding-top: 3px;
-padding-bottom: 5px;
-padding-left: 5px;
-padding-right: 5px;
-border-top-color: #222222;
-border-top-width: 0;
+#xbvegrdkkx .new_gt_subtitle {
+  color: #FFFFFF;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #222222;
+  border-top-width: 0;
 }
 
-#ywurrtmqnx .new_gt_heading {
-background-color: #222222;
-text-align: left;
-border-bottom-color: #222222;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
+#xbvegrdkkx .new_gt_heading {
+  background-color: #222222;
+  text-align: left;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_bottom_border {
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
+#xbvegrdkkx .new_gt_bottom_border {
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_col_headings {
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #D3D3D3;
-border-bottom-style: solid;
-border-bottom-width: 3px;
-border-bottom-color: #FFFFFF;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
+#xbvegrdkkx .new_gt_col_headings {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_col_heading {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: normal;
-text-transform: inherit;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: bottom;
-padding-top: 5px;
-padding-bottom: 6px;
-padding-left: 5px;
-padding-right: 5px;
-overflow-x: hidden;
+#xbvegrdkkx .new_gt_col_heading {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
 }
 
-#ywurrtmqnx .new_gt_column_spanner_outer {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: normal;
-text-transform: inherit;
-padding-top: 0;
-padding-bottom: 0;
-padding-left: 4px;
-padding-right: 4px;
+#xbvegrdkkx .new_gt_column_spanner_outer {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
-#ywurrtmqnx .new_gt_column_spanner_outer:first-child {
-padding-left: 0;
+#xbvegrdkkx .new_gt_column_spanner_outer:first-child {
+  padding-left: 0;
 }
 
-#ywurrtmqnx .new_gt_column_spanner_outer:last-child {
-padding-right: 0;
+#xbvegrdkkx .new_gt_column_spanner_outer:last-child {
+  padding-right: 0;
 }
 
-#ywurrtmqnx .new_gt_column_spanner {
-border-bottom-style: solid;
-border-bottom-width: 3px;
-border-bottom-color: #FFFFFF;
-vertical-align: bottom;
-padding-top: 5px;
-padding-bottom: 5px;
-overflow-x: hidden;
-display: inline-block;
-width: 100%;
+#xbvegrdkkx .new_gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
 }
 
-#ywurrtmqnx .new_gt_spanner_row {
-border-bottom-style: hidden;
+#xbvegrdkkx .new_gt_spanner_row {
+  border-bottom-style: hidden;
 }
 
-#ywurrtmqnx .new_gt_group_heading {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #222222;
-border-bottom-style: solid;
-border-bottom-width: 1px;
-border-bottom-color: #FFFFFF;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: middle;
-text-align: left;
+#xbvegrdkkx .new_gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
 }
 
-#ywurrtmqnx .new_gt_empty_group_heading {
-padding: 0.5px;
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #222222;
-border-bottom-style: solid;
-border-bottom-width: 1px;
-border-bottom-color: #FFFFFF;
-vertical-align: middle;
+#xbvegrdkkx .new_gt_empty_group_heading {
+  padding: 0.5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: middle;
 }
 
-#ywurrtmqnx .new_gt_from_md > :first-child {
-margin-top: 0;
+#xbvegrdkkx .new_gt_from_md > :first-child {
+  margin-top: 0;
 }
 
-#ywurrtmqnx .new_gt_from_md > :last-child {
-margin-bottom: 0;
+#xbvegrdkkx .new_gt_from_md > :last-child {
+  margin-bottom: 0;
 }
 
-#ywurrtmqnx .new_gt_row {
-padding-top: 7px;
-padding-bottom: 7px;
-padding-left: 5px;
-padding-right: 5px;
-margin: 10px;
-border-top-style: solid;
-border-top-width: 1px;
-border-top-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 1px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 1px;
-border-right-color: #D3D3D3;
-vertical-align: middle;
-overflow-x: hidden;
+#xbvegrdkkx .new_gt_row {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
 }
 
-#ywurrtmqnx .new_gt_stub {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-right-style: solid;
-border-right-width: 0px;
-border-right-color: #FFFFFF;
-padding-left: 5px;
-padding-right: 5px;
+#xbvegrdkkx .new_gt_stub {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 0px;
+  border-right-color: #FFFFFF;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#ywurrtmqnx .new_gt_stub_row_group {
-color: #FFFFFF;
-background-color: #222222;
-font-size: 100%;
-font-weight: initial;
-text-transform: inherit;
-border-right-style: solid;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
-padding-left: 5px;
-padding-right: 5px;
-vertical-align: top;
+#xbvegrdkkx .new_gt_stub_row_group {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
 }
 
-#ywurrtmqnx .new_gt_row_group_first td {
-border-top-width: 2px;
+#xbvegrdkkx .new_gt_row_group_first td {
+  border-top-width: 2px;
 }
 
-#ywurrtmqnx .new_gt_row_group_first th {
-border-top-width: 2px;
+#xbvegrdkkx .new_gt_row_group_first th {
+  border-top-width: 2px;
 }
 
-#ywurrtmqnx .new_gt_summary_row {
-color: #FFFFFF;
-background-color: #222222;
-text-transform: inherit;
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
+#xbvegrdkkx .new_gt_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#ywurrtmqnx .new_gt_first_summary_row {
-border-top-style: solid;
-border-top-color: #D3D3D3;
+#xbvegrdkkx .new_gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_first_summary_row.thick {
-border-top-width: 2px;
+#xbvegrdkkx .new_gt_first_summary_row.thick {
+  border-top-width: 2px;
 }
 
-#ywurrtmqnx .new_gt_last_summary_row {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-style: solid;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
+#xbvegrdkkx .new_gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_grand_summary_row {
-color: #FFFFFF;
-background-color: #222222;
-text-transform: inherit;
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
+#xbvegrdkkx .new_gt_grand_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#ywurrtmqnx .new_gt_first_grand_summary_row {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-top-style: double;
-border-top-width: 6px;
-border-top-color: #D3D3D3;
+#xbvegrdkkx .new_gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_last_grand_summary_row_top {
-padding-top: 8px;
-padding-bottom: 8px;
-padding-left: 5px;
-padding-right: 5px;
-border-bottom-style: double;
-border-bottom-width: 6px;
-border-bottom-color: #D3D3D3;
+#xbvegrdkkx .new_gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_striped {
-background-color: rgba(128, 128, 128, 0.05);
+#xbvegrdkkx .new_gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ywurrtmqnx .new_gt_table_body {
-border-top-style: none;
-border-top-width: 2px;
-border-top-color: #D3D3D3;
-border-bottom-style: solid;
-border-bottom-width: 2px;
-border-bottom-color: #222222;
+#xbvegrdkkx .new_gt_table_body {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
 }
 
-#ywurrtmqnx .new_gt_footnotes {
-color: #FFFFFF;
-background-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
+#xbvegrdkkx .new_gt_footnotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_footnote {
-margin: 0px;
-font-size: 90%;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
+#xbvegrdkkx .new_gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#ywurrtmqnx .new_gt_sourcenotes {
-color: #FFFFFF;
-background-color: #222222;
-border-bottom-style: none;
-border-bottom-width: 2px;
-border-bottom-color: #D3D3D3;
-border-left-style: none;
-border-left-width: 2px;
-border-left-color: #D3D3D3;
-border-right-style: none;
-border-right-width: 2px;
-border-right-color: #D3D3D3;
+#xbvegrdkkx .new_gt_sourcenotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
 }
 
-#ywurrtmqnx .new_gt_sourcenote {
-font-size: 12px;
-padding-top: 4px;
-padding-bottom: 4px;
-padding-left: 5px;
-padding-right: 5px;
+#xbvegrdkkx .new_gt_sourcenote {
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
 }
 
-#ywurrtmqnx .new_gt_left {
-text-align: left;
+#xbvegrdkkx .new_gt_left {
+  text-align: left;
 }
 
-#ywurrtmqnx .new_gt_center {
-text-align: center;
+#xbvegrdkkx .new_gt_center {
+  text-align: center;
 }
 
-#ywurrtmqnx .new_gt_right {
-text-align: right;
-font-variant-numeric: tabular-nums;
+#xbvegrdkkx .new_gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-#ywurrtmqnx .new_gt_font_normal {
-font-weight: normal;
+#xbvegrdkkx .new_gt_font_normal {
+  font-weight: normal;
 }
 
-#ywurrtmqnx .new_gt_font_bold {
-font-weight: bold;
+#xbvegrdkkx .new_gt_font_bold {
+  font-weight: bold;
 }
 
-#ywurrtmqnx .new_gt_font_italic {
-font-style: italic;
+#xbvegrdkkx .new_gt_font_italic {
+  font-style: italic;
 }
 
-#ywurrtmqnx .new_gt_super {
-font-size: 65%;
+#xbvegrdkkx .new_gt_super {
+  font-size: 65%;
 }
 
-#ywurrtmqnx .new_gt_footnote_marks {
-font-size: 75%;
-vertical-align: 0.4em;
-position: initial;
+#xbvegrdkkx .new_gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
 }
 
-#ywurrtmqnx .new_gt_asterisk {
-font-size: 100%;
-vertical-align: 0;
+#xbvegrdkkx .new_gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
 }
 
-#ywurrtmqnx .new_gt_indent_1 {
-text-indent: 5px;
+#xbvegrdkkx .new_gt_indent_1 {
+  text-indent: 5px;
 }
 
-#ywurrtmqnx .new_gt_indent_2 {
-text-indent: 10px;
+#xbvegrdkkx .new_gt_indent_2 {
+  text-indent: 10px;
 }
 
-#ywurrtmqnx .new_gt_indent_3 {
-text-indent: 15px;
+#xbvegrdkkx .new_gt_indent_3 {
+  text-indent: 15px;
 }
 
-#ywurrtmqnx .new_gt_indent_4 {
-text-indent: 20px;
+#xbvegrdkkx .new_gt_indent_4 {
+  text-indent: 20px;
 }
 
-#ywurrtmqnx .new_gt_indent_5 {
-text-indent: 25px;
+#xbvegrdkkx .new_gt_indent_5 {
+  text-indent: 25px;
 }
 
-#ywurrtmqnx tbody tr:last-child {
-border-bottom: 2px solid #ffffff00;
+#xbvegrdkkx tbody tr:last-child {
+  border-bottom: 2px solid #ffffff00;
 }
 </style>
-<table class="new_gt_table">
+  <table class="new_gt_table">
 <thead>
 <tr class="new_gt_heading">
 <td colspan="4" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">2023 Avg. Weekly Actual - Projected Points</td>
 </tr>
 <tr class="new_gt_heading">
-<td colspan="4" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Tony was the 3rd unluckiest this season.</td>
+<td colspan="4" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Brandon was the most misfortunate with performance compared to<br/>projection this past season.</td>
 </tr>
 <tr class="new_gt_col_headings">
 <th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team">Team</th>
@@ -2128,11 +2115,11 @@ border-bottom: 2px solid #ffffff00;
 </tr>
 </thead>
 <tbody class="new_gt_table_body">
-<tr><td headers="team" class="new_gt_row new_gt_left">I</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Brandon</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−11.1</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(123,195,188,0.9); color: #000000;">4.7</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−15.8</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">F</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Drake</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(231,203,143,0.9); color: #000000;">−5.7</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(64,152,144,0.9); color: #FFFFFF;">6.4</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(193,148,74,0.9); color: #FFFFFF;">−12.1</td></tr>
@@ -2140,41 +2127,36 @@ border-bottom: 2px solid #ffffff00;
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,236,208,0.9); color: #000000;">−2.8</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">8.2</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(210,170,93,0.9); color: #000000;">−11.0</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">A</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Juan</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(182,225,219,0.9); color: #000000;">2.0</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(47,135,127,0.9); color: #FFFFFF;">7.0</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(246,233,198,0.9); color: #000000;">−5.0</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">J</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Alan</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,242,230,0.9); color: #000000;">−1.2</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,240,224,0.9); color: #000000;">−2.1</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(237,244,243,0.9); color: #000000;">0.9</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">H</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew L.</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(212,238,234,0.9); color: #000000;">1.3</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,242,231,0.9); color: #000000;">−1.5</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(218,239,236,0.9); color: #000000;">2.8</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">D</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Luis</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,238,215,0.9); color: #000000;">−2.2</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(227,196,131,0.9); color: #000000;">−8.2</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(166,217,211,0.9); color: #000000;">6.0</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">C</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Enrique</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(121,194,187,0.9); color: #000000;">3.0</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(238,215,166,0.9); color: #000000;">−6.4</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(84,173,165,0.9); color: #FFFFFF;">9.4</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">B</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Manny</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(246,233,197,0.9); color: #000000;">−3.5</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−14.7</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(55,143,135,0.9); color: #FFFFFF;">11.2</td></tr>
-<tr><td headers="team" class="new_gt_row new_gt_left">E</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew E.</td>
 <td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">5.2</td>
 <td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(226,194,128,0.9); color: #000000;">−8.4</td>
 <td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">13.6</td></tr>
 </tbody>
 
-<tfoot class="new_gt_footnotes">
-<tr>
-<td class="new_gt_footnote" colspan="4"> Data from Tony's personal league.</td>
-</tr>
-</tfoot>
 </table>
 </div>
 ```
@@ -2184,7 +2166,7 @@ BAD_PROJECTED_POINTS_SEASONS <- c(2018)
 filt_season_points_above_projected <- season_points_above_projected |> 
   dplyr::filter(!(season %in% BAD_PROJECTED_POINTS_SEASONS))
 
-filt_season_points_above_projected |> 
+total_season_points_above_projected <- filt_season_points_above_projected |> 
   dplyr::transmute(
     season = as.character(season),
     team,
@@ -2210,7 +2192,9 @@ filt_season_points_above_projected |>
     values_from = total_d_per_game,
     names_sort = TRUE
   ) |> 
-  dplyr::arrange(Total) |> 
+  dplyr::arrange(Total)
+
+total_season_points_above_projected_gt <- total_season_points_above_projected |> 
   gt::gt() |> 
   gt::cols_label(
     team ~ 'Team'
@@ -2230,17 +2214,564 @@ filt_season_points_above_projected |>
   ) |> 
   gt::tab_header(
     title = gt::html("Avg. Weekly Actual - Projected Points<br/>Minus Opponent's Actual - Projected Points"),
-    subtitle = 'Tony has mostly over-performed projections, with the exception of 2023.'
+    subtitle = 'Drake has under-performed projections the most on average since 2018.'
   ) |> 
   gt::tab_footnote(
-    footnote = CAPTION_LABEL
-  ) |> 
-  gt::tab_footnote(
-    locations = cells_column_labels(Total),
     footnote = '2018 season excluded due to miscalibrated projected points.'
   )
+
+gt::gtsave(
+  total_season_points_above_projected_gt,
+  filename = file.path(PROJ_DIR, 'total-points-above-projected.png')
+)
+
+make_tbl_quarto_robust(total_season_points_above_projected_gt) |> clipr::write_clip()
 ```
 
+```{=html}
+<div id="flqlchvcax" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+  <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#flqlchvcax table {
+  font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#flqlchvcax thead, #flqlchvcax tbody, #flqlchvcax tfoot, #flqlchvcax tr, #flqlchvcax td, #flqlchvcax th {
+  border-style: none;
+}
+
+#flqlchvcax p {
+  margin: 0;
+  padding: 0;
+}
+
+#flqlchvcax .new_gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #222222;
+  width: auto;
+  border-top-style: none;
+  border-top-width: 3px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #222222;
+}
+
+#flqlchvcax .new_gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#flqlchvcax .new_gt_title {
+  color: #FFFFFF;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #222222;
+  border-bottom-width: 0;
+}
+
+#flqlchvcax .new_gt_subtitle {
+  color: #FFFFFF;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #222222;
+  border-top-width: 0;
+}
+
+#flqlchvcax .new_gt_heading {
+  background-color: #222222;
+  text-align: left;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_bottom_border {
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_col_headings {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_col_heading {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#flqlchvcax .new_gt_column_spanner_outer {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#flqlchvcax .new_gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#flqlchvcax .new_gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#flqlchvcax .new_gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#flqlchvcax .new_gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#flqlchvcax .new_gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#flqlchvcax .new_gt_empty_group_heading {
+  padding: 0.5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: middle;
+}
+
+#flqlchvcax .new_gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#flqlchvcax .new_gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#flqlchvcax .new_gt_row {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#flqlchvcax .new_gt_stub {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 0px;
+  border-right-color: #FFFFFF;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_stub_row_group {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#flqlchvcax .new_gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#flqlchvcax .new_gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#flqlchvcax .new_gt_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#flqlchvcax .new_gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_grand_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#flqlchvcax .new_gt_table_body {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+}
+
+#flqlchvcax .new_gt_footnotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_sourcenotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_sourcenote {
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_left {
+  text-align: left;
+}
+
+#flqlchvcax .new_gt_center {
+  text-align: center;
+}
+
+#flqlchvcax .new_gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#flqlchvcax .new_gt_font_normal {
+  font-weight: normal;
+}
+
+#flqlchvcax .new_gt_font_bold {
+  font-weight: bold;
+}
+
+#flqlchvcax .new_gt_font_italic {
+  font-style: italic;
+}
+
+#flqlchvcax .new_gt_super {
+  font-size: 65%;
+}
+
+#flqlchvcax .new_gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#flqlchvcax .new_gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#flqlchvcax .new_gt_indent_1 {
+  text-indent: 5px;
+}
+
+#flqlchvcax .new_gt_indent_2 {
+  text-indent: 10px;
+}
+
+#flqlchvcax .new_gt_indent_3 {
+  text-indent: 15px;
+}
+
+#flqlchvcax .new_gt_indent_4 {
+  text-indent: 20px;
+}
+
+#flqlchvcax .new_gt_indent_5 {
+  text-indent: 25px;
+}
+
+#flqlchvcax tbody tr:last-child {
+  border-bottom: 2px solid #ffffff00;
+}
+</style>
+  <table class="new_gt_table">
+<thead>
+<tr class="new_gt_heading">
+<td colspan="7" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">Avg. Weekly Actual - Projected Points<br/>Minus Opponent's Actual - Projected Points</td>
+</tr>
+<tr class="new_gt_heading">
+<td colspan="7" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Drake has under-performed projections the most on average since 2018.</td>
+</tr>
+<tr class="new_gt_col_headings">
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team">Team</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2019">2019</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2020">2020</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2021">2021</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2022">2022</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2023">2023</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Total&lt;span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;&gt;&lt;sup&gt;1&lt;/sup&gt;&lt;/span&gt;">Total<span class="new_gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr><td headers="team" class="new_gt_row new_gt_left">Drake</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(158,103,33,0.9); color: #FFFFFF;">−13.2</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(214,238,234,0.9); color: #000000;">5.0</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(193,148,74,0.9); color: #FFFFFF;">−5.8</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(247,244,238,0.9); color: #000000;">−0.3</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(193,148,74,0.9); color: #FFFFFF;">−12.1</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−5.4</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Brandon</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−14.3</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(233,243,242,0.9); color: #000000;">2.1</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(67,155,147,0.9); color: #FFFFFF;">7.0</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(196,152,77,0.9); color: #FFFFFF;">−4.2</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−15.8</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(157,102,32,0.9); color: #FFFFFF;">−5.0</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Juan</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(219,239,236,0.9); color: #000000;">3.5</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−17.3</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(173,122,51,0.9); color: #FFFFFF;">−6.5</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">6.9</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(246,233,198,0.9); color: #000000;">−5.0</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(218,182,107,0.9); color: #000000;">−3.5</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Luis</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(224,192,125,0.9); color: #000000;">−8.3</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(187,140,66,0.9); color: #FFFFFF;">−13.8</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(112,190,182,0.9); color: #000000;">5.5</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−5.5</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(166,217,211,0.9); color: #000000;">6.0</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(231,203,144,0.9); color: #000000;">−2.8</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew E.</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(247,240,224,0.9); color: #000000;">−2.1</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(235,211,157,0.9); color: #000000;">−8.1</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−7.5</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(204,235,231,0.9); color: #000000;">2.1</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">13.6</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(247,246,243,0.9); color: #000000;">−0.1</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Enrique</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(207,236,232,0.9); color: #000000;">5.0</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(237,244,243,0.9); color: #000000;">1.6</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(246,232,196,0.9); color: #000000;">−2.5</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(247,240,224,0.9); color: #000000;">−0.8</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(84,173,165,0.9); color: #FFFFFF;">9.4</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(144,205,198,0.9); color: #000000;">2.5</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Tony</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">17.7</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(236,244,243,0.9); color: #000000;">1.7</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(120,193,186,0.9); color: #000000;">5.3</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(216,239,235,0.9); color: #000000;">1.5</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(210,170,93,0.9); color: #000000;">−11.0</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(134,200,193,0.9); color: #000000;">2.6</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Manny</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(247,242,228,0.9); color: #000000;">−1.7</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(247,246,242,0.9); color: #000000;">−0.5</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(247,243,233,0.9); color: #000000;">−0.7</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(56,144,136,0.9); color: #FFFFFF;">5.6</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(55,143,135,0.9); color: #FFFFFF;">11.2</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(108,188,180,0.9); color: #000000;">3.0</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew L.</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(220,240,237,0.9); color: #000000;">3.3</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">21.6</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(229,200,139,0.9); color: #000000;">−4.0</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(228,197,134,0.9); color: #000000;">−3.0</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(218,239,236,0.9); color: #000000;">2.8</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(73,162,154,0.9); color: #FFFFFF;">3.6</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Alan</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(124,195,188,0.9); color: #000000;">10.1</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(192,231,225,0.9); color: #000000;">7.7</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">9.1</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(240,219,173,0.9); color: #000000;">−2.3</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(237,244,243,0.9); color: #000000;">0.9</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">4.9</td></tr>
+</tbody>
+
+</table>
+</div>
+```
 ```{r}
 #| label: weekly-sd-projected-points
 team_scores |> 
@@ -2249,8 +2780,8 @@ team_scores |>
     sd_d = sd(
       ((user_score - user_projected_score) / n_weeks_in_matchup) - 
         ((opponent_score - opponent_projected_score) / n_weeks_in_matchup),
-       na.rm = TRUE
-      )
+      na.rm = TRUE
+    )
   ) |> 
   dplyr::pull(sd_d) |> 
   round(1)
@@ -2260,12 +2791,1290 @@ team_scores |>
 Observations:
 
 -   I benefited from the second most fortunate season in 2019. I averaged 13.0 points per game above my projected score, and my opponents scored 4.7 less than their projected scores, adding up to +17.7.
--   Teams F and J have under-performed and over-performed in 4 of the 5 seasons, respectively. Interestingly, I have also over-performed in the 4 of the 5 seasons, but was fairly unfortunate this past season.
+-   Drake has under-performed and Alan has over-performed in 4 of the 5 seasons Interestingly, I have also over-performed in the 4 of the 5 seasons, but was fairly unfortunate this past season.
 -   The variance in weekly performance against expectation (as defined by projected points) is not directly represented by this table, which shows averages. The standard deviation of the weekly difference in the actual points minus projected points for both teams in a matchup is about 32.5!
 
 ### Lost Opportunity
 
+How many points did teams "leave on the bench", i.e. "lost opportunity"? This is not something managers typically think about when looking to see how unlucky they might have been (partially because it's not the easiest thing to calculate), but it's worth looking at, as it gives us some sense of who is best at minimizing their own downside (by starting the best players).
+
+```{r}
+#| label: replacement-scores
+replacement_scores <- readr::read_csv(file.path(DATA_DIR, 'replacement-scores-all.csv')) |> 
+  dplyr::mutate(
+    team = TEAM_NAMES[as.character(franchise_id)]
+  ) |> 
+  dplyr::semi_join(
+    regular_season_weeks,
+    by = dplyr::join_by(season, week)
+  ) |> 
+  ## if we were dealing with multi-week matchup periods, then this would be more useful
+  dplyr::mutate(n_weeks_in_matchup = 1L)
+
+## This would need to change a bit if there are matchup periods with more than 1 week
+agg_replacement_improvement <- replacement_scores |> 
+  dplyr::group_by(
+    season,
+    week,
+    team
+  ) |> 
+  dplyr::summarize(
+    n_replacements = sum(is_replacement),
+    score_improvement = sum(score_improvement)
+  ) |> 
+  dplyr::ungroup()
+
+season_replacement_improvement <- agg_replacement_improvement |> 
+  dplyr::group_by(season, team) |> 
+  dplyr::summarize(
+    n_games = dplyr::n_distinct(week),
+    dplyr::across(
+      c(
+        n_replacements,
+        score_improvement
+      ),
+      \(.x) sum(.x)
+    )
+  ) |> 
+  dplyr::ungroup()|> 
+  dplyr::transmute(
+    season,
+    team,
+    n_games,
+    n_replacements,
+    score_improvement,
+    dplyr::across(
+      c(
+        n_replacements,
+        score_improvement
+      ),
+      list(
+        avg = \(.x) .x / n_games
+      ),
+      .names = 'avg_{.col}'
+    )
+  ) |> 
+  dplyr::group_by(season) |> 
+  dplyr::mutate(
+    league_avg_score_improvement = sum(avg_score_improvement) / n(),
+    lost_opportunity_rank = dplyr::row_number(dplyr::desc(avg_score_improvement))
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    avg_score_improvement_d = league_avg_score_improvement - avg_score_improvement
+  ) |> 
+  dplyr::arrange(dplyr::desc(score_improvement))
+
+latest_season_replacement_improvement <- season_replacement_improvement |> 
+  dplyr::filter(season == LATEST_SEASON)
+
+latest_season_replacement_improvement_gt <- latest_season_replacement_improvement |> 
+  dplyr::select(
+    team,
+    avg_n_replacements,
+    avg_score_improvement,
+    avg_score_improvement_d
+  ) |> 
+  gt::gt() |> 
+  gt::cols_label(
+    team = 'Team',
+    avg_n_replacements = gt::html('# of sub-optimal<br/>starters'),
+    avg_score_improvement = gt::html('Score improvement<br/>with best lineup'),
+    avg_score_improvement_d = gt::html('League avg.<br/>score improvement -<br/>score improvement')
+  ) |> 
+  .gt_theme_538_dark() |> 
+  gt::cols_align(
+    columns = team,
+    align = 'left'
+  ) |> 
+  gt::fmt_number(
+    columns = -c(team),
+    decimals = 1
+  ) |> 
+  gt::data_color(
+    columns = avg_n_replacements,
+    fn = scales::col_numeric(
+      palette = ggsci::rgb_material('teal', n = 100),
+      domain = range(latest_season_replacement_improvement$avg_n_replacements), 
+      reverse = FALSE
+    )
+  ) |> 
+  gt::data_color(
+    columns = avg_score_improvement,
+    fn = scales::col_numeric(
+      palette = ggsci::rgb_material('amber', n = 100),
+      domain = range(latest_season_replacement_improvement$avg_score_improvement), 
+      reverse = FALSE
+    )
+  ) |> 
+  .gt_zerocentered_brewer_col_numeric(
+    columns = avg_score_improvement_d,
+    palette = 'PiYG'
+  ) |> 
+  gt::tab_header(
+    title = gt::html(glue::glue('{LATEST_SEASON} Avg. Weekly "Lost Opportunity"<br/>with Sub-Optimal Starter Choices')),
+    subtitle = gt::html('Brandon lost out on the most points this season by not starting<br/>bench players that scored more than his starters.')
+  )
+
+gt::gtsave(
+  latest_season_replacement_improvement_gt,
+  filename = file.path(PROJ_DIR, 'latest-replacement-improvement.png')
+)
+make_tbl_quarto_robust(latest_season_replacement_improvement_gt) |> clipr::write_clip()
+```
+
+```{=html}
+<div id="lwxqthkvga" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+  <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#lwxqthkvga table {
+  font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#lwxqthkvga thead, #lwxqthkvga tbody, #lwxqthkvga tfoot, #lwxqthkvga tr, #lwxqthkvga td, #lwxqthkvga th {
+  border-style: none;
+}
+
+#lwxqthkvga p {
+  margin: 0;
+  padding: 0;
+}
+
+#lwxqthkvga .new_gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #222222;
+  width: auto;
+  border-top-style: none;
+  border-top-width: 3px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #222222;
+}
+
+#lwxqthkvga .new_gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#lwxqthkvga .new_gt_title {
+  color: #FFFFFF;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #222222;
+  border-bottom-width: 0;
+}
+
+#lwxqthkvga .new_gt_subtitle {
+  color: #FFFFFF;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #222222;
+  border-top-width: 0;
+}
+
+#lwxqthkvga .new_gt_heading {
+  background-color: #222222;
+  text-align: left;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_bottom_border {
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_col_headings {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_col_heading {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#lwxqthkvga .new_gt_column_spanner_outer {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#lwxqthkvga .new_gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#lwxqthkvga .new_gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#lwxqthkvga .new_gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#lwxqthkvga .new_gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#lwxqthkvga .new_gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#lwxqthkvga .new_gt_empty_group_heading {
+  padding: 0.5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: middle;
+}
+
+#lwxqthkvga .new_gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#lwxqthkvga .new_gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#lwxqthkvga .new_gt_row {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#lwxqthkvga .new_gt_stub {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 0px;
+  border-right-color: #FFFFFF;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_stub_row_group {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#lwxqthkvga .new_gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#lwxqthkvga .new_gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#lwxqthkvga .new_gt_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#lwxqthkvga .new_gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_grand_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#lwxqthkvga .new_gt_table_body {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+}
+
+#lwxqthkvga .new_gt_footnotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_sourcenotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_sourcenote {
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_left {
+  text-align: left;
+}
+
+#lwxqthkvga .new_gt_center {
+  text-align: center;
+}
+
+#lwxqthkvga .new_gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#lwxqthkvga .new_gt_font_normal {
+  font-weight: normal;
+}
+
+#lwxqthkvga .new_gt_font_bold {
+  font-weight: bold;
+}
+
+#lwxqthkvga .new_gt_font_italic {
+  font-style: italic;
+}
+
+#lwxqthkvga .new_gt_super {
+  font-size: 65%;
+}
+
+#lwxqthkvga .new_gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#lwxqthkvga .new_gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#lwxqthkvga .new_gt_indent_1 {
+  text-indent: 5px;
+}
+
+#lwxqthkvga .new_gt_indent_2 {
+  text-indent: 10px;
+}
+
+#lwxqthkvga .new_gt_indent_3 {
+  text-indent: 15px;
+}
+
+#lwxqthkvga .new_gt_indent_4 {
+  text-indent: 20px;
+}
+
+#lwxqthkvga .new_gt_indent_5 {
+  text-indent: 25px;
+}
+
+#lwxqthkvga tbody tr:last-child {
+  border-bottom: 2px solid #ffffff00;
+}
+</style>
+  <table class="new_gt_table">
+<thead>
+<tr class="new_gt_heading">
+<td colspan="4" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">2023 Avg. Weekly "Lost Opportunity"<br/>with Sub-Optimal Starter Choices</td>
+</tr>
+<tr class="new_gt_heading">
+<td colspan="4" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Brandon lost out on the most points this season by not starting<br/>bench players that scored more than his starters.</td>
+</tr>
+<tr class="new_gt_col_headings">
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team">Team</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="# of sub-optimal&lt;br/&gt;starters"># of sub-optimal<br/>starters</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Score improvement&lt;br/&gt;with best lineup">Score improvement<br/>with best lineup</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="League avg.&lt;br/&gt;score improvement -&lt;br/&gt;score improvement">League avg.<br/>score improvement -<br/>score improvement</th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr><td headers="team" class="new_gt_row new_gt_left">Brandon</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #007163; color: #FFFFFF;">2.6</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FF6E00; color: #FFFFFF;">27.7</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF;">−7.8</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew E.</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #2EA99E; color: #FFFFFF;">2.3</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FF9F00; color: #000000;">24.1</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(241,187,216,0.9); color: #000000;">−4.2</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Juan</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #004C3F; color: #FFFFFF;">2.8</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FFB200; color: #000000;">22.3</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(253,226,240,0.9); color: #000000;">−2.4</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Manny</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #007C6E; color: #FFFFFF;">2.6</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FEB600; color: #000000;">22.0</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(252,229,241,0.9); color: #000000;">−2.1</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Alan</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #00887A; color: #FFFFFF;">2.5</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FEB700; color: #000000;">21.9</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(252,230,241,0.9); color: #000000;">−2.0</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Tony</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #2EA99E; color: #FFFFFF;">2.3</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FFC925; color: #000000;">18.8</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(240,246,231,0.9); color: #000000;">1.1</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew L.</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #BEE4E0; color: #000000;">2.0</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FECE39; color: #000000;">17.8</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(235,246,218,0.9); color: #000000;">2.1</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Luis</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #DFF2F1; color: #000000;">1.9</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FFD44E; color: #000000;">16.9</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(225,243,200,0.9); color: #000000;">3.0</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Drake</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #DFF2F1; color: #000000;">1.9</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FFD961; color: #000000;">16.2</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(209,236,176,0.9); color: #000000;">3.7</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Enrique</td>
+<td headers="avg_n_replacements" class="new_gt_row new_gt_right" style="background-color: #DFF2F1; color: #000000;">1.9</td>
+<td headers="avg_score_improvement" class="new_gt_row new_gt_right" style="background-color: #FFF8E0; color: #000000;">11.4</td>
+<td headers="avg_score_improvement_d" class="new_gt_row new_gt_right" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF;">8.5</td></tr>
+</tbody>
+
+</table>
+</div>
+```
+The magnitude of the points will vary by league, according to the league's rules for roster slots and points. If you're league is anything like mine, then you can expect to lose out on about 20 points due to about 2 sub-optimal starting roster choices each week.
+
+Now, looking at the "lost opportunity" points compared to the league average for the past 6 seasons, we see that things tend to average out close to zero.
+
+```{r}
+#| label: total-replacement-scores
+total_season_replacement_improvement <- season_replacement_improvement |> 
+  dplyr::transmute(
+    team,
+    season = as.character(season),
+    avg_score_improvement_d
+  ) |> 
+  dplyr::bind_rows(
+    season_replacement_improvement |> 
+      dplyr::group_by(team) |> 
+      dplyr::summarize(
+        dplyr::across(
+          c(
+            avg_score_improvement,
+            league_avg_score_improvement
+          ),
+          \(.x) sum(.x * n_games)
+        ),
+        n_games = sum(n_games)
+      ) |> 
+      dplyr::ungroup() |> 
+      dplyr::transmute(
+        team,
+        season = 'Total',
+        avg_score_improvement_d = (league_avg_score_improvement - avg_score_improvement) / n_games
+      )
+  ) |> 
+  tidyr::pivot_wider(
+    names_from = season,
+    values_from = avg_score_improvement_d,
+    names_sort = TRUE
+  ) |> 
+  dplyr::arrange(dplyr::desc(Total))
+
+total_season_replacement_improvement_gt <- total_season_replacement_improvement |> 
+  gt::gt() |> 
+  gt::cols_label(
+    team ~ 'Team'
+  ) |> 
+  .gt_theme_538_dark() |> 
+  gt::cols_align(
+    columns = team,
+    align = 'left'
+  ) |> 
+  gt::fmt_number(
+    columns = -c(team),
+    decimals = 1
+  ) |> 
+  .gt_zerocentered_brewer_col_numeric(
+    columns = -c(team),
+    palette = 'PiYG'
+  ) |> 
+  gt::tab_header(
+    title = '"Lost Opportunity" Points with Sub-Optimal Starter Choices',
+    subtitle = 'Over several seasons, "lost opportunity" point levels out.'
+  ) |> 
+  gt::tab_footnote(
+    footnote = 'Values represent league average "lost opportunity" minus team\'s "lost opportunity".'
+  )
+
+gt::gtsave(
+  total_season_replacement_improvement_gt,
+  filename = file.path(PROJ_DIR, 'total-replacement-improvement.png')
+)
+
+make_tbl_quarto_robust(total_season_replacement_improvement_gt) |> clipr::write_clip()
+```
+
+```{=html}
+<div id="ytnvenzcwd" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+  <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#ytnvenzcwd table {
+  font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#ytnvenzcwd thead, #ytnvenzcwd tbody, #ytnvenzcwd tfoot, #ytnvenzcwd tr, #ytnvenzcwd td, #ytnvenzcwd th {
+  border-style: none;
+}
+
+#ytnvenzcwd p {
+  margin: 0;
+  padding: 0;
+}
+
+#ytnvenzcwd .new_gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #222222;
+  width: auto;
+  border-top-style: none;
+  border-top-width: 3px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #222222;
+}
+
+#ytnvenzcwd .new_gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#ytnvenzcwd .new_gt_title {
+  color: #FFFFFF;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #222222;
+  border-bottom-width: 0;
+}
+
+#ytnvenzcwd .new_gt_subtitle {
+  color: #FFFFFF;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #222222;
+  border-top-width: 0;
+}
+
+#ytnvenzcwd .new_gt_heading {
+  background-color: #222222;
+  text-align: left;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_bottom_border {
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_col_headings {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_col_heading {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#ytnvenzcwd .new_gt_column_spanner_outer {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#ytnvenzcwd .new_gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#ytnvenzcwd .new_gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#ytnvenzcwd .new_gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#ytnvenzcwd .new_gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#ytnvenzcwd .new_gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#ytnvenzcwd .new_gt_empty_group_heading {
+  padding: 0.5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: middle;
+}
+
+#ytnvenzcwd .new_gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#ytnvenzcwd .new_gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#ytnvenzcwd .new_gt_row {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#ytnvenzcwd .new_gt_stub {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 0px;
+  border-right-color: #FFFFFF;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_stub_row_group {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#ytnvenzcwd .new_gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#ytnvenzcwd .new_gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#ytnvenzcwd .new_gt_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#ytnvenzcwd .new_gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_grand_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ytnvenzcwd .new_gt_table_body {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+}
+
+#ytnvenzcwd .new_gt_footnotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_sourcenotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_sourcenote {
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_left {
+  text-align: left;
+}
+
+#ytnvenzcwd .new_gt_center {
+  text-align: center;
+}
+
+#ytnvenzcwd .new_gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#ytnvenzcwd .new_gt_font_normal {
+  font-weight: normal;
+}
+
+#ytnvenzcwd .new_gt_font_bold {
+  font-weight: bold;
+}
+
+#ytnvenzcwd .new_gt_font_italic {
+  font-style: italic;
+}
+
+#ytnvenzcwd .new_gt_super {
+  font-size: 65%;
+}
+
+#ytnvenzcwd .new_gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#ytnvenzcwd .new_gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#ytnvenzcwd .new_gt_indent_1 {
+  text-indent: 5px;
+}
+
+#ytnvenzcwd .new_gt_indent_2 {
+  text-indent: 10px;
+}
+
+#ytnvenzcwd .new_gt_indent_3 {
+  text-indent: 15px;
+}
+
+#ytnvenzcwd .new_gt_indent_4 {
+  text-indent: 20px;
+}
+
+#ytnvenzcwd .new_gt_indent_5 {
+  text-indent: 25px;
+}
+
+#ytnvenzcwd tbody tr:last-child {
+  border-bottom: 2px solid #ffffff00;
+}
+</style>
+  <table class="new_gt_table">
+<thead>
+<tr class="new_gt_heading">
+<td colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">"Lost Opportunity" Points with Sub-Optimal Starter Choices</td>
+</tr>
+<tr class="new_gt_heading">
+<td colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Over several seasons, "lost opportunity" point levels out.</td>
+</tr>
+<tr class="new_gt_col_headings">
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team">Team</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2018">2018</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2019">2019</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2020">2020</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2021">2021</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2022">2022</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="2023">2023</th>
+<th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Total">Total</th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr><td headers="team" class="new_gt_row new_gt_left">Enrique</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF;">8.1</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF;">6.7</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(248,242,245,0.9); color: #000000;">−0.6</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(199,231,161,0.9); color: #000000;">7.3</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(252,229,241,0.9); color: #000000;">−3.8</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF;">8.5</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF;">4.3</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Drake</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(189,227,146,0.9); color: #000000;">4.4</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(247,203,226,0.9); color: #000000;">−2.5</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF;">12.4</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(252,222,238,0.9); color: #000000;">−4.1</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(94,160,49,0.9); color: #FFFFFF;">9.1</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(209,236,176,0.9); color: #000000;">3.7</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(111,173,63,0.9); color: #FFFFFF;">3.8</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Juan</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(203,233,166,0.9); color: #000000;">3.8</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(214,238,183,0.9); color: #000000;">2.8</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(236,246,220,0.9); color: #000000;">2.8</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(235,246,219,0.9); color: #000000;">3.6</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(245,247,243,0.9); color: #000000;">0.4</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(253,226,240,0.9); color: #000000;">−2.4</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(217,239,188,0.9); color: #000000;">1.7</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Alan</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(237,174,208,0.9); color: #000000;">−8.4</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(204,234,169,0.9); color: #000000;">3.1</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(252,228,240,0.9); color: #000000;">−2.4</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(248,244,246,0.9); color: #000000;">−0.5</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF;">9.8</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(252,230,241,0.9); color: #000000;">−2.0</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(245,247,243,0.9); color: #000000;">0.1</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew L.</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF;">−13.9</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(251,232,242,0.9); color: #000000;">−1.2</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(204,233,168,0.9); color: #000000;">5.7</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(237,246,223,0.9); color: #000000;">3.1</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(237,246,224,0.9); color: #000000;">1.9</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(235,246,218,0.9); color: #000000;">2.1</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(248,244,246,0.9); color: #000000;">−0.2</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Brandon</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(193,228,152,0.9); color: #000000;">4.2</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF;">−5.6</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF;">−8.4</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF;">15.0</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(249,240,245,0.9); color: #000000;">−1.4</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF;">−7.8</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(249,239,244,0.9); color: #000000;">−0.5</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Luis</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(252,229,241,0.9); color: #000000;">−3.7</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(223,242,196,0.9); color: #000000;">2.5</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(236,170,206,0.9); color: #000000;">−5.2</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(202,51,133,0.9); color: #FFFFFF;">−11.4</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(122,182,72,0.9); color: #000000;">8.1</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(225,243,200,0.9); color: #000000;">3.0</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(252,230,241,0.9); color: #000000;">−1.0</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Tony</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(252,227,240,0.9); color: #000000;">−4.1</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(220,116,169,0.9); color: #FFFFFF;">−4.5</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(241,186,215,0.9); color: #000000;">−4.5</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(238,246,225,0.9); color: #000000;">2.8</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(251,233,242,0.9); color: #000000;">−3.0</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(240,246,231,0.9); color: #000000;">1.1</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(247,204,226,0.9); color: #000000;">−1.8</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Manny</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(161,215,107,0.9); color: #000000;">5.4</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(178,222,130,0.9); color: #000000;">4.0</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(248,243,245,0.9); color: #000000;">−0.5</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF;">−11.8</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(246,202,225,0.9); color: #000000;">−6.6</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(252,229,241,0.9); color: #000000;">−2.1</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(239,181,212,0.9); color: #000000;">−2.3</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Andrew E.</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(189,227,146,0.9); color: #000000;">4.3</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(203,56,135,0.9); color: #FFFFFF;">−5.3</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(244,247,241,0.9); color: #000000;">0.7</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(253,223,238,0.9); color: #000000;">−4.0</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF;">−14.5</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(241,187,216,0.9); color: #000000;">−4.2</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF;">−4.1</td></tr>
+</tbody>
+
+<tfoot class="new_gt_footnotes">
+<tr>
+<td class="new_gt_footnote" colspan="8"> Values represent league average "lost opportunity" minus team's "lost opportunity".</td>
+</tr>
+</tfoot>
+</table>
+</div>
+```
+-   The weighted average lost opportunity points compared to the league average only ranges from about ±4 points in the extremes. We'll likely see that range decrease as more seasons are played, as there seems to be a lot of "noise" here.
+-   Juan is the only team to perform better than the league average in 5 seasons. The rest of the teams had lost opportunity points greater than the league average in either 2, 3, or 4 seasons.
+
 ## Discussion
+
+To overcome the variance that comes with fantasy football, some leagues play with a ["median scoring" format](https://www.rotostreetjournal.com/2023/08/04/fantasy-football-league-settings-what-is-league-median-and-why-your-league-should-implement-it/). In this structure, you earn a win or loss with your head-to-head matchup, as usual, but can earn another win every week if you score more than the median team score for the week. This has the effect of reducing "luck" while still allowing for some of the randomness with which most players have developed a love-hate relationship.
+
+If we applied this scoring format to my league, here's how the placements would have changed over the past 6 years.
 
 ```{r}
 #| label: median-scoring
@@ -2280,6 +4089,7 @@ median_scoring_records <- team_scores |>
   ) |> 
   dplyr::group_by(season, team) |> 
   dplyr::summarize(
+    total_score = sum(user_score),
     orig_wins = sum(result == 'W'),
     init_median_wins = sum(median_result == 'W')
   ) |> 
@@ -2289,15 +4099,16 @@ median_scoring_records <- team_scores |>
   ) |> 
   dplyr::group_by(season) |> 
   dplyr::mutate(
-    orig_placing = dplyr::row_number(dplyr::desc(orig_wins)),
-    median_placing = dplyr::row_number(dplyr::desc(init_median_wins))
+    inverted_score_ranking = dplyr::row_number(total_score),
+    orig_placing = dplyr::row_number(dplyr::desc(100 * orig_wins + inverted_score_ranking)),
+    median_placing = dplyr::row_number(dplyr::desc(100 * init_median_wins + inverted_score_ranking))
   ) |> 
   dplyr::ungroup() |> 
   dplyr::arrange(season, orig_placing)
 
 median_scoring_records_with_labels <- median_scoring_records |>
   dplyr::mutate(
-    label = forcats::fct_reorder(
+    label = forcats::fct_reorder2(
       paste0(
         "<b><span style='font-size:12pt'>", 
         team, 
@@ -2320,9 +4131,11 @@ median_scoring_records_with_labels <- median_scoring_records |>
         median_placing,
         ')</span>'
       ),
-      1000 * season - 10 * orig_placing
+      .x = season,
+      .y = orig_placing
     )
-  )
+  ) |> 
+  dplyr::arrange(season, dplyr::desc(orig_placing))
 
 median_scoring_changes_plot <- median_scoring_records_with_labels |>
   ggplot2::ggplot() +
@@ -2337,18 +4150,7 @@ median_scoring_changes_plot <- median_scoring_records_with_labels |>
     color = WHITISH_FOREGROUND_COLOR,
     ## don't filter ou  because it messes with factor levels
     # data = median_scoring_records_with_labels |> filter(team != 'Tony'),
-    linewidth = 0.25,
-    ggplot2::aes(
-      x = 1,
-      xend = 2,
-      y = label,
-      yend = 11 - median_placing
-    )
-  ) +
-  ggplot2::geom_segment(
-    color = WHITISH_FOREGROUND_COLOR,
-    data = median_scoring_records_with_labels |> dplyr::filter(team == 'Tony'),
-    linewidth = 1,
+    linewidth = 0.5,
     ggplot2::aes(
       x = 1,
       xend = 2,
@@ -2364,11 +4166,10 @@ median_scoring_changes_plot <- median_scoring_records_with_labels |>
     plot.subtitle = ggtext::element_markdown(size = 14)
   ) +
   ggplot2::labs(
-    title = 'Changes in records with median scoring',
+    title = 'Changes in regular season placement with median scoring',
     subtitle = "Does the original placement go up (<span style='font-family:fa-solid;color:#2feaa8'>&#xe098;</span>), down (<span style='font-family:fa-solid;color:#fb3640'>&#xe097;</span>), or stay the same (<span style='font-family:fa-solid'>&#xf061;</span>) with median scoring?",
     y = NULL,
-    x = NULL,
-    caption = CAPTION_LABEL
+    x = NULL
   )
 
 ggplot2::ggsave(
@@ -2391,26 +4192,26 @@ median_scoring_records |>
 
 ![](median-scoring.png)
 
-And here's a tabular summary.
+And here's a tabular summary. (`Total placement Δ` represents the sum of placement changes. `changes` is either 1 or 0 for each season, depending on whether the placement for the team changed in a positive or negative manner.)
 
-| Team | Total placement Δ | Positive changes | Negative changes |
-|:-----|------------------:|-----------------:|-----------------:|
-| C    |                11 |                4 |                0 |
-| A    |                 9 |                4 |                2 |
-| Tony |                 7 |                3 |                2 |
-| B    |                 1 |                2 |                1 |
-| E    |                 0 |                1 |                3 |
-| I    |                -1 |                3 |                3 |
-| D    |                -3 |                2 |                4 |
-| J    |                -5 |                2 |                3 |
-| H    |                -8 |                1 |                5 |
-| F    |               -11 |                1 |                4 |
+| Team      | Total placement Δ | Positive changes | Negative changes |
+|:----------|------------------:|-----------------:|-----------------:|
+| Enrique   |                10 |                5 |                0 |
+| Tony      |                 9 |                3 |                1 |
+| Juan      |                 8 |                3 |                1 |
+| Manny     |                -1 |                1 |                2 |
+| Andrew E. |                -2 |                1 |                5 |
+| Brandon   |                -3 |                2 |                3 |
+| Luis      |                -3 |                2 |                3 |
+| Alan      |                -5 |                2 |                3 |
+| Andrew L. |                -6 |                1 |                4 |
+| Drake     |                -7 |                0 |                3 |
 
 Some observations:
 
 -   I would have moved up in my placement in 3 out of the 6 seasons with the median scoring system.
--   Team C would have benefited the most--they would have moved up the rankings in 4 out of the 6 seasons (and not changed in the other 2), for a total sum of +11 placements (about +2 per season).
--   Team F is on the other end of the spectrum--their placement would have been worse in 4 of the 6 seasons with the median scoring system, for a total ranking change of -11 (about -2 per season).
+-   Enrique would have benefited the most--Enrique would have moved up the rankings in 5 out of the 6 seasons (and not changed in the other), for a total sum of +10 placements (about +2 per season).
+-   On the other end of the spectrum, Drake would have places worse in 3 of the 6 seasons with the median scoring system, for a total ranking change of -7.
 
 ```{r}
 #| label: median-scoring-records-top4
