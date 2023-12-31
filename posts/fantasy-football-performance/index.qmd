@@ -15,15 +15,15 @@ execute:
 
 ## Introduction
 
-If you've played (American) fantasy football, you've probably felt that you have been unlucky and unjustfully lost matches at some point. "I had the second most points of any team in my league this week, and I only lost because I happened to play the team that scored the most points!" So the first thing that we probably do is go to our league standings and look to see how we stack up against the rest of the teams in points for and against. If you've scored the third most points but your current placing is eighth because you've happened to have the most points scored against you, then of course you have grounds to feel slighted.
+If you've played (American) fantasy football, you've probably felt that you have been unlucky and unjustly lost matches at some point. "I had the second most points of any team in my league this week, and I only lost because I happened to play the team that scored the most points!" So the first thing that we probably do is go to our league standings and look to see how we stack up against the rest of the teams in points for and against. If you've scored the third most points but your current placing is eighth because you've happened to have the most points scored against you, then of course you have grounds to feel slighted.
 
-But are there other ways you can go about justifying your dissatisfaction? Yes, indeed I can think of three:
+But are there other ways you can go about justifying your dissatisfaction? I can think of at least three:
 
-1.  **All-play record**: What would your position in the league table be if every team played all other teams in head-to-head matchups every week?
-2.  **Actual points scored compared to projection**: Are you scoring less than your projected total? Is your team under-performing more than other teams compared to their projected team_scores?
+1.  **All-play record**: What would your position in the league table be if every team played all other teams in head-to-head matchups every week? How much did your schedule impact your record?
+2.  **Actual points scored compared to projection**: Are you scoring less than your projected total? Is your team under-performing more than other teams compared to their projected scores?
 3.  **Points "left on the bench"**: How many points could you have had if you had started the best possible lineup (with the benefit of hindsight)?
 
-I want to look at how we can calculate these things for the past 5 years of my primary fantasy football league. (Yes, like most sickos, I have multiple league). Comparing counter-factual team_scores should build up some intuition about all the ways that things can go wrong.
+In this post I'll look at each of these concepts for my own fantasy football league. Evaluating how actual scores and placings may have been impacted by schedule, projections, and lineup choices should build up some intuition about what really contributes to "luck".
 
 ## Analysis and Results
 
@@ -56,11 +56,11 @@ DATA_DIR <- file.path(PROJ_DIR, 'data')
 source(file.path(PROJ_DIR, 'theme.R'))
 ```
 
-The data comes from the past 2018 - 2023 seasons of my primary fantasy football league. We've had different rule sets and schedule formats (i.e. playoffs started in week 14 prior to 2022 in this league), but for the most part, measures of performance should be mostly agnostic to this.
+The data comes from the 2018 - 2023 seasons of my primary fantasy football league. We've had different rule sets and schedule formats (i.e. playoffs started in week 14 prior to the 2021 season in this league), but for the most part, measures of performance should be mostly agnostic to this.
 
 ### All-play records
 
-I felt like I was particularly unlucky with my schedule this past year, and indeed this bears out in the numbers.[^1]
+I felt like I was particularly unlucky with my schedule this past year, and indeed this bears out in the numbers.[^1] Juan and Drake were also very unfortunate.
 
 [^1]: For those looking to calculate this kind of table for themselves, ["The Fantasy Football Hub"](https://theffhub.com/) has a nice calculator, plus some extra goodies, e.g. "What would my record have been if I had league member X's schedule?".
 
@@ -913,7 +913,7 @@ border-bottom: 2px solid #ffffff00;
 </table>
 </div>
 ```
-A 16% difference between my actual record and my all play record feels non-trivial. In fact, in comparing that level of under-performance to the prior seasons, I find that there were only 6 less fortunate outcomes, including a -29% difference for myself in 2020!
+A 16% difference between my actual record and my all-play record feels non-trivial. In fact, in comparing that level of under-performance to the prior seasons (some of which we played with a ["superflex"](https://www.si.com/fantasy/2023/08/22/fantasy-football-101-what-is-superflex), contributing to more variance), I find that there were only 6 less fortunate outcomes, including a -29% difference for myself in 2020!
 
 ```{r}
 #| label: total-all-play
@@ -1534,7 +1534,7 @@ border-bottom: 2px solid #ffffff00;
 </table>
 </div>
 ```
-Andrew E. and Andrew L. have been fairly fortunate, only facing one season in the past 6 where they ended up with a record that was worse than their all play record.
+Andrew E. and Andrew L. have been fairly fortunate, only facing 1 season in the past 6 where they ended up with a record that was worse than their all-play records.
 
 ```{r}
 #| label: compared-all-play-save
@@ -1553,17 +1553,17 @@ round(quantile(compared_all_play_records$w_prop_d, c(0.975, 0.025)), 3)
 #>  0.209 -0.234
 ```
 
-The top and bottom 2.5th percentiles of season-long actual win % minus all play win % are about +21% and -23% respectively. This translates to about ±3 wins in leagues with a 14 game season. So, the "back-of-the-napkin" take-away here is that you could be winning or losing 3 more games due to your schedule, in the most extreme cases.
+The top and bottom 2.5th percentiles of season-long actual win % minus all play win % are about ±22%. This translates to about ±3 wins in leagues with a 14-game regular season. So the "back-of-the-napkin" takeaway here is that you could be winning or losing 3 more games due to your schedule, in the most extreme cases.
 
-Overall, it's interesting to see that the under- and over-performance doesn't quite level out even over the course of 6 seasons. (How has Team H consistently gotten favorable schedules?!) Surely we'd see this even out over more and more seasons, but it's noteworthy that even 6 seasons may not be sufficient to achieve long-run schedule schedule equality
+Overall, it's interesting to see that the under- and over-performance doesn't quite level out even over the course of 6 seasons. (How has Alan consistently gotten favorable schedules?!) Surely we'd see this even out over more and more seasons, but it's noteworthy that even 6 seasons may not be sufficient to achieve long-run schedule schedule equality.
 
 ### Actual vs. projected points
 
-Another way to look at whether a team was "lucky" or not is to compare the points that they scored versus what they were projected to score. [^2] Further, we should look to see whether one's opponents are scoring more than they're projected to score, as this represents another source of variance in scoring. In total, the sum of the differences between one's own actual and projected scores and the difference with the opponents' actual and projected scores presents another way of quantifying misfortune.
+Another way to look at whether a team was "lucky" or not is to compare the points that they scored versus what they were projected to score. [^2] Further, we should look to see whether one's opponents are scoring more than they're projected to score, as this represents another source of variance in scoring. In total, the sum of the differences between one's own actual and projected scores and the difference with the opponents' actual and projected scores presents another way of measuring misfortune.[^3]
 
 [^2]: In most cases, I'd assume that a negative difference between actual and projected scores reflects misfortune (e.g. injury, unexpected lack of playing time), although one can argue that it reflects poor management by the user, i.e. "You should have known not to start that running back against the best rushing defense!". However, projected points should theoretically capture matchup difficulty, so this seems like a weak argument in general.
 
-I would generally expect this measure to be correlated with the rankings of teams by actual win % minus all-play win %, assuming the projected scores are reasonably well calibrated.
+[^3]: I would generally expect this measure to be correlated with the rankings of teams by actual win % minus all-play win %, assuming the projected scores are reasonably well-calibrated.
 
 ```{r}
 #| label: projected-scores
@@ -2794,12 +2794,14 @@ team_scores |>
 Observations:
 
 -   I benefited from the second most fortunate season in 2019. I averaged 13.0 points per game above my projected score, and my opponents scored 4.7 less than their projected scores, adding up to +17.7.
--   Drake has under-performed and Alan has over-performed in 4 of the 5 seasons Interestingly, I have also over-performed in the 4 of the 5 seasons, but was fairly unfortunate this past season.
+-   Drake has under-performed and Alan has over-performed in 4 of the past 5 seasons. Interestingly, I have also over-performed in 4 of the past 5 seasons, but was fairly unfortunate this past season.
 -   The variance in weekly performance against expectation (as defined by projected points) is not directly represented by this table, which shows averages. The standard deviation of the weekly difference in the actual points minus projected points for both teams in a matchup is about 32.5!
 
 ### Lost Opportunity
 
-How many points did teams "leave on the bench", i.e. "lost opportunity"? This is not something managers typically think about when looking to see how unlucky they might have been (partially because it's not the easiest thing to calculate), but it's worth looking at, as it gives us some sense of who is best at minimizing their own downside (by starting the best players).
+How many points did teams "leave on the bench", i.e. "lost opportunity"? This is not something managers typically think about when looking to see how unlucky they might have been (partially because it's not the easiest thing to calculate), but it's worth looking at, as it gives us some sense of who is best at minimizing their own downside (by starting the best players).[^4]
+
+[^4]: These numbers are biased by the quality of the players on a team's roster. If a team has a lot of injured players, then they're less likely to start sub-optimal players. Further, if they have a lot of players that just don't tend to get a lot of points (e.g. third string WRs), then they may appear to be starting players optimally more often, simply because they don't have great replacement-level players.
 
 ```{r}
 #| label: replacement-scores
@@ -2808,7 +2810,8 @@ replacement_scores <- readr::read_csv(file.path(DATA_DIR, 'replacement-scores-al
     team = TEAM_NAMES[as.character(franchise_id)]
   ) |> 
   dplyr::semi_join(
-    regular_season_weeks,
+  
+      regular_season_weeks,
     by = dplyr::join_by(season, week)
   ) |> 
   ## if we were dealing with multi-week matchup periods, then this would be more useful
@@ -3438,7 +3441,7 @@ border-bottom: 2px solid #ffffff00;
 </table>
 </div>
 ```
-The magnitude of the points will vary by league, according to the league's rules for roster slots and points. If you're league is anything like mine, then you can expect to lose out on about 20 points due to about 2 sub-optimal starting roster choices each week.
+The magnitude of the points will vary by league, according to the league's rules for roster slots and points. If your league is anything like mine, then you can expect to lose out on about 20 points due to about 2 sub-optimal starting roster choices each week.
 
 Now, looking at the "lost opportunity" points compared to the league average for the past 6 seasons, we see that things tend to average out close to zero.
 
@@ -4072,7 +4075,7 @@ border-bottom: 2px solid #ffffff00;
 </table>
 </div>
 ```
--   The weighted average lost opportunity points compared to the league average only ranges from about ±4 points in the extremes. We'll likely see that range decrease as more seasons are played, as there seems to be a lot of "noise" here.
+-   The weighted average lost opportunity points compared to the league average only varies by about ±4 points in the extremes. We'll likely see that range decrease as more seasons are played, as there seems to be a lot of "noise" here.
 -   Juan is the only team to perform better than the league average in 5 seasons. The rest of the teams had lost opportunity points greater than the league average in either 2, 3, or 4 seasons.
 
 ## Discussion
@@ -4215,8 +4218,8 @@ And here's a tabular summary. (`Total placement Δ` represents the sum of placem
 Some observations:
 
 -   I would have moved up in my placement in 3 out of the 6 seasons with the median scoring system.
--   Enrique would have benefited the most--Enrique would have moved up the rankings in 5 out of the 6 seasons (and not changed in the other), for a total sum of +10 placements (about +2 per season).
--   On the other end of the spectrum, Drake would have places worse in 3 of the 6 seasons with the median scoring system, for a total ranking change of -7.
+-   Enrique would have benefited the most--Enrique would have moved up the rankings in 5 out of the 6 seasons (and not changed in the other season), for a total sum of +10 placements (about +2 per season).
+-   On the other end of the spectrum, Drake would have placed worse in 3 of the 6 seasons with the median scoring system, for a total ranking change of -7.
 
 ```{r}
 #| label: median-scoring-records-top4
@@ -4239,8 +4242,8 @@ median_scoring_records |>
 |   2022 |                           1 |                            2 |
 |   2023 |                           1 |                            2 |
 
-Given the high importance of not finishing in the bottom 4 (to avoid our last place penalty), it's notable that the 2 teams would have moved out of the bottom 4 every season with the median scoring system, with the exception of 2018. As for the top 4, 2 teams would have dropped out in 2020, no teams would have dropped out in 2018, and only 1 team would have dropped out in the rest of the seasons.
+Given the high importance of not finishing in the bottom 4--to avoid our last-place penalty–it's notable that 2 teams would have moved out of the bottom 4 every season with the median scoring system, with the exception of 2018. As for the top 4, 2 teams would have dropped out in 2020, no teams would have dropped out in 2018, and only 1 team would have dropped out in the rest of the seasons.
 
 ## Conclusion
 
-Of course, a lot of things are out of one's control--i.e. you generally don't have any influence on your opponent's score in a given week--but our look into lost opportunity is something that could serve as an impetus for action. Knowing that, on average, players in my leagues lose out on about \~20 points every week due to sub-optimal lineup choices can make me reconsider how I think about "upside" with bench players.
+Looking at how the median scoring system would benefit me personally–I would never finish bottom 4 and be at risk for our last-place penalty–I think my personal takeaway is that I should push for a median scoring format in the future. There's still going to be variance with outcomes–due to scheduling, under-performance compared to projection, and sub-optimal lineup choices–but the more deserving teams (like my own) are less likely to get a short end of the stick.
