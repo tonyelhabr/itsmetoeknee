@@ -10,7 +10,3606 @@
 <atom:link href="https://tonyelhabr.rbind.io/posts.xml" rel="self" type="application/rss+xml"/>
 <description></description>
 <generator>quarto-1.3.450</generator>
-<lastBuildDate>Fri, 29 Dec 2023 06:00:00 GMT</lastBuildDate>
+<lastBuildDate>Sun, 31 Dec 2023 06:00:00 GMT</lastBuildDate>
+<item>
+  <title>Measuring manager performance in fantasy football</title>
+  <dc:creator>Tony ElHabr</dc:creator>
+  <link>https://tonyelhabr.rbind.io/posts/fantasy-football-performance/index.html</link>
+  <description><![CDATA[ 
+
+
+
+<section id="introduction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>If you’ve played (American) fantasy football, you’ve probably felt that you have been unlucky and unjustfully lost matches at some point. “I had the second most points of any team in my league this week, and I only lost because I happened to play the team that scored the most points!” So the first thing that we probably do is go to our league standings and look to see how we stack up against the rest of the teams in points for and against. If you’ve scored the third most points but your current placing is eighth because you’ve happened to have the most points scored against you, then of course you have grounds to feel slighted.</p>
+<p>But are there other ways you can go about justifying your dissatisfaction? Yes, indeed I can think of three:</p>
+<ol type="1">
+<li><strong>All-play record</strong>: What would your position in the league table be if every team played all other teams in head-to-head matchups every week?</li>
+<li><strong>Actual points scored compared to projection</strong>: Are you scoring less than your projected total? Is your team under-performing more than other teams compared to their projected team_scores?</li>
+<li><strong>Points “left on the bench”</strong>: How many points could you have had if you had started the best possible lineup (with the benefit of hindsight)?</li>
+</ol>
+<p>I want to look at how we can calculate these things for the past 5 years of my primary fantasy football league. (Yes, like most sickos, I have multiple league). Comparing counter-factual team_scores should build up some intuition about all the ways that things can go wrong.</p>
+</section>
+<section id="analysis-and-results" class="level2">
+<h2 class="anchored" data-anchor-id="analysis-and-results">Analysis and Results</h2>
+<p>The data comes from the past 2018 - 2023 seasons of my primary fantasy football league. We’ve had different rule sets and schedule formats (i.e.&nbsp;playoffs started in week 14 prior to 2022 in this league), but for the most part, measures of performance should be mostly agnostic to this.</p>
+<section id="all-play-records" class="level3">
+<h3 class="anchored" data-anchor-id="all-play-records">All-play records</h3>
+<p>I felt like I was particularly unlucky with my schedule this past year, and indeed this bears out in the numbers.<sup>1</sup></p>
+
+<div id="pkfcenqede" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#pkfcenqede table {
+font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+
+#pkfcenqede thead, #pkfcenqede tbody, #pkfcenqede tfoot, #pkfcenqede tr, #pkfcenqede td, #pkfcenqede th {
+border-style: none;
+}
+
+#pkfcenqede p {
+margin: 0;
+padding: 0;
+}
+
+#pkfcenqede .new_gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #FFFFFF;
+font-size: 16px;
+font-weight: 400;
+font-style: normal;
+background-color: #222222;
+width: auto;
+border-top-style: none;
+border-top-width: 3px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #222222;
+}
+
+#pkfcenqede .new_gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+
+#pkfcenqede .new_gt_title {
+color: #FFFFFF;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #222222;
+border-bottom-width: 0;
+}
+
+#pkfcenqede .new_gt_subtitle {
+color: #FFFFFF;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #222222;
+border-top-width: 0;
+}
+
+#pkfcenqede .new_gt_heading {
+background-color: #222222;
+text-align: left;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_bottom_border {
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_col_headings {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_col_heading {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+
+#pkfcenqede .new_gt_column_spanner_outer {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+
+#pkfcenqede .new_gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+
+#pkfcenqede .new_gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+
+#pkfcenqede .new_gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+
+#pkfcenqede .new_gt_spanner_row {
+border-bottom-style: hidden;
+}
+
+#pkfcenqede .new_gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+
+#pkfcenqede .new_gt_empty_group_heading {
+padding: 0.5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+vertical-align: middle;
+}
+
+#pkfcenqede .new_gt_from_md > :first-child {
+margin-top: 0;
+}
+
+#pkfcenqede .new_gt_from_md > :last-child {
+margin-bottom: 0;
+}
+
+#pkfcenqede .new_gt_row {
+padding-top: 7px;
+padding-bottom: 7px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+
+#pkfcenqede .new_gt_stub {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 0px;
+border-right-color: #FFFFFF;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#pkfcenqede .new_gt_stub_row_group {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+
+#pkfcenqede .new_gt_row_group_first td {
+border-top-width: 2px;
+}
+
+#pkfcenqede .new_gt_row_group_first th {
+border-top-width: 2px;
+}
+
+#pkfcenqede .new_gt_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#pkfcenqede .new_gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+
+#pkfcenqede .new_gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_grand_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#pkfcenqede .new_gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+
+#pkfcenqede .new_gt_table_body {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+}
+
+#pkfcenqede .new_gt_footnotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#pkfcenqede .new_gt_sourcenotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#pkfcenqede .new_gt_sourcenote {
+font-size: 12px;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#pkfcenqede .new_gt_left {
+text-align: left;
+}
+
+#pkfcenqede .new_gt_center {
+text-align: center;
+}
+
+#pkfcenqede .new_gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+
+#pkfcenqede .new_gt_font_normal {
+font-weight: normal;
+}
+
+#pkfcenqede .new_gt_font_bold {
+font-weight: bold;
+}
+
+#pkfcenqede .new_gt_font_italic {
+font-style: italic;
+}
+
+#pkfcenqede .new_gt_super {
+font-size: 65%;
+}
+
+#pkfcenqede .new_gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+
+#pkfcenqede .new_gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+
+#pkfcenqede .new_gt_indent_1 {
+text-indent: 5px;
+}
+
+#pkfcenqede .new_gt_indent_2 {
+text-indent: 10px;
+}
+
+#pkfcenqede .new_gt_indent_3 {
+text-indent: 15px;
+}
+
+#pkfcenqede .new_gt_indent_4 {
+text-indent: 20px;
+}
+
+#pkfcenqede .new_gt_indent_5 {
+text-indent: 25px;
+}
+
+#pkfcenqede tbody tr:last-child {
+border-bottom: 2px solid #ffffff00;
+}
+</style>
+
+<table class="new_gt_table table" data-quarto-postprocess="true">
+<thead>
+<tr class="header new_gt_heading">
+<th colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700">2023 All-Play Records</th>
+</tr>
+<tr class="odd new_gt_heading">
+<th colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400">Tony was the most unlucky in the league this past season.</th>
+</tr>
+<tr class="header new_gt_col_headings new_gt_spanner_row">
+<th rowspan="2" id="Team" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Team</th>
+<th colspan="2" id="Actual" class="new_gt_center new_gt_columns_top_border new_gt_column_spanner_outer" data-quarto-table-cell-role="th" scope="colgroup"><span class="new_gt_column_spanner">Actual</span></th>
+<th colspan="2" id="All Play" class="new_gt_center new_gt_columns_top_border new_gt_column_spanner_outer" data-quarto-table-cell-role="th" scope="colgroup"><span class="new_gt_column_spanner">All Play</span></th>
+<th colspan="2" id="Win %" class="new_gt_center new_gt_columns_top_border new_gt_column_spanner_outer" data-quarto-table-cell-role="th" scope="colgroup"><span class="new_gt_column_spanner">Win %</span></th>
+<th rowspan="2" id="<strong>Δ</strong>" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col"><strong>Δ</strong></th>
+</tr>
+<tr class="odd new_gt_col_headings">
+<th id="W" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">W</th>
+<th id="L" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">L</th>
+<th id="W" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">W</th>
+<th id="L" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">L</th>
+<th id="Actual" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Actual</th>
+<th id="All Play" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">All Play</th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Tony</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">4</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">10</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">56</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">70</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">29%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">44%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF">−16%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">A</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">6</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">8</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">73</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">53</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">43%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">58%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF">−15%</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">F</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">4</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">10</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">55</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">71</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">29%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">44%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF">−15%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">I</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">6</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">8</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">60</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">66</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">43%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">48%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(233,215,234,0.9); color: #000000">−5%</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">H</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">7</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">7</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">63</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">63</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">50%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">50%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(247,247,247,0.9); color: #000000">0%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">C</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">9</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">5</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">76</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">50</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">64%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">60%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(230,243,227,0.9); color: #000000">4%</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">J</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">7</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">7</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">55</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">71</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">50%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">44%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(220,241,215,0.9); color: #000000">6%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">E</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">9</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">5</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">72</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">54</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">64%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">57%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(217,240,211,0.9); color: #000000">7%</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">D</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">8</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">6</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">57</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">69</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">57%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">45%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(157,207,152,0.9); color: #000000">12%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">B</td>
+<td class="new_gt_row new_gt_right" headers="actual_w">10</td>
+<td class="new_gt_row new_gt_right" headers="actual_l">4</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w">63</td>
+<td class="new_gt_row new_gt_right" headers="all_play_l">63</td>
+<td class="new_gt_row new_gt_right" headers="actual_w_prop">71%</td>
+<td class="new_gt_row new_gt_right" headers="all_play_w_prop">50%</td>
+<td class="new_gt_row new_gt_right" headers="w_prop_d" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF">21%</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+<p>A 16% difference between my actual record and my all play record feels non-trivial. In fact, in comparing that level of under-performance to the prior seasons, I find that there were only 6 less fortunate outcomes, including a -29% difference for myself in 2020!</p>
+
+<div id="xltpwrubpj" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#xltpwrubpj table {
+font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+
+#xltpwrubpj thead, #xltpwrubpj tbody, #xltpwrubpj tfoot, #xltpwrubpj tr, #xltpwrubpj td, #xltpwrubpj th {
+border-style: none;
+}
+
+#xltpwrubpj p {
+margin: 0;
+padding: 0;
+}
+
+#xltpwrubpj .new_gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #FFFFFF;
+font-size: 16px;
+font-weight: 400;
+font-style: normal;
+background-color: #222222;
+width: auto;
+border-top-style: none;
+border-top-width: 3px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #222222;
+}
+
+#xltpwrubpj .new_gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+
+#xltpwrubpj .new_gt_title {
+color: #FFFFFF;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #222222;
+border-bottom-width: 0;
+}
+
+#xltpwrubpj .new_gt_subtitle {
+color: #FFFFFF;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #222222;
+border-top-width: 0;
+}
+
+#xltpwrubpj .new_gt_heading {
+background-color: #222222;
+text-align: left;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_bottom_border {
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_col_headings {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_col_heading {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+
+#xltpwrubpj .new_gt_column_spanner_outer {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+
+#xltpwrubpj .new_gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+
+#xltpwrubpj .new_gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+
+#xltpwrubpj .new_gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+
+#xltpwrubpj .new_gt_spanner_row {
+border-bottom-style: hidden;
+}
+
+#xltpwrubpj .new_gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+
+#xltpwrubpj .new_gt_empty_group_heading {
+padding: 0.5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+vertical-align: middle;
+}
+
+#xltpwrubpj .new_gt_from_md > :first-child {
+margin-top: 0;
+}
+
+#xltpwrubpj .new_gt_from_md > :last-child {
+margin-bottom: 0;
+}
+
+#xltpwrubpj .new_gt_row {
+padding-top: 7px;
+padding-bottom: 7px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+
+#xltpwrubpj .new_gt_stub {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 0px;
+border-right-color: #FFFFFF;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xltpwrubpj .new_gt_stub_row_group {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+
+#xltpwrubpj .new_gt_row_group_first td {
+border-top-width: 2px;
+}
+
+#xltpwrubpj .new_gt_row_group_first th {
+border-top-width: 2px;
+}
+
+#xltpwrubpj .new_gt_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xltpwrubpj .new_gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+
+#xltpwrubpj .new_gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_grand_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xltpwrubpj .new_gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+
+#xltpwrubpj .new_gt_table_body {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+}
+
+#xltpwrubpj .new_gt_footnotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xltpwrubpj .new_gt_sourcenotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#xltpwrubpj .new_gt_sourcenote {
+font-size: 12px;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xltpwrubpj .new_gt_left {
+text-align: left;
+}
+
+#xltpwrubpj .new_gt_center {
+text-align: center;
+}
+
+#xltpwrubpj .new_gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+
+#xltpwrubpj .new_gt_font_normal {
+font-weight: normal;
+}
+
+#xltpwrubpj .new_gt_font_bold {
+font-weight: bold;
+}
+
+#xltpwrubpj .new_gt_font_italic {
+font-style: italic;
+}
+
+#xltpwrubpj .new_gt_super {
+font-size: 65%;
+}
+
+#xltpwrubpj .new_gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+
+#xltpwrubpj .new_gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+
+#xltpwrubpj .new_gt_indent_1 {
+text-indent: 5px;
+}
+
+#xltpwrubpj .new_gt_indent_2 {
+text-indent: 10px;
+}
+
+#xltpwrubpj .new_gt_indent_3 {
+text-indent: 15px;
+}
+
+#xltpwrubpj .new_gt_indent_4 {
+text-indent: 20px;
+}
+
+#xltpwrubpj .new_gt_indent_5 {
+text-indent: 25px;
+}
+
+#xltpwrubpj tbody tr:last-child {
+border-bottom: 2px solid #ffffff00;
+}
+</style>
+
+<table class="new_gt_table table" data-quarto-postprocess="true">
+<thead>
+<tr class="header new_gt_heading">
+<th colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700">Actual Win % - All Play Win %</th>
+</tr>
+<tr class="odd new_gt_heading">
+<th colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400">Juan and Tony have had the most unfair schedules since 2018.</th>
+</tr>
+<tr class="header new_gt_col_headings">
+<th id="Team" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Team</th>
+<th id="2018" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2018</th>
+<th id="2019" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2019</th>
+<th id="2020" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2020</th>
+<th id="2021" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2021</th>
+<th id="2022" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2022</th>
+<th id="2023" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2023</th>
+<th id="Total" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Total</th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Juan</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(141,83,156,0.9); color: #FFFFFF">−12%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(110,178,110,0.9); color: #FFFFFF">15%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(241,233,241,0.9); color: #000000">−4%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF">−25%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(215,239,209,0.9); color: #000000">7%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF">−15%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF">−6%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Tony</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(237,245,235,0.9); color: #000000">2%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(218,240,213,0.9); color: #000000">6%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF">−29%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(238,227,239,0.9); color: #000000">−5%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(227,242,223,0.9); color: #000000">5%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF">−16%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(130,64,144,0.9); color: #FFFFFF">−6%</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Enrique</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(202,232,196,0.9); color: #000000">6%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(141,82,156,0.9); color: #FFFFFF">−19%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(189,159,205,0.9); color: #000000">−17%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(244,240,244,0.9); color: #000000">−2%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(224,242,219,0.9); color: #000000">6%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(230,243,227,0.9); color: #000000">4%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(209,183,217,0.9); color: #000000">−3%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Brandon</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(241,233,241,0.9); color: #000000">−2%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(214,190,221,0.9); color: #000000">−9%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(172,216,166,0.9); color: #000000">6%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(213,189,220,0.9); color: #000000">−11%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(234,244,231,0.9); color: #000000">3%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(233,215,234,0.9); color: #000000">−5%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(209,183,217,0.9); color: #000000">−3%</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Drake</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(237,245,235,0.9); color: #000000">2%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(218,240,213,0.9); color: #000000">6%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(134,195,129,0.9); color: #000000">8%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(50,133,67,0.9); color: #FFFFFF">12%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(238,226,238,0.9); color: #000000">−4%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF">−15%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(228,243,224,0.9); color: #000000">1%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Alan</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF">−14%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF">20%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(192,226,185,0.9); color: #000000">6%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(172,216,166,0.9); color: #000000">6%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(161,117,179,0.9); color: #FFFFFF">−15%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(220,241,215,0.9); color: #000000">6%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(226,242,222,0.9); color: #000000">1%</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Luis</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF">17%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(177,144,197,0.9); color: #FFFFFF">−14%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF">13%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(225,242,220,0.9); color: #000000">3%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF">−20%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(157,207,152,0.9); color: #000000">12%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(220,241,215,0.9); color: #000000">2%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Manny</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(227,242,223,0.9); color: #000000">4%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(235,244,232,0.9); color: #000000">3%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(241,246,239,0.9); color: #000000">1%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(243,237,243,0.9); color: #000000">−2%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(174,140,194,0.9); color: #FFFFFF">−13%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF">21%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(213,238,207,0.9); color: #000000">2%</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Andrew E.</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(142,199,137,0.9); color: #000000">10%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF">−21%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(53,135,69,0.9); color: #FFFFFF">12%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF">13%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(177,218,171,0.9); color: #000000">10%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(217,240,211,0.9); color: #000000">7%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(59,139,73,0.9); color: #FFFFFF">6%</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Andrew L.</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(130,63,144,0.9); color: #FFFFFF">−13%</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(148,202,143,0.9); color: #000000">12%</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(228,243,224,0.9); color: #000000">3%</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(69,146,80,0.9); color: #FFFFFF">11%</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF">21%</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(247,247,247,0.9); color: #000000">0%</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF">6%</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+<p>Andrew E. and Andrew L. have been fairly fortunate, only facing one season in the past 6 where they ended up with a record that was worse than their all play record.</p>
+<p>The top and bottom 2.5th percentiles of season-long actual win % minus all play win % are about +21% and -23% respectively. This translates to about ±3 wins in leagues with a 14 game season. So, the “back-of-the-napkin” take-away here is that you could be winning or losing 3 more games due to your schedule, in the most extreme cases.</p>
+<p>Overall, it’s interesting to see that the under- and over-performance doesn’t quite level out even over the course of 6 seasons. (How has Team H consistently gotten favorable schedules?!) Surely we’d see this even out over more and more seasons, but it’s noteworthy that even 6 seasons may not be sufficient to achieve long-run schedule schedule equality</p>
+</section>
+<section id="actual-vs.-projected-points" class="level3">
+<h3 class="anchored" data-anchor-id="actual-vs.-projected-points">Actual vs.&nbsp;projected points</h3>
+<p>Another way to look at whether a team was “lucky” or not is to compare the points that they scored versus what they were projected to score. <sup>2</sup> Further, we should look to see whether one’s opponents are scoring more than they’re projected to score, as this represents another source of variance in scoring. In total, the sum of the differences between one’s own actual and projected scores and the difference with the opponents’ actual and projected scores presents another way of quantifying misfortune.</p>
+<p>I would generally expect this measure to be correlated with the rankings of teams by actual win % minus all-play win %, assuming the projected scores are reasonably well calibrated.</p>
+
+<div id="xbvegrdkkx" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#xbvegrdkkx table {
+font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+
+#xbvegrdkkx thead, #xbvegrdkkx tbody, #xbvegrdkkx tfoot, #xbvegrdkkx tr, #xbvegrdkkx td, #xbvegrdkkx th {
+border-style: none;
+}
+
+#xbvegrdkkx p {
+margin: 0;
+padding: 0;
+}
+
+#xbvegrdkkx .new_gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #FFFFFF;
+font-size: 16px;
+font-weight: 400;
+font-style: normal;
+background-color: #222222;
+width: auto;
+border-top-style: none;
+border-top-width: 3px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #222222;
+}
+
+#xbvegrdkkx .new_gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+
+#xbvegrdkkx .new_gt_title {
+color: #FFFFFF;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #222222;
+border-bottom-width: 0;
+}
+
+#xbvegrdkkx .new_gt_subtitle {
+color: #FFFFFF;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #222222;
+border-top-width: 0;
+}
+
+#xbvegrdkkx .new_gt_heading {
+background-color: #222222;
+text-align: left;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_bottom_border {
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_col_headings {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_col_heading {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+
+#xbvegrdkkx .new_gt_column_spanner_outer {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+
+#xbvegrdkkx .new_gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+
+#xbvegrdkkx .new_gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+
+#xbvegrdkkx .new_gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+
+#xbvegrdkkx .new_gt_spanner_row {
+border-bottom-style: hidden;
+}
+
+#xbvegrdkkx .new_gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+
+#xbvegrdkkx .new_gt_empty_group_heading {
+padding: 0.5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+vertical-align: middle;
+}
+
+#xbvegrdkkx .new_gt_from_md > :first-child {
+margin-top: 0;
+}
+
+#xbvegrdkkx .new_gt_from_md > :last-child {
+margin-bottom: 0;
+}
+
+#xbvegrdkkx .new_gt_row {
+padding-top: 7px;
+padding-bottom: 7px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+
+#xbvegrdkkx .new_gt_stub {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 0px;
+border-right-color: #FFFFFF;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xbvegrdkkx .new_gt_stub_row_group {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+
+#xbvegrdkkx .new_gt_row_group_first td {
+border-top-width: 2px;
+}
+
+#xbvegrdkkx .new_gt_row_group_first th {
+border-top-width: 2px;
+}
+
+#xbvegrdkkx .new_gt_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xbvegrdkkx .new_gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+
+#xbvegrdkkx .new_gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_grand_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xbvegrdkkx .new_gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+
+#xbvegrdkkx .new_gt_table_body {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+}
+
+#xbvegrdkkx .new_gt_footnotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xbvegrdkkx .new_gt_sourcenotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#xbvegrdkkx .new_gt_sourcenote {
+font-size: 12px;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#xbvegrdkkx .new_gt_left {
+text-align: left;
+}
+
+#xbvegrdkkx .new_gt_center {
+text-align: center;
+}
+
+#xbvegrdkkx .new_gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+
+#xbvegrdkkx .new_gt_font_normal {
+font-weight: normal;
+}
+
+#xbvegrdkkx .new_gt_font_bold {
+font-weight: bold;
+}
+
+#xbvegrdkkx .new_gt_font_italic {
+font-style: italic;
+}
+
+#xbvegrdkkx .new_gt_super {
+font-size: 65%;
+}
+
+#xbvegrdkkx .new_gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+
+#xbvegrdkkx .new_gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+
+#xbvegrdkkx .new_gt_indent_1 {
+text-indent: 5px;
+}
+
+#xbvegrdkkx .new_gt_indent_2 {
+text-indent: 10px;
+}
+
+#xbvegrdkkx .new_gt_indent_3 {
+text-indent: 15px;
+}
+
+#xbvegrdkkx .new_gt_indent_4 {
+text-indent: 20px;
+}
+
+#xbvegrdkkx .new_gt_indent_5 {
+text-indent: 25px;
+}
+
+#xbvegrdkkx tbody tr:last-child {
+border-bottom: 2px solid #ffffff00;
+}
+</style>
+
+<table class="new_gt_table table" data-quarto-postprocess="true">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header new_gt_heading">
+<th colspan="4" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700">2023 Avg. Weekly Actual - Projected Points</th>
+</tr>
+<tr class="odd new_gt_heading">
+<th colspan="4" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400">Brandon was the most misfortunate with performance compared to<br>
+projection this past season.</th>
+</tr>
+<tr class="header new_gt_col_headings">
+<th id="Team" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Team</th>
+<th id="Team" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Team</th>
+<th id="Opponent" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Opponent</th>
+<th id="Team -<br/>Opponent" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Team -<br>
+Opponent</th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Brandon</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−11.1</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(123,195,188,0.9); color: #000000">4.7</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−15.8</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Drake</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(231,203,143,0.9); color: #000000">−5.7</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(64,152,144,0.9); color: #FFFFFF">6.4</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(193,148,74,0.9); color: #FFFFFF">−12.1</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Tony</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(247,236,208,0.9); color: #000000">−2.8</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">8.2</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(210,170,93,0.9); color: #000000">−11.0</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Juan</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(182,225,219,0.9); color: #000000">2.0</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(47,135,127,0.9); color: #FFFFFF">7.0</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(246,233,198,0.9); color: #000000">−5.0</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Alan</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(247,242,230,0.9); color: #000000">−1.2</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(247,240,224,0.9); color: #000000">−2.1</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(237,244,243,0.9); color: #000000">0.9</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Andrew L.</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(212,238,234,0.9); color: #000000">1.3</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(247,242,231,0.9); color: #000000">−1.5</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(218,239,236,0.9); color: #000000">2.8</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Luis</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(247,238,215,0.9); color: #000000">−2.2</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(227,196,131,0.9); color: #000000">−8.2</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(166,217,211,0.9); color: #000000">6.0</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Enrique</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(121,194,187,0.9); color: #000000">3.0</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(238,215,166,0.9); color: #000000">−6.4</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(84,173,165,0.9); color: #FFFFFF">9.4</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Manny</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(246,233,197,0.9); color: #000000">−3.5</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−14.7</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(55,143,135,0.9); color: #FFFFFF">11.2</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Andrew E.</td>
+<td class="new_gt_row new_gt_right" headers="user_d_per_game" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">5.2</td>
+<td class="new_gt_row new_gt_right" headers="opponent_d_per_game" style="background-color: rgba(226,194,128,0.9); color: #000000">−8.4</td>
+<td class="new_gt_row new_gt_right" headers="total_d_per_game" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">13.6</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+
+<div id="flqlchvcax" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#flqlchvcax table {
+font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+
+#flqlchvcax thead, #flqlchvcax tbody, #flqlchvcax tfoot, #flqlchvcax tr, #flqlchvcax td, #flqlchvcax th {
+border-style: none;
+}
+
+#flqlchvcax p {
+margin: 0;
+padding: 0;
+}
+
+#flqlchvcax .new_gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #FFFFFF;
+font-size: 16px;
+font-weight: 400;
+font-style: normal;
+background-color: #222222;
+width: auto;
+border-top-style: none;
+border-top-width: 3px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #222222;
+}
+
+#flqlchvcax .new_gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+
+#flqlchvcax .new_gt_title {
+color: #FFFFFF;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #222222;
+border-bottom-width: 0;
+}
+
+#flqlchvcax .new_gt_subtitle {
+color: #FFFFFF;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #222222;
+border-top-width: 0;
+}
+
+#flqlchvcax .new_gt_heading {
+background-color: #222222;
+text-align: left;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_bottom_border {
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_col_headings {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_col_heading {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+
+#flqlchvcax .new_gt_column_spanner_outer {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+
+#flqlchvcax .new_gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+
+#flqlchvcax .new_gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+
+#flqlchvcax .new_gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+
+#flqlchvcax .new_gt_spanner_row {
+border-bottom-style: hidden;
+}
+
+#flqlchvcax .new_gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+
+#flqlchvcax .new_gt_empty_group_heading {
+padding: 0.5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+vertical-align: middle;
+}
+
+#flqlchvcax .new_gt_from_md > :first-child {
+margin-top: 0;
+}
+
+#flqlchvcax .new_gt_from_md > :last-child {
+margin-bottom: 0;
+}
+
+#flqlchvcax .new_gt_row {
+padding-top: 7px;
+padding-bottom: 7px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+
+#flqlchvcax .new_gt_stub {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 0px;
+border-right-color: #FFFFFF;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_stub_row_group {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+
+#flqlchvcax .new_gt_row_group_first td {
+border-top-width: 2px;
+}
+
+#flqlchvcax .new_gt_row_group_first th {
+border-top-width: 2px;
+}
+
+#flqlchvcax .new_gt_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+
+#flqlchvcax .new_gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_grand_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+
+#flqlchvcax .new_gt_table_body {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+}
+
+#flqlchvcax .new_gt_footnotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_sourcenotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#flqlchvcax .new_gt_sourcenote {
+font-size: 12px;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#flqlchvcax .new_gt_left {
+text-align: left;
+}
+
+#flqlchvcax .new_gt_center {
+text-align: center;
+}
+
+#flqlchvcax .new_gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+
+#flqlchvcax .new_gt_font_normal {
+font-weight: normal;
+}
+
+#flqlchvcax .new_gt_font_bold {
+font-weight: bold;
+}
+
+#flqlchvcax .new_gt_font_italic {
+font-style: italic;
+}
+
+#flqlchvcax .new_gt_super {
+font-size: 65%;
+}
+
+#flqlchvcax .new_gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+
+#flqlchvcax .new_gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+
+#flqlchvcax .new_gt_indent_1 {
+text-indent: 5px;
+}
+
+#flqlchvcax .new_gt_indent_2 {
+text-indent: 10px;
+}
+
+#flqlchvcax .new_gt_indent_3 {
+text-indent: 15px;
+}
+
+#flqlchvcax .new_gt_indent_4 {
+text-indent: 20px;
+}
+
+#flqlchvcax .new_gt_indent_5 {
+text-indent: 25px;
+}
+
+#flqlchvcax tbody tr:last-child {
+border-bottom: 2px solid #ffffff00;
+}
+</style>
+
+<table class="new_gt_table table" data-quarto-postprocess="true">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header new_gt_heading">
+<th colspan="7" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700">Avg. Weekly Actual - Projected Points<br>
+Minus Opponent's Actual - Projected Points</th>
+</tr>
+<tr class="odd new_gt_heading">
+<th colspan="7" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400">Drake has under-performed projections the most on average since 2018.</th>
+</tr>
+<tr class="header new_gt_col_headings">
+<th id="Team" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Team</th>
+<th id="2019" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2019</th>
+<th id="2020" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2020</th>
+<th id="2021" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2021</th>
+<th id="2022" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2022</th>
+<th id="2023" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2023</th>
+<th id="Total<span class=&quot;gt_footnote_marks&quot; style=&quot;white-space:nowrap;font-style:italic;font-weight:normal;&quot;><sup>1</sup></span>" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Total<span class="new_gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;"><sup>1</sup></span></th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Drake</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(158,103,33,0.9); color: #FFFFFF">−13.2</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(214,238,234,0.9); color: #000000">5.0</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(193,148,74,0.9); color: #FFFFFF">−5.8</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(247,244,238,0.9); color: #000000">−0.3</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(193,148,74,0.9); color: #FFFFFF">−12.1</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−5.4</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Brandon</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−14.3</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(233,243,242,0.9); color: #000000">2.1</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(67,155,147,0.9); color: #FFFFFF">7.0</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(196,152,77,0.9); color: #FFFFFF">−4.2</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−15.8</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(157,102,32,0.9); color: #FFFFFF">−5.0</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Juan</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(219,239,236,0.9); color: #000000">3.5</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−17.3</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(173,122,51,0.9); color: #FFFFFF">−6.5</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">6.9</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(246,233,198,0.9); color: #000000">−5.0</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(218,182,107,0.9); color: #000000">−3.5</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Luis</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(224,192,125,0.9); color: #000000">−8.3</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(187,140,66,0.9); color: #FFFFFF">−13.8</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(112,190,182,0.9); color: #000000">5.5</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−5.5</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(166,217,211,0.9); color: #000000">6.0</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(231,203,144,0.9); color: #000000">−2.8</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Andrew E.</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(247,240,224,0.9); color: #000000">−2.1</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(235,211,157,0.9); color: #000000">−8.1</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF">−7.5</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(204,235,231,0.9); color: #000000">2.1</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">13.6</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(247,246,243,0.9); color: #000000">−0.1</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Enrique</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(207,236,232,0.9); color: #000000">5.0</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(237,244,243,0.9); color: #000000">1.6</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(246,232,196,0.9); color: #000000">−2.5</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(247,240,224,0.9); color: #000000">−0.8</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(84,173,165,0.9); color: #FFFFFF">9.4</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(144,205,198,0.9); color: #000000">2.5</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Tony</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">17.7</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(236,244,243,0.9); color: #000000">1.7</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(120,193,186,0.9); color: #000000">5.3</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(216,239,235,0.9); color: #000000">1.5</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(210,170,93,0.9); color: #000000">−11.0</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(134,200,193,0.9); color: #000000">2.6</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Manny</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(247,242,228,0.9); color: #000000">−1.7</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(247,246,242,0.9); color: #000000">−0.5</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(247,243,233,0.9); color: #000000">−0.7</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(56,144,136,0.9); color: #FFFFFF">5.6</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(55,143,135,0.9); color: #FFFFFF">11.2</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(108,188,180,0.9); color: #000000">3.0</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Andrew L.</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(220,240,237,0.9); color: #000000">3.3</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">21.6</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(229,200,139,0.9); color: #000000">−4.0</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(228,197,134,0.9); color: #000000">−3.0</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(218,239,236,0.9); color: #000000">2.8</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(73,162,154,0.9); color: #FFFFFF">3.6</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Alan</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(124,195,188,0.9); color: #000000">10.1</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(192,231,225,0.9); color: #000000">7.7</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">9.1</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(240,219,173,0.9); color: #000000">−2.3</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(237,244,243,0.9); color: #000000">0.9</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF">4.9</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+<p>Observations:</p>
+<ul>
+<li>I benefited from the second most fortunate season in 2019. I averaged 13.0 points per game above my projected score, and my opponents scored 4.7 less than their projected scores, adding up to +17.7.</li>
+<li>Drake has under-performed and Alan has over-performed in 4 of the 5 seasons Interestingly, I have also over-performed in the 4 of the 5 seasons, but was fairly unfortunate this past season.</li>
+<li>The variance in weekly performance against expectation (as defined by projected points) is not directly represented by this table, which shows averages. The standard deviation of the weekly difference in the actual points minus projected points for both teams in a matchup is about 32.5!</li>
+</ul>
+</section>
+<section id="lost-opportunity" class="level3">
+<h3 class="anchored" data-anchor-id="lost-opportunity">Lost Opportunity</h3>
+<p>How many points did teams “leave on the bench”, i.e.&nbsp;“lost opportunity”? This is not something managers typically think about when looking to see how unlucky they might have been (partially because it’s not the easiest thing to calculate), but it’s worth looking at, as it gives us some sense of who is best at minimizing their own downside (by starting the best players).</p>
+
+<div id="lwxqthkvga" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#lwxqthkvga table {
+font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+
+#lwxqthkvga thead, #lwxqthkvga tbody, #lwxqthkvga tfoot, #lwxqthkvga tr, #lwxqthkvga td, #lwxqthkvga th {
+border-style: none;
+}
+
+#lwxqthkvga p {
+margin: 0;
+padding: 0;
+}
+
+#lwxqthkvga .new_gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #FFFFFF;
+font-size: 16px;
+font-weight: 400;
+font-style: normal;
+background-color: #222222;
+width: auto;
+border-top-style: none;
+border-top-width: 3px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #222222;
+}
+
+#lwxqthkvga .new_gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+
+#lwxqthkvga .new_gt_title {
+color: #FFFFFF;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #222222;
+border-bottom-width: 0;
+}
+
+#lwxqthkvga .new_gt_subtitle {
+color: #FFFFFF;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #222222;
+border-top-width: 0;
+}
+
+#lwxqthkvga .new_gt_heading {
+background-color: #222222;
+text-align: left;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_bottom_border {
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_col_headings {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_col_heading {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+
+#lwxqthkvga .new_gt_column_spanner_outer {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+
+#lwxqthkvga .new_gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+
+#lwxqthkvga .new_gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+
+#lwxqthkvga .new_gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+
+#lwxqthkvga .new_gt_spanner_row {
+border-bottom-style: hidden;
+}
+
+#lwxqthkvga .new_gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+
+#lwxqthkvga .new_gt_empty_group_heading {
+padding: 0.5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+vertical-align: middle;
+}
+
+#lwxqthkvga .new_gt_from_md > :first-child {
+margin-top: 0;
+}
+
+#lwxqthkvga .new_gt_from_md > :last-child {
+margin-bottom: 0;
+}
+
+#lwxqthkvga .new_gt_row {
+padding-top: 7px;
+padding-bottom: 7px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+
+#lwxqthkvga .new_gt_stub {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 0px;
+border-right-color: #FFFFFF;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_stub_row_group {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+
+#lwxqthkvga .new_gt_row_group_first td {
+border-top-width: 2px;
+}
+
+#lwxqthkvga .new_gt_row_group_first th {
+border-top-width: 2px;
+}
+
+#lwxqthkvga .new_gt_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+
+#lwxqthkvga .new_gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_grand_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+
+#lwxqthkvga .new_gt_table_body {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+}
+
+#lwxqthkvga .new_gt_footnotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_sourcenotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#lwxqthkvga .new_gt_sourcenote {
+font-size: 12px;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#lwxqthkvga .new_gt_left {
+text-align: left;
+}
+
+#lwxqthkvga .new_gt_center {
+text-align: center;
+}
+
+#lwxqthkvga .new_gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+
+#lwxqthkvga .new_gt_font_normal {
+font-weight: normal;
+}
+
+#lwxqthkvga .new_gt_font_bold {
+font-weight: bold;
+}
+
+#lwxqthkvga .new_gt_font_italic {
+font-style: italic;
+}
+
+#lwxqthkvga .new_gt_super {
+font-size: 65%;
+}
+
+#lwxqthkvga .new_gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+
+#lwxqthkvga .new_gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+
+#lwxqthkvga .new_gt_indent_1 {
+text-indent: 5px;
+}
+
+#lwxqthkvga .new_gt_indent_2 {
+text-indent: 10px;
+}
+
+#lwxqthkvga .new_gt_indent_3 {
+text-indent: 15px;
+}
+
+#lwxqthkvga .new_gt_indent_4 {
+text-indent: 20px;
+}
+
+#lwxqthkvga .new_gt_indent_5 {
+text-indent: 25px;
+}
+
+#lwxqthkvga tbody tr:last-child {
+border-bottom: 2px solid #ffffff00;
+}
+</style>
+
+<table class="new_gt_table table" data-quarto-postprocess="true">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header new_gt_heading">
+<th colspan="4" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700">2023 Avg. Weekly "Lost Opportunity"<br>
+with Sub-Optimal Starter Choices</th>
+</tr>
+<tr class="odd new_gt_heading">
+<th colspan="4" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400">Brandon lost out on the most points this season by not starting<br>
+bench players that scored more than his starters.</th>
+</tr>
+<tr class="header new_gt_col_headings">
+<th id="Team" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Team</th>
+<th id="# of sub-optimal<br/>starters" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col"># of sub-optimal<br>
+starters</th>
+<th id="Score improvement<br/>with best lineup" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Score improvement<br>
+with best lineup</th>
+<th id="League avg.<br/>score improvement -<br/>score improvement" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">League avg.<br>
+score improvement -<br>
+score improvement</th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Brandon</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #007163; color: #FFFFFF">2.6</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FF6E00; color: #FFFFFF">27.7</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF">−7.8</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Andrew E.</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #2EA99E; color: #FFFFFF">2.3</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FF9F00; color: #000000">24.1</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(241,187,216,0.9); color: #000000">−4.2</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Juan</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #004C3F; color: #FFFFFF">2.8</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FFB200; color: #000000">22.3</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(253,226,240,0.9); color: #000000">−2.4</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Manny</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #007C6E; color: #FFFFFF">2.6</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FEB600; color: #000000">22.0</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(252,229,241,0.9); color: #000000">−2.1</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Alan</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #00887A; color: #FFFFFF">2.5</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FEB700; color: #000000">21.9</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(252,230,241,0.9); color: #000000">−2.0</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Tony</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #2EA99E; color: #FFFFFF">2.3</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FFC925; color: #000000">18.8</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(240,246,231,0.9); color: #000000">1.1</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Andrew L.</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #BEE4E0; color: #000000">2.0</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FECE39; color: #000000">17.8</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(235,246,218,0.9); color: #000000">2.1</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Luis</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #DFF2F1; color: #000000">1.9</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FFD44E; color: #000000">16.9</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(225,243,200,0.9); color: #000000">3.0</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Drake</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #DFF2F1; color: #000000">1.9</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FFD961; color: #000000">16.2</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(209,236,176,0.9); color: #000000">3.7</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Enrique</td>
+<td class="new_gt_row new_gt_right" headers="avg_n_replacements" style="background-color: #DFF2F1; color: #000000">1.9</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement" style="background-color: #FFF8E0; color: #000000">11.4</td>
+<td class="new_gt_row new_gt_right" headers="avg_score_improvement_d" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF">8.5</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+<p>The magnitude of the points will vary by league, according to the league’s rules for roster slots and points. If you’re league is anything like mine, then you can expect to lose out on about 20 points due to about 2 sub-optimal starting roster choices each week.</p>
+<p>Now, looking at the “lost opportunity” points compared to the league average for the past 6 seasons, we see that things tend to average out close to zero.</p>
+
+<div id="ytnvenzcwd" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#ytnvenzcwd table {
+font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+}
+
+#ytnvenzcwd thead, #ytnvenzcwd tbody, #ytnvenzcwd tfoot, #ytnvenzcwd tr, #ytnvenzcwd td, #ytnvenzcwd th {
+border-style: none;
+}
+
+#ytnvenzcwd p {
+margin: 0;
+padding: 0;
+}
+
+#ytnvenzcwd .new_gt_table {
+display: table;
+border-collapse: collapse;
+line-height: normal;
+margin-left: auto;
+margin-right: auto;
+color: #FFFFFF;
+font-size: 16px;
+font-weight: 400;
+font-style: normal;
+background-color: #222222;
+width: auto;
+border-top-style: none;
+border-top-width: 3px;
+border-top-color: #A8A8A8;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #222222;
+}
+
+#ytnvenzcwd .new_gt_caption {
+padding-top: 4px;
+padding-bottom: 4px;
+}
+
+#ytnvenzcwd .new_gt_title {
+color: #FFFFFF;
+font-size: 125%;
+font-weight: initial;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-color: #222222;
+border-bottom-width: 0;
+}
+
+#ytnvenzcwd .new_gt_subtitle {
+color: #FFFFFF;
+font-size: 85%;
+font-weight: initial;
+padding-top: 3px;
+padding-bottom: 5px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-color: #222222;
+border-top-width: 0;
+}
+
+#ytnvenzcwd .new_gt_heading {
+background-color: #222222;
+text-align: left;
+border-bottom-color: #222222;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_bottom_border {
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_col_headings {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_col_heading {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 6px;
+padding-left: 5px;
+padding-right: 5px;
+overflow-x: hidden;
+}
+
+#ytnvenzcwd .new_gt_column_spanner_outer {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: normal;
+text-transform: inherit;
+padding-top: 0;
+padding-bottom: 0;
+padding-left: 4px;
+padding-right: 4px;
+}
+
+#ytnvenzcwd .new_gt_column_spanner_outer:first-child {
+padding-left: 0;
+}
+
+#ytnvenzcwd .new_gt_column_spanner_outer:last-child {
+padding-right: 0;
+}
+
+#ytnvenzcwd .new_gt_column_spanner {
+border-bottom-style: solid;
+border-bottom-width: 3px;
+border-bottom-color: #FFFFFF;
+vertical-align: bottom;
+padding-top: 5px;
+padding-bottom: 5px;
+overflow-x: hidden;
+display: inline-block;
+width: 100%;
+}
+
+#ytnvenzcwd .new_gt_spanner_row {
+border-bottom-style: hidden;
+}
+
+#ytnvenzcwd .new_gt_group_heading {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+text-align: left;
+}
+
+#ytnvenzcwd .new_gt_empty_group_heading {
+padding: 0.5px;
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #222222;
+border-bottom-style: solid;
+border-bottom-width: 1px;
+border-bottom-color: #FFFFFF;
+vertical-align: middle;
+}
+
+#ytnvenzcwd .new_gt_from_md > :first-child {
+margin-top: 0;
+}
+
+#ytnvenzcwd .new_gt_from_md > :last-child {
+margin-bottom: 0;
+}
+
+#ytnvenzcwd .new_gt_row {
+padding-top: 7px;
+padding-bottom: 7px;
+padding-left: 5px;
+padding-right: 5px;
+margin: 10px;
+border-top-style: solid;
+border-top-width: 1px;
+border-top-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 1px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 1px;
+border-right-color: #D3D3D3;
+vertical-align: middle;
+overflow-x: hidden;
+}
+
+#ytnvenzcwd .new_gt_stub {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 0px;
+border-right-color: #FFFFFF;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_stub_row_group {
+color: #FFFFFF;
+background-color: #222222;
+font-size: 100%;
+font-weight: initial;
+text-transform: inherit;
+border-right-style: solid;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+padding-left: 5px;
+padding-right: 5px;
+vertical-align: top;
+}
+
+#ytnvenzcwd .new_gt_row_group_first td {
+border-top-width: 2px;
+}
+
+#ytnvenzcwd .new_gt_row_group_first th {
+border-top-width: 2px;
+}
+
+#ytnvenzcwd .new_gt_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_first_summary_row {
+border-top-style: solid;
+border-top-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_first_summary_row.thick {
+border-top-width: 2px;
+}
+
+#ytnvenzcwd .new_gt_last_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_grand_summary_row {
+color: #FFFFFF;
+background-color: #222222;
+text-transform: inherit;
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_first_grand_summary_row {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-top-style: double;
+border-top-width: 6px;
+border-top-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_last_grand_summary_row_top {
+padding-top: 8px;
+padding-bottom: 8px;
+padding-left: 5px;
+padding-right: 5px;
+border-bottom-style: double;
+border-bottom-width: 6px;
+border-bottom-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_striped {
+background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ytnvenzcwd .new_gt_table_body {
+border-top-style: none;
+border-top-width: 2px;
+border-top-color: #D3D3D3;
+border-bottom-style: solid;
+border-bottom-width: 2px;
+border-bottom-color: #222222;
+}
+
+#ytnvenzcwd .new_gt_footnotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_footnote {
+margin: 0px;
+font-size: 90%;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_sourcenotes {
+color: #FFFFFF;
+background-color: #222222;
+border-bottom-style: none;
+border-bottom-width: 2px;
+border-bottom-color: #D3D3D3;
+border-left-style: none;
+border-left-width: 2px;
+border-left-color: #D3D3D3;
+border-right-style: none;
+border-right-width: 2px;
+border-right-color: #D3D3D3;
+}
+
+#ytnvenzcwd .new_gt_sourcenote {
+font-size: 12px;
+padding-top: 4px;
+padding-bottom: 4px;
+padding-left: 5px;
+padding-right: 5px;
+}
+
+#ytnvenzcwd .new_gt_left {
+text-align: left;
+}
+
+#ytnvenzcwd .new_gt_center {
+text-align: center;
+}
+
+#ytnvenzcwd .new_gt_right {
+text-align: right;
+font-variant-numeric: tabular-nums;
+}
+
+#ytnvenzcwd .new_gt_font_normal {
+font-weight: normal;
+}
+
+#ytnvenzcwd .new_gt_font_bold {
+font-weight: bold;
+}
+
+#ytnvenzcwd .new_gt_font_italic {
+font-style: italic;
+}
+
+#ytnvenzcwd .new_gt_super {
+font-size: 65%;
+}
+
+#ytnvenzcwd .new_gt_footnote_marks {
+font-size: 75%;
+vertical-align: 0.4em;
+position: initial;
+}
+
+#ytnvenzcwd .new_gt_asterisk {
+font-size: 100%;
+vertical-align: 0;
+}
+
+#ytnvenzcwd .new_gt_indent_1 {
+text-indent: 5px;
+}
+
+#ytnvenzcwd .new_gt_indent_2 {
+text-indent: 10px;
+}
+
+#ytnvenzcwd .new_gt_indent_3 {
+text-indent: 15px;
+}
+
+#ytnvenzcwd .new_gt_indent_4 {
+text-indent: 20px;
+}
+
+#ytnvenzcwd .new_gt_indent_5 {
+text-indent: 25px;
+}
+
+#ytnvenzcwd tbody tr:last-child {
+border-bottom: 2px solid #ffffff00;
+}
+</style>
+
+<table class="new_gt_table table" data-quarto-postprocess="true">
+<thead>
+<tr class="header new_gt_heading">
+<th colspan="8" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700">"Lost Opportunity" Points with Sub-Optimal Starter Choices</th>
+</tr>
+<tr class="odd new_gt_heading">
+<th colspan="8" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400">Over several seasons, "lost opportunity" points level out.</th>
+</tr>
+<tr class="header new_gt_col_headings">
+<th id="Team" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Team</th>
+<th id="2018" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2018</th>
+<th id="2019" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2019</th>
+<th id="2020" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2020</th>
+<th id="2021" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2021</th>
+<th id="2022" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2022</th>
+<th id="2023" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">2023</th>
+<th id="Total" class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" data-quarto-table-cell-role="th" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222" scope="col">Total</th>
+</tr>
+</thead>
+<tbody class="new_gt_table_body">
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Enrique</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF">8.1</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF">6.7</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(248,242,245,0.9); color: #000000">−0.6</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(199,231,161,0.9); color: #000000">7.3</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(252,229,241,0.9); color: #000000">−3.8</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF">8.5</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF">4.3</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Drake</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(189,227,146,0.9); color: #000000">4.4</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(247,203,226,0.9); color: #000000">−2.5</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF">12.4</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(252,222,238,0.9); color: #000000">−4.1</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(94,160,49,0.9); color: #FFFFFF">9.1</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(209,236,176,0.9); color: #000000">3.7</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(111,173,63,0.9); color: #FFFFFF">3.8</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Juan</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(203,233,166,0.9); color: #000000">3.8</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(214,238,183,0.9); color: #000000">2.8</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(236,246,220,0.9); color: #000000">2.8</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(235,246,219,0.9); color: #000000">3.6</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(245,247,243,0.9); color: #000000">0.4</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(253,226,240,0.9); color: #000000">−2.4</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(217,239,188,0.9); color: #000000">1.7</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Alan</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(237,174,208,0.9); color: #000000">−8.4</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(204,234,169,0.9); color: #000000">3.1</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(252,228,240,0.9); color: #000000">−2.4</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(248,244,246,0.9); color: #000000">−0.5</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF">9.8</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(252,230,241,0.9); color: #000000">−2.0</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(245,247,243,0.9); color: #000000">0.1</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Andrew L.</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF">−13.9</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(251,232,242,0.9); color: #000000">−1.2</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(204,233,168,0.9); color: #000000">5.7</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(237,246,223,0.9); color: #000000">3.1</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(237,246,224,0.9); color: #000000">1.9</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(235,246,218,0.9); color: #000000">2.1</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(248,244,246,0.9); color: #000000">−0.2</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Brandon</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(193,228,152,0.9); color: #000000">4.2</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF">−5.6</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF">−8.4</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(77,146,33,0.9); color: #FFFFFF">15.0</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(249,240,245,0.9); color: #000000">−1.4</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF">−7.8</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(249,239,244,0.9); color: #000000">−0.5</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Luis</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(252,229,241,0.9); color: #000000">−3.7</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(223,242,196,0.9); color: #000000">2.5</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(236,170,206,0.9); color: #000000">−5.2</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(202,51,133,0.9); color: #FFFFFF">−11.4</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(122,182,72,0.9); color: #000000">8.1</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(225,243,200,0.9); color: #000000">3.0</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(252,230,241,0.9); color: #000000">−1.0</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Tony</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(252,227,240,0.9); color: #000000">−4.1</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(220,116,169,0.9); color: #FFFFFF">−4.5</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(241,186,215,0.9); color: #000000">−4.5</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(238,246,225,0.9); color: #000000">2.8</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(251,233,242,0.9); color: #000000">−3.0</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(240,246,231,0.9); color: #000000">1.1</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(247,204,226,0.9); color: #000000">−1.8</td>
+</tr>
+<tr class="odd">
+<td class="new_gt_row new_gt_left" headers="team">Manny</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(161,215,107,0.9); color: #000000">5.4</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(178,222,130,0.9); color: #000000">4.0</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(248,243,245,0.9); color: #000000">−0.5</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF">−11.8</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(246,202,225,0.9); color: #000000">−6.6</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(252,229,241,0.9); color: #000000">−2.1</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(239,181,212,0.9); color: #000000">−2.3</td>
+</tr>
+<tr class="even">
+<td class="new_gt_row new_gt_left" headers="team">Andrew E.</td>
+<td class="new_gt_row new_gt_right" headers="2018" style="background-color: rgba(189,227,146,0.9); color: #000000">4.3</td>
+<td class="new_gt_row new_gt_right" headers="2019" style="background-color: rgba(203,56,135,0.9); color: #FFFFFF">−5.3</td>
+<td class="new_gt_row new_gt_right" headers="2020" style="background-color: rgba(244,247,241,0.9); color: #000000">0.7</td>
+<td class="new_gt_row new_gt_right" headers="2021" style="background-color: rgba(253,223,238,0.9); color: #000000">−4.0</td>
+<td class="new_gt_row new_gt_right" headers="2022" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF">−14.5</td>
+<td class="new_gt_row new_gt_right" headers="2023" style="background-color: rgba(241,187,216,0.9); color: #000000">−4.2</td>
+<td class="new_gt_row new_gt_right" headers="Total" style="background-color: rgba(197,27,125,0.9); color: #FFFFFF">−4.1</td>
+</tr>
+</tbody><tfoot class="new_gt_footnotes">
+<tr class="odd">
+<td colspan="8" class="new_gt_footnote">Values represent league average "lost opportunity" minus team's "lost opportunity".</td>
+</tr>
+</tfoot>
+
+</table>
+
+</div>
+<ul>
+<li>The weighted average lost opportunity points compared to the league average only ranges from about ±4 points in the extremes. We’ll likely see that range decrease as more seasons are played, as there seems to be a lot of “noise” here.</li>
+<li>Juan is the only team to perform better than the league average in 5 seasons. The rest of the teams had lost opportunity points greater than the league average in either 2, 3, or 4 seasons.</li>
+</ul>
+</section>
+</section>
+<section id="discussion" class="level2">
+<h2 class="anchored" data-anchor-id="discussion">Discussion</h2>
+<p>To overcome the variance that comes with fantasy football, some leagues play with a <a href="https://www.rotostreetjournal.com/2023/08/04/fantasy-football-league-settings-what-is-league-median-and-why-your-league-should-implement-it/">“median scoring” format</a>. In this structure, you earn a win or loss with your head-to-head matchup, as usual, but can earn another win every week if you score more than the median team score for the week. This has the effect of reducing “luck” while still allowing for some of the randomness with which most players have developed a love-hate relationship.</p>
+<p>If we applied this scoring format to my league, here’s how the placements would have changed over the past 6 years.</p>
+<p><img src="https://tonyelhabr.rbind.io/posts/fantasy-football-performance/median-scoring.png" class="img-fluid"></p>
+<p>And here’s a tabular summary. (<code>Total placement Δ</code> represents the sum of placement changes. <code>changes</code> is either 1 or 0 for each season, depending on whether the placement for the team changed in a positive or negative manner.)</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Team</th>
+<th style="text-align: right;">Total placement Δ</th>
+<th style="text-align: right;">Positive changes</th>
+<th style="text-align: right;">Negative changes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Enrique</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tony</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Juan</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Manny</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Andrew E.</td>
+<td style="text-align: right;">-2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Brandon</td>
+<td style="text-align: right;">-3</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Luis</td>
+<td style="text-align: right;">-3</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Alan</td>
+<td style="text-align: right;">-5</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Andrew L.</td>
+<td style="text-align: right;">-6</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Drake</td>
+<td style="text-align: right;">-7</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">3</td>
+</tr>
+</tbody>
+</table>
+<p>Some observations:</p>
+<ul>
+<li>I would have moved up in my placement in 3 out of the 6 seasons with the median scoring system.</li>
+<li>Enrique would have benefited the most–Enrique would have moved up the rankings in 5 out of the 6 seasons (and not changed in the other), for a total sum of +10 placements (about +2 per season).</li>
+<li>On the other end of the spectrum, Drake would have places worse in 3 of the 6 seasons with the median scoring system, for a total ranking change of -7.</li>
+</ul>
+<table class="table">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Season</th>
+<th style="text-align: right;">Teams dropping out of Top 4</th>
+<th style="text-align: right;">Teams rising out of Bottom 4</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">2018</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2019</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2020</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2021</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2023</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+</tr>
+</tbody>
+</table>
+<p>Given the high importance of not finishing in the bottom 4 (to avoid our last place penalty), it’s notable that the 2 teams would have moved out of the bottom 4 every season with the median scoring system, with the exception of 2018. As for the top 4, 2 teams would have dropped out in 2020, no teams would have dropped out in 2018, and only 1 team would have dropped out in the rest of the seasons.</p>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>Of course, a lot of things are out of one’s control–i.e.&nbsp;you generally don’t have any influence on your opponent’s score in a given week–but our look into lost opportunity is something that could serve as an impetus for action. Knowing that, on average, players in my leagues lose out on about ~20 points every week due to sub-optimal lineup choices can make me reconsider how I think about “upside” with bench players.</p>
+
+
+
+</section>
+
+
+<div class="quarto-listing quarto-listing-container-default" id="listing-listing">
+<div class="list quarto-listing-default">
+
+</div>
+<div class="listing-no-matching d-none">
+No matching items
+</div>
+</div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>For those looking to calculate this kind of table for themselves, <a href="https://theffhub.com/">“The Fantasy Football Hub”</a> has a nice calculator, plus some extra goodies, e.g.&nbsp;“What would my record have been if I had league member X’s schedule?”.↩︎</p></li>
+<li id="fn2"><p>In most cases, I’d assume that a negative difference between actual and projected scores reflects misfortune (e.g.&nbsp;injury, unexpected lack of playing time), although one can argue that it reflects poor management by the user, i.e.&nbsp;“You should have known not to start that running back against the best rushing defense!”. However, projected points should theoretically capture matchup difficulty, so this seems like a weak argument in general.↩︎</p></li>
+</ol>
+</section></div> ]]></description>
+  <category>r</category>
+  <category>football (american)</category>
+  <guid>https://tonyelhabr.rbind.io/posts/fantasy-football-performance/index.html</guid>
+  <pubDate>Sun, 31 Dec 2023 06:00:00 GMT</pubDate>
+  <media:content url="https://tonyelhabr.rbind.io/posts/fantasy-football-performance/median-scoring.png" medium="image" type="image/png" height="144" width="144"/>
+</item>
 <item>
   <title>Should we account for team quality in an xG model?</title>
   <dc:creator>Tony ElHabr</dc:creator>
