@@ -48,9 +48,8 @@ library(sysfonts)
 library(showtext)
 library(ggtext)
 library(htmltools)
-library(ggpath)
-library(scales)
 library(glue)
+library(stringr)
 
 PROJ_DIR <- 'posts/fantasy-football-performance'
 DATA_DIR <- file.path(PROJ_DIR, 'data')
@@ -69,35 +68,61 @@ I felt like I was particularly unlucky with my schedule this past year, and inde
 
 ```{r}
 #| label: all-play
-anonymize_name <- function(name, id) {
+## Won't need sorting most of the time, but it's convenient to have a factor for local debugging
+anonymize_team <- function(team, id) {
   factor(
     ifelse(id == 7, 'Tony', LETTERS[id]),
     levels = c(LETTERS[1:6], 'Tony', LETTERS[8:10])
   )
 }
 
+leagues <- qs::qread(file.path(DATA_DIR, 'leagues-all.qs'))
+init_n_regular_season_weeks <- leagues |> 
+  purrr::map(
+    \(.x) {
+      n_regular_season_weeks <- .x$settings$scheduleSettings$matchupPeriods |> 
+        purrr::map_int(\(p) length(p)) |> 
+        ## our post-seasons always have 2 weeks
+        purrr::keep(\(l) l == 1L) |> 
+        length()
+      setNames(
+        n_regular_season_weeks,
+        .x$seasonId
+      )
+    }
+  ) |> 
+  purrr::flatten()
+
+n_regular_season_weeks <- tibble::tibble(
+  season = as.integer(names(init_n_regular_season_weeks)),
+  last_regular_season_week = as.integer(unname(init_n_regular_season_weeks))
+)
+
 franchises <- readr::read_csv(file.path(DATA_DIR, 'franchises-all.csv')) |> 
-  transmute(
+  dplyr::transmute(
     season,
     franchise_id,
     user_name,
-    name = anonymize_name(user_name, franchise_id)
+    team = anonymize_team(user_name, franchise_id)
   )
+LATEST_SEASON <- max(unique(franchises$season))
 
 team_scores <- readr::read_csv(file.path(DATA_DIR, 'team-scores-all.csv')) |> 
   dplyr::mutate(
-    name = anonymize_name(user_name, franchise_id),
-    opponent_name = anonymize_name(opponent_user_name, opponent_id)
+    team = anonymize_team(user_name, franchise_id),
+    opponent_name = anonymize_team(opponent_user_name, opponent_id)
   ) |> 
   dplyr::filter(!is.na(result)) |> 
-  dplyr::group_by(season) |> 
-  dplyr::mutate(
-    max_week = max(week)
+  dplyr::inner_join(
+    n_regular_season_weeks,
+    by = dplyr::join_by(season)
   ) |> 
-  dplyr::ungroup() |> 
-  dplyr::mutate(
-    n_games = ifelse(week >= (max_week - 1), 2L, 1L)
-  )
+  dplyr::filter(
+    week <= last_regular_season_week
+  ) |> 
+  dplyr::select(-last_regular_season_week) |> 
+  ## if we were dealing with multi-week matchup periods, then this would be more useful
+  dplyr::mutate(n_weeks_in_matchup = 1L)
 
 actual_records <- team_scores |> 
   dplyr::mutate(
@@ -105,7 +130,7 @@ actual_records <- team_scores |>
     l = user_score < opponent_score
   ) |> 
   dplyr::arrange(season) |> 
-  dplyr::group_by(season, name) |> 
+  dplyr::group_by(season, team) |> 
   dplyr::summarize(
     dplyr::across(
       c(w, l),
@@ -116,21 +141,21 @@ actual_records <- team_scores |>
 
 all_play_records <- tidyr::crossing(
   team_scores |> dplyr::distinct(season, week),
-  name = franchises$name,
-  opponent_name = franchises$name
+  team = franchises$team,
+  opponent_name = franchises$team
 ) |> 
-  dplyr::filter(name != opponent_name) |> 
+  dplyr::filter(team != opponent_name) |> 
   dplyr::inner_join(
     team_scores |>
-      dplyr::select(season, week, name, user_score),
-    by = dplyr::join_by(season, week, name)
+      dplyr::select(season, week, team, user_score),
+    by = dplyr::join_by(season, week, team)
   ) |>
   dplyr::inner_join(
     team_scores |> 
       dplyr::select(
         season,
         week,
-        opponent_name = name,
+        opponent_name = team,
         opponent_score = user_score
       ),
     by = dplyr::join_by(season, week, opponent_name)
@@ -139,7 +164,7 @@ all_play_records <- tidyr::crossing(
     w = user_score > opponent_score,
     l = user_score < opponent_score
   ) |> 
-  dplyr::group_by(season, name) |> 
+  dplyr::group_by(season, team) |> 
   dplyr::summarize(
     dplyr::across(
       c(w, l),
@@ -152,7 +177,7 @@ all_play_records <- tidyr::crossing(
 compared_all_play_records <- all_play_records |> 
   dplyr::transmute(
     season,
-    name,
+    team,
     all_play_season = season,
     all_play_w = w,
     all_play_l = l,
@@ -162,12 +187,12 @@ compared_all_play_records <- all_play_records |>
     actual_records |> 
       dplyr::transmute(
         season,
-        name,
+        team,
         actual_w = w,
         actual_l = l,
         actual_w_prop = w / (w + l)
       ),
-    by = dplyr::join_by(season, name),
+    by = dplyr::join_by(season, team),
     relationship = 'many-to-many'
   ) |> 
   dplyr::mutate(
@@ -216,10 +241,10 @@ compared_all_play_records <- all_play_records |>
 
 CAPTION_LABEL <- "Data from Tony's personal league."
 latest_all_play_h2h_gt <- compared_all_play_records |> 
-  dplyr::filter(season == max(season)) |> 
+  dplyr::filter(season == LATEST_SEASON) |> 
   dplyr::arrange(w_prop_d) |> 
   dplyr::select(
-    name,
+    team,
     actual_w,
     actual_l,
     all_play_w,
@@ -230,7 +255,7 @@ latest_all_play_h2h_gt <- compared_all_play_records |>
   ) |> 
   gt::gt() |> 
   gt::cols_label(
-    name ~ 'Team',
+    team ~ 'Team',
     actual_w ~ 'W',
     actual_l ~ 'L',
     all_play_w ~ 'W',
@@ -251,7 +276,7 @@ latest_all_play_h2h_gt <- compared_all_play_records |>
     label = 'All Play'
   ) |> 
   gt::cols_align(
-    columns = name,
+    columns = team,
     align = 'left'
   ) |> 
   gt::tab_spanner(
@@ -267,7 +292,7 @@ latest_all_play_h2h_gt <- compared_all_play_records |>
     decimals = 0
   ) |> 
   gt::tab_header(
-    title = gt::md('2023 All Play records'),
+    title = glue::glue('{LATEST_SEASON} All Play records'),
     subtitle = 'Tony was the most unlucky in the league this season.'
   ) |> 
   gt::tab_footnote(
@@ -299,13 +324,13 @@ make_tbl_quarto_robust <- function(tbl) {
   my_regex <- stringr::str_c('(', tbl_id, ' )?(.* \\{)')
   replaced_css <- css_part[2] |>
     # Make global html changes more specific
-    stringr::str_replace_all('html \\{', str_c(tbl_id, ' .gt_table {')) |> 
+    stringr::str_replace_all('html \\{', stringr::str_c(tbl_id, ' .gt_table {')) |> 
     # Make changes to everything specific to the table id
-    stringr::str_replace_all(my_regex, str_c('\\#', tbl_id, ' \\2')) |> 
+    stringr::str_replace_all(my_regex, stringr::str_c('\\#', tbl_id, ' \\2')) |> 
     # Replace duplicate names 
     stringr::str_replace_all(
-      str_c('\\#', tbl_id, ' \\#', tbl_id),
-      str_c('\\#', tbl_id)
+      stringr::str_c('\\#', tbl_id, ' \\#', tbl_id),
+      stringr::str_c('\\#', tbl_id)
     )
   
   # Put split html back together
@@ -324,28 +349,28 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
 ```
 
 ```{=html}
-<div id="ysnikncbry" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="qddsbafhds" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
   <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-#ysnikncbry table {
+#qddsbafhds table {
   font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#ysnikncbry thead, #ysnikncbry tbody, #ysnikncbry tfoot, #ysnikncbry tr, #ysnikncbry td, #ysnikncbry th {
+#qddsbafhds thead, #qddsbafhds tbody, #qddsbafhds tfoot, #qddsbafhds tr, #qddsbafhds td, #qddsbafhds th {
   border-style: none;
 }
 
-#ysnikncbry p {
+#qddsbafhds p {
   margin: 0;
   padding: 0;
 }
 
-#ysnikncbry .new_gt_table {
+#qddsbafhds .new_gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -371,12 +396,12 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-left-color: #222222;
 }
 
-#ysnikncbry .new_gt_caption {
+#qddsbafhds .new_gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#ysnikncbry .new_gt_title {
+#qddsbafhds .new_gt_title {
   color: #FFFFFF;
   font-size: 125%;
   font-weight: initial;
@@ -388,7 +413,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-bottom-width: 0;
 }
 
-#ysnikncbry .new_gt_subtitle {
+#qddsbafhds .new_gt_subtitle {
   color: #FFFFFF;
   font-size: 85%;
   font-weight: initial;
@@ -400,7 +425,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-top-width: 0;
 }
 
-#ysnikncbry .new_gt_heading {
+#qddsbafhds .new_gt_heading {
   background-color: #222222;
   text-align: left;
   border-bottom-color: #222222;
@@ -412,13 +437,13 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-right-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_bottom_border {
+#qddsbafhds .new_gt_bottom_border {
   border-bottom-style: none;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_col_headings {
+#qddsbafhds .new_gt_col_headings {
   border-top-style: none;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -433,7 +458,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-right-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_col_heading {
+#qddsbafhds .new_gt_col_heading {
   color: #FFFFFF;
   background-color: #222222;
   font-size: 100%;
@@ -453,7 +478,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   overflow-x: hidden;
 }
 
-#ysnikncbry .new_gt_column_spanner_outer {
+#qddsbafhds .new_gt_column_spanner_outer {
   color: #FFFFFF;
   background-color: #222222;
   font-size: 100%;
@@ -465,15 +490,15 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 4px;
 }
 
-#ysnikncbry .new_gt_column_spanner_outer:first-child {
+#qddsbafhds .new_gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#ysnikncbry .new_gt_column_spanner_outer:last-child {
+#qddsbafhds .new_gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#ysnikncbry .new_gt_column_spanner {
+#qddsbafhds .new_gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 3px;
   border-bottom-color: #FFFFFF;
@@ -485,11 +510,11 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   width: 100%;
 }
 
-#ysnikncbry .new_gt_spanner_row {
+#qddsbafhds .new_gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#ysnikncbry .new_gt_group_heading {
+#qddsbafhds .new_gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -515,7 +540,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   text-align: left;
 }
 
-#ysnikncbry .new_gt_empty_group_heading {
+#qddsbafhds .new_gt_empty_group_heading {
   padding: 0.5px;
   color: #FFFFFF;
   background-color: #222222;
@@ -530,15 +555,15 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   vertical-align: middle;
 }
 
-#ysnikncbry .new_gt_from_md > :first-child {
+#qddsbafhds .new_gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#ysnikncbry .new_gt_from_md > :last-child {
+#qddsbafhds .new_gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#ysnikncbry .new_gt_row {
+#qddsbafhds .new_gt_row {
   padding-top: 7px;
   padding-bottom: 7px;
   padding-left: 5px;
@@ -557,7 +582,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   overflow-x: hidden;
 }
 
-#ysnikncbry .new_gt_stub {
+#qddsbafhds .new_gt_stub {
   color: #FFFFFF;
   background-color: #222222;
   font-size: 100%;
@@ -570,7 +595,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#ysnikncbry .new_gt_stub_row_group {
+#qddsbafhds .new_gt_stub_row_group {
   color: #FFFFFF;
   background-color: #222222;
   font-size: 100%;
@@ -584,15 +609,15 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   vertical-align: top;
 }
 
-#ysnikncbry .new_gt_row_group_first td {
+#qddsbafhds .new_gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#ysnikncbry .new_gt_row_group_first th {
+#qddsbafhds .new_gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#ysnikncbry .new_gt_summary_row {
+#qddsbafhds .new_gt_summary_row {
   color: #FFFFFF;
   background-color: #222222;
   text-transform: inherit;
@@ -602,16 +627,16 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#ysnikncbry .new_gt_first_summary_row {
+#qddsbafhds .new_gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_first_summary_row.thick {
+#qddsbafhds .new_gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#ysnikncbry .new_gt_last_summary_row {
+#qddsbafhds .new_gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -621,7 +646,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-bottom-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_grand_summary_row {
+#qddsbafhds .new_gt_grand_summary_row {
   color: #FFFFFF;
   background-color: #222222;
   text-transform: inherit;
@@ -631,7 +656,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#ysnikncbry .new_gt_first_grand_summary_row {
+#qddsbafhds .new_gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -641,7 +666,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-top-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_last_grand_summary_row_top {
+#qddsbafhds .new_gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -651,11 +676,11 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-bottom-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_striped {
+#qddsbafhds .new_gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ysnikncbry .new_gt_table_body {
+#qddsbafhds .new_gt_table_body {
   border-top-style: none;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -664,7 +689,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-bottom-color: #222222;
 }
 
-#ysnikncbry .new_gt_footnotes {
+#qddsbafhds .new_gt_footnotes {
   color: #FFFFFF;
   background-color: #222222;
   border-bottom-style: none;
@@ -678,7 +703,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-right-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_footnote {
+#qddsbafhds .new_gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -687,7 +712,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#ysnikncbry .new_gt_sourcenotes {
+#qddsbafhds .new_gt_sourcenotes {
   color: #FFFFFF;
   background-color: #222222;
   border-bottom-style: none;
@@ -701,7 +726,7 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   border-right-color: #D3D3D3;
 }
 
-#ysnikncbry .new_gt_sourcenote {
+#qddsbafhds .new_gt_sourcenote {
   font-size: 12px;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -709,67 +734,67 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#ysnikncbry .new_gt_left {
+#qddsbafhds .new_gt_left {
   text-align: left;
 }
 
-#ysnikncbry .new_gt_center {
+#qddsbafhds .new_gt_center {
   text-align: center;
 }
 
-#ysnikncbry .new_gt_right {
+#qddsbafhds .new_gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#ysnikncbry .new_gt_font_normal {
+#qddsbafhds .new_gt_font_normal {
   font-weight: normal;
 }
 
-#ysnikncbry .new_gt_font_bold {
+#qddsbafhds .new_gt_font_bold {
   font-weight: bold;
 }
 
-#ysnikncbry .new_gt_font_italic {
+#qddsbafhds .new_gt_font_italic {
   font-style: italic;
 }
 
-#ysnikncbry .new_gt_super {
+#qddsbafhds .new_gt_super {
   font-size: 65%;
 }
 
-#ysnikncbry .new_gt_footnote_marks {
+#qddsbafhds .new_gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#ysnikncbry .new_gt_asterisk {
+#qddsbafhds .new_gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#ysnikncbry .new_gt_indent_1 {
+#qddsbafhds .new_gt_indent_1 {
   text-indent: 5px;
 }
 
-#ysnikncbry .new_gt_indent_2 {
+#qddsbafhds .new_gt_indent_2 {
   text-indent: 10px;
 }
 
-#ysnikncbry .new_gt_indent_3 {
+#qddsbafhds .new_gt_indent_3 {
   text-indent: 15px;
 }
 
-#ysnikncbry .new_gt_indent_4 {
+#qddsbafhds .new_gt_indent_4 {
   text-indent: 20px;
 }
 
-#ysnikncbry .new_gt_indent_5 {
+#qddsbafhds .new_gt_indent_5 {
   text-indent: 25px;
 }
 
-#ysnikncbry tbody tr:last-child {
+#qddsbafhds tbody tr:last-child {
   border-bottom: 2px solid #ffffff00;
 }
 </style>
@@ -804,86 +829,86 @@ make_tbl_quarto_robust(latest_all_play_h2h_gt) |> clipr::write_clip()
 </tr>
 </thead>
 <tbody class="new_gt_table_body">
-<tr><td headers="name" class="new_gt_row new_gt_left">Tony</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">Tony</td>
 <td headers="actual_w" class="new_gt_row new_gt_right">4</td>
-<td headers="actual_l" class="new_gt_row new_gt_right">11</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">60</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">75</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">27%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">44%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−18%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">A</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">6</td>
-<td headers="actual_l" class="new_gt_row new_gt_right">9</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">75</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">60</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">40%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">56%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,155,0.9); color: #FFFFFF;">−16%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">F</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">5</td>
 <td headers="actual_l" class="new_gt_row new_gt_right">10</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">60</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">75</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">33%</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">56</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">70</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">29%</td>
 <td headers="all_play_w_prop" class="new_gt_row new_gt_right">44%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(182,150,200,0.9); color: #FFFFFF;">−11%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">I</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">7</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−16%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">A</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">6</td>
 <td headers="actual_l" class="new_gt_row new_gt_right">8</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">67</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">68</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">47%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">50%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(239,229,240,0.9); color: #000000;">−3%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">E</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">9</td>
-<td headers="actual_l" class="new_gt_row new_gt_right">6</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">80</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">55</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">60%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">59%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(244,246,244,0.9); color: #000000;">1%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">H</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">8</td>
-<td headers="actual_l" class="new_gt_row new_gt_right">7</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">69</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">66</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">53%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">51%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(239,245,237,0.9); color: #000000;">2%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">C</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">10</td>
-<td headers="actual_l" class="new_gt_row new_gt_right">5</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">85</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">50</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">67%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">63%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(233,244,231,0.9); color: #000000;">4%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">J</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">7</td>
-<td headers="actual_l" class="new_gt_row new_gt_right">8</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">73</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">53</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">43%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">58%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF;">−15%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">F</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">4</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">10</td>
 <td headers="all_play_w" class="new_gt_row new_gt_right">55</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">80</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">47%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">41%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,221,0.9); color: #000000;">6%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">D</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">8</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">71</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">29%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">44%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF;">−15%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">I</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">6</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">8</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">60</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">66</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">43%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">48%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(233,215,234,0.9); color: #000000;">−5%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">H</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">7</td>
 <td headers="actual_l" class="new_gt_row new_gt_right">7</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">58</td>
-<td headers="all_play_l" class="new_gt_row new_gt_right">77</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">53%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">43%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(193,227,186,0.9); color: #000000;">10%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">B</td>
-<td headers="actual_w" class="new_gt_row new_gt_right">11</td>
-<td headers="actual_l" class="new_gt_row new_gt_right">4</td>
-<td headers="all_play_w" class="new_gt_row new_gt_right">66</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">63</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">63</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">50%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">50%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(247,247,247,0.9); color: #000000;">0%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">C</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">9</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">5</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">76</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">50</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">64%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">60%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(230,243,227,0.9); color: #000000;">4%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">J</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">7</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">7</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">55</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">71</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">50%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">44%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(220,241,215,0.9); color: #000000;">6%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">E</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">9</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">5</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">72</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">54</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">64%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">57%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(217,240,211,0.9); color: #000000;">7%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">D</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">8</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">6</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">57</td>
 <td headers="all_play_l" class="new_gt_row new_gt_right">69</td>
-<td headers="actual_w_prop" class="new_gt_row new_gt_right">73%</td>
-<td headers="all_play_w_prop" class="new_gt_row new_gt_right">49%</td>
-<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">24%</td></tr>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">57%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">45%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(157,207,152,0.9); color: #000000;">12%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">B</td>
+<td headers="actual_w" class="new_gt_row new_gt_right">10</td>
+<td headers="actual_l" class="new_gt_row new_gt_right">4</td>
+<td headers="all_play_w" class="new_gt_row new_gt_right">63</td>
+<td headers="all_play_l" class="new_gt_row new_gt_right">63</td>
+<td headers="actual_w_prop" class="new_gt_row new_gt_right">71%</td>
+<td headers="all_play_w_prop" class="new_gt_row new_gt_right">50%</td>
+<td headers="w_prop_d" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">21%</td></tr>
 </tbody>
 
 <tfoot class="new_gt_footnotes">
@@ -901,13 +926,13 @@ An 18% difference between my actual record and my all play record feels non-triv
 #| include: false
 total_all_play_h2h_gt <- compared_all_play_records |> 
   dplyr::transmute(
-    name,
+    team,
     season = as.character(season),
     w_prop_d
   ) |> 
   dplyr::bind_rows(
     compared_all_play_records |> 
-      dplyr::group_by(name) |> 
+      dplyr::group_by(team) |> 
       dplyr::summarize(
         dplyr::across(
           dplyr::matches('_(w|l)$'),
@@ -916,7 +941,7 @@ total_all_play_h2h_gt <- compared_all_play_records |>
       ) |> 
       dplyr::ungroup() |> 
       dplyr::transmute(
-        name,
+        team,
         season = 'Total',
         w_prop_d = (actual_w / (actual_w + actual_l)) - (all_play_w / (all_play_w + all_play_l))
       )
@@ -929,19 +954,20 @@ total_all_play_h2h_gt <- compared_all_play_records |>
   dplyr::arrange(Total) |> 
   gt::gt() |> 
   gt::cols_label(
-    name ~ 'Team'
+    team ~ 'Team'
   ) |> 
   .gt_theme_538_dark() |> 
   gt::cols_align(
-    columns = name,
+    columns = team,
     align = 'left'
   ) |> 
   gt::fmt_percent(
-    columns = -c(name),
+    columns = -c(team),
     decimals = 0
   ) |> 
-  .gt_zerocentered_hulk_col_numeric(
-    columns = -c(name)
+  .gt_zerocentered_brewer_col_numeric(
+    columns = -c(team),
+    palette = 'PRGn'
   ) |> 
   gt::tab_header(
     title = gt::md('Actual Win % - All Play Win %'),
@@ -960,28 +986,28 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
 ```
 
 ```{=html}
-<div id="lswhhffdkp" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<div id="jduazwbmbu" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
   <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
-#lswhhffdkp table {
+#jduazwbmbu table {
   font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#lswhhffdkp thead, #lswhhffdkp tbody, #lswhhffdkp tfoot, #lswhhffdkp tr, #lswhhffdkp td, #lswhhffdkp th {
+#jduazwbmbu thead, #jduazwbmbu tbody, #jduazwbmbu tfoot, #jduazwbmbu tr, #jduazwbmbu td, #jduazwbmbu th {
   border-style: none;
 }
 
-#lswhhffdkp p {
+#jduazwbmbu p {
   margin: 0;
   padding: 0;
 }
 
-#lswhhffdkp .new_gt_table {
+#jduazwbmbu .new_gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -1007,12 +1033,12 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-left-color: #222222;
 }
 
-#lswhhffdkp .new_gt_caption {
+#jduazwbmbu .new_gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#lswhhffdkp .new_gt_title {
+#jduazwbmbu .new_gt_title {
   color: #FFFFFF;
   font-size: 125%;
   font-weight: initial;
@@ -1024,7 +1050,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-bottom-width: 0;
 }
 
-#lswhhffdkp .new_gt_subtitle {
+#jduazwbmbu .new_gt_subtitle {
   color: #FFFFFF;
   font-size: 85%;
   font-weight: initial;
@@ -1036,7 +1062,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-top-width: 0;
 }
 
-#lswhhffdkp .new_gt_heading {
+#jduazwbmbu .new_gt_heading {
   background-color: #222222;
   text-align: left;
   border-bottom-color: #222222;
@@ -1048,13 +1074,13 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-right-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_bottom_border {
+#jduazwbmbu .new_gt_bottom_border {
   border-bottom-style: none;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_col_headings {
+#jduazwbmbu .new_gt_col_headings {
   border-top-style: none;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1069,7 +1095,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-right-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_col_heading {
+#jduazwbmbu .new_gt_col_heading {
   color: #FFFFFF;
   background-color: #222222;
   font-size: 100%;
@@ -1089,7 +1115,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   overflow-x: hidden;
 }
 
-#lswhhffdkp .new_gt_column_spanner_outer {
+#jduazwbmbu .new_gt_column_spanner_outer {
   color: #FFFFFF;
   background-color: #222222;
   font-size: 100%;
@@ -1101,15 +1127,15 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 4px;
 }
 
-#lswhhffdkp .new_gt_column_spanner_outer:first-child {
+#jduazwbmbu .new_gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#lswhhffdkp .new_gt_column_spanner_outer:last-child {
+#jduazwbmbu .new_gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#lswhhffdkp .new_gt_column_spanner {
+#jduazwbmbu .new_gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 3px;
   border-bottom-color: #FFFFFF;
@@ -1121,11 +1147,11 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   width: 100%;
 }
 
-#lswhhffdkp .new_gt_spanner_row {
+#jduazwbmbu .new_gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#lswhhffdkp .new_gt_group_heading {
+#jduazwbmbu .new_gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1151,7 +1177,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   text-align: left;
 }
 
-#lswhhffdkp .new_gt_empty_group_heading {
+#jduazwbmbu .new_gt_empty_group_heading {
   padding: 0.5px;
   color: #FFFFFF;
   background-color: #222222;
@@ -1166,15 +1192,15 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   vertical-align: middle;
 }
 
-#lswhhffdkp .new_gt_from_md > :first-child {
+#jduazwbmbu .new_gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#lswhhffdkp .new_gt_from_md > :last-child {
+#jduazwbmbu .new_gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#lswhhffdkp .new_gt_row {
+#jduazwbmbu .new_gt_row {
   padding-top: 7px;
   padding-bottom: 7px;
   padding-left: 5px;
@@ -1193,7 +1219,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   overflow-x: hidden;
 }
 
-#lswhhffdkp .new_gt_stub {
+#jduazwbmbu .new_gt_stub {
   color: #FFFFFF;
   background-color: #222222;
   font-size: 100%;
@@ -1206,7 +1232,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#lswhhffdkp .new_gt_stub_row_group {
+#jduazwbmbu .new_gt_stub_row_group {
   color: #FFFFFF;
   background-color: #222222;
   font-size: 100%;
@@ -1220,15 +1246,15 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   vertical-align: top;
 }
 
-#lswhhffdkp .new_gt_row_group_first td {
+#jduazwbmbu .new_gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#lswhhffdkp .new_gt_row_group_first th {
+#jduazwbmbu .new_gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#lswhhffdkp .new_gt_summary_row {
+#jduazwbmbu .new_gt_summary_row {
   color: #FFFFFF;
   background-color: #222222;
   text-transform: inherit;
@@ -1238,16 +1264,16 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#lswhhffdkp .new_gt_first_summary_row {
+#jduazwbmbu .new_gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_first_summary_row.thick {
+#jduazwbmbu .new_gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#lswhhffdkp .new_gt_last_summary_row {
+#jduazwbmbu .new_gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1257,7 +1283,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-bottom-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_grand_summary_row {
+#jduazwbmbu .new_gt_grand_summary_row {
   color: #FFFFFF;
   background-color: #222222;
   text-transform: inherit;
@@ -1267,7 +1293,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#lswhhffdkp .new_gt_first_grand_summary_row {
+#jduazwbmbu .new_gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1277,7 +1303,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-top-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_last_grand_summary_row_top {
+#jduazwbmbu .new_gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1287,11 +1313,11 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-bottom-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_striped {
+#jduazwbmbu .new_gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#lswhhffdkp .new_gt_table_body {
+#jduazwbmbu .new_gt_table_body {
   border-top-style: none;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1300,7 +1326,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-bottom-color: #222222;
 }
 
-#lswhhffdkp .new_gt_footnotes {
+#jduazwbmbu .new_gt_footnotes {
   color: #FFFFFF;
   background-color: #222222;
   border-bottom-style: none;
@@ -1314,7 +1340,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-right-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_footnote {
+#jduazwbmbu .new_gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1323,7 +1349,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#lswhhffdkp .new_gt_sourcenotes {
+#jduazwbmbu .new_gt_sourcenotes {
   color: #FFFFFF;
   background-color: #222222;
   border-bottom-style: none;
@@ -1337,7 +1363,7 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   border-right-color: #D3D3D3;
 }
 
-#lswhhffdkp .new_gt_sourcenote {
+#jduazwbmbu .new_gt_sourcenote {
   font-size: 12px;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1345,67 +1371,67 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
   padding-right: 5px;
 }
 
-#lswhhffdkp .new_gt_left {
+#jduazwbmbu .new_gt_left {
   text-align: left;
 }
 
-#lswhhffdkp .new_gt_center {
+#jduazwbmbu .new_gt_center {
   text-align: center;
 }
 
-#lswhhffdkp .new_gt_right {
+#jduazwbmbu .new_gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#lswhhffdkp .new_gt_font_normal {
+#jduazwbmbu .new_gt_font_normal {
   font-weight: normal;
 }
 
-#lswhhffdkp .new_gt_font_bold {
+#jduazwbmbu .new_gt_font_bold {
   font-weight: bold;
 }
 
-#lswhhffdkp .new_gt_font_italic {
+#jduazwbmbu .new_gt_font_italic {
   font-style: italic;
 }
 
-#lswhhffdkp .new_gt_super {
+#jduazwbmbu .new_gt_super {
   font-size: 65%;
 }
 
-#lswhhffdkp .new_gt_footnote_marks {
+#jduazwbmbu .new_gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#lswhhffdkp .new_gt_asterisk {
+#jduazwbmbu .new_gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#lswhhffdkp .new_gt_indent_1 {
+#jduazwbmbu .new_gt_indent_1 {
   text-indent: 5px;
 }
 
-#lswhhffdkp .new_gt_indent_2 {
+#jduazwbmbu .new_gt_indent_2 {
   text-indent: 10px;
 }
 
-#lswhhffdkp .new_gt_indent_3 {
+#jduazwbmbu .new_gt_indent_3 {
   text-indent: 15px;
 }
 
-#lswhhffdkp .new_gt_indent_4 {
+#jduazwbmbu .new_gt_indent_4 {
   text-indent: 20px;
 }
 
-#lswhhffdkp .new_gt_indent_5 {
+#jduazwbmbu .new_gt_indent_5 {
   text-indent: 25px;
 }
 
-#lswhhffdkp tbody tr:last-child {
+#jduazwbmbu tbody tr:last-child {
   border-bottom: 2px solid #ffffff00;
 }
 </style>
@@ -1429,86 +1455,86 @@ make_tbl_quarto_robust(total_all_play_h2h_gt) |> clipr::write_clip()
 </tr>
 </thead>
 <tbody class="new_gt_table_body">
-<tr><td headers="name" class="new_gt_row new_gt_left">A</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−16%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(183,221,177,0.9); color: #000000;">10%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,220,0.9); color: #000000;">3%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−26%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,220,0.9); color: #000000;">5%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,155,0.9); color: #FFFFFF;">−16%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−7%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">Tony</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(245,242,245,0.9); color: #000000;">−1%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(162,210,156,0.9); color: #000000;">11%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−21%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(234,219,235,0.9); color: #000000;">−7%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(244,246,243,0.9); color: #000000;">1%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−18%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(149,96,165,0.9); color: #FFFFFF;">−6%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">I</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(247,247,247,0.9); color: #000000;">0%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(212,187,219,0.9); color: #000000;">−10%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(189,225,183,0.9); color: #000000;">6%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(237,224,237,0.9); color: #000000;">−6%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(241,246,239,0.9); color: #000000;">1%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(239,229,240,0.9); color: #000000;">−3%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(234,218,234,0.9); color: #000000;">−2%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">C</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(94,165,98,0.9); color: #FFFFFF;">9%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(194,165,208,0.9); color: #000000;">−13%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(169,130,188,0.9); color: #FFFFFF;">−15%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(243,246,242,0.9); color: #000000;">1%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(221,241,216,0.9); color: #000000;">6%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(233,244,231,0.9); color: #000000;">4%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(239,229,239,0.9); color: #000000;">−1%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">B</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(240,231,240,0.9); color: #000000;">−2%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(237,225,238,0.9); color: #000000;">−5%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(236,224,237,0.9); color: #000000;">−5%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(237,224,237,0.9); color: #000000;">−6%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(165,124,183,0.9); color: #FFFFFF;">−11%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">24%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(242,236,242,0.9); color: #000000;">−1%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">F</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(221,241,216,0.9); color: #000000;">3%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(223,241,218,0.9); color: #000000;">6%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(230,243,227,0.9); color: #000000;">2%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(172,216,166,0.9); color: #000000;">8%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(245,242,245,0.9); color: #000000;">−1%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(182,150,200,0.9); color: #FFFFFF;">−11%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(235,244,233,0.9); color: #000000;">1%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">J</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(178,144,197,0.9); color: #FFFFFF;">−10%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">21%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,220,0.9); color: #000000;">3%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(218,240,213,0.9); color: #000000;">5%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(126,57,140,0.9); color: #FFFFFF;">−15%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,221,0.9); color: #000000;">6%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(233,244,230,0.9); color: #000000;">1%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">D</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(134,195,129,0.9); color: #000000;">7%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(232,214,233,0.9); color: #000000;">−7%</td>
+<tr><td headers="team" class="new_gt_row new_gt_left">A</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(141,83,156,0.9); color: #FFFFFF;">−12%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(110,178,110,0.9); color: #FFFFFF;">15%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(241,233,241,0.9); color: #000000;">−4%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−25%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(215,239,209,0.9); color: #000000;">7%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF;">−15%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−6%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">Tony</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(237,245,235,0.9); color: #000000;">2%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(218,240,213,0.9); color: #000000;">6%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−29%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(238,227,239,0.9); color: #000000;">−5%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(227,242,223,0.9); color: #000000;">5%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−16%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(130,64,144,0.9); color: #FFFFFF;">−6%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">C</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(202,232,196,0.9); color: #000000;">6%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(141,82,156,0.9); color: #FFFFFF;">−19%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(189,159,205,0.9); color: #000000;">−17%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(244,240,244,0.9); color: #000000;">−2%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(224,242,219,0.9); color: #000000;">6%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(230,243,227,0.9); color: #000000;">4%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(209,183,217,0.9); color: #000000;">−3%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">I</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(241,233,241,0.9); color: #000000;">−2%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(214,190,221,0.9); color: #000000;">−9%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(172,216,166,0.9); color: #000000;">6%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(213,189,220,0.9); color: #000000;">−11%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(234,244,231,0.9); color: #000000;">3%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(233,215,234,0.9); color: #000000;">−5%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(209,183,217,0.9); color: #000000;">−3%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">F</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(237,245,235,0.9); color: #000000;">2%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(218,240,213,0.9); color: #000000;">6%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(134,195,129,0.9); color: #000000;">8%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(50,133,67,0.9); color: #FFFFFF;">12%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(238,226,238,0.9); color: #000000;">−4%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(127,58,140,0.9); color: #FFFFFF;">−15%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(228,243,224,0.9); color: #000000;">1%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">J</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−14%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">20%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(192,226,185,0.9); color: #000000;">6%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(172,216,166,0.9); color: #000000;">6%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(161,117,179,0.9); color: #FFFFFF;">−15%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(220,241,215,0.9); color: #000000;">6%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(226,242,222,0.9); color: #000000;">1%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">D</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">17%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(177,144,197,0.9); color: #FFFFFF;">−14%</td>
 <td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">13%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(185,222,178,0.9); color: #000000;">7%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−15%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(193,227,186,0.9); color: #000000;">10%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(221,241,216,0.9); color: #000000;">2%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">E</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">11%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−23%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(50,133,67,0.9); color: #FFFFFF;">12%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(160,209,154,0.9); color: #000000;">8%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(172,216,166,0.9); color: #000000;">10%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(244,246,244,0.9); color: #000000;">1%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(201,231,195,0.9); color: #000000;">3%</td></tr>
-<tr><td headers="name" class="new_gt_row new_gt_left">H</td>
-<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(245,242,245,0.9); color: #000000;">−1%</td>
-<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(162,210,156,0.9); color: #000000;">11%</td>
-<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(230,243,227,0.9); color: #000000;">2%</td>
-<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">15%</td>
-<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">19%</td>
-<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(239,245,237,0.9); color: #000000;">2%</td>
-<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">9%</td></tr>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(225,242,220,0.9); color: #000000;">3%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−20%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(157,207,152,0.9); color: #000000;">12%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(220,241,215,0.9); color: #000000;">2%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">B</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(227,242,223,0.9); color: #000000;">4%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(235,244,232,0.9); color: #000000;">3%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(241,246,239,0.9); color: #000000;">1%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(243,237,243,0.9); color: #000000;">−2%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(174,140,194,0.9); color: #FFFFFF;">−13%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">21%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(213,238,207,0.9); color: #000000;">2%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">E</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(142,199,137,0.9); color: #000000;">10%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(118,42,131,0.9); color: #FFFFFF;">−21%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(53,135,69,0.9); color: #FFFFFF;">12%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">13%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(177,218,171,0.9); color: #000000;">10%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(217,240,211,0.9); color: #000000;">7%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(59,139,73,0.9); color: #FFFFFF;">6%</td></tr>
+<tr><td headers="team" class="new_gt_row new_gt_left">H</td>
+<td headers="2018" class="new_gt_row new_gt_right" style="background-color: rgba(130,63,144,0.9); color: #FFFFFF;">−13%</td>
+<td headers="2019" class="new_gt_row new_gt_right" style="background-color: rgba(148,202,143,0.9); color: #000000;">12%</td>
+<td headers="2020" class="new_gt_row new_gt_right" style="background-color: rgba(228,243,224,0.9); color: #000000;">3%</td>
+<td headers="2021" class="new_gt_row new_gt_right" style="background-color: rgba(69,146,80,0.9); color: #FFFFFF;">11%</td>
+<td headers="2022" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">21%</td>
+<td headers="2023" class="new_gt_row new_gt_right" style="background-color: rgba(247,247,247,0.9); color: #000000;">0%</td>
+<td headers="Total" class="new_gt_row new_gt_right" style="background-color: rgba(27,120,55,0.9); color: #FFFFFF;">6%</td></tr>
 </tbody>
 
 <tfoot class="new_gt_footnotes">
@@ -1535,19 +1561,623 @@ compared_all_play_records <- qs::read(file.path(PROJ_DIR, 'compared_all_play_rec
 #| label: all-play-quantiles
 round(quantile(compared_all_play_records$w_prop_d, c(0.975, 0.025)), 3)
 #>  97.5%   2.5% 
-#>  0.201 -0.223
+#>  0.209 -0.234
 ```
 
-The top and bottom 2.5th percentiles of season-long actual win % minus all play win % are about +20% and -22% respectively. This translates to about ±3 wins (depending on how many games your league plays). So, the "back-of-the-napkin" take-away here is that you could be winning or losing 3 more games due to your schedule, in the most extreme cases.
+The top and bottom 2.5th percentiles of season-long actual win % minus all play win % are about +21% and -23% respectively. This translates to about ±3 wins in leagues with a 14 game season. So, the "back-of-the-napkin" take-away here is that you could be winning or losing 3 more games due to your schedule, in the most extreme cases.
 
 Overall, it's interesting to see that the under- and over-performance doesn't quite level out even over the course of 6 seasons. (How has Team H consistently gotten favorable schedules?!) Surely we'd see this even out over more and more seasons, but it's noteworthy that even 6 seasons may not be sufficient to achieve long-run schedule fairness.
 
 ### Actual vs. projected points
 
 ```{r}
+#| label: projected-team-scores
+league_avg_projected_scores <- team_scores |> 
+  dplyr::group_by(season) |> 
+  dplyr::summarize(
+    mean_d = mean((user_score - user_projected_score) / n_weeks_in_matchup, na.rm = TRUE),
+    sd_d = sd((user_score - user_projected_score) / n_weeks_in_matchup, na.rm = TRUE),
+    n_games = sum(n_weeks_in_matchup),
+    dplyr::across(
+      dplyr::matches('user.*score'),
+      \(.x) sum(.x, na.rm = TRUE)
+    )
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    user_d = user_score - user_projected_score,
+    user_d_per_game = user_d / n_games
+  )
 
+season_points_above_projected <- team_scores |> 
+  dplyr::group_by(season, team) |> 
+  dplyr::summarize(
+    n_games = sum(n_weeks_in_matchup),
+    dplyr::across(
+      dplyr::ends_with('score'),
+      \(.x) sum(.x, na.rm = TRUE)
+    )
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    user_d = user_score - user_projected_score,
+    opponent_d = opponent_score - opponent_projected_score,
+    user_d_per_game = user_d / n_games,
+    opponent_d_per_game = opponent_d / n_games,
+    total_d_per_game = user_d_per_game - opponent_d_per_game
+  ) |> 
+  dplyr::group_by(season) |> 
+  dplyr::mutate(
+    projected_underperformance_rank = dplyr::row_number(user_d_per_game - opponent_d_per_game)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::arrange(season, projected_underperformance_rank)
+
+latest_season_points_above_projected <- season_points_above_projected |> 
+  dplyr::filter(season == LATEST_SEASON) 
+
+tony_position <- latest_season_points_above_projected |> 
+  dplyr::filter(team == 'Tony') |> 
+  dplyr::pull(projected_underperformance_rank)
+
+latest_season_points_above_projected_gt <- latest_season_points_above_projected |> 
+  dplyr::select(
+    team,
+    user_d_per_game,
+    opponent_d_per_game,
+    total_d_per_game
+  ) |> 
+  gt::gt() |> 
+  gt::cols_label(
+    team ~ 'Team',
+    user_d_per_game ~ 'Team',
+    opponent_d_per_game ~ 'Opponent',
+    total_d_per_game = gt::html('Team -<br/>Opponent')
+  ) |> 
+  .gt_theme_538_dark() |> 
+  gt::cols_align(
+    columns = team,
+    align = 'left'
+  ) |> 
+  gt::fmt_number(
+    columns = -c(team),
+    decimals = 1
+  ) |> 
+  .gt_zerocentered_brewer_col_numeric(
+    columns = -c(team),
+    palette = 'BrBG'
+  ) |> 
+  gt::tab_header(
+    title = glue::glue('{LATEST_SEASON} Avg. Weekly Actual - Projected Points'),
+    subtitle = glue::glue('Tony was the {scales::ordinal(tony_position)} unluckiest this season.')
+  ) |> 
+  gt::tab_footnote(
+    footnote = CAPTION_LABEL
+  )
+
+gt::gtsave(
+  latest_season_points_above_projected_gt,
+  filename = file.path(PROJ_DIR, 'latest-points-above-projected.png')
+)
+make_tbl_quarto_robust(latest_season_points_above_projected_gt) |> clipr::write_clip()
 ```
 
+```{=html}
+<div id="ywurrtmqnx" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+  <style>@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#ywurrtmqnx table {
+  font-family: 'Titillium Web', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#ywurrtmqnx thead, #ywurrtmqnx tbody, #ywurrtmqnx tfoot, #ywurrtmqnx tr, #ywurrtmqnx td, #ywurrtmqnx th {
+  border-style: none;
+}
+
+#ywurrtmqnx p {
+  margin: 0;
+  padding: 0;
+}
+
+#ywurrtmqnx .new_gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #222222;
+  width: auto;
+  border-top-style: none;
+  border-top-width: 3px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #222222;
+}
+
+#ywurrtmqnx .new_gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#ywurrtmqnx .new_gt_title {
+  color: #FFFFFF;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #222222;
+  border-bottom-width: 0;
+}
+
+#ywurrtmqnx .new_gt_subtitle {
+  color: #FFFFFF;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #222222;
+  border-top-width: 0;
+}
+
+#ywurrtmqnx .new_gt_heading {
+  background-color: #222222;
+  text-align: left;
+  border-bottom-color: #222222;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_bottom_border {
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_col_headings {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_col_heading {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#ywurrtmqnx .new_gt_column_spanner_outer {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#ywurrtmqnx .new_gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#ywurrtmqnx .new_gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#ywurrtmqnx .new_gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 3px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#ywurrtmqnx .new_gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#ywurrtmqnx .new_gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#ywurrtmqnx .new_gt_empty_group_heading {
+  padding: 0.5px;
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #222222;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #FFFFFF;
+  vertical-align: middle;
+}
+
+#ywurrtmqnx .new_gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#ywurrtmqnx .new_gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#ywurrtmqnx .new_gt_row {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#ywurrtmqnx .new_gt_stub {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 0px;
+  border-right-color: #FFFFFF;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ywurrtmqnx .new_gt_stub_row_group {
+  color: #FFFFFF;
+  background-color: #222222;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#ywurrtmqnx .new_gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#ywurrtmqnx .new_gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#ywurrtmqnx .new_gt_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ywurrtmqnx .new_gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#ywurrtmqnx .new_gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_grand_summary_row {
+  color: #FFFFFF;
+  background-color: #222222;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ywurrtmqnx .new_gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ywurrtmqnx .new_gt_table_body {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #222222;
+}
+
+#ywurrtmqnx .new_gt_footnotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ywurrtmqnx .new_gt_sourcenotes {
+  color: #FFFFFF;
+  background-color: #222222;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ywurrtmqnx .new_gt_sourcenote {
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ywurrtmqnx .new_gt_left {
+  text-align: left;
+}
+
+#ywurrtmqnx .new_gt_center {
+  text-align: center;
+}
+
+#ywurrtmqnx .new_gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#ywurrtmqnx .new_gt_font_normal {
+  font-weight: normal;
+}
+
+#ywurrtmqnx .new_gt_font_bold {
+  font-weight: bold;
+}
+
+#ywurrtmqnx .new_gt_font_italic {
+  font-style: italic;
+}
+
+#ywurrtmqnx .new_gt_super {
+  font-size: 65%;
+}
+
+#ywurrtmqnx .new_gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#ywurrtmqnx .new_gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#ywurrtmqnx .new_gt_indent_1 {
+  text-indent: 5px;
+}
+
+#ywurrtmqnx .new_gt_indent_2 {
+  text-indent: 10px;
+}
+
+#ywurrtmqnx .new_gt_indent_3 {
+  text-indent: 15px;
+}
+
+#ywurrtmqnx .new_gt_indent_4 {
+  text-indent: 20px;
+}
+
+#ywurrtmqnx .new_gt_indent_5 {
+  text-indent: 25px;
+}
+
+#ywurrtmqnx tbody tr:last-child {
+  border-bottom: 2px solid #ffffff00;
+}
+</style>
+  <table class="new_gt_table">
+<thead>
+  <tr class="new_gt_heading">
+    <td colspan="4" class="new_gt_heading new_gt_title new_gt_font_normal" style="font-family: 'Titillium Web'; font-weight: 700;">2023 Avg. Weekly Actual - Projected Points</td>
+  </tr>
+  <tr class="new_gt_heading">
+    <td colspan="4" class="new_gt_heading new_gt_subtitle new_gt_font_normal new_gt_bottom_border" style="font-family: 'Titillium Web'; font-weight: 400;">Tony was the 3rd unluckiest this season.</td>
+  </tr>
+  <tr class="new_gt_col_headings">
+    <th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_left" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team">Team</th>
+    <th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team">Team</th>
+    <th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Opponent">Opponent</th>
+    <th class="new_gt_col_heading new_gt_columns_bottom_border new_gt_right" rowspan="1" colspan="1" style="color: #FFFFFF; font-family: 'Titillium Web'; text-transform: uppercase; font-size: 14px; vertical-align: bottom; font-weight: 200; border-top-width: 0px; border-top-style: solid; border-top-color: #222222;" scope="col" id="Team -&lt;br/&gt;Opponent">Team -<br/>Opponent</th>
+  </tr>
+</thead>
+<tbody class="new_gt_table_body">
+  <tr><td headers="team" class="new_gt_row new_gt_left">I</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−11.1</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(123,195,188,0.9); color: #000000;">4.7</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−15.8</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">F</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(231,203,143,0.9); color: #000000;">−5.7</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(64,152,144,0.9); color: #FFFFFF;">6.4</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(193,148,74,0.9); color: #FFFFFF;">−12.1</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">Tony</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,236,208,0.9); color: #000000;">−2.8</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">8.2</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(210,170,93,0.9); color: #000000;">−11.0</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">A</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(182,225,219,0.9); color: #000000;">2.0</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(47,135,127,0.9); color: #FFFFFF;">7.0</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(246,233,198,0.9); color: #000000;">−5.0</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">J</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,242,230,0.9); color: #000000;">−1.2</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,240,224,0.9); color: #000000;">−2.1</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(237,244,243,0.9); color: #000000;">0.9</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">H</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(212,238,234,0.9); color: #000000;">1.3</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,242,231,0.9); color: #000000;">−1.5</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(218,239,236,0.9); color: #000000;">2.8</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">D</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(247,238,215,0.9); color: #000000;">−2.2</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(227,196,131,0.9); color: #000000;">−8.2</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(166,217,211,0.9); color: #000000;">6.0</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">C</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(121,194,187,0.9); color: #000000;">3.0</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(238,215,166,0.9); color: #000000;">−6.4</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(84,173,165,0.9); color: #FFFFFF;">9.4</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">B</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(246,233,197,0.9); color: #000000;">−3.5</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(140,81,10,0.9); color: #FFFFFF;">−14.7</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(55,143,135,0.9); color: #FFFFFF;">11.2</td></tr>
+  <tr><td headers="team" class="new_gt_row new_gt_left">E</td>
+<td headers="user_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">5.2</td>
+<td headers="opponent_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(226,194,128,0.9); color: #000000;">−8.4</td>
+<td headers="total_d_per_game" class="new_gt_row new_gt_right" style="background-color: rgba(1,102,94,0.9); color: #FFFFFF;">13.6</td></tr>
+</tbody>
+
+<tfoot class="new_gt_footnotes">
+  <tr>
+    <td class="new_gt_footnote" colspan="4"> Data from Tony's personal league.</td>
+  </tr>
+</tfoot>
+</table>
+</div>
+```
 ### Lost Opportunity
 
 ## Discussion
@@ -1567,7 +2197,7 @@ median_scoring_records <- team_scores |>
     median_result = ifelse(user_score > median_score, 'W', 'L')
   ) |> 
   filter(week <= max_week) |> 
-  group_by(season, name) |> 
+  group_by(season, team) |> 
   summarize(
     orig_wins = sum(result == 'W'),
     init_median_wins = sum(median_result == 'W')
@@ -1589,12 +2219,12 @@ median_scoring_records_with_labels <- median_scoring_records |>
     label = forcats::fct_reorder(
       paste0(
         "<b><span style='font-size:12pt'>", 
-        name, 
+        team, 
         "</span></b> <span style='font-size:9pt'>(", 
         orig_placing,
         ## https://albert-rapp.de/posts/ggplot2-tips/08_fonts_and_icons/08_fonts_and_icons.html
         " <span style='font-family:fa-solid",
-         dplyr::case_when(
+        dplyr::case_when(
           orig_placing > median_placing ~ ';color:#2feaa8',
           orig_placing < median_placing ~ ';color:#fb3640',
           TRUE ~ ''
@@ -1624,7 +2254,7 @@ median_scoring_changes_plot <- median_scoring_records_with_labels |>
   ) + 
   geom_segment(
     color = WHITISH_FOREGROUND_COLOR,
-    # data = median_scoring_records_with_labels |> filter(name != 'Tony'),
+    # data = median_scoring_records_with_labels |> filter(team != 'Tony'),
     linewidth = 0.25,
     aes(
       x = 1,
@@ -1635,7 +2265,7 @@ median_scoring_changes_plot <- median_scoring_records_with_labels |>
   ) +
   geom_segment(
     color = WHITISH_FOREGROUND_COLOR,
-    data = median_scoring_records_with_labels |> filter(name == 'Tony'),
+    data = median_scoring_records_with_labels |> filter(team == 'Tony'),
     linewidth = 1,
     aes(
       x = 1,
@@ -1667,7 +2297,7 @@ ggsave(
 )
 
 median_scoring_records |> 
-  group_by(`Team` = name) |> 
+  group_by(`Team` = team) |> 
   summarize(
     `Total placement Δ` = sum(orig_placing - median_placing),
     `Positive changes` = sum(median_placing < orig_placing),
