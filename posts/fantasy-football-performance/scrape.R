@@ -1,8 +1,10 @@
 library(ffscrapr)
 library(dplyr)
 library(purrr)
-library(readr)
 library(lubridate)
+library(tibble)
+
+library(readr)
 library(qs)
 
 PROJ_DIR <- 'posts/fantasy-football-performance'
@@ -51,9 +53,17 @@ scrape_schedules <- function(conn) {
 }
 
 scrape_weekly_player_scores <- function(conn) {
-  max_week <- ifelse(conn$season == lubridate::year(Sys.Date()), 14, 18)
+  max_week <- 18 # ifelse(conn$season == lubridate::year(Sys.Date()), 14, 18)
   ffscrapr::ff_starters(conn, weeks = 1:max_week) |> 
     .add_season_col(conn)
+}
+
+scrape_league <- function(conn) {
+  res <- ffscrapr::espn_getendpoint(
+    conn = conn,
+    view = 'mSettings'
+  )
+  res[['content']]
 }
 
 ff_data <- purrr::map(
@@ -75,11 +85,6 @@ ff_data <- purrr::map(
       overwrite = overwrite
     )
     
-    # franchises <- franchises |> 
-    #   dplyr::mutate(
-    #     user_name = .clean_user_name(user_name)
-    #   )
-    
     schedules <- manage_io_operations(
       conn, 
       data_type = 'schedule',
@@ -94,10 +99,19 @@ ff_data <- purrr::map(
       overwrite = overwrite
     )
     
+    
+    league <- manage_io_operations(
+      conn, 
+      data_type = 'league',
+      f = scrape_league,
+      overwrite = TRUE
+    )
+    
     list(
       'franchises' = franchises,
       'schedules' = schedules,
-      'player_scores' = player_scores
+      'player_scores' = player_scores,
+      'league' = league
     )
   }
 )
@@ -109,9 +123,11 @@ map_dfr_ff_data <- function(ff_data, name) {
   ) 
 }
 
+## call functions ----
 franchises <- map_dfr_ff_data(ff_data, 'franchises')
 schedules <- map_dfr_ff_data(ff_data, 'schedules')
 weekly_player_scores <- map_dfr_ff_data(ff_data, 'player_scores')
+leagues <- purrr::map(ff_data, \(.x) .x[['league']])
 
 weekly_projected_scores <- weekly_player_scores |> 
   dplyr::filter(lineup_slot != 'BE') |> 
@@ -125,6 +141,7 @@ weekly_projected_scores <- weekly_player_scores |>
   ) |> 
   dplyr::ungroup()
 
+## combine data ----
 weekly_team_scores <- schedules |> 
   dplyr::select(
     season,
@@ -187,6 +204,7 @@ weekly_team_scores <- schedules |>
     result
   )
 
+## final output ----
 readr::write_csv(
   franchises,
   file.path(DATA_DIR, 'franchises-all.csv')
@@ -200,4 +218,214 @@ qs::qsave(
 readr::write_csv(
   weekly_team_scores,
   file.path(DATA_DIR, 'team-scores-all.csv')
+)
+
+qs::qsave(
+  leagues,
+  file.path(DATA_DIR, 'leagues-all.qs')
+)
+
+
+## optimal replacement scores ----
+filt_weekly_player_scores <- weekly_player_scores |> 
+  dplyr::inner_join(
+    franchises |> 
+      dplyr::select(
+        season,
+        franchise_id,
+        user_name
+      ),
+    by = dplyr::join_by(season, franchise_id)
+  ) |> 
+  dplyr::filter(lineup_slot != 'IR')
+
+starter_scores <- filt_weekly_player_scores |> 
+  dplyr::filter(lineup_slot != 'BE') |> 
+  dplyr::select(
+    season,
+    week,
+    franchise_id,
+    player_id,
+    player_score,
+    lineup_slot
+  ) |> 
+  dplyr::arrange(season, week, franchise_id, lineup_slot, player_score)
+
+init_bench_scores <- filt_weekly_player_scores |> 
+  dplyr::filter(lineup_slot == 'BE')
+
+POSITION_MAP <- ffscrapr:::.espn_lineupslot_map()
+slots <- league$settings$rosterSettings$lineupSlotCounts |> 
+  purrr::imap(
+    \(.x, .y) {
+      setNames(
+        as.integer(.x),
+        POSITION_MAP[as.character(.y)]
+      )
+    }
+  ) |> 
+  purrr::flatten()
+
+bench_potential_lineup_slots <- init_bench_scores |> 
+  dplyr::select(
+    season,
+    week,
+    franchise_id,
+    player_id,
+    eligible_lineup_slots
+  ) |> 
+  tidyr::unnest_longer(eligible_lineup_slots) |> 
+  dplyr::mutate(
+    lineup_slot = POSITION_MAP[as.character(eligible_lineup_slots)],
+    .keep = 'unused'
+  )
+
+bench_scores <- init_bench_scores |> 
+  dplyr::select(
+    season,
+    week,
+    franchise_id,
+    player_id,
+    player_score
+  ) |> 
+  dplyr::left_join(
+    bench_potential_lineup_slots |> 
+      dplyr::select(
+        season,
+        week,
+        franchise_id,
+        player_id,
+        lineup_slot
+      ),
+    by = dplyr::join_by(season, week, franchise_id, player_id),
+    relationship = 'many-to-many'
+  ) |> 
+  dplyr::semi_join(
+    starter_scores |> dplyr::distinct(season, lineup_slot),
+    by = dplyr::join_by(season, lineup_slot)
+  ) |> 
+  dplyr::arrange(
+    season, 
+    week,
+    franchise_id, 
+    lineup_slot, 
+    dplyr::desc(player_score)
+  )
+
+nested_scores <- dplyr::left_join(
+  starter_scores |> 
+    dplyr::select(
+      season,
+      week,
+      franchise_id,
+      lineup_slot,
+      player_id,
+      player_score
+    ) |> 
+    tidyr::nest(
+      starters = c(player_id, player_score)
+    ) |> 
+    dplyr::mutate(
+      starters = purrr::map(starters, tibble::deframe)
+    ),
+  bench_scores |> 
+    dplyr::select(
+      season,
+      week,
+      franchise_id,
+      lineup_slot,
+      player_id,
+      player_score
+    ) |> 
+    tidyr::nest(
+      bench = c(player_id, player_score)
+    ) |> 
+    dplyr::mutate(
+      bench = purrr::map(bench, tibble::deframe)
+    ),
+  by = dplyr::join_by(
+    season,
+    week,
+    franchise_id,
+    lineup_slot
+  )
+)
+
+swap_bench_and_starters <- function(starters, bench) {
+  if (is.null(bench)) {
+    return(starters)
+  }
+  
+  new_starters <- vector('double', length = length(starters))
+  nms <- vector('character', length = length(starters))
+  for (i in seq_along(starters)) {
+    # Find bench values greater than the current starter
+    eligible_bench <- bench[bench > starters[i]]
+    
+    if (length(eligible_bench) > 0) {
+      # Find the maximum eligible bench value
+      max_bench_value <- max(eligible_bench)
+      max_bench_name <- names(eligible_bench[which.max(eligible_bench)])
+      
+      # Swap the values
+      new_starters[i] <- max_bench_value
+      nms[i] <- max_bench_name
+      
+      # Remove the used bench value
+      bench[bench == max_bench_value] <- -Inf
+    } else {
+      new_starters[i] <- starters[i]
+      nms[i] <- names(starters[i])
+    }
+  }
+  
+  stats::setNames(new_starters, nms)
+}
+
+get_nested_name <- function(x) {
+  purrr::map(x, \(.x) names(.x))
+}
+get_nested_value <- function(x) {
+  purrr::map(x, \(.x) unname(.x))
+}
+replacement_scores <- nested_scores |> 
+  dplyr::mutate(
+    best = purrr::map2(
+      starters,
+      bench,
+      swap_bench_and_starters
+    )
+  ) |> 
+  dplyr::select(
+    season,
+    week,
+    franchise_id,
+    lineup_slot,
+    starters,
+    best
+  ) |> 
+  dplyr::mutate(
+    starter_player_id = get_nested_name(starters),
+    starter_player_score = get_nested_value(starters),
+    best_player_id = get_nested_name(best),
+    best_player_score = get_nested_value(best),
+    .keep = 'unused'
+  ) |> 
+  tidyr::unnest(
+    c(
+      starter_player_id, 
+      starter_player_score, 
+      best_player_id, 
+      best_player_score
+    )
+  ) |> 
+  dplyr::mutate(
+    dplyr::across(c(starter_player_id, best_player_id), as.integer),
+    is_replacement = starter_player_id != best_player_id,
+    score_improvement = best_player_score - starter_player_score
+  )
+
+readr::write_csv(
+  replacement_scores,
+  file.path(DATA_DIR, 'replacement-scores-all.csv')
 )
