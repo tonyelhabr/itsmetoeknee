@@ -108,47 +108,133 @@ long_game_scores <- dplyr::inner_join(
     raw_clubelo_ratings |> dplyr::transmute(team, post_elo = elo, date = from_date - lubridate::days(1)),
     by = dplyr::join_by(team, date)
   )
+game_scores |> 
+  # mutate(
+  #   across(
+  #     gd,
+  #     \(.x) case_when(
+  #       gd <= -3 ~ -3,
+  #       gd >= 3 ~ 3,
+  #       TRUE ~ gd
+  #     )
+  #   )
+  # ) |> 
+  count(gd = abs(gd), sort = TRUE) |> 
+  arrange(gd) |> 
+  mutate(prop = n / sum(n), .keep = 'unused')
 
-long_game_scores
-  dplyr::transmute(
-    season,
-    date,
-    team,
-    side,
-    g,
-    opponent_g = g - gd,
-    gd,
-    result = dplyr::case_when(
-      result == 'D' ~ 0.5,
-      side == 'home' & result == 'H' ~ 1,
-      side == 'away' & result == 'A' ~ 1,
-      TRUE ~ 0
+augmented_game_scores <- game_scores |> 
+  dplyr::inner_join(
+    raw_clubelo_ratings |> 
+      dplyr::select(
+        home_team = team, 
+        home_pre_elo = elo,
+        date = to_date
+      ),
+    by = dplyr::join_by(home_team, date)
+  ) |> 
+  dplyr::inner_join(
+    raw_clubelo_ratings |> 
+      dplyr::transmute(
+        home_team = team, 
+        home_post_elo = elo, 
+        date = from_date - lubridate::days(1)
+      ),
+    by = dplyr::join_by(home_team, date)
+  ) |> 
+  dplyr::inner_join(
+    raw_clubelo_ratings |> 
+      dplyr::select(
+        away_team = team,
+        away_pre_elo = elo, 
+        date = to_date
+      ),
+    by = dplyr::join_by(away_team, date)
+  ) |> 
+  dplyr::inner_join(
+    raw_clubelo_ratings |> 
+      dplyr::transmute(
+        away_team = team, 
+        away_post_elo = elo, 
+        date = from_date - lubridate::days(1)
+      ),
+    by = dplyr::join_by(away_team, date)
+  )
+
+long_game_scores <- dplyr::bind_rows(
+  augmented_game_scores |> 
+    dplyr::transmute(
+      season,
+      date,
+      game_id,
+      side = 'home',
+      team = home_team,
+      opponent_team = away_team,
+      g = home_g,
+      opponent_g = away_g,
+      gd = home_g - away_g,
+      result = dplyr::case_when(
+        result == 'D' ~ 0.5,
+        result == 'H' ~ 1,
+        result == 'A' ~ 0
+      ),
+      pre_elo = home_pre_elo,
+      post_elo = home_post_elo,
+      opponent_pre_elo = away_pre_elo,
+      opponent_post_elo = away_post_elo
     ),
-    pts = dplyr::case_when(
-      result == 0.5 ~ 1L,
-      result == 1 ~ 3L,
-      result == 0 ~ 0L
-    ),
-    pre_elo,
-    post_elo
+  augmented_game_scores |> 
+    dplyr::transmute(
+      season,
+      date,
+      game_id,
+      side = 'away',
+      team = away_team,
+      opponent_team = home_team,
+      g = away_g,
+      opponent_g = home_g,
+      gd = away_g - home_g,
+      result = dplyr::case_when(
+        result == 'D' ~ 0.5,
+        result == 'A' ~ 1,
+        result == 'H' ~ 0
+      ),
+      pre_elo = away_pre_elo,
+      post_elo = away_post_elo,
+      opponent_pre_elo = home_pre_elo,
+      opponent_post_elo = home_post_elo
+    )
+) |> 
+  dplyr::arrange(
+    game_id,
+    side
   )
 
 pr_elo <- function(r_i, r_j, xi = 400) {
   1 / (1 + 10 ^ ((r_j - r_i) / xi))
 }
 
-standard_elo <- function(r_i, r_j, k = 20, w_ij = 1, ...) {
+standard_elo <- function(r_i, r_j, w_ij = 1, k = 20, ...) {
   p_ij_hat <- pr_elo(r_i = r_i, r_j = r_j, ...)
   r_i + k * (w_ij - p_ij_hat)
 }
 
-compute_elo <- function(r_i, r_j, result, mov, ...) {
-  standard_u_step(r_i = r_i, r_j = r_j, w_ij = result, ...)
-}
-
-long_game_scores |> 
-  mutate(
-    computed_post_elo = purrr::pmap_dbl(
+calculated_elos <- long_game_scores |> 
+  dplyr::transmute(
+    season,
+    date,
+    game_id,
+    side,
+    team,
+    opponent_team,
+    pre_elo,
+    opponent_pre_elo,
+    g,
+    opponent_g,
+    gd,
+    result,
+    post_elo,
+    standard_post_elo = purrr::pmap_dbl(
       list(
         pre_elo,
         opponent_pre_elo,
@@ -161,5 +247,12 @@ long_game_scores |>
           w_ij = w_ij
         )
       }
-    )
+    ),
+    elo_d = post_elo - standard_post_elo
   )
+
+calculated_elos |> 
+  filter(
+    team == 'Arsenal'
+  ) |> 
+  tail()
