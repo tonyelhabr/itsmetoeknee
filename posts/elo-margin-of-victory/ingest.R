@@ -39,9 +39,7 @@ game_scores <- engsoccerdata::england |>
     home_team = team_mapping_vec[home],
     away_team = team_mapping_vec[visitor],
     home_g = hgoal,
-    away_g = vgoal,
-    gd = goaldif,
-    result
+    away_g = vgoal
   ) |> 
   tibble::as_tibble()
 
@@ -77,7 +75,6 @@ long_game_scores <- dplyr::inner_join(
       season,
       date,
       game_id,
-      result,
       home = home_team,
       away = away_team
     ) |> 
@@ -89,7 +86,6 @@ long_game_scores <- dplyr::inner_join(
   game_scores |> 
     dplyr::select(
       game_id,
-      gd,
       home = home_g,
       away = away_g
     ) |> 
@@ -155,19 +151,13 @@ long_game_scores <- dplyr::bind_rows(
       game_id,
       side = 'home',
       team = home_team,
-      opponent_team = away_team,
-      g = home_g,
-      opponent_g = away_g,
-      gd = home_g - away_g,
-      result = dplyr::case_when(
-        result == 'D' ~ 0.5,
-        result == 'H' ~ 1,
-        result == 'A' ~ 0
-      ),
-      pre_elo = home_pre_elo,
-      post_elo = home_post_elo,
-      opponent_pre_elo = away_pre_elo,
-      opponent_post_elo = away_post_elo
+      opponent = away_team,
+      team__g = home_g,
+      opponent__g = away_g,
+      team__pre_elo = home_pre_elo,
+      team__post_elo = home_post_elo,
+      opponent__pre_elo = away_pre_elo,
+      opponent__post_elo = away_post_elo
     ),
   augmented_game_scores |> 
     dplyr::transmute(
@@ -176,19 +166,13 @@ long_game_scores <- dplyr::bind_rows(
       game_id,
       side = 'away',
       team = away_team,
-      opponent_team = home_team,
-      g = away_g,
-      opponent_g = home_g,
-      gd = away_g - home_g,
-      result = dplyr::case_when(
-        result == 'D' ~ 0.5,
-        result == 'A' ~ 1,
-        result == 'H' ~ 0
-      ),
-      pre_elo = away_pre_elo,
-      post_elo = away_post_elo,
-      opponent_pre_elo = home_pre_elo,
-      opponent_post_elo = home_post_elo
+      opponent = home_team,
+      team__g = away_g,
+      opponent__g = home_g,
+      team__pre_elo = away_pre_elo,
+      team__post_elo = away_post_elo,
+      opponent__pre_elo = home_pre_elo,
+      opponent__post_elo = home_post_elo
     )
 ) |> 
   dplyr::arrange(
@@ -196,13 +180,21 @@ long_game_scores <- dplyr::bind_rows(
     side
   )
 
-pr_elo <- function(r_i, r_j, xi = 400) {
-  1 / (1 + 10 ^ ((r_j - r_i) / xi))
+pr_elo <- function(r1, r2) {
+  1 / (1 + 10 ^ ((r2 - r1) / 400))
 }
 
-standard_elo <- function(r_i, r_j, w_ij = 1, k = 20, ...) {
-  p_ij_hat <- pr_elo(r_i = r_i, r_j = r_j, ...)
-  r_i + k * (w_ij - p_ij_hat)
+convert_scores_to_wld_numeric <- function(score1, score2) {
+  dplyr::case_when(
+    score1 < score2 ~ 0,
+    score1 > score2 ~ 1,
+    score1 == score2 ~ 0.5
+  ) 
+}
+
+standard_elo <- function(r1, r2, score1, score2, w12 = convert_scores_to_wld_numeric(score1, score2), k = 20, ...) {
+  p12 <- pr_elo(r1 = r1, r2 = r2, ...)
+  r1 + k * (w12 - p12)
 }
 
 long_home_game_scores <- long_game_scores |> dplyr::filter(side == 'home')
@@ -213,66 +205,98 @@ init_elo <- long_game_scores |>
   dplyr::ungroup() |> 
   dplyr::transmute(
     team,
-    pre_elo,
+    pre_elo = team__pre_elo,
     post_elo = pre_elo
   )
 
-computed_elos <- purrr::map_dfr(
-  long_home_game_scores$game_id,
-  \(game_id) {
-    
-    if ((game_id %% 100) == 0) {
-      cli::cli_inform('Computing elo for {.var game_id} {game_id} of {nrow(long_home_game_scores)}.')
-    }
-    
-    game <- dplyr::filter(long_home_game_scores, .data$game_id == .env$game_id)
-    
-    team_pre_elo <- init_elo |> 
-      dplyr::filter(team == game$team) |> 
-      dplyr::pull(pre_elo)
-    opponent_pre_elo <- init_elo |> 
-      dplyr::filter(team == game$opponent_team) |> 
-      dplyr::pull(pre_elo)
-    
-    team_post_elo <- standard_elo(
-      r_i = team_pre_elo,
-      r_j = opponent_pre_elo,
-      w_ij = game$result
-    )
-    
-    opponent_post_elo <- standard_elo(
-      r_j = team_pre_elo,
-      r_i = opponent_pre_elo,
-      w_ij = 1 - game$result
-    )
-    
-    init_elo <- init_elo |> 
-      dplyr::mutate(
-        pre_elo = ifelse(
-          team %in% c(game$team, game$opponent_team),
-          .data$post_elo,
-          .data$pre_elo
-        ),
-        post_elo = dplyr::case_when(
-          team == game$team ~ team_post_elo,
-          team == game$opponent_team ~ opponent_post_elo,
-          TRUE ~ .data$post_elo
+do_calculate_elos <- function(games, init_elo, elo_f) {
+  purrr::map_dfr(
+    games$game_id,
+    \(game_id) {
+      
+      if ((game_id %% 100) == 0) {
+        cli::cli_inform('Computing elo for {game_id} of {nrow(games)} game{?s}.')
+      }
+      
+      game <- dplyr::filter(games, .data$game_id == .env$game_id)
+      
+      team_pre_elo <- init_elo |> 
+        dplyr::filter(team == game$team) |> 
+        dplyr::pull(pre_elo)
+      opponent_pre_elo <- init_elo |> 
+        dplyr::filter(team == game$opponent) |> 
+        dplyr::pull(pre_elo)
+      
+      team_post_elo <- standard_elo(
+        r1 = team_pre_elo,
+        r2 = opponent_pre_elo,
+        score1 = game$team__g,
+        score2 = game$opponent__g
+      )
+      opponent_post_elo <- standard_elo(
+        r2 = team_pre_elo,
+        r1 = opponent_pre_elo,
+        score2 = game$team__g,
+        score1 = game$opponent__g
+      )
+      
+      init_elo <- init_elo |> 
+        dplyr::mutate(
+          pre_elo = ifelse(
+            team %in% c(game$team, game$opponent),
+            .data$post_elo,
+            .data$pre_elo
+          ),
+          post_elo = dplyr::case_when(
+            team == game$team ~ team_post_elo,
+            team == game$opponent ~ opponent_post_elo,
+            TRUE ~ .data$post_elo
+          )
         )
-      )
-    
-    init_elo |> 
-      dplyr::filter(
-        team %in% c(game$team, game$opponent_team),
-      ) |> 
-      dplyr::transmute(
-        game_id = .env$game_id,
-        team,
-        result = game$result,
-        pre_elo,
-        post_elo
-      )
-  }
+      
+      init_elo |> 
+        dplyr::filter(
+          team %in% c(game$team, game$opponent),
+        ) |> 
+        dplyr::transmute(
+          game_id = .env$game_id,
+          team,
+          pre_elo,
+          post_elo
+        )
+    }
+  )
+}
+
+standard_computed_elos <- do_calculate_elos(
+  games = long_home_game_scores,
+  init_elo = init_elo,
+  elo_f = standard_elo
 )
+
+augment_with_computed_elos <- function(games, computed_elos, suffix = '') {
+  games |> 
+    dplyr::left_join(
+      computed_elos |> 
+        dplyr::select(
+          game_id, 
+          team, 
+          'team__pre_elo__{suffix}' := pre_elo,
+          'team__post_elo__{suffix}' := post_elo
+        ),
+      by = dplyr::join_by(game_id, team)
+    ) |> 
+    dplyr::left_join(
+      computed_elos |> 
+        dplyr::select(
+          game_id, 
+          opponent = team, 
+          'opponent__pre_elo__{suffix}' := pre_elo,
+          'opponent__post_elo__{suffix}' := post_elo
+        ),
+      by = dplyr::join_by(game_id, opponent)
+    )
+}
 
 long_game_scores |> 
   dplyr::select(
@@ -281,25 +305,15 @@ long_game_scores |>
     game_id,
     side,
     team,
-    opponent_team ,
-    g,
-    opponent_g,
-    gd,
-    result,
-    post_elo__clubelo = post_elo,
-    opponent_post_elo__clubelo = opponent_post_elo
+    opponent,
+    team__g,
+    opponent__g,
+    team__post_elo__clubelo = team__post_elo,
+    opponent__post__elo__clubelo = opponent__post_elo
   ) |> 
-  dplyr::left_join(
-    computed_elos |> 
-      dplyr::select(game_id, team, post_elo__standard = post_elo),
-    by = dplyr::join_by(game_id, team)
+  augment_with_computed_elos(
+    standard_computed_elos,
+    suffix = 'standard'
   ) |> 
-  dplyr::left_join(
-    computed_elos |> 
-      dplyr::select(
-        game_id, 
-        opponent_team = team, 
-        opponent_post_elo__standard = post_elo
-      ),
-    by = dplyr::join_by(game_id, opponent_team)
-  )
+  dplyr::select(-matches('__pre'))
+
