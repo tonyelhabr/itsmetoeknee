@@ -192,12 +192,11 @@ convert_scores_to_wld_numeric <- function(score1, score2) {
   ) 
 }
 
-standard_elo <- function(r1, r2, score1, score2, w12 = convert_scores_to_wld_numeric(score1, score2), k = 20, ...) {
+standard_elo <- function(r1, r2, score1, score2, k = 20, ...) {
   p12 <- pr_elo(r1 = r1, r2 = r2, ...)
+  w12 <- convert_scores_to_wld_numeric(score1, score2)
   r1 + k * (w12 - p12)
 }
-
-long_home_game_scores <- long_game_scores |> dplyr::filter(side == 'home')
 
 init_elo <- long_game_scores |> 
   dplyr::group_by(team) |> 
@@ -268,6 +267,7 @@ do_calculate_elos <- function(games, init_elo, elo_f) {
   )
 }
 
+long_home_game_scores <- long_game_scores |> dplyr::filter(side == 'home')
 standard_computed_elos <- do_calculate_elos(
   games = long_home_game_scores,
   init_elo = init_elo,
@@ -317,3 +317,53 @@ long_game_scores |>
   ) |> 
   dplyr::select(-matches('__pre'))
 
+
+mov_elo_538 <- function(r1, r2, score1, score2, k = 20, numerator_multiplier = 1, numerator_buffer = 1, tie_margin = 1, ...) {
+  p12 <- pr_elo(r1 = r1, r2 = r2, ...)
+  w12 <- convert_scores_to_wld_numeric(score1, score2)
+  score_d <- ifelse(
+    score1 == score2,
+    tie_margin,
+    abs(score1 - score2)
+  )
+  mov_multiplier <- log(numerator_multiplier * score_d + numerator_buffer) * (2.2 / (abs(p12) * 0.001 + 2.2))
+  r1 + mov_multiplier * k * (w12 - p12)
+}
+
+
+football_elo_mov_multiplier <- tibble::tibble(
+  mov = c(0:28)
+)
+football_elo_mov_multiplier$elo <- purrr::map_dbl(
+  football_elo_mov_multiplier$mov,
+  \(mov) {
+    mov_elo_538(r1 = 1500, r2 = 1600, score1 = mov, score2 = 0, numerator_buffer = 1)
+  }
+)
+
+soccer_elo_mov_multiplier <- tibble::tibble(
+  mov = c(0:4)
+)
+soccer_elo_mov_multiplier$elo <- purrr::map_dbl(
+  soccer_elo_mov_multiplier$mov,
+  \(mov) {
+    mov_elo_538(r1 = 1500, r2 = 1600, score1 = mov, score2 = 0, numerator_multiplier = 3.5, numerator_buffer = 7)
+  }
+)
+
+library(ggplot2)
+football_elo_mov_multiplier |> 
+  ggplot() +
+  aes(
+    x = mov,
+    y = elo
+  ) +
+  geom_point() +
+  geom_point(
+    data = soccer_elo_mov_multiplier,
+    color = 'red',
+    aes(
+      y = elo + 1,
+      x = 3.5 * mov
+    )
+  )
