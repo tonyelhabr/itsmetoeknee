@@ -108,20 +108,6 @@ long_game_scores <- dplyr::inner_join(
     raw_clubelo_ratings |> dplyr::transmute(team, post_elo = elo, date = from_date - lubridate::days(1)),
     by = dplyr::join_by(team, date)
   )
-game_scores |> 
-  # mutate(
-  #   across(
-  #     gd,
-  #     \(.x) case_when(
-  #       gd <= -3 ~ -3,
-  #       gd >= 3 ~ 3,
-  #       TRUE ~ gd
-  #     )
-  #   )
-  # ) |> 
-  count(gd = abs(gd), sort = TRUE) |> 
-  arrange(gd) |> 
-  mutate(prop = n / sum(n), .keep = 'unused')
 
 augmented_game_scores <- game_scores |> 
   dplyr::inner_join(
@@ -219,40 +205,101 @@ standard_elo <- function(r_i, r_j, w_ij = 1, k = 20, ...) {
   r_i + k * (w_ij - p_ij_hat)
 }
 
-calculated_elos <- long_game_scores |> 
+long_home_game_scores <- long_game_scores |> dplyr::filter(side == 'home')
+
+init_elo <- long_game_scores |> 
+  dplyr::group_by(team) |> 
+  dplyr::slice_min(date, n = 1, with_ties = FALSE) |> 
+  dplyr::ungroup() |> 
   dplyr::transmute(
+    team,
+    pre_elo,
+    post_elo = pre_elo
+  )
+
+computed_elos <- purrr::map_dfr(
+  long_home_game_scores$game_id,
+  \(game_id) {
+    
+    if ((game_id %% 100) == 0) {
+      cli::cli_inform('Computing elo for {.var game_id} {game_id} of {nrow(long_home_game_scores)}.')
+    }
+    
+    game <- dplyr::filter(long_home_game_scores, .data$game_id == .env$game_id)
+    
+    team_pre_elo <- init_elo |> 
+      dplyr::filter(team == game$team) |> 
+      dplyr::pull(pre_elo)
+    opponent_pre_elo <- init_elo |> 
+      dplyr::filter(team == game$opponent_team) |> 
+      dplyr::pull(pre_elo)
+    
+    team_post_elo <- standard_elo(
+      r_i = team_pre_elo,
+      r_j = opponent_pre_elo,
+      w_ij = game$result
+    )
+    
+    opponent_post_elo <- standard_elo(
+      r_j = team_pre_elo,
+      r_i = opponent_pre_elo,
+      w_ij = 1 - game$result
+    )
+    
+    init_elo <- init_elo |> 
+      dplyr::mutate(
+        pre_elo = ifelse(
+          team %in% c(game$team, game$opponent_team),
+          .data$post_elo,
+          .data$pre_elo
+        ),
+        post_elo = dplyr::case_when(
+          team == game$team ~ team_post_elo,
+          team == game$opponent_team ~ opponent_post_elo,
+          TRUE ~ .data$post_elo
+        )
+      )
+    
+    init_elo |> 
+      dplyr::filter(
+        team %in% c(game$team, game$opponent_team),
+      ) |> 
+      dplyr::transmute(
+        game_id = .env$game_id,
+        team,
+        result = game$result,
+        pre_elo,
+        post_elo
+      )
+  }
+)
+
+long_game_scores |> 
+  dplyr::select(
     season,
     date,
     game_id,
     side,
     team,
-    opponent_team,
-    pre_elo,
-    opponent_pre_elo,
+    opponent_team ,
     g,
     opponent_g,
     gd,
     result,
-    post_elo,
-    standard_post_elo = purrr::pmap_dbl(
-      list(
-        pre_elo,
-        opponent_pre_elo,
-        result
-      ),
-      \(r_i, r_j, w_ij) {
-        standard_elo(
-          r_i = r_i,
-          r_j = r_j,
-          w_ij = w_ij
-        )
-      }
-    ),
-    elo_d = post_elo - standard_post_elo
-  )
-
-calculated_elos |> 
-  filter(
-    team == 'Arsenal'
+    post_elo__clubelo = post_elo,
+    opponent_post_elo__clubelo = opponent_post_elo
   ) |> 
-  tail()
+  dplyr::left_join(
+    computed_elos |> 
+      dplyr::select(game_id, team, post_elo__standard = post_elo),
+    by = dplyr::join_by(game_id, team)
+  ) |> 
+  dplyr::left_join(
+    computed_elos |> 
+      dplyr::select(
+        game_id, 
+        opponent_team = team, 
+        opponent_post_elo__standard = post_elo
+      ),
+    by = dplyr::join_by(game_id, opponent_team)
+  )
