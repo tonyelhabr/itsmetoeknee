@@ -318,7 +318,7 @@ long_game_scores |>
   dplyr::select(-matches('__pre'))
 
 
-mov_elo_538 <- function(r1, r2, score1, score2, k = 20, numerator_multiplier = 1, numerator_buffer = 1, tie_margin = 1, ...) {
+mov_elo_538_nfl <- function(r1, r2, score1, score2, k = 20, numerator_multiplier = 1, numerator_buffer = 1, tie_margin = 1, ...) {
   p12 <- pr_elo(r1 = r1, r2 = r2, ...)
   w12 <- convert_scores_to_wld_numeric(score1, score2)
   score_d <- ifelse(
@@ -326,20 +326,49 @@ mov_elo_538 <- function(r1, r2, score1, score2, k = 20, numerator_multiplier = 1
     tie_margin,
     abs(score1 - score2)
   )
-  mov_multiplier <- log(numerator_multiplier * score_d + numerator_buffer) * (2.2 / (abs(p12) * 0.001 + 2.2))
+  ## https://fivethirtyeight.com/features/introducing-nfl-elo-ratings/
+  mov_multiplier <- log(numerator_multiplier * score_d + numerator_buffer) * (2.2 / (abs(r1 - r2) * 0.001 + 2.2))
   r1 + mov_multiplier * k * (w12 - p12)
 }
 
+mov_elo_538_nba <- function(r1, r2, score1, score2, k = 20, numerator_multiplier = 1, numerator_buffer = 1, tie_margin = 1, ...) {
+  p12 <- pr_elo(r1 = r1, r2 = r2, ...)
+  w12 <- convert_scores_to_wld_numeric(score1, score2)
+  score_d <- ifelse(
+    score1 == score2,
+    tie_margin,
+    abs(score1 - score2)
+  )
+  ## https://fivethirtyeight.com/features/how-we-calculate-nba-elo-ratings/
+  mov_multiplier <- (score_d + 3)^0.8 / (7.5 + 0.006 * abs(r1 - r2))
+  r1 + mov_multiplier * k * (w12 - p12)
+}
 
 football_elo_mov_multiplier <- tibble::tibble(
   mov = c(0:28)
 )
-football_elo_mov_multiplier$elo <- purrr::map_dbl(
+
+football_elo_mov_multiplier$nfl_elo <- purrr::map_dbl(
   football_elo_mov_multiplier$mov,
   \(mov) {
-    mov_elo_538(r1 = 1500, r2 = 1600, score1 = mov, score2 = 0, numerator_buffer = 1)
+    mov_elo_538_nfl(r1 = 1500, r2 = 1600, score1 = mov, score2 = 0, numerator_buffer = 1)
   }
 )
+
+football_elo_mov_multiplier$nba_elo <- purrr::map_dbl(
+  football_elo_mov_multiplier$mov,
+  \(mov) {
+    mov_elo_538_nba(r1 = 1500, r2 = 1600, score1 = mov, score2 = 0)
+  }
+)
+
+football_elo_mov_multiplier$standard_elo <- purrr::map_dbl(
+  football_elo_mov_multiplier$mov,
+  \(mov) {
+    standard_elo(r1 = 1500, r2 = 1600, score1 = mov, score2 = 0)
+  }
+)
+
 
 soccer_elo_mov_multiplier <- tibble::tibble(
   mov = c(0:4)
@@ -356,14 +385,29 @@ football_elo_mov_multiplier |>
   ggplot() +
   aes(
     x = mov,
-    y = elo
+    y = nfl_elo
   ) +
-  geom_point() +
+  geom_point(
+    color = 'blue'
+  ) +
+  geom_point(
+    color = 'red',
+    aes(
+      y = nba_elo
+    )
+  ) +
+  geom_point(
+    color = 'black',
+    aes(
+      y = standard_elo
+    )
+  ) +
   geom_point(
     data = soccer_elo_mov_multiplier,
-    color = 'red',
+    color = 'magenta',
     aes(
       y = elo + 1,
       x = 3.5 * mov
     )
   )
+
