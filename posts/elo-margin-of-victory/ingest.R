@@ -298,7 +298,7 @@ augment_with_computed_elos <- function(games, computed_elos, suffix = '') {
     )
 }
 
-long_game_scores |> 
+d <- long_game_scores |> 
   dplyr::select(
     season,
     date,
@@ -308,6 +308,7 @@ long_game_scores |>
     opponent,
     team__g,
     opponent__g,
+    team__pre_elo__clubelo = team__pre_elo,
     team__post_elo__clubelo = team__post_elo,
     opponent__post__elo__clubelo = opponent__post_elo
   ) |> 
@@ -315,7 +316,38 @@ long_game_scores |>
     standard_computed_elos,
     suffix = 'standard'
   ) |> 
-  dplyr::select(-matches('__pre'))
+  mutate(
+    delo__clubelo = team__post_elo__clubelo - team__pre_elo__clubelo,
+    delo__standard = team__post_elo__standard - team__pre_elo__standard
+  )
+d  |> 
+  filter(side == 'home') |> 
+  count(
+    gd = abs(team__g - opponent__g),
+    delo__clubelo__greater = abs(delo__clubelo > delo__standard)
+  )
+library(ggplot2)
+d |> 
+  filter(side == 'home') |> 
+  filter(delo__clubelo > 25)
+  ggplot() +
+  aes(
+    x = delo__clubelo,
+    y = delo__standard
+  ) +
+  geom_point()
+d |> dplggplot2d |> dplyr::select(-matches('__pre'))
+
+delta <- 3L
+augmented_game_scores |> 
+  count(
+    gd_group = cut(
+      home_g - away_g,
+      breaks = c(-Inf, -delta, -1, 0, delta-1, Inf),
+      labels = c('strong away', 'weak away', 'draw', 'weak home', 'strong home')
+    )
+  ) |> 
+  mutate(prop = n / sum(n))
 
 
 mov_elo_538_nfl <- function(r1, r2, score1, score2, k = 20, numerator_multiplier = 1, numerator_buffer = 1, tie_margin = 1, ...) {
@@ -327,7 +359,10 @@ mov_elo_538_nfl <- function(r1, r2, score1, score2, k = 20, numerator_multiplier
     abs(score1 - score2)
   )
   ## https://fivethirtyeight.com/features/introducing-nfl-elo-ratings/
-  mov_multiplier <- log(numerator_multiplier * score_d + numerator_buffer) * (2.2 / (abs(r1 - r2) * 0.001 + 2.2))
+  ## https://andr3w321.com/elo-ratings-part-2-margin-of-victory-adjustments/
+  k_multiplier <- log(numerator_multiplier * score_d + numerator_buffer)
+  corr_multiplier <- 2.2 / ((r1 - r2) * 0.001 + 2.2)
+  mov_multiplier <- k_multiplier * corrr_multiplier
   r1 + mov_multiplier * k * (w12 - p12)
 }
 
@@ -343,6 +378,41 @@ mov_elo_538_nba <- function(r1, r2, score1, score2, k = 20, numerator_multiplier
   mov_multiplier <- (score_d + 3)^0.8 / (7.5 + 0.006 * abs(r1 - r2))
   r1 + mov_multiplier * k * (w12 - p12)
 }
+
+K <- 20
+df <- tidyr::crossing(
+  mov = -7:28,
+  r1_pre = c(1500, 1600, 1700),
+  r2_pre = c(1500, 1600, 1700)
+) |> 
+  mutate(
+    rn = row_number(),
+    k_multiplier = log(ifelse(mov == 0, 1, abs(mov)) + 1),
+    corr_multiplier = 2.2 / ((r1_pre - r2_pre) * 0.001 + 2.2),
+    p12 = pr_elo(r1 = r1_pre, r2 = r2_pre),
+    w12 = convert_scores_to_wld_numeric(10 + mov, 10),
+    r1_d = !!K * k_multiplier * corr_multiplier * (w12 - p12),
+    r1_post = r1_pre + r1_d
+  )
+df |> 
+  ggplot() +
+  aes(
+    x = mov
+  ) +
+  geom_point(
+    color = 'red',
+    aes(
+      y = k_multiplier
+    )
+  ) +
+  geom_point(
+    color = 'blue',
+    aes(
+      y = corr_multiplier
+    )
+  ) +
+  facet_wrap(r1_pre~r2_pre)
+
 
 football_elo_mov_multiplier <- tibble::tibble(
   mov = c(0:28)
