@@ -20388,19 +20388,352 @@ No matching items
 <ol type="1">
 <li>Identify players who played in more than one league within the same season or across consecutive seasons. Calculate the difference in each player’s <a href="https://arxiv.org/pdf/1802.07127.pdf">atomic VAEP</a><sup>1</sup> per 90 minutes (VAEP/90) after changing leagues.</li>
 </ol>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # A tibble: 2,462 x 7</span></span>
+<span id="cb1-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    Season Player        `League A`        `League B`       `VAEP/90 A` `VAEP/90 B`   Diff.</span></span>
+<span id="cb1-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;     &lt;dbl&gt; &lt;chr&gt;         &lt;chr&gt;             &lt;chr&gt;                  &lt;dbl&gt;       &lt;dbl&gt;   &lt;dbl&gt;</span></span>
+<span id="cb1-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  1   2020 Timo Werner   Bundesliga 1 (Ge~ Premier League ~       1.25        0.638  0.610 </span></span>
+<span id="cb1-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  2   2020 Alexander Sø~ Super Lig (Turke~ Bundesliga 1 (G~       1.07        0.773  0.296 </span></span>
+<span id="cb1-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  3   2020 Hakim Ziyech  Eredivisie (Neth~ Premier League ~       0.958       0.365  0.593 </span></span>
+<span id="cb1-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  4   2020 Nicolás Gonz~ Bundesliga 2 (Ge~ Bundesliga 1 (G~       0.917       0.943 -0.0256</span></span>
+<span id="cb1-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  5   2020 Fabian Klos   Bundesliga 2 (Ge~ Bundesliga 1 (G~       0.904       0.547  0.358 </span></span>
+<span id="cb1-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  6   2020 Victor Osimh~ Ligue 1 (France)  Serie A (Italy)        0.889       1.01  -0.120 </span></span>
+<span id="cb1-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  7   2020 Eldor Shomur~ Premier League (~ Serie A (Italy)        0.882       0.755  0.126 </span></span>
+<span id="cb1-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  8   2020 Callum Robin~ Championship (En~ Premier League ~       0.880       0.682  0.198 </span></span>
+<span id="cb1-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  9   2020 Jarrod Bowen  Championship (En~ Premier League ~       0.871       0.448  0.423 </span></span>
+<span id="cb1-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10   2020 Aleksandar M~ Championship (En~ Premier League ~       0.866       0.499  0.367 </span></span>
+<span id="cb1-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # ... with 2,452 more rows</span></span></code></pre></div>
+</details>
+</div>
 <p>Why VAEP? Theoretically it should capture more about in-game actions (including defense) than other stats such as <a href="https://fbref.com/en/expected-goals-model-explained/">xG</a>, which is biased in favor of attacking players. VAEP is not perfect by any means (e.g.&nbsp;it does not capture off-ball actions), but, in theory, it should be a better measure of overall performance. <sup>2</sup></p>
 <p>Notably, we give up a little in interpretability in using VAEP, since it’s not directly translatable to goals. <sup>3</sup> The following table of top season-long xG totals since 2012 to contextualize the magnitudes of xG and VAEP.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # A tibble: 36,857 x 5</span></span>
+<span id="cb2-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    Season Player             Minutes    xG  VAEP</span></span>
+<span id="cb2-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;     &lt;dbl&gt; &lt;chr&gt;                &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb2-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  1   2015 Lionel Messi          3529  38.1  69.0</span></span>
+<span id="cb2-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  2   2016 Luis Suárez           3294  35.6  55.7</span></span>
+<span id="cb2-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  3   2018 Robert Lewandowski    2259  35.1  40.2</span></span>
+<span id="cb2-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  4   2012 Lionel Messi          3425  32.4  76.2</span></span>
+<span id="cb2-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  5   2013 Lionel Messi          2776  31.6  60.0</span></span>
+<span id="cb2-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  6   2015 Cristiano Ronaldo     3236  30.8  58.7</span></span>
+<span id="cb2-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  7   2018 Mohamed Salah         3080  30.4  50.5</span></span>
+<span id="cb2-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  8   2012 Cristiano Ronaldo     3504  30.1  62.7</span></span>
+<span id="cb2-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  9   2017 Edin Dzeko            3216  29.8  49.7</span></span>
+<span id="cb2-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10   2020 Robert Lewandowski    2902  29.7  49.2</span></span>
+<span id="cb2-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # ... with 36,847 more rows</span></span></code></pre></div>
+</details>
+</div>
 <p>And a scatter plot, because who doesn’t love a graph.</p>
 <p><img src="https://tonyelhabr.rbind.io/posts/soccer-league-strength/viz_xg_v_vaep.png" class="img-fluid"></p>
 <ol start="2" type="1">
 <li>Convert the player-level VAEP/90 differences to z-scores by position and age group.</li>
 </ol>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # A tibble: 2,462 x 7</span></span>
+<span id="cb3-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    Season Player      Position `Age Group` `League A`      `League B`    `VAEP/90 Diff. Z`</span></span>
+<span id="cb3-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;     &lt;dbl&gt; &lt;chr&gt;       &lt;chr&gt;    &lt;chr&gt;       &lt;chr&gt;           &lt;chr&gt;                     &lt;dbl&gt;</span></span>
+<span id="cb3-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  1   2020 Timo Werner AM       24&lt;=x&lt;27    Bundesliga 1 (~ Premier Leagu~            2.28 </span></span>
+<span id="cb3-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  2   2020 Alexander ~ FW       24&lt;=x&lt;27    Super Lig (Tur~ Bundesliga 1 ~            1.10 </span></span>
+<span id="cb3-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  3   2020 Hakim Ziye~ M        27&lt;=x&lt;30    Eredivisie (Ne~ Premier Leagu~            3.20 </span></span>
+<span id="cb3-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  4   2020 Nicolás Go~ M        18&lt;=x&lt;24    Bundesliga 2 (~ Bundesliga 1 ~           -0.148</span></span>
+<span id="cb3-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  5   2020 Fabian Klos FW       30&lt;=x&lt;36    Bundesliga 2 (~ Bundesliga 1 ~            1.20 </span></span>
+<span id="cb3-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  6   2020 Victor Osi~ FW       18&lt;=x&lt;24    Ligue 1 (Franc~ Serie A (Ital~           -0.439</span></span>
+<span id="cb3-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  7   2020 Eldor Shom~ FW       24&lt;=x&lt;27    Premier League~ Serie A (Ital~            0.471</span></span>
+<span id="cb3-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  8   2020 Callum Rob~ AM       24&lt;=x&lt;27    Championship (~ Premier Leagu~            0.740</span></span>
+<span id="cb3-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  9   2020 Jarrod Bow~ AM       18&lt;=x&lt;24    Championship (~ Premier Leagu~            1.89 </span></span>
+<span id="cb3-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10   2020 Aleksandar~ FW       24&lt;=x&lt;27    Championship (~ Premier Leagu~            1.37 </span></span>
+<span id="cb3-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # ... with 2,452 more rows</span></span></code></pre></div>
+</details>
+</div>
 <p>Why grouping? This is intended to account for the fact that attacking players and “peaking” players (usually age 24-30) tend to have higher VAEP/90, so their league-to-league differences have larger variation. The choice to normalize is perhaps more questionable. The mean of differences is ~0 for all groups already, but the dispersion is smaller without normalization (i.e.&nbsp;standard deviations are closer to 0). So, in this case, normalization should help the linear model capture variation.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # A tibble: 20 x 5</span></span>
+<span id="cb4-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    Position Age Group N    Mean   SD</span></span>
+<span id="cb4-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    &lt;chr&gt;    &lt;chr&gt;    &lt;int&gt; &lt;dbl&gt;  &lt;dbl&gt;</span></span>
+<span id="cb4-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  1 AM       18&lt;=x&lt;24   138     0 0.224 </span></span>
+<span id="cb4-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  2 AM       24&lt;=x&lt;27   128     0 0.268 </span></span>
+<span id="cb4-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  3 AM       27&lt;=x&lt;30   118     0 0.248 </span></span>
+<span id="cb4-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  4 AM       30&lt;=x&lt;36    68     0 0.248 </span></span>
+<span id="cb4-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  5 D        18&lt;=x&lt;24   203     0 0.112 </span></span>
+<span id="cb4-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  6 D        24&lt;=x&lt;27   268     0 0.101 </span></span>
+<span id="cb4-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  7 D        27&lt;=x&lt;30   295     0 0.0930</span></span>
+<span id="cb4-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  8 D        30&lt;=x&lt;36   316     0 0.0939</span></span>
+<span id="cb4-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  9 DM       18&lt;=x&lt;24    30     0 0.102 </span></span>
+<span id="cb4-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10 DM       24&lt;=x&lt;27    48     0 0.0913</span></span>
+<span id="cb4-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 11 DM       27&lt;=x&lt;30    20     0 0.105 </span></span>
+<span id="cb4-15"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 12 DM       30&lt;=x&lt;36    13     0 0.0719</span></span>
+<span id="cb4-16"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 13 FW       18&lt;=x&lt;24    26     0 0.274 </span></span>
+<span id="cb4-17"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 14 FW       24&lt;=x&lt;27    67     0 0.268 </span></span>
+<span id="cb4-18"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 15 FW       27&lt;=x&lt;30    50     0 0.263 </span></span>
+<span id="cb4-19"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 16 FW       30&lt;=x&lt;36    66     0 0.297 </span></span>
+<span id="cb4-20"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 17 M        18&lt;=x&lt;24   113     0 0.173 </span></span>
+<span id="cb4-21"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 18 M        24&lt;=x&lt;27   130     0 0.147 </span></span>
+<span id="cb4-22"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 19 M        27&lt;=x&lt;30   189     0 0.185 </span></span>
+<span id="cb4-23"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 20 M        30&lt;=x&lt;36   186     0 0.171  </span></span></code></pre></div>
+</details>
+</div>
 <ol start="3" type="1">
 <li>Run a single regression where the response variable is the z-transformed VAEP/90 difference, and the features are indicators for leagues, where -1 indicates player departure, a +1 indicates player arrival, and all other values are 0.<sup>4</sup> <sup>5</sup></li>
 </ol>
 <p>For those familiar with basketball and hockey, this is similar to the set-up for <a href="https://squared2020.com/2017/09/18/deep-dive-on-regularized-adjusted-plus-minus-i-introductory-example/">an adjusted plus-minus (APM) calculation</a>. Here, each feature column is a league (instead of a player), each row represents a player (instead of a “stint”), and the response is transformed VAEP/90 (instead of net points per possession).</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; tibble [2,472 x 16] (S3: tbl_df/tbl/data.frame)</span></span>
+<span id="cb5-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ VAEP/90 Diff Z-Trans     : num [1:2472] -0.0825 0.3285 -0.0143 0.1137 0.1526 ...</span></span>
+<span id="cb5-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Serie A (Italy)          : int [1:2472] -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 ...</span></span>
+<span id="cb5-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Bundesliga 1 (Germany)   : int [1:2472] 1 1 0 0 0 0 0 0 0 0 ...</span></span>
+<span id="cb5-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ La Liga (Spain)          : int [1:2472] 0 0 0 0 0 0 0 0 0 0 ...</span></span>
+<span id="cb5-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Serie A (Brazil)         : int [1:2472] 0 0 0 0 0 1 0 0 0 0 ...</span></span>
+<span id="cb5-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Super Lig (Turkey)       : int [1:2472] 0 0 1 0 0 0 0 1 0 0 ...</span></span>
+<span id="cb5-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Premier League (England) : int [1:2472] 0 0 0 0 0 0 0 0 0 0 ...</span></span>
+<span id="cb5-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Super League (China)     : int [1:2472] 0 0 0 0 0 0 0 0 0 1 ...</span></span>
+<span id="cb5-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Major League Soccer (USA): int [1:2472] 0 0 0 0 1 0 1 0 0 0 ...</span></span>
+<span id="cb5-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Primeira Liga (Portugal) : int [1:2472] 0 0 0 0 0 0 0 0 0 0 ...</span></span>
+<span id="cb5-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Ligue 1 (France)         : int [1:2472] 0 0 0 1 0 0 0 0 0 0 ...</span></span>
+<span id="cb5-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Bundesliga 2 (Germany)   : int [1:2472] 0 0 0 0 0 0 0 0 0 0 ...</span></span>
+<span id="cb5-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Championship (England)   : int [1:2472] 0 0 0 0 0 0 0 0 0 0 ...</span></span>
+<span id="cb5-15"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Premier League (Russia)  : int [1:2472] 0 0 0 0 0 0 0 0 0 0 ...</span></span>
+<span id="cb5-16"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Superliga (Argentina)    : int [1:2472] 0 0 0 0 0 0 0 0 1 0 ...</span></span>
+<span id="cb5-17"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  $ Eredivisie (Netherlands) : int [1:2472] 0 0 0 0 0 0 0 0 0 0 ...</span></span></code></pre></div>
+</details>
+</div>
 <p>The result is a set of coefficient estimates corresponding to each league. Notably, these are all positive (even if subtracting the intercept), and the Netherlands coefficient is <code>NA</code> due to multi-collinearity in the data. <sup>6</sup></p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # A tibble: 16 x 2</span></span>
+<span id="cb6-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    League                    Estimate</span></span>
+<span id="cb6-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    &lt;chr&gt;                        &lt;dbl&gt;</span></span>
+<span id="cb6-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  1 Premier League (England)    0.975 </span></span>
+<span id="cb6-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  2 La Liga (Spain)             0.869 </span></span>
+<span id="cb6-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  3 Ligue 1 (France)            0.786 </span></span>
+<span id="cb6-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  4 Serie A (Italy)             0.738 </span></span>
+<span id="cb6-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  5 Serie A (Brazil)            0.724 </span></span>
+<span id="cb6-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  6 Primeira Liga (Portugal)    0.675 </span></span>
+<span id="cb6-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  7 Bundesliga 1 (Germany)      0.649 </span></span>
+<span id="cb6-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  8 Championship (England)      0.641 </span></span>
+<span id="cb6-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  9 Super Lig (Turkey)          0.617 </span></span>
+<span id="cb6-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10 Premier League (Russia)     0.485 </span></span>
+<span id="cb6-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 11 Superliga (Argentina)       0.463 </span></span>
+<span id="cb6-15"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 12 Super League (China)        0.360 </span></span>
+<span id="cb6-16"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 13 Major League Soccer (USA)   0.281 </span></span>
+<span id="cb6-17"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 14 Bundesliga 2 (Germany)      0.197 </span></span>
+<span id="cb6-18"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 15 (Intercept)                 0.0747</span></span>
+<span id="cb6-19"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 16 Eredivisie (Netherlands)   NA     </span></span></code></pre></div>
+</details>
+</div>
 <p>For hockey/basketball APM, we would say the coefficient estimate represents how much a player contributes relative to an “average” player. We might be tempted to try to interpret these coefficients directly as well. Yes, we can infer the league “power rankings” from just this singular coefficient list (Premier League as the strongest and Bundesliga 2 as the weakest), but there are some issues.</p>
 <ul>
 <li><p>We first need to “un-transform” this back to the VAEP/90 scale. (See next step.)</p></li>
@@ -20409,11 +20742,152 @@ No matching items
 <li><p>We accounted for minutes played—the “per 90” denominator—prior to subtracting rates (difference in VAEP/90), which is different than how APM works. In APM, the minutes played is directly accounted for in the response variable (net points, divided by possessions).</p></li>
 </ul>
 <p>The take-away here is that we can only interpret the model coefficients on a relative basis.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # A tibble: 256 x 5</span></span>
+<span id="cb7-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    `League A`               `League B`               `Estimate A` `Estimate B` Diff.</span></span>
+<span id="cb7-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    &lt;fct&gt;                    &lt;fct&gt;                           &lt;dbl&gt;        &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb7-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  1 Premier League (England) Premier League (England)        0.975        0.975 0    </span></span>
+<span id="cb7-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  2 Premier League (England) La Liga (Spain)                 0.975        0.869 0.107</span></span>
+<span id="cb7-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  3 Premier League (England) Ligue 1 (France)                0.975        0.786 0.189</span></span>
+<span id="cb7-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  4 Premier League (England) Serie A (Italy)                 0.975        0.738 0.238</span></span>
+<span id="cb7-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  5 Premier League (England) Serie A (Brazil)                0.975        0.724 0.252</span></span>
+<span id="cb7-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  6 Premier League (England) Primeira Liga (Portugal)        0.975        0.675 0.300</span></span>
+<span id="cb7-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  7 Premier League (England) Bundesliga 1 (Germany)          0.975        0.649 0.326</span></span>
+<span id="cb7-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  8 Premier League (England) Championship (England)          0.975        0.641 0.334</span></span>
+<span id="cb7-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  9 Premier League (England) Super Lig (Turkey)              0.975        0.617 0.358</span></span>
+<span id="cb7-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10 Premier League (England) Premier League (Russia)         0.975        0.485 0.491</span></span>
+<span id="cb7-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # ... with 246 more rows</span></span></code></pre></div>
+</details>
+</div>
 <ol start="4" type="1">
 <li>“Un-transform” the coefficients of the regression using a “weighted-average” standard deviation and mean from the z-transformations of groups. <sup>7</sup></li>
 </ol>
 <p>Interpretation after this transformation can be a little tricky. The differences between a specified pair of these post-transformed coefficients represents the expected change in an “average” player’s VAEP/90 (<code>Diff. (VAEP/90)</code>) when moving between the specified leagues.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # A tibble: 256 x 4</span></span>
+<span id="cb8-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    `League A`               `League B`               Diff. `Diff. (VAEP/90)`</span></span>
+<span id="cb8-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    &lt;fct&gt;                    &lt;fct&gt;                    &lt;dbl&gt;             &lt;dbl&gt;</span></span>
+<span id="cb8-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  1 Premier League (England) Premier League (England) 0                0     </span></span>
+<span id="cb8-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  2 Premier League (England) La Liga (Spain)          0.107            0.0166</span></span>
+<span id="cb8-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  3 Premier League (England) Ligue 1 (France)         0.189            0.0295</span></span>
+<span id="cb8-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  4 Premier League (England) Serie A (Italy)          0.238            0.0371</span></span>
+<span id="cb8-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  5 Premier League (England) Serie A (Brazil)         0.252            0.0393</span></span>
+<span id="cb8-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  6 Premier League (England) Primeira Liga (Portugal) 0.300            0.0469</span></span>
+<span id="cb8-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  7 Premier League (England) Bundesliga 1 (Germany)   0.326            0.0509</span></span>
+<span id="cb8-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  8 Premier League (England) Championship (England)   0.334            0.0521</span></span>
+<span id="cb8-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  9 Premier League (England) Super Lig (Turkey)       0.358            0.0559</span></span>
+<span id="cb8-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10 Premier League (England) Premier League (Russia)  0.491            0.0766</span></span>
+<span id="cb8-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # ... with 246 more rows</span></span></code></pre></div>
+</details>
+</div>
 <p>To interpret these differences as a percentage (so that we can “scale” the properly for a player with a VAEP/90 of 1.5, compared to a player with a lower VAEP/90 rate), we use the median VAEP/90 across all leagues as a “baseline”. For example, for Bundesliga -&gt; Premier League, since the overall median VAEP/90 is 0.305 and the <code>Diff. (VAEP/90)</code> between league A and league B is 0.0509, the <code>% Difference</code> is 0.0509/0.305 = 17%.</p>
+<div class="cell">
+<details open="">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # A tibble: 256 x 5</span></span>
+<span id="cb9-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    `League A`               `League B`               Diff. `Diff. (VAEP/90)` `% Diff.`</span></span>
+<span id="cb9-3"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;    &lt;fct&gt;                    &lt;fct&gt;                    &lt;dbl&gt;             &lt;dbl&gt; &lt;chr&gt;    </span></span>
+<span id="cb9-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  1 Premier League (England) Premier League (England) 0                0      0%       </span></span>
+<span id="cb9-5"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  2 Premier League (England) La Liga (Spain)          0.107            0.0166 5%       </span></span>
+<span id="cb9-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  3 Premier League (England) Ligue 1 (France)         0.189            0.0295 10%      </span></span>
+<span id="cb9-7"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  4 Premier League (England) Serie A (Italy)          0.238            0.0371 12%      </span></span>
+<span id="cb9-8"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  5 Premier League (England) Serie A (Brazil)         0.252            0.0393 13%      </span></span>
+<span id="cb9-9"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  6 Premier League (England) Primeira Liga (Portugal) 0.300            0.0469 15%      </span></span>
+<span id="cb9-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  7 Premier League (England) Bundesliga 1 (Germany)   0.326            0.0509 17%      </span></span>
+<span id="cb9-11"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  8 Premier League (England) Championship (England)   0.334            0.0521 17%      </span></span>
+<span id="cb9-12"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt;  9 Premier League (England) Super Lig (Turkey)       0.358            0.0559 18%      </span></span>
+<span id="cb9-13"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10 Premier League (England) Premier League (Russia)  0.491            0.0766 25%      </span></span>
+<span id="cb9-14"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; # ... with 246 more rows</span></span></code></pre></div>
+</details>
+</div>
 <p><img src="https://tonyelhabr.rbind.io/posts/soccer-league-strength/viz_relative_p_vaep_direct2z.png" class="img-fluid"></p>
 </section>
 <section id="improvements-further-work" class="level2">
