@@ -209,62 +209,64 @@ init_elo <- long_game_scores |>
   )
 
 do_calculate_elos <- function(games, init_elo, elo_f) {
-  purrr::map_dfr(
-    games$game_id,
-    \(game_id) {
-      
-      if ((game_id %% 100) == 0) {
-        cli::cli_inform('Computing elo for {game_id} of {nrow(games)} game{?s}.')
-      }
-      
-      game <- dplyr::filter(games, .data$game_id == .env$game_id)
-      
-      team_pre_elo <- init_elo |> 
-        dplyr::filter(team == game$team) |> 
-        dplyr::pull(pre_elo)
-      opponent_pre_elo <- init_elo |> 
-        dplyr::filter(team == game$opponent) |> 
-        dplyr::pull(pre_elo)
-      
-      team_post_elo <- standard_elo(
-        r1 = team_pre_elo,
-        r2 = opponent_pre_elo,
-        score1 = game$team__g,
-        score2 = game$opponent__g
-      )
-      opponent_post_elo <- standard_elo(
-        r2 = team_pre_elo,
-        r1 = opponent_pre_elo,
-        score2 = game$team__g,
-        score1 = game$opponent__g
-      )
-      
-      init_elo <- init_elo |> 
-        dplyr::mutate(
-          pre_elo = ifelse(
-            team %in% c(game$team, game$opponent),
-            .data$post_elo,
-            .data$pre_elo
-          ),
-          post_elo = dplyr::case_when(
-            team == game$team ~ team_post_elo,
-            team == game$opponent ~ opponent_post_elo,
-            TRUE ~ .data$post_elo
-          )
-        )
-      
-      init_elo |> 
-        dplyr::filter(
-          team %in% c(game$team, game$opponent),
-        ) |> 
-        dplyr::transmute(
-          game_id = .env$game_id,
-          team,
-          pre_elo,
-          post_elo
-        )
+  res <- vector('list', length = nrow(games))
+  for(game_id in games$game_id) {
+    
+    if ((game_id %% 100) == 0) {
+      cli::cli_inform('Computing elo for {game_id} of {nrow(games)} game{?s}.')
     }
-  )
+    
+    game <- dplyr::filter(games, .data$game_id == .env$game_id)
+    
+    team_pre_elo <- init_elo |> 
+      dplyr::filter(team == game$team) |> 
+      dplyr::pull(pre_elo)
+    
+    
+    opponent_pre_elo <- init_elo |> 
+      dplyr::filter(team == game$opponent) |> 
+      dplyr::pull(pre_elo)
+    
+    team_post_elo <- standard_elo(
+      r1 = team_pre_elo,
+      r2 = opponent_pre_elo,
+      score1 = game$team__g,
+      score2 = game$opponent__g
+    )
+    opponent_post_elo <- standard_elo(
+      r2 = team_pre_elo,
+      r1 = opponent_pre_elo,
+      score2 = game$team__g,
+      score1 = game$opponent__g
+    )
+    
+    init_elo <- init_elo |> 
+      dplyr::mutate(
+        pre_elo = ifelse(
+          team %in% c(game$team, game$opponent),
+          .data$post_elo,
+          .data$pre_elo
+        ),
+        post_elo = dplyr::case_when(
+          team == game$team ~ team_post_elo,
+          team == game$opponent ~ opponent_post_elo,
+          TRUE ~ .data$post_elo
+        )
+      )
+    
+    res_i <- init_elo |> 
+      dplyr::filter(
+        team %in% c(game$team, game$opponent),
+      ) |> 
+      dplyr::transmute(
+        game_id = .env$game_id,
+        team,
+        pre_elo,
+        post_elo
+      )
+    res[[game_id]] <- res_i
+  }
+  dplyr::bind_rows(res)
 }
 
 long_home_game_scores <- long_game_scores |> dplyr::filter(side == 'home')
@@ -273,6 +275,17 @@ standard_computed_elos <- do_calculate_elos(
   init_elo = init_elo,
   elo_f = standard_elo
 )
+
+library(ggplot2)
+standard_computed_elos |> 
+  filter(team == 'Man City') |> 
+  ggplot() +
+  aes(
+    x = row_number(game_id),
+    y = pre_elo
+  ) +
+  geom_point() +
+  geom_smooth()
 
 augment_with_computed_elos <- function(games, computed_elos, suffix = '') {
   games |> 
@@ -329,14 +342,13 @@ d  |>
 library(ggplot2)
 d |> 
   filter(side == 'home') |> 
-  filter(delo__clubelo > 25)
+  filter(delo__clubelo > 25) |> 
   ggplot() +
   aes(
     x = delo__clubelo,
     y = delo__standard
   ) +
   geom_point()
-d |> dplggplot2d |> dplyr::select(-matches('__pre'))
 
 delta <- 3L
 augmented_game_scores |> 
