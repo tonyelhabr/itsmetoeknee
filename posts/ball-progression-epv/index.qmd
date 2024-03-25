@@ -1,0 +1,97 @@
+---
+title: Does completing your passes even matter?
+description: Looking at where an incomplete pass can still net you positive ePV.
+date: 2024-04-01
+categories:
+  - r
+  - soccer
+execute: 
+  code-fold: show
+  eval: true
+  include: true
+  echo: false
+---
+
+## Introduction
+
+Try hovering a spot on the pitch below. Your mouse represents the area from which a pass is made. The highlighted cells show where ePV is positive if an incomplete pass is made to that area. Other areas (left blank) will have negative ePV if an incomplete pass is made there.
+
+```{ojs}
+//| include: true
+//| code-fold: false
+//| fig-cap: This is a figure caption
+{
+  const chart = d3.create("div")
+  const title = chart.append("div").attr("id", "heatmap-title")
+  title.append("p").html(`Total number of cells with positive epV: <span id='pv_pos'>0</span>`)
+  chart.append("div").attr("id", "heatmap")
+  return chart.node()
+}
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+//| code-fold: false
+{  
+   const colorScale = d3.scaleOrdinal([0, 1]).range(['transparent', '#fdc500']);
+   const heatmap = d3_soccer.heatmap(pitch)
+      .colorScale(d3.scaleOrdinal([0, 1]).range(['white', 'white']))
+      .enableInteraction(true)
+      .onSelect((x,y,v) => {
+  
+        let cells = d3
+          .select('#heatmap')
+          .selectAll('rect.cell')
+          .data(v)
+  
+        cells.enter()
+          //.append('rect')
+          //.attr("class", "cell")
+          .merge(cells)
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .attr("width", d => d.width)
+          .attr("height", d => d.height)
+          .style("fill", d => colorScale(+d.value));
+  
+        cells.exit().remove()
+
+         d3.select('#heatmap').selectAll('rect.cell').data(nested_pv_data)
+      })
+      .parent_el('#heatmap')
+      .interpolate(false);
+
+    d3.select('#heatmap').html('').datum(nested_pv_data).call(heatmap);
+}
+```
+
+```{ojs}
+//| include: false
+pitch = d3_soccer.pitch()
+  .height(300)
+  .rotate(false)
+  .showDirOfPlay(true)
+  .shadeMiddleThird(false)
+  .pitchStrokeWidth(0.5)
+  .clip([[0, 0], [105, 68]]);
+```
+
+```{ojs}
+//| include: false
+d3 = require("d3@v5")
+```
+
+```{ojs}
+//| include: false
+d3_soccer = require("d3-soccer@0.1.0")
+```
+
+```{ojs}
+//| include: true
+//| echo: true
+//| output: all
+//| code-fold: true
+//| code-summary: The data
+nested_pv_data = FileAttachment("nested_pv_data.json").json()
+```
