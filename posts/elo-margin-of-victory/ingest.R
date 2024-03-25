@@ -204,28 +204,28 @@ init_elo <- long_game_scores |>
   dplyr::ungroup() |> 
   dplyr::transmute(
     team,
-    pre_elo = team__pre_elo,
-    post_elo = pre_elo
+    elo = team__pre_elo
   )
 
 do_calculate_elos <- function(games, init_elo, elo_f) {
+  orig_init_elo <- init_elo
   res <- vector('list', length = nrow(games))
   for(game_id in games$game_id) {
     
     if ((game_id %% 100) == 0) {
       cli::cli_inform('Computing elo for {game_id} of {nrow(games)} game{?s}.')
     }
-    
+
     game <- dplyr::filter(games, .data$game_id == .env$game_id)
     
     team_pre_elo <- init_elo |> 
       dplyr::filter(team == game$team) |> 
-      dplyr::pull(pre_elo)
+      dplyr::pull(elo)
     
     
     opponent_pre_elo <- init_elo |> 
       dplyr::filter(team == game$opponent) |> 
-      dplyr::pull(pre_elo)
+      dplyr::pull(elo)
     
     team_post_elo <- standard_elo(
       r1 = team_pre_elo,
@@ -239,18 +239,13 @@ do_calculate_elos <- function(games, init_elo, elo_f) {
       score2 = game$team__g,
       score1 = game$opponent__g
     )
-    
+
     init_elo <- init_elo |> 
       dplyr::mutate(
-        pre_elo = ifelse(
-          team %in% c(game$team, game$opponent),
-          .data$post_elo,
-          .data$pre_elo
-        ),
-        post_elo = dplyr::case_when(
+        elo = dplyr::case_when(
           team == game$team ~ team_post_elo,
           team == game$opponent ~ opponent_post_elo,
-          TRUE ~ .data$post_elo
+          TRUE ~ .data$elo
         )
       )
     
@@ -261,12 +256,27 @@ do_calculate_elos <- function(games, init_elo, elo_f) {
       dplyr::transmute(
         game_id = .env$game_id,
         team,
-        pre_elo,
-        post_elo
+        elo
       )
     res[[game_id]] <- res_i
   }
-  dplyr::bind_rows(res)
+  dplyr::bind_rows(res) |>
+    dplyr::rename(post_elo = elo) |> 
+    dplyr::arrange(game_id, team) |> 
+    dplyr::group_by(team) |> 
+    dplyr::mutate(
+      pre_elo = lag(post_elo, n = 1L),
+      .before = post_elo
+    ) |> 
+    dplyr::ungroup() |> 
+    dplyr::left_join(
+      orig_init_elo |> dplyr::select(team, init_elo = elo),
+      by = dplyr::join_by(team)
+    ) |> 
+    dplyr::mutate(
+      pre_elo = dplyr::coalesce(pre_elo, init_elo),
+      .keep = 'unused'
+    )
 }
 
 long_home_game_scores <- long_game_scores |> dplyr::filter(side == 'home')
@@ -276,13 +286,34 @@ standard_computed_elos <- do_calculate_elos(
   elo_f = standard_elo
 )
 
+standard_computed_elos |> 
+  mutate(
+    d = post_elo - pre_elo
+  ) |> 
+  filter(abs(d) > 20) |> 
+  head(5) |> 
+  select(-team) |> 
+  left_join(
+    long_home_game_scores
+  )
+  ggplot() +
+  aes(
+    x = game_id,
+    y = d
+  ) +
+  geom_point()
+
 library(ggplot2)
 standard_computed_elos |> 
-  filter(team == 'Man City') |> 
+  filter(team == 'Liverpool') |> 
+  mutate(
+    rn = row_number(game_id)
+  ) |> 
+  # filter(rn > 100, rn <= 100) |> 
   ggplot() +
   aes(
     x = row_number(game_id),
-    y = pre_elo
+    y = elo
   ) +
   geom_point() +
   geom_smooth()
@@ -333,30 +364,47 @@ d <- long_game_scores |>
     delo__clubelo = team__post_elo__clubelo - team__pre_elo__clubelo,
     delo__standard = team__post_elo__standard - team__pre_elo__standard
   )
+
 d  |> 
   filter(side == 'home') |> 
   count(
     gd = abs(team__g - opponent__g),
     delo__clubelo__greater = abs(delo__clubelo > delo__standard)
   )
+
 library(ggplot2)
 d |> 
+  arrange(desc(delo__clubelo)) |> 
+  slice_max(delo__clubelo, n = 1) |> 
+  glimpse()
+d |> 
   filter(side == 'home') |> 
-  filter(delo__clubelo > 25) |> 
+  # filter(delo__clubelo > 25) |> 
   ggplot() +
   aes(
     x = delo__clubelo,
     y = delo__standard
   ) +
-  geom_point()
+  geom_point(
+    aes(
+      color = delo__clubelo - delo__standard
+    )
+  ) +
+  scale_color_viridis_c(option = 'H') +
+  guides(
+    color = guide_legend('Diff. between standard and Clubelo incrementals')
+  ) +
+  theme(
+    legend.position = 'top'
+  )
 
 delta <- 3L
 augmented_game_scores |> 
   count(
     gd_group = cut(
       home_g - away_g,
-      breaks = c(-Inf, -delta, -1, 0, delta-1, Inf),
-      labels = c('strong away', 'weak away', 'draw', 'weak home', 'strong home')
+      # labels = c('strong away', 'weak away', 'draw', 'weak home', 'strong home'),
+      breaks = c(-Inf, -1, 0, 1, Inf)
     )
   ) |> 
   mutate(prop = n / sum(n))
@@ -373,8 +421,8 @@ mov_elo_538_nfl <- function(r1, r2, score1, score2, k = 20, numerator_multiplier
   ## https://fivethirtyeight.com/features/introducing-nfl-elo-ratings/
   ## https://andr3w321.com/elo-ratings-part-2-margin-of-victory-adjustments/
   k_multiplier <- log(numerator_multiplier * score_d + numerator_buffer)
-  corr_multiplier <- 2.2 / ((r1 - r2) * 0.001 + 2.2)
-  mov_multiplier <- k_multiplier * corrr_multiplier
+  cor_multiplier <- 2.2 / ((r1 - r2) * 0.001 + 2.2)
+  mov_multiplier <- k_multiplier * cor_multiplier
   r1 + mov_multiplier * k * (w12 - p12)
 }
 
@@ -406,6 +454,7 @@ df <- tidyr::crossing(
     r1_d = !!K * k_multiplier * corr_multiplier * (w12 - p12),
     r1_post = r1_pre + r1_d
   )
+
 df |> 
   ggplot() +
   aes(
@@ -451,14 +500,20 @@ football_elo_mov_multiplier$standard_elo <- purrr::map_dbl(
   }
 )
 
-
 soccer_elo_mov_multiplier <- tibble::tibble(
   mov = c(0:4)
 )
 soccer_elo_mov_multiplier$elo <- purrr::map_dbl(
   soccer_elo_mov_multiplier$mov,
   \(mov) {
-    mov_elo_538(r1 = 1500, r2 = 1600, score1 = mov, score2 = 0, numerator_multiplier = 3.5, numerator_buffer = 7)
+    mov_elo_538_nfl(
+      r1 = 1500, 
+      r2 = 1600, 
+      score1 = mov, 
+      score2 = 0, 
+      numerator_multiplier = 3.5, 
+      numerator_buffer = 7
+    )
   }
 )
 
