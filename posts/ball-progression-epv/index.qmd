@@ -15,11 +15,554 @@ execute:
 
 ## Introduction
 
+I heard someone recently say something like "Possession values (PV) models in soccer basically come down to ball progression". That's an interesting thought, and add a hunch that this isn't too far off.
+
+One way of getting at that idea is too look at how your PV model treats incomplete passes.
+
+-   Does it say that all long passes are "good" (i.e. have \>0 PV)?
+-   What role does the starting position of the pass play? (i.e. Are balls crossed into the 18-yard box from the wing treated similarly to goal kicks launched into the opponent's box?)
+-   How does PV for an unsuccessful pass compare to a successful one, holding all else equal?
+
+I attempt to answer some of these questions with a VAEP model--an open-source PV model. My model is trained on 2013/14 - 2023/24 English Premier League data.
+
 ```{r}
+#| label: setup
+#| code-fold: true
+#| code-summary: Package imports and other setup
+## Data retrieval
+library(curl)
+library(arrow)
+library(qs) ## local dev
+
+## Data manipulation
+library(dplyr)
+# library(tidyr)
+library(purrr)
+library(lubridate)
+library(rlang)
+library(tidyselect)
+# library(forcats)
+
+## Modeling
+library(xgboost)
+
+PROJ_DIR <- 'posts/ball-progression-epv'
+```
+
+```{r}
+#| label: data-pull
+#| include: false
+#| eval: false
+read_parquet_from_url <- function(url) {
+  load <- curl::curl_fetch_memory(url)
+  arrow::read_parquet(load$content)
+}
+
+REPO <- 'tonyelhabr/socceraction-streamlined'
+read_socceraction_parquet_release <- function(name, tag) {
+  url <- sprintf('https://github.com/%s/releases/download/%s/%s.parquet', REPO, tag, name)
+  read_parquet_from_url(url)
+}
+
+read_socceraction_parquet_releases <- function(name, tag = 'data-processed') {
+  purrr::map_dfr(
+    2013:2022,
+    \(season_start_year) {
+      basename <- sprintf('8-%s-%s', season_start_year, name)
+      message(basename)
+      read_socceraction_parquet_release(basename, tag = tag)
+    }
+  )
+}
+
+x <- read_socceraction_parquet_releases('x')
+y <- read_socceraction_parquet_releases('y')
+actions <- read_socceraction_parquet_releases('actions')
+games <- read_socceraction_parquet_releases('games') |> 
+  dplyr::mutate(
+    date = lubridate::date(game_date)
+  )
+
+MODEL_COLS <- c('type_pass_a0', 'type_cross_a0', 'type_throw_in_a0', 'type_freekick_crossed_a0', 'type_freekick_short_a0', 'type_corner_crossed_a0', 'type_corner_short_a0', 'type_take_on_a0', 'type_foul_a0', 'type_tackle_a0', 'type_interception_a0', 'type_shot_a0', 'type_shot_penalty_a0', 'type_shot_freekick_a0', 'type_keeper_save_a0', 'type_keeper_claim_a0', 'type_keeper_punch_a0', 'type_keeper_pick_up_a0', 'type_clearance_a0', 'type_bad_touch_a0', 'type_non_action_a0', 'type_dribble_a0', 'type_goalkick_a0', 'bodypart_foot_a0', 'bodypart_head_a0', 'bodypart_other_a0', 'bodypart_head/other_a0', 'result_fail_a0', 'result_success_a0', 'result_offside_a0', 'result_owngoal_a0', 'result_yellow_card_a0', 'result_red_card_a0', 'goalscore_team', 'goalscore_opponent', 'goalscore_diff', 'start_x_a0', 'start_y_a0', 'end_x_a0', 'end_y_a0', 'dx_a0', 'dy_a0', 'movement_a0', 'start_dist_to_goal_a0', 'start_angle_to_goal_a0', 'end_dist_to_goal_a0', 'end_angle_to_goal_a0', 'period_id_a0', 'time_seconds_a0', 'time_seconds_overall_a0')
+
+xy <- dplyr::inner_join(
+  y,
+  x |> dplyr::select(game_id, action_id, tidyselect::all_of(MODEL_COLS)),
+  by = dplyr::join_by(game_id, action_id)
+) |> 
+  dplyr::inner_join(
+    actions |>
+      dplyr::select(
+        game_id,
+        team_id,
+        period_id,
+        action_id
+      ),
+    by = dplyr::join_by(game_id, action_id)
+  ) |>
+  dplyr::inner_join(
+    games |> dplyr::select(competition_id, season_id, game_id),
+    by = dplyr::join_by(game_id)
+  ) |> 
+  dplyr::mutate(
+    dplyr::across(c(scores, concedes), ~ifelse(.x, 'yes', 'no') |> factor()),
+    dplyr::across(tidyselect::where(is.logical), as.integer)
+  )
+```
+
+```{r}
+#| label: data-pull-save
+#| include: false
+#| eval: false
+# library(qs)
+qs::qsave(xy, file.path(PROJ_DIR, 'xy.qs'))
+```
+
+```{r}
+#| label: data-pull-read
+#| include: false
+#| eval: false
+xy <- qs::qread(file.path(PROJ_DIR, 'xy.qs'))
+```
+
+```{r}
+#| label: model
+#| include: false
+#| eval: false
+df_to_mat <- function(df) {
+  model.matrix(
+    ~.+0,
+    data = model.frame(
+      ~.+0,
+      df,
+      na.action = na.pass
+    )
+  )
+}
+
+select_x <- function(df) {
+  df |> 
+    dplyr::select(tidyselect::all_of(MODEL_COLS)) |> 
+    df_to_mat()
+}
+
+fit_model <- function(df, target, overwrite = FALSE) {
+  path <- file.path(MODEL_DIR, paste0('model_', target, '_1000_no_max_depth.model'))
+  if (file.exists(path) & isFALSE(overwrite)) {
+    return(xgboost::xgb.load(path))
+  }
+  x <- select_x(df)
+  y <- as.integer(df[[target]]) - 1L
+  fit <- xgboost::xgboost(
+    data = x,
+    label = y,
+    eval_metric = 'logloss',
+    nrounds = 1000,
+    # early_stopping_rounds = 100,
+    print_every_n = 100,
+    # max_depth = 3, 
+    n_jobs = -3
+  )
+  xgboost::xgb.save(fit, path)
+  fit
+}
+
+fit_models <- function(df, overwrite = FALSE) {
+  list(
+    'scores',
+    'concedes'
+  ) |> 
+    rlang::set_names() |> 
+    purrr::map(
+      function(.x) {
+        fit_model(
+          df, 
+          target = .x,
+          overwrite = overwrite
+        )
+      }
+    )
+}
+
+predict_value <- function(fit, df, ...) {
+  x <- select_x(df)
+  predict(fit, newdata = x, ...)
+}
+
+predict_values <- function(fits, df) {
+  pred_scores <- predict_value(
+    fit = fits$scores,
+    df = df
+  )
+  
+  pred_concedes <- predict_value(
+    fit = fits$concedes,
+    df = df
+  )
+  
+  vaep <- tibble::tibble(
+    scores = df$scores,
+    pred_scores = pred_scores,
+    concedes = df$concedes,
+    pred_concedes = pred_concedes
+    pred = pred_scores - pred_concedes
+  )
+  
+  dplyr::bind_cols(
+    df |> dplyr::select(tidyselect::all_of(MODEL_ID_COLS)),
+    vaep 
+  )
+}
+
+fits <- fit_models(df = df)
+preds <- predict_values(fits = fits, df = df)
+```
+
+```{r}
+#| label: model-save
+#| include: false
+#| eval: false
+# library(qs)
+qs::qsave(fits, file.path(PROJ_DIR, 'fits.qs'))
+qs::qsave(preds, file.path(PROJ_DIR, 'preds.qs')
+```
+
+```{r}
+#| label: model-read
+#| include: false
+#| eval: false
+fits <- qs::qread(file.path(PROJ_DIR, 'fits.qs'))
+preds <- qs::qread(file.path(PROJ_DIR, 'preds.qs'))
+```
+
+```{r}
+#| label: pred-prep
+#| include: false
+#| eval: false
+calculate_d <- function(end, start) {
+  end - start
+}
+
+calculate_dist <- function(dx, dy) {
+  sqrt(dx^2 + dy^2)
+}
+
+FIELD_DIMENSIONS <- list(
+  'width' = 68,
+  'length' = 105
+)
+
+GOAL_COORDS <- list(
+  'x' = FIELD_DIMENSIONS$length,
+  'y' = FIELD_DIMENSIONS$width / 2
+)
+
+calculate_dist_to_goal <- function(x, y) {
+  dx <- abs(GOAL_COORDS$x - x)
+  dy <- abs(GOAL_COORDS$y - y)
+  calculate_dist(dx, dy)
+}
+
+calculate_angle_to_goal <- function(x, y) {
+  dx <- abs(GOAL_COORDS$x - x)
+  dy <- abs(GOAL_COORDS$y - y)
+  atan2(dy, dx)
+}
+
+base_non_atomic_features <- tibble::tibble(
+  type_pass_a0 = c(1L),
+  type_cross_a0 = c(0L),
+  type_throw_in_a0 = c(0L),
+  type_freekick_crossed_a0 = c(0L),
+  type_freekick_short_a0 = c(0L),
+  type_corner_crossed_a0 = c(0L),
+  type_corner_short_a0 = c(0L),
+  type_take_on_a0 = c(0L),
+  type_foul_a0 = c(0L),
+  type_tackle_a0 = c(0L),
+  type_interception_a0 = c(0L),
+  type_shot_a0 = c(0L),
+  type_shot_penalty_a0 = c(0L),
+  type_shot_freekick_a0 = c(0L),
+  type_keeper_save_a0 = c(0L),
+  type_keeper_claim_a0 = c(0L),
+  type_keeper_punch_a0 = c(0L),
+  type_keeper_pick_up_a0 = c(0L),
+  type_clearance_a0 = c(0L),
+  type_bad_touch_a0 = c(0L),
+  type_non_action_a0 = c(0L),
+  type_dribble_a0 = c(0L),
+  type_goalkick_a0 = c(0L),
+  bodypart_foot_a0 = c(1L),
+  bodypart_head_a0 = c(0L),
+  bodypart_other_a0 = c(0L),
+  `bodypart_head/other_a0` = c(0L),
+  # result_fail_a0 = c(1L),
+  # result_success_a0 = c(0L),
+  result_offside_a0 = c(0L),
+  result_owngoal_a0 = c(0L),
+  result_yellow_card_a0 = c(0L),
+  result_red_card_a0 = c(0L),
+  goalscore_team = c(0L),
+  goalscore_opponent = c(0L),
+  goalscore_diff = c(0L),
+  period_id_a0 = c(1L),
+  time_seconds_a0 = c(0),
+  time_seconds_overall_a0 = c(0)
+)
+
+create_seq <- function(start = 0, end = 100, width = 1) {
+  seq(
+    width / 2,
+    end - width / 2,
+    by = width
+  )
+}
+
+X_DELTA <- 105/16
+Y_DELTA <- 68/12
+X_SEQ <- create_seq(width = X_DELTA, start = 0, end = 105)
+Y_SEQ <- create_seq(width = Y_DELTA, start = 0, end = 68)
+
+grid_non_atomic_features <- base_non_atomic_features |>
+  tidyr::crossing(
+    start_x_a0 = X_SEQ,
+    start_y_a0 = Y_SEQ,
+    result_fail_a0 = c(0L, 1L),
+    result_success_a0 = c(0L, 1L),
+    end_x_a0 = X_SEQ,
+    end_y_a0 = Y_SEQ
+  ) |> 
+  dplyr::filter(
+    result_fail_a0 != result_success_a0
+  ) |> 
+  dplyr::mutate(
+    idx1 = sprintf('%02d', dplyr::dense_rank(start_x_a0) - 1L),
+    idy2 = sprintf('%02d', dplyr::dense_rank(start_y_a0) - 1L),
+    idx2 = sprintf('%02d', dplyr::dense_rank(end_x_a0) - 1L),
+    idy1 = sprintf('%02d', dplyr::dense_rank(end_y_a0) - 1L),
+    dx_a0 = calculate_d(end_x_a0, start_x_a0),
+    dy_a0 = calculate_d(end_y_a0, start_y_a0),
+    
+    movement_a0 = calculate_dist(dx_a0, dy_a0),
+    start_dist_to_goal_a0 = calculate_dist_to_goal(start_x_a0, start_y_a0),
+    start_angle_to_goal_a0 = calculate_angle_to_goal(start_x_a0, start_y_a0),
+    end_dist_to_goal_a0 = calculate_dist_to_goal(end_x_a0, end_y_a0),
+    end_angle_to_goal_a0 = calculate_angle_to_goal(end_x_a0, end_y_a0)
+  )
+
+raw_grid_preds_non_atomic <- predict_values(
+  fits,
+  grid_non_atomic_features
+)
+
+mini_preds_and_features <- dplyr::bind_cols(
+  grid_non_atomic_features |> 
+    dplyr::transmute(
+      pass_status = ifelse(result_success_a0 == 1L, 'complete', 'incomplete'),
+      idx1,
+      idy1,
+      idx2,
+      idy2
+    ),
+  raw_grid_preds_non_atomic |> 
+    dplyr::select(
+      pred_scores,
+      pred_concedes,
+      pred
+    )
+)
+
+freq_grid <- tidyr::crossing(
+  x = X_SEQ,
+  y = Y_SEQ
+) |>
+  dplyr::arrange(x, y) |>
+  dplyr::transmute(idx = dplyr::row_number(), x, y) |>
+  dplyr::group_by(y) |> 
+  dplyr::mutate(next_x = dplyr::lead(x) |> dplyr::coalesce(x + (x - dplyr::lag(x)))) |>
+  dplyr::ungroup() |>
+  dplyr::group_by(x) |>
+  dplyr::mutate(next_y = dplyr::lead(y) |> dplyr::coalesce(y + (y - dplyr::lag(y)))) |>
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    i = dplyr::dense_rank(x),
+    j = dplyr::dense_rank(y)
+  )
+
+start_pass_location_counts <- dplyr::inner_join(
+  xy |> 
+    dplyr::filter(type_pass_a0 == 1) |> 
+    dplyr::filter(
+      result_success_a0 == 1L | result_fail_a0 == 1L
+    ) |> 
+    dplyr::inner_join(
+      preds |>
+        dplyr::select(
+          competition_id,
+          season_id,
+          game_id,
+          period_id,
+          team_id,
+          action_id,
+          pred_scores,
+          pred_concedes,
+          pred
+        ),
+      by = dplyr::join_by(
+        competition_id,
+        season_id,
+        game_id,
+        period_id,
+        team_id,
+        action_id
+      )
+    ),
+  freq_grid,
+  by = dplyr::join_by(
+    start_x_a0 >= x, 
+    start_x_a0 < next_x, 
+    start_y_a0 >= y,
+    start_y_a0 < next_y
+  )
+) |> 
+  dplyr::group_by(idx, result_success_a0, result_fail_a0) |> 
+  dplyr::summarize(
+    n = dplyr::n(),
+    dplyr::across(
+      c(
+        pred_scores,
+        pred_concedes,
+        pred
+      ),
+      list(actual = \(.x) mean(.x, na.rm = TRUE))
+    )
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::right_join(
+    freq_grid,
+    by = jdplyr::oin_by(idx),
+    relationship = 'many-to-many'
+  ) |> 
+  dplyr::mutate(
+    idx1 = sprintf('%02d', i - 1L),
+    idy1 = sprintf('%02d', j - 1L)
+  )
+
+pass_props <- start_pass_location_counts |> 
+  dplyr::group_by(
+    pass_status = ifelse(result_success_a0 == 1L, 'incomplete', 'complete')
+  ) |> 
+  dplyr::transmute(
+    idx1,
+    idy1,
+    prop = n / sum(n),
+    rank = dplyr::row_number(dplyr::desc(prop)),
+    mean_pred_scores = pred_scores,
+    mean_pred_concedes = pred_concedes,
+    mean_pred = pred
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::arrange(pass_status, dplyr::desc(prop))
+
+export_df <- mini_preds_and_features |> 
+  dplyr::left_join(
+    pass_props,
+    by = dplyr::join_by(pass_status, idx1, idy1)
+  )
+```
+
+```{r}
+#| label: export_df
+#| include: false
+#| eval: false
+export_df <- mini_preds_and_features |> 
+  dplyr::left_join(
+    pass_props,
+    by = dplyr::join_by(pass_status, idx1, idy1)
+  )
+
+export_df %>%
+  split(.$pass_status) |> 
+  iwalk(
+    \(.x, .y) {
+
+      dplyr::transmute(
+        .x,
+        parent_i = as.integer(idx1),
+        parent_j = as.integer(idy1),
+        i = as.integer(idx2),
+        j = as.integer(idy2),
+        x = i * X_DELTA,
+        y = j * Y_DELTA,
+        width = X_DELTA,
+        height = Y_DELTA,
+        value = pred,
+        rank,
+        mean_pred_scores,
+        mean_pred_concedes,
+        mean_pred
+      )  |> 
+        dplyr::arrange(j, i) |> 
+        tidyr::nest(
+          value = -c(parent_i, parent_j)
+        ) |> 
+        dplyr::transmute(
+          i = parent_i,
+          j = parent_j,
+          x = i * X_DELTA,
+          y = j * Y_DELTA,
+          width = X_DELTA,
+          height = Y_DELTA,
+          value
+        ) |> 
+        dplyr::arrange(j, i)  |> 
+        jsonlite::write_json(
+          file.path(PROJ_DIR, sprintf('nested_pv_data_12x16_%s.json', .y)),
+          pretty = TRUE,
+          auto_unbox = TRUE
+        )
+    }
+  )
+
+export_df %>%
+  split(.$pass_status) |> 
+  purrr::iwalk(
+    \(.x, .y) {
+      
+      .x |> 
+        dplyr::filter(
+          idx1 == '10',
+          idy1 == '06'
+        ) |> 
+        dplyr::transmute(
+          i = as.integer(idx2),
+          j = as.integer(idy2),
+          x = i * X_DELTA,
+          y = j * Y_DELTA,
+          width = X_DELTA,
+          height = Y_DELTA,
+          value = pred,
+          rank,
+          pred_scores,
+          pred_concedes
+        )  |> 
+        dplyr::arrange(j, i) |> 
+        jsonlite::write_json(
+          file.path(PROJ_DIR, sprintf('pv_data_12x16_%s.json', .y)),
+          pretty = TRUE,
+          auto_unbox = TRUE
+        )
+    }
+  )
 
 ```
 
-## Data
+## Possession Value (PV) for Passes
+
+### Unsuccessful Passes
+
+#### From the Center Circle, To Anywhere on the Pitch
 
 Try hovering a spot on the pitch below. Your mouse represents the area from which a pass is made. The highlighted cells show where ePV is positive if an incomplete pass is made to that area. Other areas (left blank) will have negative ePV if an incomplete pass is made there.
 
@@ -41,47 +584,61 @@ Try hovering a spot on the pitch below. Your mouse represents the area from whic
 //| output: false
 //| code-fold: false
 {  
-   const colorScale = d3.scaleOrdinal([0, 1]).range(['transparent', '#fdc500']);
-   const heatmap = d3_soccer.heatmap(pitch)
-      .colorScale(d3.scaleOrdinal([0, 1]).range(['white', 'white']))
-      .enableInteraction(true)
-      .onSelect((x,y,v) => {
+  const colorScale = d3.scaleOrdinal([0, 1]).range(['transparent', '#fdc500']);
+  const heatmap = d3_soccer.heatmap(pitch)
+  .colorScale(d3.scaleOrdinal([0, 1]).range(['white', 'white']))
+  .enableInteraction(true)
+  .onSelect((x,y,v) => {
   
-        let cells = d3
-          .select('#heatmap')
-          .selectAll('rect.cell')
-          .data(v)
+  let cells = d3
+    .select('#heatmap')
+    .selectAll('rect.cell')
+    .data(v)
   
-        cells.enter()
-          //.append('rect')
-          //.attr("class", "cell")
-          .merge(cells)
-          .attr("x", d => d.x)
-          .attr("y", d => d.y)
-          .attr("width", d => d.width)
-          .attr("height", d => d.height)
-          .style("fill", d => colorScale(+d.value));
+  cells.enter()
+    //.append('rect')
+    //.attr("class", "cell")
+    .merge(cells)
+    .attr("x", d => d.x)
+    .attr("y", d => d.y)
+    .attr("width", d => d.width)
+    .attr("height", d => d.height)
+    .style("fill", d => colorScale(+d.value));
+      
+    cells.exit().remove()
+    
+    d3.select('#heatmap').selectAll('rect.cell').data(nested_pv_data)
+  })
+  .parent_el('#heatmap')
+  .interpolate(false);
   
-        cells.exit().remove()
-
-         d3.select('#heatmap').selectAll('rect.cell').data(nested_pv_data)
-      })
-      .parent_el('#heatmap')
-      .interpolate(false);
-
-    d3.select('#heatmap').html('').datum(nested_pv_data).call(heatmap);
+  d3.select('#heatmap').html('').datum(nested_pv_data).call(heatmap);
 }
 ```
+
+#### From Anywhere on the Pitch
+
+Try hovering a spot on the pitch below. Your mouse represents the area from which a pass is made. The highlighted cells show where ePV is positive if an incomplete pass is made to that area. Other areas (left blank) will have negative ePV if an incomplete pass is made there.
+
+### Successful Passes
+
+#### From the Center Circle, To Anywhere on the Pitch
+
+#### From Anywhere on the Pitch, To Anywhere on the Pitch
+
+## Conclusion
+
+I'll note that the choice of model surely plays a role in the inference we'll make. Even atomic VAEP, which splits passes into two actions--the pass itself and the reception (or lack of)--may yield different answers.
 
 ```{ojs}
 //| include: false
 pitch = d3_soccer.pitch()
-  .height(300)
-  .rotate(false)
-  .showDirOfPlay(true)
-  .shadeMiddleThird(false)
-  .pitchStrokeWidth(0.5)
-  .clip([[0, 0], [105, 68]]);
+.height(300)
+.rotate(false)
+.showDirOfPlay(true)
+.shadeMiddleThird(false)
+.pitchStrokeWidth(0.5)
+.clip([[0, 0], [105, 68]]);
 ```
 
 ```{ojs}
@@ -95,10 +652,6 @@ d3_soccer = require("d3-soccer@0.1.0")
 ```
 
 ```{ojs}
-//| include: true
-//| echo: true
-//| output: all
-//| code-fold: true
-//| code-summary: The data
+//| include: false
 nested_pv_data = FileAttachment("nested_pv_data.json").json()
 ```
