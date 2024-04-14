@@ -150,8 +150,8 @@ select_x <- function(df) {
     df_to_mat()
 }
 
-fit_model <- function(df, target, trees = 100, overwrite = FALSE) {
-  path <- file.path(PROJ_DIR, paste0('model_', target, '_', trees, '.model'))
+fit_model <- function(df, target, trees = 100, max_depth = 3, overwrite = FALSE) {
+  path <- file.path(PROJ_DIR, paste0('model_', target, '_', trees, '_', max_depth, '.model'))
   if (file.exists(path) & isFALSE(overwrite)) {
     return(xgboost::xgb.load(path))
   }
@@ -162,9 +162,8 @@ fit_model <- function(df, target, trees = 100, overwrite = FALSE) {
     label = y,
     eval_metric = 'logloss',
     nrounds = trees,
-    # early_stopping_rounds = 100,
     print_every_n = 10,
-    # max_depth = 3, 
+    max_depth = 3, 
     n_jobs = -3
   )
   xgboost::xgb.save(fit, path)
@@ -533,7 +532,7 @@ export_df %>%
         ) |> 
         dplyr::arrange(j, i)  |> 
         jsonlite::write_json(
-          file.path(PROJ_DIR, sprintf('nested_pv_data_12x16_%s.json', .y)),
+          file.path(PROJ_DIR, sprintf('%s_nested_pv_data.json', .y)),
           pretty = TRUE,
           auto_unbox = TRUE
         )
@@ -567,7 +566,7 @@ export_df %>%
         )  |> 
         dplyr::arrange(j, i) |> 
         jsonlite::write_json(
-          file.path(PROJ_DIR, sprintf('pv_data_12x16_%s.json', .y)),
+          file.path(PROJ_DIR, sprintf('%s_pv_data.json', .y)),
           pretty = TRUE,
           auto_unbox = TRUE
         )
@@ -642,10 +641,9 @@ plot_pass_grid(
 In the interactive 12x16 pitch below, the red tile illustrates where a hypothetical pass is made, and the colored tiles illustrate the possession value (PV) associated with a successful pass made to that area. Hovering over the tile shows the PV value above the pitch as well.
 
 ```{ojs}
-//| label: heatmap_complete-setup
 //| include: true
 //| code-fold: false
-//| fig-cap: A heatmap showing the average possession value (PV) of a completed pass from roughly the center spot (annotated in red) to any other spot on the pitch.
+//| fig-cap: A heatmap showing the possession value (PV) of an average successful pass from roughly the center spot (annotated in blue) to all other spots on the pitch.
 {
   const chart = d3.create("div")
   const title = chart.append("div").attr("id", "heatmap-title-complete")
@@ -704,7 +702,6 @@ In the interactive 12x16 pitch below, the red tile illustrates where a hypotheti
       }
       return d;
     })
-    // Apply the flex style only to the center elemnt so that the 
     .style("flex", d => d === 0 ? "1" : null)
     .style("text-align", "center") // Center the text within its flex item
 
@@ -714,7 +711,6 @@ In the interactive 12x16 pitch below, the red tile illustrates where a hypotheti
 ```
 
 ```{ojs}
-//| label: heatmap_complete
 //| echo: false
 //| output: false
 //| code-fold: false
@@ -723,14 +719,13 @@ In the interactive 12x16 pitch below, the red tile illustrates where a hypotheti
     .colorScale(colorScaleComplete)
     .enableInteraction(true)
     .onSelect((x,y,v) => {
-      d3.select('#pv-x-complete').text(x);       
-      d3.select('#pv-y-complete').text(y);
-      d3.select('#pv-value-complete').text(v.toFixed(3));
+      const cappedValue = Math.min(Math.max(v, -1), 1);
+      d3.select('#pv-value-complete').text(cappedValue.toFixed(3));
     })
     .parent_el('#heatmap-complete')
     .interpolate(false);
 
-  d3.select('#heatmap-complete').html('').datum(pv_data_complete).call(heatmap_complete);
+  d3.select('#heatmap-complete').html('').datum(complete_pv_data).call(heatmap_complete);
 
   const svg = d3.select('#heatmap-complete').select('svg');
 
@@ -739,21 +734,22 @@ In the interactive 12x16 pitch below, the red tile illustrates where a hypotheti
     .attr("y", passStartParams.y)
     .attr("width", tileParams.width)
     .attr("height", tileParams.height)
-    .style("stroke", "red")
+    .style("stroke", "blue")
     .style("fill", "none")
     .style("stroke-width", "1px");
 }
 ```
+
+FIN
 
 #### From Anywhere on the Pitch, To Anywhere on the Pitch
 
 Now, to give the full picture, the interactive pitch below will dynamically update to show PV values associated with a pass starting from the tile that you hover over.
 
 ```{ojs}
-//| label: heatmap_complete_nested-setup
 //| include: true
 //| code-fold: false
-//| fig-cap: A heatmap showing the average possession value (PV) of a completed pass from roughly the center spot (annotated in red) to any other spot on the pitch.
+//| fig-cap: A heatmap showing the possession value (PV) of an average successful pass from the hover spot to all other spots on the pitch.
 {
   const chart = d3.create("div")
   const title = chart.append("div").attr("id", "heatmap-title-complete-nested")
@@ -812,7 +808,6 @@ Now, to give the full picture, the interactive pitch below will dynamically upda
       }
       return d;
     })
-    // Apply the flex style only to the center elemnt so that the 
     .style("flex", d => d === 0 ? "1" : null)
     .style("text-align", "center") // Center the text within its flex item
 
@@ -822,7 +817,6 @@ Now, to give the full picture, the interactive pitch below will dynamically upda
 ```
 
 ```{ojs}
-//| label: heatmap_complete_nested
 //| echo: false
 //| output: false
 //| code-fold: false
@@ -831,9 +825,10 @@ Now, to give the full picture, the interactive pitch below will dynamically upda
       .colorScale(d3.scaleLinear().domain([-1, 1]).range(["white", "white"]))
       .enableInteraction(true)
       .onSelect((x,y,v) => {
-        const propRank = v[0].rank
-        const minValue = d3.min(v, d => d.value);
-        const maxValue = d3.max(v, d => d.value);
+        const rawMinValue = d3.min(v, d => d.value);
+        const rawMaxValue = d3.max(v, d => d.value);
+        const minValue = Math.max(rawMaxValue, -1);
+        const maxValue = Math.min(rawMaxValue, 1);
         
         d3.select('#pv-min-complete-nested').text(minValue.toFixed(3));
         d3.select('#pv-max-complete-nested').text(maxValue.toFixed(3));
@@ -852,23 +847,27 @@ Now, to give the full picture, the interactive pitch below will dynamically upda
   
         cells.exit().remove()
 
-         d3.select("#heatmap-complete-nested").selectAll("rect.cell").data(nested_pv_data_complete)
+         d3.select("#heatmap-complete-nested").selectAll("rect.cell").data(complete_nested_pv_data)
       })
       .parent_el("#heatmap-complete-nested")
       .interpolate(false);
 
-    d3.select("#heatmap-complete-nested").html("").datum(nested_pv_data_complete).call(heatmap_complete_nested);
+    d3.select("#heatmap-complete-nested").html("").datum(complete_nested_pv_data).call(heatmap_complete_nested);
 }
 ```
+
+There are some oddities if you look close enough, but such is the nature of an ML model.
 
 ### Unsuccessful Passes
 
 #### From the Center Spot, To Anywhere on the Pitch
 
+Now, the more interesting side of things--how does the PV heatmap look for incomplete passes? Let's start with an example again, looking at PV for unsuccessful passes from the center spot.
+
 ```{ojs}
-//| label: heatmap_incomplete-setup
 //| include: true
 //| code-fold: false
+//| fig-cap: A heatmap showing the possession value (PV) of an average unsuccessful pass from roughly the center spot (annotated in blue) to all other spots on the pitch.
 {
   const chart = d3.create("div")
   const title = chart.append("div").attr("id", "heatmap-title-incomplete")
@@ -927,7 +926,6 @@ Now, to give the full picture, the interactive pitch below will dynamically upda
       }
       return d;
     })
-    // Apply the flex style only to the center elemnt so that the 
     .style("flex", d => d === 0 ? "1" : null)
     .style("text-align", "center") // Center the text within its flex item
 
@@ -937,7 +935,6 @@ Now, to give the full picture, the interactive pitch below will dynamically upda
 ```
 
 ```{ojs}
-//| label: heatmap_incomplete
 //| echo: false
 //| output: false
 //| code-fold: false
@@ -946,14 +943,13 @@ Now, to give the full picture, the interactive pitch below will dynamically upda
     .colorScale(colorScaleIncomplete)
     .enableInteraction(true)
     .onSelect((x,y,v) => {
-      d3.select("#pv-x-incomplete").text(x);       
-      d3.select("#pv-y-incomplete").text(y);
-      d3.select("#pv-value-incomplete").text(v.toFixed(3));
+      const cappedValue = Math.min(Math.max(v, -1), 1);
+      d3.select('#pv-value-incomplete').text(cappedValue.toFixed(3));
     })
     .parent_el("#heatmap-incomplete")
     .interpolate(false);
 
-  d3.select("#heatmap-incomplete").html("").datum(pv_data_incomplete).call(heatmap_incomplete);
+  d3.select("#heatmap-incomplete").html("").datum(incomplete_pv_data).call(heatmap_incomplete);
 
   const svg = d3.select("#heatmap-incomplete").select("svg");
 
@@ -962,13 +958,129 @@ Now, to give the full picture, the interactive pitch below will dynamically upda
     .attr("y", passStartParams.y)
     .attr("width", tileParams.width)
     .attr("height", tileParams.height)
-    .style("stroke", "red")
+    .style("stroke", "blue")
     .style("fill", "none")
     .style("stroke-width", "1px");
 }
 ```
 
+I think this grid is actually fairly intuitive. Incomplete passes backwards have very negative PVs, as those are leading to turnovers probably setting up the opponent for a good scoring opportunity. Incomplete passes forward mostly have neutral PVs, with some notable spots on the pitch having non-trivially positive PVs.
+
+Some of those exceptions include the top of the 18-yard-box (i.e. ["zone 14"](https://www.youtube.com/watch?v=_EFtACGzD7E)), where a loss of possession can actually be advantageous, as it leaves the opponent likely in a vulnerable position. You could also infer that the "risk" of losing possession to passes to zone 14 is justified from the potential to take a shot. The other observable positive PV end-points for passes taken from the center of the pitch are the goal lines on the ends of the 18-yard box. We could deduce that passes to those areas often lead to cutback passes to the front of the goal, which often lead to high-converting shots. So again, the PV model seems to indicate that the "lost opportunity" of such a (failed) pass seems worth it. on average.
+
 #### From Anywhere on the Pitch, To Anywhere on the Pitch
+
+Now lets scale up our pass PV grid to all incomplete passes. Hovering over a tile will show PV associated with unsuccessful passes from that point on the pitch.
+
+```{ojs}
+//| include: true
+//| code-fold: false
+//| fig-cap: A heatmap showing the possession value (PV) of an average unsuccessful pass from the hover spot to all other spots on the pitch.
+{
+  const chart = d3.create("div")
+  const title = chart.append("div").attr("id", "heatmap-title-incomplete-nested")
+  title.append("p").html(`min PV: <span id='pv-min-incomplete-nested'>0</span>, max PV: <span id='pv-max-incomplete-nested'>0</span>`)
+  chart.append("div").attr("id", "heatmap-incomplete-nested")
+
+  const legendSwatchContainer = chart.append("div")
+    .attr("id", "heatmap-legend-incomplete-nested")
+    .style("display", "flex")
+    .style("flex-direction", "column") // Stack swatches and labels vertically
+    .style("align-items", "center") // Center the flex items
+    .style("width", "100%"); // Take up the full width to center the content
+  
+  const legendRange = [
+    1.1 * d3.min(colorScaleIncompleteRange), 
+    1.1 * d3.max(colorScaleIncompleteRange)
+  ];
+  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);
+  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);
+  legendSwatches[legendSwatches.length - 1] = legendRange[1];
+  
+  // Calculate the total width for the legend swatches to be used in setting the width of the container
+  const totalLegendWidth = swatchParams.width * swatchParams.num;
+  
+  // Append the swatches as a row
+  const swatchRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center") // Center the row of swatches
+    .style("width", "100%"); // Take up the full width to center the content
+
+  // Append the individual swatches
+  swatchRow.selectAll("div")
+    .data(legendSwatches)
+    .enter()
+    .append("div")
+    .style("width", `${swatchParams.width}px`)
+    .style("height", `${swatchParams.height}px`)
+    .style("background-color", d => colorScaleIncomplete(d));
+
+  // Append the label row
+  const labelRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center") // Center the row of labels
+    .style("width", `${totalLegendWidth}px`);
+
+  // Append the individual labels under the swatches
+  labelRow.selectAll("span")
+    .data(colorScaleIncompleteRange)
+    .enter()
+    .append("span")
+    .text(d => {
+      if (d === d3.min(colorScaleIncompleteRange)) {
+        return "<= " + d;
+      } else if (d === d3.max(colorScaleIncompleteRange)) {
+        return ">= " + d;
+      }
+      return d;
+    })
+    .style("flex", d => d === 0 ? "1" : null)
+    .style("text-align", "center") // Center the text within its flex item
+
+  return chart.node();
+
+}
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+//| code-fold: false
+{  
+    const heatmap_incomplete_nested = d3_soccer.heatmap(pitch)
+      .colorScale(d3.scaleLinear().domain([-1, 1]).range(["white", "white"]))
+      .enableInteraction(true)
+      .onSelect((x,y,v) => {
+        const rawMinValue = d3.min(v, d => d.value);
+        const rawMaxValue = d3.max(v, d => d.value);
+        const minValue = Math.max(rawMaxValue, -1);
+        const maxValue = Math.min(rawMaxValue, 1);
+        
+        d3.select('#pv-min-incomplete-nested').text(minValue.toFixed(3));
+        d3.select('#pv-max-incomplete-nested').text(maxValue.toFixed(3));
+        const cells = d3
+          .select("#heatmap-incomplete-nested")
+          .selectAll("rect.cell")
+          .data(v)
+  
+        cells.enter()
+          .merge(cells) // Merge enter and update selections
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .attr("width", d => d.width)
+          .attr("height", d => d.height)
+          .style("fill", d => colorScaleIncomplete(+d.value));
+  
+        cells.exit().remove()
+
+         d3.select("#heatmap-incomplete-nested").selectAll("rect.cell").data(incomplete_nested_pv_data)
+      })
+      .parent_el("#heatmap-incomplete-nested")
+      .interpolate(false);
+
+    d3.select("#heatmap-incomplete-nested").html("").datum(incomplete_nested_pv_data).call(heatmap_incomplete_nested);
+}
+```
 
 ## Conclusion
 
@@ -996,27 +1108,27 @@ d3_soccer = require("d3-soccer@0.1.0")
 ```
 
 ```{ojs}
-//| label: pv_data_complete
+//| label: complete_pv_data
 //| include: false
-pv_data_complete  = FileAttachment("pv_data_12x16_complete.json").json()
+complete_pv_data  = FileAttachment("complete_pv_data.json").json()
 ```
 
 ```{ojs}
-//| label: pv_data_incomplete
+//| label: incomplete_pv_data
 //| include: false
-pv_data_incomplete = FileAttachment("pv_data_12x16_incomplete.json").json()
+incomplete_pv_data = FileAttachment("incomplete_pv_data.json").json()
 ```
 
 ```{ojs}
-//| label: nested_pv_data_complete
+//| label: complete_nested_pv_data
 //| include: false
-nested_pv_data_complete  = FileAttachment("nested_pv_data_12x16_complete.json").json()
+complete_nested_pv_data  = FileAttachment("complete_nested_pv_data.json").json()
 ```
 
 ```{ojs}
-//| label: nested_pv_data_incomplete
+//| label: incomplete_nested_pv_data
 //| include: false
-nested_pv_data_incomplete = FileAttachment("nested_pv_data_12x16_incomplete.json").json()
+incomplete_nested_pv_data = FileAttachment("incomplete_nested_pv_data.json").json()
 ```
 
 ```{ojs}
@@ -1036,7 +1148,7 @@ colorScaleIncompleteRange = [-0.025, 0, 0.025]
 //| include: false
 colorScaleComplete = d3.scaleLinear()
   .domain(colorScaleCompleteRange)
-  .range(['#a6611a', 'white', '#018571']).clamp(true)
+  .range(["#a6611a", "white", "#018571"]).clamp(true)
 ```
 
 ```{ojs}
@@ -1044,7 +1156,7 @@ colorScaleComplete = d3.scaleLinear()
 //| include: false
 colorScaleIncomplete = d3.scaleLinear()
   .domain(colorScaleIncompleteRange)
-  .range(['#d01c8b', 'white', '#4dac26']).clamp(true)
+  .range(["#d01c8b", "white", "#4dac26"]).clamp(true)
 ```
 
 ```{ojs}
@@ -1080,4 +1192,3 @@ tileParams = {
   }
 }
 ```
-

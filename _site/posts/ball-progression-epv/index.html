@@ -70,8 +70,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../assets/img/keyboard.png" rel="icon" type="image/png">
 <script src="../../site_libs/quarto-listing/list.min.js"></script>
 <script src="../../site_libs/quarto-listing/quarto-listing.js"></script>
-<script src="../../site_libs/cookie-consent/cookie-consent.js"></script>
-<link href="../../site_libs/cookie-consent/cookie-consent.css" rel="stylesheet">
 <script src="../../site_libs/quarto-html/quarto.js"></script>
 <script src="../../site_libs/quarto-html/popper.min.js"></script>
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -134,29 +132,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-TKB26G5GZW"></script>
 
-<script type="text/plain" cookie-consent="tracking">
+<script type="text/javascript">
 
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 </script>
-
-<script type="text/javascript" charset="UTF-8">
-document.addEventListener('DOMContentLoaded', function () {
-cookieconsent.run({
-  "notice_banner_type":"simple",
-  "consent_type":"implied",
-  "palette":"light",
-  "language":"en",
-  "page_load_consent_levels":["strictly-necessary","functionality","tracking","targeting"],
-  "notice_banner_reject_button_hide":false,
-  "preferences_center_close_button_hide":false,
-  "website_name":""
-  });
-});
-</script> 
-  
 <script type="module" src="../../site_libs/quarto-ojs/quarto-ojs-runtime.js"></script>
 <link href="../../site_libs/quarto-ojs/quarto-ojs.css" rel="stylesheet">
 
@@ -232,7 +214,20 @@ cookieconsent.run({
    
   <ul>
   <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
-  <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a></li>
+  <li><a href="#possession-value-pv-for-passes" id="toc-possession-value-pv-for-passes" class="nav-link" data-scroll-target="#possession-value-pv-for-passes">Possession Value (PV) for Passes</a>
+  <ul>
+  <li><a href="#successful-passes" id="toc-successful-passes" class="nav-link" data-scroll-target="#successful-passes">Successful Passes</a>
+  <ul class="collapse">
+  <li><a href="#from-the-center-spot-to-anywhere-on-the-pitch" id="toc-from-the-center-spot-to-anywhere-on-the-pitch" class="nav-link" data-scroll-target="#from-the-center-spot-to-anywhere-on-the-pitch">From the Center Spot, To Anywhere on the Pitch</a></li>
+  <li><a href="#from-anywhere-on-the-pitch-to-anywhere-on-the-pitch" id="toc-from-anywhere-on-the-pitch-to-anywhere-on-the-pitch" class="nav-link" data-scroll-target="#from-anywhere-on-the-pitch-to-anywhere-on-the-pitch">From Anywhere on the Pitch, To Anywhere on the Pitch</a></li>
+  </ul></li>
+  <li><a href="#unsuccessful-passes" id="toc-unsuccessful-passes" class="nav-link" data-scroll-target="#unsuccessful-passes">Unsuccessful Passes</a>
+  <ul class="collapse">
+  <li><a href="#from-the-center-spot-to-anywhere-on-the-pitch-1" id="toc-from-the-center-spot-to-anywhere-on-the-pitch-1" class="nav-link" data-scroll-target="#from-the-center-spot-to-anywhere-on-the-pitch-1">From the Center Spot, To Anywhere on the Pitch</a></li>
+  <li><a href="#from-anywhere-on-the-pitch-to-anywhere-on-the-pitch-1" id="toc-from-anywhere-on-the-pitch-to-anywhere-on-the-pitch-1" class="nav-link" data-scroll-target="#from-anywhere-on-the-pitch-to-anywhere-on-the-pitch-1">From Anywhere on the Pitch, To Anywhere on the Pitch</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
   </ul>
 </nav>
 </nav>
@@ -283,78 +278,500 @@ cookieconsent.run({
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>I heard someone recently say something like “Possession values (PV) models in soccer basically come down to ball progression”. That’s an interesting thought, and add a hunch that this isn’t too far off.</p>
+<p>One way of getting at that idea is too look at how your PV model treats incomplete passes.</p>
+<ul>
+<li>Does it say that all long passes are “good” (i.e.&nbsp;have &gt;0 PV)?</li>
+<li>What role does the starting position of the pass play? (i.e.&nbsp;Are balls crossed into the 18-yard box from the wing treated similarly to goal kicks launched into the opponent’s box?)</li>
+<li>How does PV for an unsuccessful pass compare to a successful one, holding all else equal?</li>
+</ul>
+<p>I attempt to answer some of these questions with a VAEP model–an open-source PV model. My model is trained on 2013/14 - 2023/24 English Premier League data.</p>
 </section>
-<section id="data" class="level2">
-<h2 class="anchored" data-anchor-id="data">Data</h2>
-<p>Try hovering a spot on the pitch below. Your mouse represents the area from which a pass is made. The highlighted cells show where ePV is positive if an incomplete pass is made to that area. Other areas (left blank) will have negative ePV if an incomplete pass is made there.</p>
+<section id="possession-value-pv-for-passes" class="level2">
+<h2 class="anchored" data-anchor-id="possession-value-pv-for-passes">Possession Value (PV) for Passes</h2>
+<section id="successful-passes" class="level3">
+<h3 class="anchored" data-anchor-id="successful-passes">Successful Passes</h3>
+<section id="from-the-center-spot-to-anywhere-on-the-pitch" class="level4">
+<h4 class="anchored" data-anchor-id="from-the-center-spot-to-anywhere-on-the-pitch">From the Center Spot, To Anywhere on the Pitch</h4>
+<p>In the interactive 12x16 pitch below, the red tile illustrates where a hypothetical pass is made, and the colored tiles illustrate the possession value (PV) associated with a successful pass made to that area. Hovering over the tile shows the PV value above the pitch as well.</p>
 <div class="cell" data-include="true">
-<div class="sourceCode cell-code hidden" id="cb1" data-startfrom="29" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 28;"><span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>{</span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> chart <span class="op">=</span> d3<span class="op">.</span><span class="fu">create</span>(<span class="st">"div"</span>)</span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> title <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-title"</span>)</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  title<span class="op">.</span><span class="fu">append</span>(<span class="st">"p"</span>)<span class="op">.</span><span class="fu">html</span>(<span class="vs">`Total number of cells with positive epV: &lt;span id='pv_pos'&gt;0&lt;/span&gt;`</span>)</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>  chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap"</span>)</span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> chart<span class="op">.</span><span class="fu">node</span>()</span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code hidden" id="cb1" data-startfrom="647" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 646;"><span id="cb1-647"><a href="#cb1-647" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb1-648"><a href="#cb1-648" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> chart <span class="op">=</span> d3<span class="op">.</span><span class="fu">create</span>(<span class="st">"div"</span>)</span>
+<span id="cb1-649"><a href="#cb1-649" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> title <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-title-complete"</span>)</span>
+<span id="cb1-650"><a href="#cb1-650" aria-hidden="true" tabindex="-1"></a>  title<span class="op">.</span><span class="fu">append</span>(<span class="st">"p"</span>)<span class="op">.</span><span class="fu">html</span>(<span class="vs">`PV: &lt;span id='pv-value-complete'&gt;0&lt;/span&gt;`</span>)</span>
+<span id="cb1-651"><a href="#cb1-651" aria-hidden="true" tabindex="-1"></a>  chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-complete"</span>)</span>
+<span id="cb1-652"><a href="#cb1-652" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-653"><a href="#cb1-653" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendSwatchContainer <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb1-654"><a href="#cb1-654" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-legend-complete"</span>)</span>
+<span id="cb1-655"><a href="#cb1-655" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb1-656"><a href="#cb1-656" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"flex-direction"</span><span class="op">,</span> <span class="st">"column"</span>) <span class="co">// Stack swatches and labels vertically</span></span>
+<span id="cb1-657"><a href="#cb1-657" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"align-items"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the flex items</span></span>
+<span id="cb1-658"><a href="#cb1-658" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="st">"100%"</span>)<span class="op">;</span> <span class="co">// Take up the full width to center the content</span></span>
+<span id="cb1-659"><a href="#cb1-659" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-660"><a href="#cb1-660" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendRange <span class="op">=</span> [</span>
+<span id="cb1-661"><a href="#cb1-661" aria-hidden="true" tabindex="-1"></a>    <span class="fl">1.1</span> <span class="op">*</span> d3<span class="op">.</span><span class="fu">min</span>(colorScaleCompleteRange)<span class="op">,</span> </span>
+<span id="cb1-662"><a href="#cb1-662" aria-hidden="true" tabindex="-1"></a>    <span class="fl">1.1</span> <span class="op">*</span> d3<span class="op">.</span><span class="fu">max</span>(colorScaleCompleteRange)</span>
+<span id="cb1-663"><a href="#cb1-663" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">;</span></span>
+<span id="cb1-664"><a href="#cb1-664" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> stepSize <span class="op">=</span> (legendRange[<span class="dv">1</span>] <span class="op">-</span> legendRange[<span class="dv">0</span>]) <span class="op">/</span> (swatchParams<span class="op">.</span><span class="at">num</span> <span class="op">-</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb1-665"><a href="#cb1-665" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendSwatches <span class="op">=</span> d3<span class="op">.</span><span class="fu">range</span>(legendRange[<span class="dv">0</span>]<span class="op">,</span> legendRange[<span class="dv">1</span>] <span class="op">+</span> stepSize<span class="op">,</span> stepSize)<span class="op">;</span></span>
+<span id="cb1-666"><a href="#cb1-666" aria-hidden="true" tabindex="-1"></a>  legendSwatches[legendSwatches<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span>] <span class="op">=</span> legendRange[<span class="dv">1</span>]<span class="op">;</span></span>
+<span id="cb1-667"><a href="#cb1-667" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-668"><a href="#cb1-668" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Calculate the total width for the legend swatches to be used in setting the width of the container</span></span>
+<span id="cb1-669"><a href="#cb1-669" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> totalLegendWidth <span class="op">=</span> swatchParams<span class="op">.</span><span class="at">width</span> <span class="op">*</span> swatchParams<span class="op">.</span><span class="at">num</span><span class="op">;</span></span>
+<span id="cb1-670"><a href="#cb1-670" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-671"><a href="#cb1-671" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the swatches as a row</span></span>
+<span id="cb1-672"><a href="#cb1-672" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> swatchRow <span class="op">=</span> legendSwatchContainer<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb1-673"><a href="#cb1-673" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb1-674"><a href="#cb1-674" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"justify-content"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the row of swatches</span></span>
+<span id="cb1-675"><a href="#cb1-675" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="st">"100%"</span>)<span class="op">;</span> <span class="co">// Take up the full width to center the content</span></span>
+<span id="cb1-676"><a href="#cb1-676" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-677"><a href="#cb1-677" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the individual swatches</span></span>
+<span id="cb1-678"><a href="#cb1-678" aria-hidden="true" tabindex="-1"></a>  swatchRow<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"div"</span>)</span>
+<span id="cb1-679"><a href="#cb1-679" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(legendSwatches)</span>
+<span id="cb1-680"><a href="#cb1-680" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb1-681"><a href="#cb1-681" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb1-682"><a href="#cb1-682" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>swatchParams<span class="op">.</span><span class="at">width</span><span class="sc">}</span><span class="vs">px`</span>)</span>
+<span id="cb1-683"><a href="#cb1-683" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"height"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>swatchParams<span class="op">.</span><span class="at">height</span><span class="sc">}</span><span class="vs">px`</span>)</span>
+<span id="cb1-684"><a href="#cb1-684" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"background-color"</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="fu">colorScaleComplete</span>(d))<span class="op">;</span></span>
+<span id="cb1-685"><a href="#cb1-685" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-686"><a href="#cb1-686" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the label row</span></span>
+<span id="cb1-687"><a href="#cb1-687" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> labelRow <span class="op">=</span> legendSwatchContainer<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb1-688"><a href="#cb1-688" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb1-689"><a href="#cb1-689" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"justify-content"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the row of labels</span></span>
+<span id="cb1-690"><a href="#cb1-690" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>totalLegendWidth<span class="sc">}</span><span class="vs">px`</span>)<span class="op">;</span></span>
+<span id="cb1-691"><a href="#cb1-691" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-692"><a href="#cb1-692" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the individual labels under the swatches</span></span>
+<span id="cb1-693"><a href="#cb1-693" aria-hidden="true" tabindex="-1"></a>  labelRow<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"span"</span>)</span>
+<span id="cb1-694"><a href="#cb1-694" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(colorScaleCompleteRange)</span>
+<span id="cb1-695"><a href="#cb1-695" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb1-696"><a href="#cb1-696" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">append</span>(<span class="st">"span"</span>)</span>
+<span id="cb1-697"><a href="#cb1-697" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">text</span>(d <span class="kw">=&gt;</span> {</span>
+<span id="cb1-698"><a href="#cb1-698" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (d <span class="op">===</span> d3<span class="op">.</span><span class="fu">min</span>(colorScaleCompleteRange)) {</span>
+<span id="cb1-699"><a href="#cb1-699" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"&lt;= "</span> <span class="op">+</span> d<span class="op">;</span></span>
+<span id="cb1-700"><a href="#cb1-700" aria-hidden="true" tabindex="-1"></a>      } <span class="cf">else</span> <span class="cf">if</span> (d <span class="op">===</span> d3<span class="op">.</span><span class="fu">max</span>(colorScaleCompleteRange)) {</span>
+<span id="cb1-701"><a href="#cb1-701" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"&gt;= "</span> <span class="op">+</span> d<span class="op">;</span></span>
+<span id="cb1-702"><a href="#cb1-702" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb1-703"><a href="#cb1-703" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> d<span class="op">;</span></span>
+<span id="cb1-704"><a href="#cb1-704" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb1-705"><a href="#cb1-705" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"flex"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d <span class="op">===</span> <span class="dv">0</span> <span class="op">?</span> <span class="st">"1"</span> <span class="op">:</span> <span class="kw">null</span>)</span>
+<span id="cb1-706"><a href="#cb1-706" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"text-align"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the text within its flex item</span></span>
+<span id="cb1-707"><a href="#cb1-707" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-708"><a href="#cb1-708" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> chart<span class="op">.</span><span class="fu">node</span>()<span class="op">;</span></span>
+<span id="cb1-709"><a href="#cb1-709" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-710"><a href="#cb1-710" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div id="fig-ojs-cell-1" class="quarto-figure quarto-figure-center anchored">
 <figure class="figure">
 <div id="ojs-cell-1" data-nodetype="expression">
 
 </div>
-<figcaption class="figure-caption">Figure&nbsp;1: This is a figure caption</figcaption>
+<figcaption class="figure-caption">Figure&nbsp;1: A heatmap showing the possession value (PV) of an average successful pass from roughly the center spot (annotated in blue) to all other spots on the pitch.</figcaption>
 </figure>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code hidden" id="cb2" data-startfrom="42" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 41;"><span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>{  </span>
-<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>   <span class="kw">const</span> colorScale <span class="op">=</span> d3<span class="op">.</span><span class="fu">scaleOrdinal</span>([<span class="dv">0</span><span class="op">,</span> <span class="dv">1</span>])<span class="op">.</span><span class="fu">range</span>([<span class="st">'transparent'</span><span class="op">,</span> <span class="st">'#fdc500'</span>])<span class="op">;</span></span>
-<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>   <span class="kw">const</span> heatmap <span class="op">=</span> d3_soccer<span class="op">.</span><span class="fu">heatmap</span>(pitch)</span>
-<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">colorScale</span>(d3<span class="op">.</span><span class="fu">scaleOrdinal</span>([<span class="dv">0</span><span class="op">,</span> <span class="dv">1</span>])<span class="op">.</span><span class="fu">range</span>([<span class="st">'white'</span><span class="op">,</span> <span class="st">'white'</span>]))</span>
-<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">enableInteraction</span>(<span class="kw">true</span>)</span>
-<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">onSelect</span>((x<span class="op">,</span>y<span class="op">,</span>v) <span class="kw">=&gt;</span> {</span>
-<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> cells <span class="op">=</span> d3</span>
-<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">select</span>(<span class="st">'#heatmap'</span>)</span>
-<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">selectAll</span>(<span class="st">'rect.cell'</span>)</span>
-<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">data</span>(v)</span>
-<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>        cells<span class="op">.</span><span class="fu">enter</span>()</span>
-<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>          <span class="co">//.append('rect')</span></span>
-<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>          <span class="co">//.attr("class", "cell")</span></span>
-<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">merge</span>(cells)</span>
-<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"x"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">x</span>)</span>
-<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"y"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">y</span>)</span>
-<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"width"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">width</span>)</span>
-<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"height"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">height</span>)</span>
-<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">style</span>(<span class="st">"fill"</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="fu">colorScale</span>(<span class="op">+</span>d<span class="op">.</span><span class="at">value</span>))<span class="op">;</span></span>
-<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>        cells<span class="op">.</span><span class="fu">exit</span>()<span class="op">.</span><span class="fu">remove</span>()</span>
-<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>         d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#heatmap'</span>)<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">'rect.cell'</span>)<span class="op">.</span><span class="fu">data</span>(nested_pv_data)</span>
-<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>      })</span>
-<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">parent_el</span>(<span class="st">'#heatmap'</span>)</span>
-<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">interpolate</span>(<span class="kw">false</span>)<span class="op">;</span></span>
-<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>    d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#heatmap'</span>)<span class="op">.</span><span class="fu">html</span>(<span class="st">''</span>)<span class="op">.</span><span class="fu">datum</span>(nested_pv_data)<span class="op">.</span><span class="fu">call</span>(heatmap)<span class="op">;</span></span>
-<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code hidden" id="cb2" data-startfrom="717" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 716;"><span id="cb2-717"><a href="#cb2-717" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb2-718"><a href="#cb2-718" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> heatmap_complete <span class="op">=</span> d3_soccer<span class="op">.</span><span class="fu">heatmap</span>(pitch)</span>
+<span id="cb2-719"><a href="#cb2-719" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">colorScale</span>(colorScaleComplete)</span>
+<span id="cb2-720"><a href="#cb2-720" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enableInteraction</span>(<span class="kw">true</span>)</span>
+<span id="cb2-721"><a href="#cb2-721" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">onSelect</span>((x<span class="op">,</span>y<span class="op">,</span>v) <span class="kw">=&gt;</span> {</span>
+<span id="cb2-722"><a href="#cb2-722" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> cappedValue <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">min</span>(<span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(v<span class="op">,</span> <span class="op">-</span><span class="dv">1</span>)<span class="op">,</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb2-723"><a href="#cb2-723" aria-hidden="true" tabindex="-1"></a>      d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#pv-value-complete'</span>)<span class="op">.</span><span class="fu">text</span>(cappedValue<span class="op">.</span><span class="fu">toFixed</span>(<span class="dv">3</span>))<span class="op">;</span></span>
+<span id="cb2-724"><a href="#cb2-724" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb2-725"><a href="#cb2-725" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">parent_el</span>(<span class="st">'#heatmap-complete'</span>)</span>
+<span id="cb2-726"><a href="#cb2-726" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">interpolate</span>(<span class="kw">false</span>)<span class="op">;</span></span>
+<span id="cb2-727"><a href="#cb2-727" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-728"><a href="#cb2-728" aria-hidden="true" tabindex="-1"></a>  d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#heatmap-complete'</span>)<span class="op">.</span><span class="fu">html</span>(<span class="st">''</span>)<span class="op">.</span><span class="fu">datum</span>(complete_pv_data)<span class="op">.</span><span class="fu">call</span>(heatmap_complete)<span class="op">;</span></span>
+<span id="cb2-729"><a href="#cb2-729" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-730"><a href="#cb2-730" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> svg <span class="op">=</span> d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#heatmap-complete'</span>)<span class="op">.</span><span class="fu">select</span>(<span class="st">'svg'</span>)<span class="op">;</span></span>
+<span id="cb2-731"><a href="#cb2-731" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-732"><a href="#cb2-732" aria-hidden="true" tabindex="-1"></a>  svg<span class="op">.</span><span class="fu">append</span>(<span class="st">"rect"</span>)</span>
+<span id="cb2-733"><a href="#cb2-733" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"x"</span><span class="op">,</span> passStartParams<span class="op">.</span><span class="at">x</span>)</span>
+<span id="cb2-734"><a href="#cb2-734" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"y"</span><span class="op">,</span> passStartParams<span class="op">.</span><span class="at">y</span>)</span>
+<span id="cb2-735"><a href="#cb2-735" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"width"</span><span class="op">,</span> tileParams<span class="op">.</span><span class="at">width</span>)</span>
+<span id="cb2-736"><a href="#cb2-736" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"height"</span><span class="op">,</span> tileParams<span class="op">.</span><span class="at">height</span>)</span>
+<span id="cb2-737"><a href="#cb2-737" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"stroke"</span><span class="op">,</span> <span class="st">"blue"</span>)</span>
+<span id="cb2-738"><a href="#cb2-738" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"fill"</span><span class="op">,</span> <span class="st">"none"</span>)</span>
+<span id="cb2-739"><a href="#cb2-739" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"stroke-width"</span><span class="op">,</span> <span class="st">"1px"</span>)<span class="op">;</span></span>
+<span id="cb2-740"><a href="#cb2-740" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display hidden">
 <div id="ojs-cell-2" data-nodetype="expression">
 
 </div>
 </div>
 </div>
+<p>FIN</p>
+</section>
+<section id="from-anywhere-on-the-pitch-to-anywhere-on-the-pitch" class="level4">
+<h4 class="anchored" data-anchor-id="from-anywhere-on-the-pitch-to-anywhere-on-the-pitch">From Anywhere on the Pitch, To Anywhere on the Pitch</h4>
+<p>Now, to give the full picture, the interactive pitch below will dynamically update to show PV values associated with a pass starting from the tile that you hover over.</p>
+<div class="cell" data-include="true">
+<div class="sourceCode cell-code hidden" id="cb3" data-startfrom="753" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 752;"><span id="cb3-753"><a href="#cb3-753" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb3-754"><a href="#cb3-754" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> chart <span class="op">=</span> d3<span class="op">.</span><span class="fu">create</span>(<span class="st">"div"</span>)</span>
+<span id="cb3-755"><a href="#cb3-755" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> title <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-title-complete-nested"</span>)</span>
+<span id="cb3-756"><a href="#cb3-756" aria-hidden="true" tabindex="-1"></a>  title<span class="op">.</span><span class="fu">append</span>(<span class="st">"p"</span>)<span class="op">.</span><span class="fu">html</span>(<span class="vs">`min PV: &lt;span id='pv-min-complete-nested'&gt;0&lt;/span&gt;, max PV: &lt;span id='pv-max-complete-nested'&gt;0&lt;/span&gt;`</span>)</span>
+<span id="cb3-757"><a href="#cb3-757" aria-hidden="true" tabindex="-1"></a>  chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-complete-nested"</span>)</span>
+<span id="cb3-758"><a href="#cb3-758" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-759"><a href="#cb3-759" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendSwatchContainer <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb3-760"><a href="#cb3-760" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-legend-complete-nested"</span>)</span>
+<span id="cb3-761"><a href="#cb3-761" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb3-762"><a href="#cb3-762" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"flex-direction"</span><span class="op">,</span> <span class="st">"column"</span>) <span class="co">// Stack swatches and labels vertically</span></span>
+<span id="cb3-763"><a href="#cb3-763" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"align-items"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the flex items</span></span>
+<span id="cb3-764"><a href="#cb3-764" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="st">"100%"</span>)<span class="op">;</span> <span class="co">// Take up the full width to center the content</span></span>
+<span id="cb3-765"><a href="#cb3-765" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-766"><a href="#cb3-766" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendRange <span class="op">=</span> [</span>
+<span id="cb3-767"><a href="#cb3-767" aria-hidden="true" tabindex="-1"></a>    <span class="fl">1.1</span> <span class="op">*</span> d3<span class="op">.</span><span class="fu">min</span>(colorScaleCompleteRange)<span class="op">,</span> </span>
+<span id="cb3-768"><a href="#cb3-768" aria-hidden="true" tabindex="-1"></a>    <span class="fl">1.1</span> <span class="op">*</span> d3<span class="op">.</span><span class="fu">max</span>(colorScaleCompleteRange)</span>
+<span id="cb3-769"><a href="#cb3-769" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">;</span></span>
+<span id="cb3-770"><a href="#cb3-770" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> stepSize <span class="op">=</span> (legendRange[<span class="dv">1</span>] <span class="op">-</span> legendRange[<span class="dv">0</span>]) <span class="op">/</span> (swatchParams<span class="op">.</span><span class="at">num</span> <span class="op">-</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb3-771"><a href="#cb3-771" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendSwatches <span class="op">=</span> d3<span class="op">.</span><span class="fu">range</span>(legendRange[<span class="dv">0</span>]<span class="op">,</span> legendRange[<span class="dv">1</span>] <span class="op">+</span> stepSize<span class="op">,</span> stepSize)<span class="op">;</span></span>
+<span id="cb3-772"><a href="#cb3-772" aria-hidden="true" tabindex="-1"></a>  legendSwatches[legendSwatches<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span>] <span class="op">=</span> legendRange[<span class="dv">1</span>]<span class="op">;</span></span>
+<span id="cb3-773"><a href="#cb3-773" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-774"><a href="#cb3-774" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Calculate the total width for the legend swatches to be used in setting the width of the container</span></span>
+<span id="cb3-775"><a href="#cb3-775" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> totalLegendWidth <span class="op">=</span> swatchParams<span class="op">.</span><span class="at">width</span> <span class="op">*</span> swatchParams<span class="op">.</span><span class="at">num</span><span class="op">;</span></span>
+<span id="cb3-776"><a href="#cb3-776" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-777"><a href="#cb3-777" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the swatches as a row</span></span>
+<span id="cb3-778"><a href="#cb3-778" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> swatchRow <span class="op">=</span> legendSwatchContainer<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb3-779"><a href="#cb3-779" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb3-780"><a href="#cb3-780" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"justify-content"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the row of swatches</span></span>
+<span id="cb3-781"><a href="#cb3-781" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="st">"100%"</span>)<span class="op">;</span> <span class="co">// Take up the full width to center the content</span></span>
+<span id="cb3-782"><a href="#cb3-782" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-783"><a href="#cb3-783" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the individual swatches</span></span>
+<span id="cb3-784"><a href="#cb3-784" aria-hidden="true" tabindex="-1"></a>  swatchRow<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"div"</span>)</span>
+<span id="cb3-785"><a href="#cb3-785" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(legendSwatches)</span>
+<span id="cb3-786"><a href="#cb3-786" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb3-787"><a href="#cb3-787" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb3-788"><a href="#cb3-788" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>swatchParams<span class="op">.</span><span class="at">width</span><span class="sc">}</span><span class="vs">px`</span>)</span>
+<span id="cb3-789"><a href="#cb3-789" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"height"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>swatchParams<span class="op">.</span><span class="at">height</span><span class="sc">}</span><span class="vs">px`</span>)</span>
+<span id="cb3-790"><a href="#cb3-790" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"background-color"</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="fu">colorScaleComplete</span>(d))<span class="op">;</span></span>
+<span id="cb3-791"><a href="#cb3-791" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-792"><a href="#cb3-792" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the label row</span></span>
+<span id="cb3-793"><a href="#cb3-793" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> labelRow <span class="op">=</span> legendSwatchContainer<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb3-794"><a href="#cb3-794" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb3-795"><a href="#cb3-795" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"justify-content"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the row of labels</span></span>
+<span id="cb3-796"><a href="#cb3-796" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>totalLegendWidth<span class="sc">}</span><span class="vs">px`</span>)<span class="op">;</span></span>
+<span id="cb3-797"><a href="#cb3-797" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-798"><a href="#cb3-798" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the individual labels under the swatches</span></span>
+<span id="cb3-799"><a href="#cb3-799" aria-hidden="true" tabindex="-1"></a>  labelRow<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"span"</span>)</span>
+<span id="cb3-800"><a href="#cb3-800" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(colorScaleCompleteRange)</span>
+<span id="cb3-801"><a href="#cb3-801" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb3-802"><a href="#cb3-802" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">append</span>(<span class="st">"span"</span>)</span>
+<span id="cb3-803"><a href="#cb3-803" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">text</span>(d <span class="kw">=&gt;</span> {</span>
+<span id="cb3-804"><a href="#cb3-804" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (d <span class="op">===</span> d3<span class="op">.</span><span class="fu">min</span>(colorScaleCompleteRange)) {</span>
+<span id="cb3-805"><a href="#cb3-805" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"&lt;= "</span> <span class="op">+</span> d<span class="op">;</span></span>
+<span id="cb3-806"><a href="#cb3-806" aria-hidden="true" tabindex="-1"></a>      } <span class="cf">else</span> <span class="cf">if</span> (d <span class="op">===</span> d3<span class="op">.</span><span class="fu">max</span>(colorScaleCompleteRange)) {</span>
+<span id="cb3-807"><a href="#cb3-807" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"&gt;= "</span> <span class="op">+</span> d<span class="op">;</span></span>
+<span id="cb3-808"><a href="#cb3-808" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb3-809"><a href="#cb3-809" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> d<span class="op">;</span></span>
+<span id="cb3-810"><a href="#cb3-810" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb3-811"><a href="#cb3-811" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"flex"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d <span class="op">===</span> <span class="dv">0</span> <span class="op">?</span> <span class="st">"1"</span> <span class="op">:</span> <span class="kw">null</span>)</span>
+<span id="cb3-812"><a href="#cb3-812" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"text-align"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the text within its flex item</span></span>
+<span id="cb3-813"><a href="#cb3-813" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-814"><a href="#cb3-814" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> chart<span class="op">.</span><span class="fu">node</span>()<span class="op">;</span></span>
+<span id="cb3-815"><a href="#cb3-815" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-816"><a href="#cb3-816" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="fig-ojs-cell-3" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<div id="ojs-cell-3" data-nodetype="expression">
+
+</div>
+<figcaption class="figure-caption">Figure&nbsp;2: A heatmap showing the possession value (PV) of an average successful pass from the hover spot to all other spots on the pitch.</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code hidden" id="cb4" data-startfrom="823" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 822;"><span id="cb4-823"><a href="#cb4-823" aria-hidden="true" tabindex="-1"></a>{  </span>
+<span id="cb4-824"><a href="#cb4-824" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> heatmap_complete_nested <span class="op">=</span> d3_soccer<span class="op">.</span><span class="fu">heatmap</span>(pitch)</span>
+<span id="cb4-825"><a href="#cb4-825" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">colorScale</span>(d3<span class="op">.</span><span class="fu">scaleLinear</span>()<span class="op">.</span><span class="fu">domain</span>([<span class="op">-</span><span class="dv">1</span><span class="op">,</span> <span class="dv">1</span>])<span class="op">.</span><span class="fu">range</span>([<span class="st">"white"</span><span class="op">,</span> <span class="st">"white"</span>]))</span>
+<span id="cb4-826"><a href="#cb4-826" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">enableInteraction</span>(<span class="kw">true</span>)</span>
+<span id="cb4-827"><a href="#cb4-827" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">onSelect</span>((x<span class="op">,</span>y<span class="op">,</span>v) <span class="kw">=&gt;</span> {</span>
+<span id="cb4-828"><a href="#cb4-828" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> rawMinValue <span class="op">=</span> d3<span class="op">.</span><span class="fu">min</span>(v<span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb4-829"><a href="#cb4-829" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> rawMaxValue <span class="op">=</span> d3<span class="op">.</span><span class="fu">max</span>(v<span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb4-830"><a href="#cb4-830" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> minValue <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(rawMaxValue<span class="op">,</span> <span class="op">-</span><span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb4-831"><a href="#cb4-831" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> maxValue <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">min</span>(rawMaxValue<span class="op">,</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb4-832"><a href="#cb4-832" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb4-833"><a href="#cb4-833" aria-hidden="true" tabindex="-1"></a>        d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#pv-min-complete-nested'</span>)<span class="op">.</span><span class="fu">text</span>(minValue<span class="op">.</span><span class="fu">toFixed</span>(<span class="dv">3</span>))<span class="op">;</span></span>
+<span id="cb4-834"><a href="#cb4-834" aria-hidden="true" tabindex="-1"></a>        d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#pv-max-complete-nested'</span>)<span class="op">.</span><span class="fu">text</span>(maxValue<span class="op">.</span><span class="fu">toFixed</span>(<span class="dv">3</span>))<span class="op">;</span></span>
+<span id="cb4-835"><a href="#cb4-835" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> cells <span class="op">=</span> d3</span>
+<span id="cb4-836"><a href="#cb4-836" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">select</span>(<span class="st">"#heatmap-complete-nested"</span>)</span>
+<span id="cb4-837"><a href="#cb4-837" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"rect.cell"</span>)</span>
+<span id="cb4-838"><a href="#cb4-838" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">data</span>(v)</span>
+<span id="cb4-839"><a href="#cb4-839" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb4-840"><a href="#cb4-840" aria-hidden="true" tabindex="-1"></a>        cells<span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb4-841"><a href="#cb4-841" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">merge</span>(cells) <span class="co">// Merge enter and update selections</span></span>
+<span id="cb4-842"><a href="#cb4-842" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"x"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">x</span>)</span>
+<span id="cb4-843"><a href="#cb4-843" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"y"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">y</span>)</span>
+<span id="cb4-844"><a href="#cb4-844" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"width"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">width</span>)</span>
+<span id="cb4-845"><a href="#cb4-845" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"height"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">height</span>)</span>
+<span id="cb4-846"><a href="#cb4-846" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">style</span>(<span class="st">"fill"</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="fu">colorScaleComplete</span>(<span class="op">+</span>d<span class="op">.</span><span class="at">value</span>))<span class="op">;</span></span>
+<span id="cb4-847"><a href="#cb4-847" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb4-848"><a href="#cb4-848" aria-hidden="true" tabindex="-1"></a>        cells<span class="op">.</span><span class="fu">exit</span>()<span class="op">.</span><span class="fu">remove</span>()</span>
+<span id="cb4-849"><a href="#cb4-849" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-850"><a href="#cb4-850" aria-hidden="true" tabindex="-1"></a>         d3<span class="op">.</span><span class="fu">select</span>(<span class="st">"#heatmap-complete-nested"</span>)<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"rect.cell"</span>)<span class="op">.</span><span class="fu">data</span>(complete_nested_pv_data)</span>
+<span id="cb4-851"><a href="#cb4-851" aria-hidden="true" tabindex="-1"></a>      })</span>
+<span id="cb4-852"><a href="#cb4-852" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">parent_el</span>(<span class="st">"#heatmap-complete-nested"</span>)</span>
+<span id="cb4-853"><a href="#cb4-853" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">interpolate</span>(<span class="kw">false</span>)<span class="op">;</span></span>
+<span id="cb4-854"><a href="#cb4-854" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-855"><a href="#cb4-855" aria-hidden="true" tabindex="-1"></a>    d3<span class="op">.</span><span class="fu">select</span>(<span class="st">"#heatmap-complete-nested"</span>)<span class="op">.</span><span class="fu">html</span>(<span class="st">""</span>)<span class="op">.</span><span class="fu">datum</span>(complete_nested_pv_data)<span class="op">.</span><span class="fu">call</span>(heatmap_complete_nested)<span class="op">;</span></span>
+<span id="cb4-856"><a href="#cb4-856" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display hidden">
+<div id="ojs-cell-4" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+<p>There are some oddities if you look close enough, but such is the nature of an ML model.</p>
+</section>
+</section>
+<section id="unsuccessful-passes" class="level3">
+<h3 class="anchored" data-anchor-id="unsuccessful-passes">Unsuccessful Passes</h3>
+<section id="from-the-center-spot-to-anywhere-on-the-pitch-1" class="level4">
+<h4 class="anchored" data-anchor-id="from-the-center-spot-to-anywhere-on-the-pitch-1">From the Center Spot, To Anywhere on the Pitch</h4>
+<p>Now, the more interesting side of things–how does the PV heatmap look for incomplete passes? Let’s start with an example again, looking at PV for unsuccessful passes from the center spot.</p>
+<div class="cell" data-include="true">
+<div class="sourceCode cell-code hidden" id="cb5" data-startfrom="871" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 870;"><span id="cb5-871"><a href="#cb5-871" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb5-872"><a href="#cb5-872" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> chart <span class="op">=</span> d3<span class="op">.</span><span class="fu">create</span>(<span class="st">"div"</span>)</span>
+<span id="cb5-873"><a href="#cb5-873" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> title <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-title-incomplete"</span>)</span>
+<span id="cb5-874"><a href="#cb5-874" aria-hidden="true" tabindex="-1"></a>  title<span class="op">.</span><span class="fu">append</span>(<span class="st">"p"</span>)<span class="op">.</span><span class="fu">html</span>(<span class="vs">`PV: &lt;span id='pv-value-incomplete'&gt;0&lt;/span&gt;`</span>)</span>
+<span id="cb5-875"><a href="#cb5-875" aria-hidden="true" tabindex="-1"></a>  chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-incomplete"</span>)</span>
+<span id="cb5-876"><a href="#cb5-876" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-877"><a href="#cb5-877" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendSwatchContainer <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb5-878"><a href="#cb5-878" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-legend-incomplete"</span>)</span>
+<span id="cb5-879"><a href="#cb5-879" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb5-880"><a href="#cb5-880" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"flex-direction"</span><span class="op">,</span> <span class="st">"column"</span>) <span class="co">// Stack swatches and labels vertically</span></span>
+<span id="cb5-881"><a href="#cb5-881" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"align-items"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the flex items</span></span>
+<span id="cb5-882"><a href="#cb5-882" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="st">"100%"</span>)<span class="op">;</span> <span class="co">// Take up the full width to center the content</span></span>
+<span id="cb5-883"><a href="#cb5-883" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb5-884"><a href="#cb5-884" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendRange <span class="op">=</span> [</span>
+<span id="cb5-885"><a href="#cb5-885" aria-hidden="true" tabindex="-1"></a>    <span class="fl">1.1</span> <span class="op">*</span> d3<span class="op">.</span><span class="fu">min</span>(colorScaleIncompleteRange)<span class="op">,</span> </span>
+<span id="cb5-886"><a href="#cb5-886" aria-hidden="true" tabindex="-1"></a>    <span class="fl">1.1</span> <span class="op">*</span> d3<span class="op">.</span><span class="fu">max</span>(colorScaleIncompleteRange)</span>
+<span id="cb5-887"><a href="#cb5-887" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">;</span></span>
+<span id="cb5-888"><a href="#cb5-888" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> stepSize <span class="op">=</span> (legendRange[<span class="dv">1</span>] <span class="op">-</span> legendRange[<span class="dv">0</span>]) <span class="op">/</span> (swatchParams<span class="op">.</span><span class="at">num</span> <span class="op">-</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb5-889"><a href="#cb5-889" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendSwatches <span class="op">=</span> d3<span class="op">.</span><span class="fu">range</span>(legendRange[<span class="dv">0</span>]<span class="op">,</span> legendRange[<span class="dv">1</span>] <span class="op">+</span> stepSize<span class="op">,</span> stepSize)<span class="op">;</span></span>
+<span id="cb5-890"><a href="#cb5-890" aria-hidden="true" tabindex="-1"></a>  legendSwatches[legendSwatches<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span>] <span class="op">=</span> legendRange[<span class="dv">1</span>]<span class="op">;</span></span>
+<span id="cb5-891"><a href="#cb5-891" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb5-892"><a href="#cb5-892" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Calculate the total width for the legend swatches to be used in setting the width of the container</span></span>
+<span id="cb5-893"><a href="#cb5-893" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> totalLegendWidth <span class="op">=</span> swatchParams<span class="op">.</span><span class="at">width</span> <span class="op">*</span> swatchParams<span class="op">.</span><span class="at">num</span><span class="op">;</span></span>
+<span id="cb5-894"><a href="#cb5-894" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb5-895"><a href="#cb5-895" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the swatches as a row</span></span>
+<span id="cb5-896"><a href="#cb5-896" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> swatchRow <span class="op">=</span> legendSwatchContainer<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb5-897"><a href="#cb5-897" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb5-898"><a href="#cb5-898" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"justify-content"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the row of swatches</span></span>
+<span id="cb5-899"><a href="#cb5-899" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="st">"100%"</span>)<span class="op">;</span> <span class="co">// Take up the full width to center the content</span></span>
+<span id="cb5-900"><a href="#cb5-900" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-901"><a href="#cb5-901" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the individual swatches</span></span>
+<span id="cb5-902"><a href="#cb5-902" aria-hidden="true" tabindex="-1"></a>  swatchRow<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"div"</span>)</span>
+<span id="cb5-903"><a href="#cb5-903" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(legendSwatches)</span>
+<span id="cb5-904"><a href="#cb5-904" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb5-905"><a href="#cb5-905" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb5-906"><a href="#cb5-906" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>swatchParams<span class="op">.</span><span class="at">width</span><span class="sc">}</span><span class="vs">px`</span>)</span>
+<span id="cb5-907"><a href="#cb5-907" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"height"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>swatchParams<span class="op">.</span><span class="at">height</span><span class="sc">}</span><span class="vs">px`</span>)</span>
+<span id="cb5-908"><a href="#cb5-908" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"background-color"</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="fu">colorScaleIncomplete</span>(d))<span class="op">;</span></span>
+<span id="cb5-909"><a href="#cb5-909" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-910"><a href="#cb5-910" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the label row</span></span>
+<span id="cb5-911"><a href="#cb5-911" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> labelRow <span class="op">=</span> legendSwatchContainer<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb5-912"><a href="#cb5-912" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb5-913"><a href="#cb5-913" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"justify-content"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the row of labels</span></span>
+<span id="cb5-914"><a href="#cb5-914" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>totalLegendWidth<span class="sc">}</span><span class="vs">px`</span>)<span class="op">;</span></span>
+<span id="cb5-915"><a href="#cb5-915" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-916"><a href="#cb5-916" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the individual labels under the swatches</span></span>
+<span id="cb5-917"><a href="#cb5-917" aria-hidden="true" tabindex="-1"></a>  labelRow<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"span"</span>)</span>
+<span id="cb5-918"><a href="#cb5-918" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(colorScaleIncompleteRange)</span>
+<span id="cb5-919"><a href="#cb5-919" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb5-920"><a href="#cb5-920" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">append</span>(<span class="st">"span"</span>)</span>
+<span id="cb5-921"><a href="#cb5-921" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">text</span>(d <span class="kw">=&gt;</span> {</span>
+<span id="cb5-922"><a href="#cb5-922" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (d <span class="op">===</span> d3<span class="op">.</span><span class="fu">min</span>(colorScaleIncompleteRange)) {</span>
+<span id="cb5-923"><a href="#cb5-923" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"&lt;= "</span> <span class="op">+</span> d<span class="op">;</span></span>
+<span id="cb5-924"><a href="#cb5-924" aria-hidden="true" tabindex="-1"></a>      } <span class="cf">else</span> <span class="cf">if</span> (d <span class="op">===</span> d3<span class="op">.</span><span class="fu">max</span>(colorScaleIncompleteRange)) {</span>
+<span id="cb5-925"><a href="#cb5-925" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"&gt;= "</span> <span class="op">+</span> d<span class="op">;</span></span>
+<span id="cb5-926"><a href="#cb5-926" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb5-927"><a href="#cb5-927" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> d<span class="op">;</span></span>
+<span id="cb5-928"><a href="#cb5-928" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb5-929"><a href="#cb5-929" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"flex"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d <span class="op">===</span> <span class="dv">0</span> <span class="op">?</span> <span class="st">"1"</span> <span class="op">:</span> <span class="kw">null</span>)</span>
+<span id="cb5-930"><a href="#cb5-930" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"text-align"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the text within its flex item</span></span>
+<span id="cb5-931"><a href="#cb5-931" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-932"><a href="#cb5-932" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> chart<span class="op">.</span><span class="fu">node</span>()<span class="op">;</span></span>
+<span id="cb5-933"><a href="#cb5-933" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-934"><a href="#cb5-934" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="fig-ojs-cell-5" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<div id="ojs-cell-5" data-nodetype="expression">
+
+</div>
+<figcaption class="figure-caption">Figure&nbsp;3: A heatmap showing the possession value (PV) of an average unsuccessful pass from roughly the center spot (annotated in blue) to all other spots on the pitch.</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code hidden" id="cb6" data-startfrom="941" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 940;"><span id="cb6-941"><a href="#cb6-941" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb6-942"><a href="#cb6-942" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> heatmap_incomplete <span class="op">=</span> d3_soccer<span class="op">.</span><span class="fu">heatmap</span>(pitch)</span>
+<span id="cb6-943"><a href="#cb6-943" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">colorScale</span>(colorScaleIncomplete)</span>
+<span id="cb6-944"><a href="#cb6-944" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enableInteraction</span>(<span class="kw">true</span>)</span>
+<span id="cb6-945"><a href="#cb6-945" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">onSelect</span>((x<span class="op">,</span>y<span class="op">,</span>v) <span class="kw">=&gt;</span> {</span>
+<span id="cb6-946"><a href="#cb6-946" aria-hidden="true" tabindex="-1"></a>      <span class="kw">const</span> cappedValue <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">min</span>(<span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(v<span class="op">,</span> <span class="op">-</span><span class="dv">1</span>)<span class="op">,</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb6-947"><a href="#cb6-947" aria-hidden="true" tabindex="-1"></a>      d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#pv-value-incomplete'</span>)<span class="op">.</span><span class="fu">text</span>(cappedValue<span class="op">.</span><span class="fu">toFixed</span>(<span class="dv">3</span>))<span class="op">;</span></span>
+<span id="cb6-948"><a href="#cb6-948" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb6-949"><a href="#cb6-949" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">parent_el</span>(<span class="st">"#heatmap-incomplete"</span>)</span>
+<span id="cb6-950"><a href="#cb6-950" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">interpolate</span>(<span class="kw">false</span>)<span class="op">;</span></span>
+<span id="cb6-951"><a href="#cb6-951" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-952"><a href="#cb6-952" aria-hidden="true" tabindex="-1"></a>  d3<span class="op">.</span><span class="fu">select</span>(<span class="st">"#heatmap-incomplete"</span>)<span class="op">.</span><span class="fu">html</span>(<span class="st">""</span>)<span class="op">.</span><span class="fu">datum</span>(incomplete_pv_data)<span class="op">.</span><span class="fu">call</span>(heatmap_incomplete)<span class="op">;</span></span>
+<span id="cb6-953"><a href="#cb6-953" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-954"><a href="#cb6-954" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> svg <span class="op">=</span> d3<span class="op">.</span><span class="fu">select</span>(<span class="st">"#heatmap-incomplete"</span>)<span class="op">.</span><span class="fu">select</span>(<span class="st">"svg"</span>)<span class="op">;</span></span>
+<span id="cb6-955"><a href="#cb6-955" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-956"><a href="#cb6-956" aria-hidden="true" tabindex="-1"></a>  svg<span class="op">.</span><span class="fu">append</span>(<span class="st">"rect"</span>)</span>
+<span id="cb6-957"><a href="#cb6-957" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"x"</span><span class="op">,</span> passStartParams<span class="op">.</span><span class="at">x</span>)</span>
+<span id="cb6-958"><a href="#cb6-958" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"y"</span><span class="op">,</span> passStartParams<span class="op">.</span><span class="at">y</span>)</span>
+<span id="cb6-959"><a href="#cb6-959" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"width"</span><span class="op">,</span> tileParams<span class="op">.</span><span class="at">width</span>)</span>
+<span id="cb6-960"><a href="#cb6-960" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"height"</span><span class="op">,</span> tileParams<span class="op">.</span><span class="at">height</span>)</span>
+<span id="cb6-961"><a href="#cb6-961" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"stroke"</span><span class="op">,</span> <span class="st">"blue"</span>)</span>
+<span id="cb6-962"><a href="#cb6-962" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"fill"</span><span class="op">,</span> <span class="st">"none"</span>)</span>
+<span id="cb6-963"><a href="#cb6-963" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"stroke-width"</span><span class="op">,</span> <span class="st">"1px"</span>)<span class="op">;</span></span>
+<span id="cb6-964"><a href="#cb6-964" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display hidden">
+<div id="ojs-cell-6" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+<p>I think this grid is actually fairly intuitive. Incomplete passes backwards have very negative PVs, as those are leading to turnovers probably setting up the opponent for a good scoring opportunity. Incomplete passes forward mostly have neutral PVs, with some notable spots on the pitch having non-trivially positive PVs.</p>
+<p>Some of those exceptions include the top of the 18-yard-box (i.e.&nbsp;<a href="https://www.youtube.com/watch?v=_EFtACGzD7E">“zone 14”</a>), where a loss of possession can actually be advantageous, as it leaves the opponent likely in a vulnerable position. You could also infer that the “risk” of losing possession to passes to zone 14 is justified from the potential to take a shot. The other observable positive PV end-points for passes taken from the center of the pitch are the goal lines on the ends of the 18-yard box. We could deduce that passes to those areas often lead to cutback passes to the front of the goal, which often lead to high-converting shots. So again, the PV model seems to indicate that the “lost opportunity” of such a (failed) pass seems worth it. on average.</p>
+</section>
+<section id="from-anywhere-on-the-pitch-to-anywhere-on-the-pitch-1" class="level4">
+<h4 class="anchored" data-anchor-id="from-anywhere-on-the-pitch-to-anywhere-on-the-pitch-1">From Anywhere on the Pitch, To Anywhere on the Pitch</h4>
+<p>Now lets scale up our pass PV grid to all incomplete passes. Hovering over a tile will show PV associated with unsuccessful passes from that point on the pitch.</p>
+<div class="cell" data-include="true">
+<div class="sourceCode cell-code hidden" id="cb7" data-startfrom="979" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 978;"><span id="cb7-979"><a href="#cb7-979" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb7-980"><a href="#cb7-980" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> chart <span class="op">=</span> d3<span class="op">.</span><span class="fu">create</span>(<span class="st">"div"</span>)</span>
+<span id="cb7-981"><a href="#cb7-981" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> title <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-title-incomplete-nested"</span>)</span>
+<span id="cb7-982"><a href="#cb7-982" aria-hidden="true" tabindex="-1"></a>  title<span class="op">.</span><span class="fu">append</span>(<span class="st">"p"</span>)<span class="op">.</span><span class="fu">html</span>(<span class="vs">`min PV: &lt;span id='pv-min-incomplete-nested'&gt;0&lt;/span&gt;, max PV: &lt;span id='pv-max-incomplete-nested'&gt;0&lt;/span&gt;`</span>)</span>
+<span id="cb7-983"><a href="#cb7-983" aria-hidden="true" tabindex="-1"></a>  chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)<span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-incomplete-nested"</span>)</span>
+<span id="cb7-984"><a href="#cb7-984" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-985"><a href="#cb7-985" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendSwatchContainer <span class="op">=</span> chart<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb7-986"><a href="#cb7-986" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">attr</span>(<span class="st">"id"</span><span class="op">,</span> <span class="st">"heatmap-legend-incomplete-nested"</span>)</span>
+<span id="cb7-987"><a href="#cb7-987" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb7-988"><a href="#cb7-988" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"flex-direction"</span><span class="op">,</span> <span class="st">"column"</span>) <span class="co">// Stack swatches and labels vertically</span></span>
+<span id="cb7-989"><a href="#cb7-989" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"align-items"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the flex items</span></span>
+<span id="cb7-990"><a href="#cb7-990" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="st">"100%"</span>)<span class="op">;</span> <span class="co">// Take up the full width to center the content</span></span>
+<span id="cb7-991"><a href="#cb7-991" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-992"><a href="#cb7-992" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendRange <span class="op">=</span> [</span>
+<span id="cb7-993"><a href="#cb7-993" aria-hidden="true" tabindex="-1"></a>    <span class="fl">1.1</span> <span class="op">*</span> d3<span class="op">.</span><span class="fu">min</span>(colorScaleIncompleteRange)<span class="op">,</span> </span>
+<span id="cb7-994"><a href="#cb7-994" aria-hidden="true" tabindex="-1"></a>    <span class="fl">1.1</span> <span class="op">*</span> d3<span class="op">.</span><span class="fu">max</span>(colorScaleIncompleteRange)</span>
+<span id="cb7-995"><a href="#cb7-995" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">;</span></span>
+<span id="cb7-996"><a href="#cb7-996" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> stepSize <span class="op">=</span> (legendRange[<span class="dv">1</span>] <span class="op">-</span> legendRange[<span class="dv">0</span>]) <span class="op">/</span> (swatchParams<span class="op">.</span><span class="at">num</span> <span class="op">-</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb7-997"><a href="#cb7-997" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> legendSwatches <span class="op">=</span> d3<span class="op">.</span><span class="fu">range</span>(legendRange[<span class="dv">0</span>]<span class="op">,</span> legendRange[<span class="dv">1</span>] <span class="op">+</span> stepSize<span class="op">,</span> stepSize)<span class="op">;</span></span>
+<span id="cb7-998"><a href="#cb7-998" aria-hidden="true" tabindex="-1"></a>  legendSwatches[legendSwatches<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span>] <span class="op">=</span> legendRange[<span class="dv">1</span>]<span class="op">;</span></span>
+<span id="cb7-999"><a href="#cb7-999" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-1000"><a href="#cb7-1000" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Calculate the total width for the legend swatches to be used in setting the width of the container</span></span>
+<span id="cb7-1001"><a href="#cb7-1001" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> totalLegendWidth <span class="op">=</span> swatchParams<span class="op">.</span><span class="at">width</span> <span class="op">*</span> swatchParams<span class="op">.</span><span class="at">num</span><span class="op">;</span></span>
+<span id="cb7-1002"><a href="#cb7-1002" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-1003"><a href="#cb7-1003" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the swatches as a row</span></span>
+<span id="cb7-1004"><a href="#cb7-1004" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> swatchRow <span class="op">=</span> legendSwatchContainer<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb7-1005"><a href="#cb7-1005" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb7-1006"><a href="#cb7-1006" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"justify-content"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the row of swatches</span></span>
+<span id="cb7-1007"><a href="#cb7-1007" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="st">"100%"</span>)<span class="op">;</span> <span class="co">// Take up the full width to center the content</span></span>
+<span id="cb7-1008"><a href="#cb7-1008" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-1009"><a href="#cb7-1009" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the individual swatches</span></span>
+<span id="cb7-1010"><a href="#cb7-1010" aria-hidden="true" tabindex="-1"></a>  swatchRow<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"div"</span>)</span>
+<span id="cb7-1011"><a href="#cb7-1011" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(legendSwatches)</span>
+<span id="cb7-1012"><a href="#cb7-1012" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb7-1013"><a href="#cb7-1013" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb7-1014"><a href="#cb7-1014" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>swatchParams<span class="op">.</span><span class="at">width</span><span class="sc">}</span><span class="vs">px`</span>)</span>
+<span id="cb7-1015"><a href="#cb7-1015" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"height"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>swatchParams<span class="op">.</span><span class="at">height</span><span class="sc">}</span><span class="vs">px`</span>)</span>
+<span id="cb7-1016"><a href="#cb7-1016" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"background-color"</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="fu">colorScaleIncomplete</span>(d))<span class="op">;</span></span>
+<span id="cb7-1017"><a href="#cb7-1017" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-1018"><a href="#cb7-1018" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the label row</span></span>
+<span id="cb7-1019"><a href="#cb7-1019" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> labelRow <span class="op">=</span> legendSwatchContainer<span class="op">.</span><span class="fu">append</span>(<span class="st">"div"</span>)</span>
+<span id="cb7-1020"><a href="#cb7-1020" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"display"</span><span class="op">,</span> <span class="st">"flex"</span>)</span>
+<span id="cb7-1021"><a href="#cb7-1021" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"justify-content"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the row of labels</span></span>
+<span id="cb7-1022"><a href="#cb7-1022" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"width"</span><span class="op">,</span> <span class="vs">`</span><span class="sc">${</span>totalLegendWidth<span class="sc">}</span><span class="vs">px`</span>)<span class="op">;</span></span>
+<span id="cb7-1023"><a href="#cb7-1023" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-1024"><a href="#cb7-1024" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Append the individual labels under the swatches</span></span>
+<span id="cb7-1025"><a href="#cb7-1025" aria-hidden="true" tabindex="-1"></a>  labelRow<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"span"</span>)</span>
+<span id="cb7-1026"><a href="#cb7-1026" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">data</span>(colorScaleIncompleteRange)</span>
+<span id="cb7-1027"><a href="#cb7-1027" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb7-1028"><a href="#cb7-1028" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">append</span>(<span class="st">"span"</span>)</span>
+<span id="cb7-1029"><a href="#cb7-1029" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">text</span>(d <span class="kw">=&gt;</span> {</span>
+<span id="cb7-1030"><a href="#cb7-1030" aria-hidden="true" tabindex="-1"></a>      <span class="cf">if</span> (d <span class="op">===</span> d3<span class="op">.</span><span class="fu">min</span>(colorScaleIncompleteRange)) {</span>
+<span id="cb7-1031"><a href="#cb7-1031" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"&lt;= "</span> <span class="op">+</span> d<span class="op">;</span></span>
+<span id="cb7-1032"><a href="#cb7-1032" aria-hidden="true" tabindex="-1"></a>      } <span class="cf">else</span> <span class="cf">if</span> (d <span class="op">===</span> d3<span class="op">.</span><span class="fu">max</span>(colorScaleIncompleteRange)) {</span>
+<span id="cb7-1033"><a href="#cb7-1033" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="st">"&gt;= "</span> <span class="op">+</span> d<span class="op">;</span></span>
+<span id="cb7-1034"><a href="#cb7-1034" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb7-1035"><a href="#cb7-1035" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> d<span class="op">;</span></span>
+<span id="cb7-1036"><a href="#cb7-1036" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb7-1037"><a href="#cb7-1037" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"flex"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d <span class="op">===</span> <span class="dv">0</span> <span class="op">?</span> <span class="st">"1"</span> <span class="op">:</span> <span class="kw">null</span>)</span>
+<span id="cb7-1038"><a href="#cb7-1038" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span><span class="fu">style</span>(<span class="st">"text-align"</span><span class="op">,</span> <span class="st">"center"</span>) <span class="co">// Center the text within its flex item</span></span>
+<span id="cb7-1039"><a href="#cb7-1039" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-1040"><a href="#cb7-1040" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> chart<span class="op">.</span><span class="fu">node</span>()<span class="op">;</span></span>
+<span id="cb7-1041"><a href="#cb7-1041" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-1042"><a href="#cb7-1042" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="fig-ojs-cell-7" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<div id="ojs-cell-7" data-nodetype="expression">
+
+</div>
+<figcaption class="figure-caption">Figure&nbsp;4: A heatmap showing the possession value (PV) of an average unsuccessful pass from the hover spot to all other spots on the pitch.</figcaption>
+</figure>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code hidden" id="cb8" data-startfrom="1049" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1048;"><span id="cb8-1049"><a href="#cb8-1049" aria-hidden="true" tabindex="-1"></a>{  </span>
+<span id="cb8-1050"><a href="#cb8-1050" aria-hidden="true" tabindex="-1"></a>    <span class="kw">const</span> heatmap_incomplete_nested <span class="op">=</span> d3_soccer<span class="op">.</span><span class="fu">heatmap</span>(pitch)</span>
+<span id="cb8-1051"><a href="#cb8-1051" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">colorScale</span>(d3<span class="op">.</span><span class="fu">scaleLinear</span>()<span class="op">.</span><span class="fu">domain</span>([<span class="op">-</span><span class="dv">1</span><span class="op">,</span> <span class="dv">1</span>])<span class="op">.</span><span class="fu">range</span>([<span class="st">"white"</span><span class="op">,</span> <span class="st">"white"</span>]))</span>
+<span id="cb8-1052"><a href="#cb8-1052" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">enableInteraction</span>(<span class="kw">true</span>)</span>
+<span id="cb8-1053"><a href="#cb8-1053" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">onSelect</span>((x<span class="op">,</span>y<span class="op">,</span>v) <span class="kw">=&gt;</span> {</span>
+<span id="cb8-1054"><a href="#cb8-1054" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> rawMinValue <span class="op">=</span> d3<span class="op">.</span><span class="fu">min</span>(v<span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb8-1055"><a href="#cb8-1055" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> rawMaxValue <span class="op">=</span> d3<span class="op">.</span><span class="fu">max</span>(v<span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">value</span>)<span class="op">;</span></span>
+<span id="cb8-1056"><a href="#cb8-1056" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> minValue <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(rawMaxValue<span class="op">,</span> <span class="op">-</span><span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb8-1057"><a href="#cb8-1057" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> maxValue <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">min</span>(rawMaxValue<span class="op">,</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb8-1058"><a href="#cb8-1058" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb8-1059"><a href="#cb8-1059" aria-hidden="true" tabindex="-1"></a>        d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#pv-min-incomplete-nested'</span>)<span class="op">.</span><span class="fu">text</span>(minValue<span class="op">.</span><span class="fu">toFixed</span>(<span class="dv">3</span>))<span class="op">;</span></span>
+<span id="cb8-1060"><a href="#cb8-1060" aria-hidden="true" tabindex="-1"></a>        d3<span class="op">.</span><span class="fu">select</span>(<span class="st">'#pv-max-incomplete-nested'</span>)<span class="op">.</span><span class="fu">text</span>(maxValue<span class="op">.</span><span class="fu">toFixed</span>(<span class="dv">3</span>))<span class="op">;</span></span>
+<span id="cb8-1061"><a href="#cb8-1061" aria-hidden="true" tabindex="-1"></a>        <span class="kw">const</span> cells <span class="op">=</span> d3</span>
+<span id="cb8-1062"><a href="#cb8-1062" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">select</span>(<span class="st">"#heatmap-incomplete-nested"</span>)</span>
+<span id="cb8-1063"><a href="#cb8-1063" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"rect.cell"</span>)</span>
+<span id="cb8-1064"><a href="#cb8-1064" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">data</span>(v)</span>
+<span id="cb8-1065"><a href="#cb8-1065" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-1066"><a href="#cb8-1066" aria-hidden="true" tabindex="-1"></a>        cells<span class="op">.</span><span class="fu">enter</span>()</span>
+<span id="cb8-1067"><a href="#cb8-1067" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">merge</span>(cells) <span class="co">// Merge enter and update selections</span></span>
+<span id="cb8-1068"><a href="#cb8-1068" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"x"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">x</span>)</span>
+<span id="cb8-1069"><a href="#cb8-1069" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"y"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">y</span>)</span>
+<span id="cb8-1070"><a href="#cb8-1070" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"width"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">width</span>)</span>
+<span id="cb8-1071"><a href="#cb8-1071" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">attr</span>(<span class="st">"height"</span><span class="op">,</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">height</span>)</span>
+<span id="cb8-1072"><a href="#cb8-1072" aria-hidden="true" tabindex="-1"></a>          <span class="op">.</span><span class="fu">style</span>(<span class="st">"fill"</span><span class="op">,</span> d <span class="kw">=&gt;</span> <span class="fu">colorScaleIncomplete</span>(<span class="op">+</span>d<span class="op">.</span><span class="at">value</span>))<span class="op">;</span></span>
+<span id="cb8-1073"><a href="#cb8-1073" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb8-1074"><a href="#cb8-1074" aria-hidden="true" tabindex="-1"></a>        cells<span class="op">.</span><span class="fu">exit</span>()<span class="op">.</span><span class="fu">remove</span>()</span>
+<span id="cb8-1075"><a href="#cb8-1075" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-1076"><a href="#cb8-1076" aria-hidden="true" tabindex="-1"></a>         d3<span class="op">.</span><span class="fu">select</span>(<span class="st">"#heatmap-incomplete-nested"</span>)<span class="op">.</span><span class="fu">selectAll</span>(<span class="st">"rect.cell"</span>)<span class="op">.</span><span class="fu">data</span>(incomplete_nested_pv_data)</span>
+<span id="cb8-1077"><a href="#cb8-1077" aria-hidden="true" tabindex="-1"></a>      })</span>
+<span id="cb8-1078"><a href="#cb8-1078" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">parent_el</span>(<span class="st">"#heatmap-incomplete-nested"</span>)</span>
+<span id="cb8-1079"><a href="#cb8-1079" aria-hidden="true" tabindex="-1"></a>      <span class="op">.</span><span class="fu">interpolate</span>(<span class="kw">false</span>)<span class="op">;</span></span>
+<span id="cb8-1080"><a href="#cb8-1080" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-1081"><a href="#cb8-1081" aria-hidden="true" tabindex="-1"></a>    d3<span class="op">.</span><span class="fu">select</span>(<span class="st">"#heatmap-incomplete-nested"</span>)<span class="op">.</span><span class="fu">html</span>(<span class="st">""</span>)<span class="op">.</span><span class="fu">datum</span>(incomplete_nested_pv_data)<span class="op">.</span><span class="fu">call</span>(heatmap_incomplete_nested)<span class="op">;</span></span>
+<span id="cb8-1082"><a href="#cb8-1082" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display hidden">
+<div id="ojs-cell-8" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>I’ll note that the choice of model surely plays a role in the inference we’ll make. Even atomic VAEP, which splits passes into two actions–the pass itself and the reception (or lack of)–may yield different answers.</p>
 <div class="cell" data-include="false">
 <details class="hidden">
 <summary>Code</summary>
-<div class="sourceCode cell-code hidden" id="cb3" data-startfrom="77" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 76;"><span id="cb3-77"><a href="#cb3-77" aria-hidden="true" tabindex="-1"></a>pitch <span class="op">=</span> d3_soccer<span class="op">.</span><span class="fu">pitch</span>()</span>
-<span id="cb3-78"><a href="#cb3-78" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">height</span>(<span class="dv">300</span>)</span>
-<span id="cb3-79"><a href="#cb3-79" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">rotate</span>(<span class="kw">false</span>)</span>
-<span id="cb3-80"><a href="#cb3-80" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">showDirOfPlay</span>(<span class="kw">true</span>)</span>
-<span id="cb3-81"><a href="#cb3-81" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">shadeMiddleThird</span>(<span class="kw">false</span>)</span>
-<span id="cb3-82"><a href="#cb3-82" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">pitchStrokeWidth</span>(<span class="fl">0.5</span>)</span>
-<span id="cb3-83"><a href="#cb3-83" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">clip</span>([[<span class="dv">0</span><span class="op">,</span> <span class="dv">0</span>]<span class="op">,</span> [<span class="dv">105</span><span class="op">,</span> <span class="dv">68</span>]])<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code hidden" id="cb9" data-startfrom="1091" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1090;"><span id="cb9-1091"><a href="#cb9-1091" aria-hidden="true" tabindex="-1"></a>pitch <span class="op">=</span> d3_soccer<span class="op">.</span><span class="fu">pitch</span>()</span>
+<span id="cb9-1092"><a href="#cb9-1092" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">height</span>(<span class="dv">300</span>)</span>
+<span id="cb9-1093"><a href="#cb9-1093" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">rotate</span>(<span class="kw">false</span>)</span>
+<span id="cb9-1094"><a href="#cb9-1094" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">showDirOfPlay</span>(<span class="kw">true</span>)</span>
+<span id="cb9-1095"><a href="#cb9-1095" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">shadeMiddleThird</span>(<span class="kw">false</span>)</span>
+<span id="cb9-1096"><a href="#cb9-1096" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">pitchStrokeWidth</span>(<span class="fl">0.5</span>)</span>
+<span id="cb9-1097"><a href="#cb9-1097" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">clip</span>([[<span class="dv">0</span><span class="op">,</span> <span class="dv">0</span>]<span class="op">,</span> [<span class="dv">105</span><span class="op">,</span> <span class="dv">68</span>]])<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display hidden">
-<div id="ojs-cell-3" data-nodetype="declaration">
+<div id="ojs-cell-9" data-nodetype="declaration">
 
 </div>
 </div>
@@ -362,10 +779,10 @@ cookieconsent.run({
 <div class="cell" data-include="false">
 <details class="hidden">
 <summary>Code</summary>
-<div class="sourceCode cell-code hidden" id="cb4" data-startfrom="88" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 87;"><span id="cb4-88"><a href="#cb4-88" aria-hidden="true" tabindex="-1"></a>d3 <span class="op">=</span> <span class="pp">require</span>(<span class="st">"d3@v5"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code hidden" id="cb10" data-startfrom="1102" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1101;"><span id="cb10-1102"><a href="#cb10-1102" aria-hidden="true" tabindex="-1"></a>d3 <span class="op">=</span> <span class="pp">require</span>(<span class="st">"d3@v5"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display hidden">
-<div id="ojs-cell-4" data-nodetype="declaration">
+<div id="ojs-cell-10" data-nodetype="declaration">
 
 </div>
 </div>
@@ -373,21 +790,151 @@ cookieconsent.run({
 <div class="cell" data-include="false">
 <details class="hidden">
 <summary>Code</summary>
-<div class="sourceCode cell-code hidden" id="cb5" data-startfrom="93" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 92;"><span id="cb5-93"><a href="#cb5-93" aria-hidden="true" tabindex="-1"></a>d3_soccer <span class="op">=</span> <span class="pp">require</span>(<span class="st">"d3-soccer@0.1.0"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code hidden" id="cb11" data-startfrom="1107" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1106;"><span id="cb11-1107"><a href="#cb11-1107" aria-hidden="true" tabindex="-1"></a>d3_soccer <span class="op">=</span> <span class="pp">require</span>(<span class="st">"d3-soccer@0.1.0"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display hidden">
-<div id="ojs-cell-5" data-nodetype="declaration">
+<div id="ojs-cell-11" data-nodetype="declaration">
 
 </div>
 </div>
 </div>
-<div class="cell" data-output="all" data-include="true">
-<details>
+<div class="cell" data-include="false">
+<details class="hidden">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb6" data-startfrom="102" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 101;"><span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>nested_pv_data <span class="op">=</span> <span class="fu">FileAttachment</span>(<span class="st">"nested_pv_data.json"</span>)<span class="op">.</span><span class="fu">json</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code hidden" id="cb12" data-startfrom="1113" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1112;"><span id="cb12-1113"><a href="#cb12-1113" aria-hidden="true" tabindex="-1"></a>complete_pv_data  <span class="op">=</span> <span class="fu">FileAttachment</span>(<span class="st">"complete_pv_data.json"</span>)<span class="op">.</span><span class="fu">json</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
-<div class="cell-output cell-output-display">
-<div id="ojs-cell-6" data-nodetype="declaration">
+<div id="complete_pv_data" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-12" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb13" data-startfrom="1119" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1118;"><span id="cb13-1119"><a href="#cb13-1119" aria-hidden="true" tabindex="-1"></a>incomplete_pv_data <span class="op">=</span> <span class="fu">FileAttachment</span>(<span class="st">"incomplete_pv_data.json"</span>)<span class="op">.</span><span class="fu">json</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="incomplete_pv_data" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-13" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb14" data-startfrom="1125" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1124;"><span id="cb14-1125"><a href="#cb14-1125" aria-hidden="true" tabindex="-1"></a>complete_nested_pv_data  <span class="op">=</span> <span class="fu">FileAttachment</span>(<span class="st">"complete_nested_pv_data.json"</span>)<span class="op">.</span><span class="fu">json</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="complete_nested_pv_data" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-14" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb15" data-startfrom="1131" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1130;"><span id="cb15-1131"><a href="#cb15-1131" aria-hidden="true" tabindex="-1"></a>incomplete_nested_pv_data <span class="op">=</span> <span class="fu">FileAttachment</span>(<span class="st">"incomplete_nested_pv_data.json"</span>)<span class="op">.</span><span class="fu">json</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="incomplete_nested_pv_data" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-15" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb16" data-startfrom="1137" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1136;"><span id="cb16-1137"><a href="#cb16-1137" aria-hidden="true" tabindex="-1"></a>colorScaleCompleteRange <span class="op">=</span> [<span class="op">-</span><span class="fl">0.025</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="fl">0.025</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="colorscalecompleterange" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-16" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb17" data-startfrom="1143" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1142;"><span id="cb17-1143"><a href="#cb17-1143" aria-hidden="true" tabindex="-1"></a>colorScaleIncompleteRange <span class="op">=</span> [<span class="op">-</span><span class="fl">0.025</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="fl">0.025</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="colorscaleincompleterange" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-17" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb18" data-startfrom="1149" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1148;"><span id="cb18-1149"><a href="#cb18-1149" aria-hidden="true" tabindex="-1"></a>colorScaleComplete <span class="op">=</span> d3<span class="op">.</span><span class="fu">scaleLinear</span>()</span>
+<span id="cb18-1150"><a href="#cb18-1150" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">domain</span>(colorScaleCompleteRange)</span>
+<span id="cb18-1151"><a href="#cb18-1151" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">range</span>([<span class="st">"#a6611a"</span><span class="op">,</span> <span class="st">"white"</span><span class="op">,</span> <span class="st">"#018571"</span>])<span class="op">.</span><span class="fu">clamp</span>(<span class="kw">true</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="colorscalecomplete" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-18" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb19" data-startfrom="1157" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1156;"><span id="cb19-1157"><a href="#cb19-1157" aria-hidden="true" tabindex="-1"></a>colorScaleIncomplete <span class="op">=</span> d3<span class="op">.</span><span class="fu">scaleLinear</span>()</span>
+<span id="cb19-1158"><a href="#cb19-1158" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">domain</span>(colorScaleIncompleteRange)</span>
+<span id="cb19-1159"><a href="#cb19-1159" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span><span class="fu">range</span>([<span class="st">"#d01c8b"</span><span class="op">,</span> <span class="st">"white"</span><span class="op">,</span> <span class="st">"#4dac26"</span>])<span class="op">.</span><span class="fu">clamp</span>(<span class="kw">true</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="colorscaleincomplete" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-19" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb20" data-startfrom="1165" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1164;"><span id="cb20-1165"><a href="#cb20-1165" aria-hidden="true" tabindex="-1"></a>swatchParams <span class="op">=</span> {</span>
+<span id="cb20-1166"><a href="#cb20-1166" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb20-1167"><a href="#cb20-1167" aria-hidden="true" tabindex="-1"></a>    <span class="dt">width</span><span class="op">:</span> <span class="dv">40</span><span class="op">,</span></span>
+<span id="cb20-1168"><a href="#cb20-1168" aria-hidden="true" tabindex="-1"></a>    <span class="dt">height</span><span class="op">:</span> <span class="dv">20</span><span class="op">,</span></span>
+<span id="cb20-1169"><a href="#cb20-1169" aria-hidden="true" tabindex="-1"></a>    <span class="dt">num</span><span class="op">:</span> <span class="dv">7</span></span>
+<span id="cb20-1170"><a href="#cb20-1170" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb20-1171"><a href="#cb20-1171" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="swatchparams" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-20" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb21" data-startfrom="1177" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1176;"><span id="cb21-1177"><a href="#cb21-1177" aria-hidden="true" tabindex="-1"></a>passStartParams <span class="op">=</span> {</span>
+<span id="cb21-1178"><a href="#cb21-1178" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb21-1179"><a href="#cb21-1179" aria-hidden="true" tabindex="-1"></a>    <span class="dt">x</span><span class="op">:</span> <span class="fl">45.9375</span><span class="op">,</span></span>
+<span id="cb21-1180"><a href="#cb21-1180" aria-hidden="true" tabindex="-1"></a>    <span class="dt">y</span><span class="op">:</span> <span class="fl">28.33333</span></span>
+<span id="cb21-1181"><a href="#cb21-1181" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb21-1182"><a href="#cb21-1182" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="passstartparams" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-21" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell" data-include="false">
+<details class="hidden">
+<summary>Code</summary>
+<div class="sourceCode cell-code hidden" id="cb22" data-startfrom="1188" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1187;"><span id="cb22-1188"><a href="#cb22-1188" aria-hidden="true" tabindex="-1"></a>tileParams <span class="op">=</span> {</span>
+<span id="cb22-1189"><a href="#cb22-1189" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> {</span>
+<span id="cb22-1190"><a href="#cb22-1190" aria-hidden="true" tabindex="-1"></a>    <span class="dt">width</span><span class="op">:</span> <span class="fl">6.5625</span><span class="op">,</span></span>
+<span id="cb22-1191"><a href="#cb22-1191" aria-hidden="true" tabindex="-1"></a>    <span class="dt">height</span><span class="op">:</span> <span class="fl">5.666667</span></span>
+<span id="cb22-1192"><a href="#cb22-1192" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb22-1193"><a href="#cb22-1193" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tileparams" class="cell-output cell-output-display hidden">
+<div id="ojs-cell-22" data-nodetype="declaration">
 
 </div>
 </div>
@@ -406,7 +953,7 @@ No matching items
 </div>
 </div></main> <!-- /main -->
 <script type="ojs-module-contents">
-{"contents":[{"methodName":"interpret","cellName":"ojs-cell-1","inline":false,"source":"{\n  const chart = d3.create(\"div\")\n  const title = chart.append(\"div\").attr(\"id\", \"heatmap-title\")\n  title.append(\"p\").html(`Total number of cells with positive epV: <span id='pv_pos'>0</span>`)\n  chart.append(\"div\").attr(\"id\", \"heatmap\")\n  return chart.node()\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-2","inline":false,"source":"{  \n   const colorScale = d3.scaleOrdinal([0, 1]).range(['transparent', '#fdc500']);\n   const heatmap = d3_soccer.heatmap(pitch)\n      .colorScale(d3.scaleOrdinal([0, 1]).range(['white', 'white']))\n      .enableInteraction(true)\n      .onSelect((x,y,v) => {\n  \n        let cells = d3\n          .select('#heatmap')\n          .selectAll('rect.cell')\n          .data(v)\n  \n        cells.enter()\n          //.append('rect')\n          //.attr(\"class\", \"cell\")\n          .merge(cells)\n          .attr(\"x\", d => d.x)\n          .attr(\"y\", d => d.y)\n          .attr(\"width\", d => d.width)\n          .attr(\"height\", d => d.height)\n          .style(\"fill\", d => colorScale(+d.value));\n  \n        cells.exit().remove()\n\n         d3.select('#heatmap').selectAll('rect.cell').data(nested_pv_data)\n      })\n      .parent_el('#heatmap')\n      .interpolate(false);\n\n    d3.select('#heatmap').html('').datum(nested_pv_data).call(heatmap);\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-3","inline":false,"source":"pitch = d3_soccer.pitch()\n  .height(300)\n  .rotate(false)\n  .showDirOfPlay(true)\n  .shadeMiddleThird(false)\n  .pitchStrokeWidth(0.5)\n  .clip([[0, 0], [105, 68]]);\n"},{"methodName":"interpret","cellName":"ojs-cell-4","inline":false,"source":"d3 = require(\"d3@v5\")\n"},{"methodName":"interpret","cellName":"ojs-cell-5","inline":false,"source":"d3_soccer = require(\"d3-soccer@0.1.0\")\n"},{"methodName":"interpret","cellName":"ojs-cell-6","inline":false,"source":"nested_pv_data = FileAttachment(\"nested_pv_data.json\").json()\n"}]}
+{"contents":[{"methodName":"interpret","cellName":"ojs-cell-1","inline":false,"source":"{\n  const chart = d3.create(\"div\")\n  const title = chart.append(\"div\").attr(\"id\", \"heatmap-title-complete\")\n  title.append(\"p\").html(`PV: <span id='pv-value-complete'>0</span>`)\n  chart.append(\"div\").attr(\"id\", \"heatmap-complete\")\n\n  const legendSwatchContainer = chart.append(\"div\")\n    .attr(\"id\", \"heatmap-legend-complete\")\n    .style(\"display\", \"flex\")\n    .style(\"flex-direction\", \"column\") // Stack swatches and labels vertically\n    .style(\"align-items\", \"center\") // Center the flex items\n    .style(\"width\", \"100%\"); // Take up the full width to center the content\n  \n  const legendRange = [\n    1.1 * d3.min(colorScaleCompleteRange), \n    1.1 * d3.max(colorScaleCompleteRange)\n  ];\n  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);\n  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);\n  legendSwatches[legendSwatches.length - 1] = legendRange[1];\n  \n  // Calculate the total width for the legend swatches to be used in setting the width of the container\n  const totalLegendWidth = swatchParams.width * swatchParams.num;\n  \n  // Append the swatches as a row\n  const swatchRow = legendSwatchContainer.append(\"div\")\n    .style(\"display\", \"flex\")\n    .style(\"justify-content\", \"center\") // Center the row of swatches\n    .style(\"width\", \"100%\"); // Take up the full width to center the content\n\n  // Append the individual swatches\n  swatchRow.selectAll(\"div\")\n    .data(legendSwatches)\n    .enter()\n    .append(\"div\")\n    .style(\"width\", `${swatchParams.width}px`)\n    .style(\"height\", `${swatchParams.height}px`)\n    .style(\"background-color\", d => colorScaleComplete(d));\n\n  // Append the label row\n  const labelRow = legendSwatchContainer.append(\"div\")\n    .style(\"display\", \"flex\")\n    .style(\"justify-content\", \"center\") // Center the row of labels\n    .style(\"width\", `${totalLegendWidth}px`);\n\n  // Append the individual labels under the swatches\n  labelRow.selectAll(\"span\")\n    .data(colorScaleCompleteRange)\n    .enter()\n    .append(\"span\")\n    .text(d => {\n      if (d === d3.min(colorScaleCompleteRange)) {\n        return \"<= \" + d;\n      } else if (d === d3.max(colorScaleCompleteRange)) {\n        return \">= \" + d;\n      }\n      return d;\n    })\n    .style(\"flex\", d => d === 0 ? \"1\" : null)\n    .style(\"text-align\", \"center\") // Center the text within its flex item\n\n  return chart.node();\n\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-2","inline":false,"source":"{\n  const heatmap_complete = d3_soccer.heatmap(pitch)\n    .colorScale(colorScaleComplete)\n    .enableInteraction(true)\n    .onSelect((x,y,v) => {\n      const cappedValue = Math.min(Math.max(v, -1), 1);\n      d3.select('#pv-value-complete').text(cappedValue.toFixed(3));\n    })\n    .parent_el('#heatmap-complete')\n    .interpolate(false);\n\n  d3.select('#heatmap-complete').html('').datum(complete_pv_data).call(heatmap_complete);\n\n  const svg = d3.select('#heatmap-complete').select('svg');\n\n  svg.append(\"rect\")\n    .attr(\"x\", passStartParams.x)\n    .attr(\"y\", passStartParams.y)\n    .attr(\"width\", tileParams.width)\n    .attr(\"height\", tileParams.height)\n    .style(\"stroke\", \"blue\")\n    .style(\"fill\", \"none\")\n    .style(\"stroke-width\", \"1px\");\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-3","inline":false,"source":"{\n  const chart = d3.create(\"div\")\n  const title = chart.append(\"div\").attr(\"id\", \"heatmap-title-complete-nested\")\n  title.append(\"p\").html(`min PV: <span id='pv-min-complete-nested'>0</span>, max PV: <span id='pv-max-complete-nested'>0</span>`)\n  chart.append(\"div\").attr(\"id\", \"heatmap-complete-nested\")\n\n  const legendSwatchContainer = chart.append(\"div\")\n    .attr(\"id\", \"heatmap-legend-complete-nested\")\n    .style(\"display\", \"flex\")\n    .style(\"flex-direction\", \"column\") // Stack swatches and labels vertically\n    .style(\"align-items\", \"center\") // Center the flex items\n    .style(\"width\", \"100%\"); // Take up the full width to center the content\n  \n  const legendRange = [\n    1.1 * d3.min(colorScaleCompleteRange), \n    1.1 * d3.max(colorScaleCompleteRange)\n  ];\n  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);\n  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);\n  legendSwatches[legendSwatches.length - 1] = legendRange[1];\n  \n  // Calculate the total width for the legend swatches to be used in setting the width of the container\n  const totalLegendWidth = swatchParams.width * swatchParams.num;\n  \n  // Append the swatches as a row\n  const swatchRow = legendSwatchContainer.append(\"div\")\n    .style(\"display\", \"flex\")\n    .style(\"justify-content\", \"center\") // Center the row of swatches\n    .style(\"width\", \"100%\"); // Take up the full width to center the content\n\n  // Append the individual swatches\n  swatchRow.selectAll(\"div\")\n    .data(legendSwatches)\n    .enter()\n    .append(\"div\")\n    .style(\"width\", `${swatchParams.width}px`)\n    .style(\"height\", `${swatchParams.height}px`)\n    .style(\"background-color\", d => colorScaleComplete(d));\n\n  // Append the label row\n  const labelRow = legendSwatchContainer.append(\"div\")\n    .style(\"display\", \"flex\")\n    .style(\"justify-content\", \"center\") // Center the row of labels\n    .style(\"width\", `${totalLegendWidth}px`);\n\n  // Append the individual labels under the swatches\n  labelRow.selectAll(\"span\")\n    .data(colorScaleCompleteRange)\n    .enter()\n    .append(\"span\")\n    .text(d => {\n      if (d === d3.min(colorScaleCompleteRange)) {\n        return \"<= \" + d;\n      } else if (d === d3.max(colorScaleCompleteRange)) {\n        return \">= \" + d;\n      }\n      return d;\n    })\n    .style(\"flex\", d => d === 0 ? \"1\" : null)\n    .style(\"text-align\", \"center\") // Center the text within its flex item\n\n  return chart.node();\n\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-4","inline":false,"source":"{  \n    const heatmap_complete_nested = d3_soccer.heatmap(pitch)\n      .colorScale(d3.scaleLinear().domain([-1, 1]).range([\"white\", \"white\"]))\n      .enableInteraction(true)\n      .onSelect((x,y,v) => {\n        const rawMinValue = d3.min(v, d => d.value);\n        const rawMaxValue = d3.max(v, d => d.value);\n        const minValue = Math.max(rawMaxValue, -1);\n        const maxValue = Math.min(rawMaxValue, 1);\n        \n        d3.select('#pv-min-complete-nested').text(minValue.toFixed(3));\n        d3.select('#pv-max-complete-nested').text(maxValue.toFixed(3));\n        const cells = d3\n          .select(\"#heatmap-complete-nested\")\n          .selectAll(\"rect.cell\")\n          .data(v)\n  \n        cells.enter()\n          .merge(cells) // Merge enter and update selections\n          .attr(\"x\", d => d.x)\n          .attr(\"y\", d => d.y)\n          .attr(\"width\", d => d.width)\n          .attr(\"height\", d => d.height)\n          .style(\"fill\", d => colorScaleComplete(+d.value));\n  \n        cells.exit().remove()\n\n         d3.select(\"#heatmap-complete-nested\").selectAll(\"rect.cell\").data(complete_nested_pv_data)\n      })\n      .parent_el(\"#heatmap-complete-nested\")\n      .interpolate(false);\n\n    d3.select(\"#heatmap-complete-nested\").html(\"\").datum(complete_nested_pv_data).call(heatmap_complete_nested);\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-5","inline":false,"source":"{\n  const chart = d3.create(\"div\")\n  const title = chart.append(\"div\").attr(\"id\", \"heatmap-title-incomplete\")\n  title.append(\"p\").html(`PV: <span id='pv-value-incomplete'>0</span>`)\n  chart.append(\"div\").attr(\"id\", \"heatmap-incomplete\")\n\n  const legendSwatchContainer = chart.append(\"div\")\n    .attr(\"id\", \"heatmap-legend-incomplete\")\n    .style(\"display\", \"flex\")\n    .style(\"flex-direction\", \"column\") // Stack swatches and labels vertically\n    .style(\"align-items\", \"center\") // Center the flex items\n    .style(\"width\", \"100%\"); // Take up the full width to center the content\n  \n  const legendRange = [\n    1.1 * d3.min(colorScaleIncompleteRange), \n    1.1 * d3.max(colorScaleIncompleteRange)\n  ];\n  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);\n  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);\n  legendSwatches[legendSwatches.length - 1] = legendRange[1];\n  \n  // Calculate the total width for the legend swatches to be used in setting the width of the container\n  const totalLegendWidth = swatchParams.width * swatchParams.num;\n  \n  // Append the swatches as a row\n  const swatchRow = legendSwatchContainer.append(\"div\")\n    .style(\"display\", \"flex\")\n    .style(\"justify-content\", \"center\") // Center the row of swatches\n    .style(\"width\", \"100%\"); // Take up the full width to center the content\n\n  // Append the individual swatches\n  swatchRow.selectAll(\"div\")\n    .data(legendSwatches)\n    .enter()\n    .append(\"div\")\n    .style(\"width\", `${swatchParams.width}px`)\n    .style(\"height\", `${swatchParams.height}px`)\n    .style(\"background-color\", d => colorScaleIncomplete(d));\n\n  // Append the label row\n  const labelRow = legendSwatchContainer.append(\"div\")\n    .style(\"display\", \"flex\")\n    .style(\"justify-content\", \"center\") // Center the row of labels\n    .style(\"width\", `${totalLegendWidth}px`);\n\n  // Append the individual labels under the swatches\n  labelRow.selectAll(\"span\")\n    .data(colorScaleIncompleteRange)\n    .enter()\n    .append(\"span\")\n    .text(d => {\n      if (d === d3.min(colorScaleIncompleteRange)) {\n        return \"<= \" + d;\n      } else if (d === d3.max(colorScaleIncompleteRange)) {\n        return \">= \" + d;\n      }\n      return d;\n    })\n    .style(\"flex\", d => d === 0 ? \"1\" : null)\n    .style(\"text-align\", \"center\") // Center the text within its flex item\n\n  return chart.node();\n\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-6","inline":false,"source":"{\n  const heatmap_incomplete = d3_soccer.heatmap(pitch)\n    .colorScale(colorScaleIncomplete)\n    .enableInteraction(true)\n    .onSelect((x,y,v) => {\n      const cappedValue = Math.min(Math.max(v, -1), 1);\n      d3.select('#pv-value-incomplete').text(cappedValue.toFixed(3));\n    })\n    .parent_el(\"#heatmap-incomplete\")\n    .interpolate(false);\n\n  d3.select(\"#heatmap-incomplete\").html(\"\").datum(incomplete_pv_data).call(heatmap_incomplete);\n\n  const svg = d3.select(\"#heatmap-incomplete\").select(\"svg\");\n\n  svg.append(\"rect\")\n    .attr(\"x\", passStartParams.x)\n    .attr(\"y\", passStartParams.y)\n    .attr(\"width\", tileParams.width)\n    .attr(\"height\", tileParams.height)\n    .style(\"stroke\", \"blue\")\n    .style(\"fill\", \"none\")\n    .style(\"stroke-width\", \"1px\");\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-7","inline":false,"source":"{\n  const chart = d3.create(\"div\")\n  const title = chart.append(\"div\").attr(\"id\", \"heatmap-title-incomplete-nested\")\n  title.append(\"p\").html(`min PV: <span id='pv-min-incomplete-nested'>0</span>, max PV: <span id='pv-max-incomplete-nested'>0</span>`)\n  chart.append(\"div\").attr(\"id\", \"heatmap-incomplete-nested\")\n\n  const legendSwatchContainer = chart.append(\"div\")\n    .attr(\"id\", \"heatmap-legend-incomplete-nested\")\n    .style(\"display\", \"flex\")\n    .style(\"flex-direction\", \"column\") // Stack swatches and labels vertically\n    .style(\"align-items\", \"center\") // Center the flex items\n    .style(\"width\", \"100%\"); // Take up the full width to center the content\n  \n  const legendRange = [\n    1.1 * d3.min(colorScaleIncompleteRange), \n    1.1 * d3.max(colorScaleIncompleteRange)\n  ];\n  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);\n  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);\n  legendSwatches[legendSwatches.length - 1] = legendRange[1];\n  \n  // Calculate the total width for the legend swatches to be used in setting the width of the container\n  const totalLegendWidth = swatchParams.width * swatchParams.num;\n  \n  // Append the swatches as a row\n  const swatchRow = legendSwatchContainer.append(\"div\")\n    .style(\"display\", \"flex\")\n    .style(\"justify-content\", \"center\") // Center the row of swatches\n    .style(\"width\", \"100%\"); // Take up the full width to center the content\n\n  // Append the individual swatches\n  swatchRow.selectAll(\"div\")\n    .data(legendSwatches)\n    .enter()\n    .append(\"div\")\n    .style(\"width\", `${swatchParams.width}px`)\n    .style(\"height\", `${swatchParams.height}px`)\n    .style(\"background-color\", d => colorScaleIncomplete(d));\n\n  // Append the label row\n  const labelRow = legendSwatchContainer.append(\"div\")\n    .style(\"display\", \"flex\")\n    .style(\"justify-content\", \"center\") // Center the row of labels\n    .style(\"width\", `${totalLegendWidth}px`);\n\n  // Append the individual labels under the swatches\n  labelRow.selectAll(\"span\")\n    .data(colorScaleIncompleteRange)\n    .enter()\n    .append(\"span\")\n    .text(d => {\n      if (d === d3.min(colorScaleIncompleteRange)) {\n        return \"<= \" + d;\n      } else if (d === d3.max(colorScaleIncompleteRange)) {\n        return \">= \" + d;\n      }\n      return d;\n    })\n    .style(\"flex\", d => d === 0 ? \"1\" : null)\n    .style(\"text-align\", \"center\") // Center the text within its flex item\n\n  return chart.node();\n\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-8","inline":false,"source":"{  \n    const heatmap_incomplete_nested = d3_soccer.heatmap(pitch)\n      .colorScale(d3.scaleLinear().domain([-1, 1]).range([\"white\", \"white\"]))\n      .enableInteraction(true)\n      .onSelect((x,y,v) => {\n        const rawMinValue = d3.min(v, d => d.value);\n        const rawMaxValue = d3.max(v, d => d.value);\n        const minValue = Math.max(rawMaxValue, -1);\n        const maxValue = Math.min(rawMaxValue, 1);\n        \n        d3.select('#pv-min-incomplete-nested').text(minValue.toFixed(3));\n        d3.select('#pv-max-incomplete-nested').text(maxValue.toFixed(3));\n        const cells = d3\n          .select(\"#heatmap-incomplete-nested\")\n          .selectAll(\"rect.cell\")\n          .data(v)\n  \n        cells.enter()\n          .merge(cells) // Merge enter and update selections\n          .attr(\"x\", d => d.x)\n          .attr(\"y\", d => d.y)\n          .attr(\"width\", d => d.width)\n          .attr(\"height\", d => d.height)\n          .style(\"fill\", d => colorScaleIncomplete(+d.value));\n  \n        cells.exit().remove()\n\n         d3.select(\"#heatmap-incomplete-nested\").selectAll(\"rect.cell\").data(incomplete_nested_pv_data)\n      })\n      .parent_el(\"#heatmap-incomplete-nested\")\n      .interpolate(false);\n\n    d3.select(\"#heatmap-incomplete-nested\").html(\"\").datum(incomplete_nested_pv_data).call(heatmap_incomplete_nested);\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-9","inline":false,"source":"pitch = d3_soccer.pitch()\n  .height(300)\n  .rotate(false)\n  .showDirOfPlay(true)\n  .shadeMiddleThird(false)\n  .pitchStrokeWidth(0.5)\n  .clip([[0, 0], [105, 68]]);\n"},{"methodName":"interpret","cellName":"ojs-cell-10","inline":false,"source":"d3 = require(\"d3@v5\")\n"},{"methodName":"interpret","cellName":"ojs-cell-11","inline":false,"source":"d3_soccer = require(\"d3-soccer@0.1.0\")\n"},{"methodName":"interpret","cellName":"ojs-cell-12","inline":false,"source":"complete_pv_data  = FileAttachment(\"complete_pv_data.json\").json()\n"},{"methodName":"interpret","cellName":"ojs-cell-13","inline":false,"source":"incomplete_pv_data = FileAttachment(\"incomplete_pv_data.json\").json()\n"},{"methodName":"interpret","cellName":"ojs-cell-14","inline":false,"source":"complete_nested_pv_data  = FileAttachment(\"complete_nested_pv_data.json\").json()\n"},{"methodName":"interpret","cellName":"ojs-cell-15","inline":false,"source":"incomplete_nested_pv_data = FileAttachment(\"incomplete_nested_pv_data.json\").json()\n"},{"methodName":"interpret","cellName":"ojs-cell-16","inline":false,"source":"colorScaleCompleteRange = [-0.025, 0, 0.025]\n"},{"methodName":"interpret","cellName":"ojs-cell-17","inline":false,"source":"colorScaleIncompleteRange = [-0.025, 0, 0.025]\n"},{"methodName":"interpret","cellName":"ojs-cell-18","inline":false,"source":"colorScaleComplete = d3.scaleLinear()\n  .domain(colorScaleCompleteRange)\n  .range([\"#a6611a\", \"white\", \"#018571\"]).clamp(true)\n"},{"methodName":"interpret","cellName":"ojs-cell-19","inline":false,"source":"colorScaleIncomplete = d3.scaleLinear()\n  .domain(colorScaleIncompleteRange)\n  .range([\"#d01c8b\", \"white\", \"#4dac26\"]).clamp(true)\n"},{"methodName":"interpret","cellName":"ojs-cell-20","inline":false,"source":"swatchParams = {\n  return {\n    width: 40,\n    height: 20,\n    num: 7\n  }\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-21","inline":false,"source":"passStartParams = {\n  return {\n    x: 45.9375,\n    y: 28.33333\n  }\n}\n"},{"methodName":"interpret","cellName":"ojs-cell-22","inline":false,"source":"tileParams = {\n  return {\n    width: 6.5625,\n    height: 5.666667\n  }\n}\n"}]}
 </script>
 <script type="module">
 if (window.location.protocol === "file:") { alert("The OJS runtime does not work with file:// URLs. Please use a web server to view this document."); }
@@ -816,17 +1363,6 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 });
 </script>
 </div> <!-- /content -->
-<footer class="footer">
-  <div class="nav-footer">
-    <div class="nav-footer-left">
-      &nbsp;
-    </div>   
-    <div class="nav-footer-center"><div class="cookie-consent-footer"><a href="#" id="open_preferences_center">Cookie Preferences</a></div></div>
-    <div class="nav-footer-right">
-      &nbsp;
-    </div>
-  </div>
-</footer>
 
 
 
