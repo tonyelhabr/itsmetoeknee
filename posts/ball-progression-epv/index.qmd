@@ -27,8 +27,8 @@ I attempt to answer some of these questions with a VAEP model--an open-source PV
 
 ```{r}
 #| label: setup
-#| code-fold: true
-#| code-summary: Package imports and other setup
+#| include: false
+#| eval: false
 ## Data retrieval
 library(curl)
 library(arrow)
@@ -42,9 +42,13 @@ library(lubridate)
 library(rlang)
 library(tidyselect)
 # library(forcats)
+library(tibble)
 
 ## Modeling
 library(xgboost)
+
+## Data exporting
+library(jsonlite)
 
 PROJ_DIR <- 'posts/ball-progression-epv'
 ```
@@ -146,8 +150,8 @@ select_x <- function(df) {
     df_to_mat()
 }
 
-fit_model <- function(df, target, overwrite = FALSE) {
-  path <- file.path(MODEL_DIR, paste0('model_', target, '_1000_no_max_depth.model'))
+fit_model <- function(df, target, trees = 100, overwrite = FALSE) {
+  path <- file.path(PROJ_DIR, paste0('model_', target, '_', trees, '.model'))
   if (file.exists(path) & isFALSE(overwrite)) {
     return(xgboost::xgb.load(path))
   }
@@ -157,9 +161,9 @@ fit_model <- function(df, target, overwrite = FALSE) {
     data = x,
     label = y,
     eval_metric = 'logloss',
-    nrounds = 1000,
+    nrounds = trees,
     # early_stopping_rounds = 100,
-    print_every_n = 100,
+    print_every_n = 10,
     # max_depth = 3, 
     n_jobs = -3
   )
@@ -167,7 +171,7 @@ fit_model <- function(df, target, overwrite = FALSE) {
   fit
 }
 
-fit_models <- function(df, overwrite = FALSE) {
+fit_models <- function(df, ...) {
   list(
     'scores',
     'concedes'
@@ -178,7 +182,7 @@ fit_models <- function(df, overwrite = FALSE) {
         fit_model(
           df, 
           target = .x,
-          overwrite = overwrite
+          ...
         )
       }
     )
@@ -200,31 +204,42 @@ predict_values <- function(fits, df) {
     df = df
   )
   
-  vaep <- tibble::tibble(
-    scores = df$scores,
+  tibble::tibble(
     pred_scores = pred_scores,
-    concedes = df$concedes,
-    pred_concedes = pred_concedes
+    pred_concedes = pred_concedes,
     pred = pred_scores - pred_concedes
-  )
-  
-  dplyr::bind_cols(
-    df |> dplyr::select(tidyselect::all_of(MODEL_ID_COLS)),
-    vaep 
   )
 }
 
-fits <- fit_models(df = df)
-preds <- predict_values(fits = fits, df = df)
+augment <- function(fits, df) {
+  preds <- predict_values(fits = fits, df = df)
+    
+  dplyr::bind_cols(
+    df |> 
+      dplyr::select(
+        competition_id,
+        season_id,
+        game_id,
+        team_id,
+        period_id,
+        action_id,
+        scores,
+        concedes
+      ),
+    preds 
+  )
+}
+
+fits <- fit_models(xy, trees = 100)
+preds <- augment(fits = fits, df = xy)
 ```
 
 ```{r}
 #| label: model-save
 #| include: false
 #| eval: false
-# library(qs)
 qs::qsave(fits, file.path(PROJ_DIR, 'fits.qs'))
-qs::qsave(preds, file.path(PROJ_DIR, 'preds.qs')
+qs::qsave(preds, file.path(PROJ_DIR, 'preds.qs'))
 ```
 
 ```{r}
@@ -441,7 +456,7 @@ start_pass_location_counts <- dplyr::inner_join(
   dplyr::ungroup() |> 
   dplyr::right_join(
     freq_grid,
-    by = jdplyr::oin_by(idx),
+    by = dplyr::join_by(idx),
     relationship = 'many-to-many'
   ) |> 
   dplyr::mutate(
@@ -458,9 +473,9 @@ pass_props <- start_pass_location_counts |>
     idy1,
     prop = n / sum(n),
     rank = dplyr::row_number(dplyr::desc(prop)),
-    mean_pred_scores = pred_scores,
-    mean_pred_concedes = pred_concedes,
-    mean_pred = pred
+    pred_scores_actual,
+    pred_concedes_actual,
+    pred_actual
   ) |> 
   dplyr::ungroup() |> 
   dplyr::arrange(pass_status, dplyr::desc(prop))
@@ -484,9 +499,9 @@ export_df <- mini_preds_and_features |>
 
 export_df %>%
   split(.$pass_status) |> 
-  iwalk(
+  purrr::iwalk(
     \(.x, .y) {
-
+      
       dplyr::transmute(
         .x,
         parent_i = as.integer(idx1),
@@ -499,9 +514,9 @@ export_df %>%
         height = Y_DELTA,
         value = pred,
         rank,
-        mean_pred_scores,
-        mean_pred_concedes,
-        mean_pred
+        pred_scores_actual,
+        pred_concedes_actual,
+        pred_actual
       )  |> 
         dplyr::arrange(j, i) |> 
         tidyr::nest(
@@ -532,8 +547,8 @@ export_df %>%
       
       .x |> 
         dplyr::filter(
-          idx1 == '10',
-          idy1 == '06'
+          idx1 == '07',
+          idy1 == '05'
         ) |> 
         dplyr::transmute(
           i = as.integer(idx2),
@@ -545,7 +560,10 @@ export_df %>%
           value = pred,
           rank,
           pred_scores,
-          pred_concedes
+          pred_concedes,
+          pred_scores_actual,
+          pred_concedes_actual,
+          pred_actual
         )  |> 
         dplyr::arrange(j, i) |> 
         jsonlite::write_json(
@@ -555,74 +573,400 @@ export_df %>%
         )
     }
   )
+```
 
+```{r}
+#| label: plot-debugging
+#| include: false
+#| eval: false
+library(ggplot2)
+plot_pass_grid <- function(x, y, pass_status = 'complete', f, ...) {
+  export_df |> 
+    mutate(
+      i = as.integer(idx2),
+      j = as.integer(idy2),
+      x = i * X_DELTA,
+      y = j * Y_DELTA,
+      width = X_DELTA,
+      height = Y_DELTA,
+      pred = f(pred)
+    ) |> 
+    filter(
+      pass_status == .env$pass_status,
+      idx1 == sprintf('%02d', .env$x),
+      idy1 == sprintf('%02d', .env$y)
+    ) |> 
+    arrange(desc(pred)) |> 
+    ggplot() +
+    aes(
+      x = as.integer(idx2),
+      y = as.integer(idy2)
+    ) +
+    geom_tile(
+      aes(
+        fill = pred
+      )
+    ) +
+    geom_tile(
+      data = tibble(idx2 = !!x, idy2 = !!y),
+      color = 'red',
+      fill = 'red'
+    ) +
+    scale_fill_gradient2(
+      ...
+    )
+}
+
+plot_pass_grid(
+  x = 7,
+  y = 5,
+  pass_status = 'complete',
+  # breaks = c(-0.1, 0, 0.1),
+  f = \(.x) pmax(pmin(.x, 0.025), -0.025)
+)
+
+plot_pass_grid(
+  x = 7,
+  y = 5,
+  pass_status = 'incomplete',
+  f = \(.x) pmax(pmin(.x, 0.025), -0.025)
+)
 ```
 
 ## Possession Value (PV) for Passes
 
-### Unsuccessful Passes
+### Successful Passes
 
-#### From the Center Circle, To Anywhere on the Pitch
+#### From the Center Spot, To Anywhere on the Pitch
 
-Try hovering a spot on the pitch below. Your mouse represents the area from which a pass is made. The highlighted cells show where ePV is positive if an incomplete pass is made to that area. Other areas (left blank) will have negative ePV if an incomplete pass is made there.
+In the interactive 12x16 pitch below, the red tile illustrates where a hypothetical pass is made, and the colored tiles illustrate the possession value (PV) associated with a successful pass made to that area. Hovering over the tile shows the PV value above the pitch as well.
 
 ```{ojs}
+//| label: heatmap_complete-setup
 //| include: true
 //| code-fold: false
-//| fig-cap: This is a figure caption
+//| fig-cap: A heatmap showing the average possession value (PV) of a completed pass from roughly the center spot (annotated in red) to any other spot on the pitch.
 {
   const chart = d3.create("div")
-  const title = chart.append("div").attr("id", "heatmap-title")
-  title.append("p").html(`Total number of cells with positive epV: <span id='pv_pos'>0</span>`)
-  chart.append("div").attr("id", "heatmap")
-  return chart.node()
+  const title = chart.append("div").attr("id", "heatmap-title-complete")
+  title.append("p").html(`PV: <span id='pv-value-complete'>0</span>`)
+  chart.append("div").attr("id", "heatmap-complete")
+
+  const legendSwatchContainer = chart.append("div")
+    .attr("id", "heatmap-legend-complete")
+    .style("display", "flex")
+    .style("flex-direction", "column") // Stack swatches and labels vertically
+    .style("align-items", "center") // Center the flex items
+    .style("width", "100%"); // Take up the full width to center the content
+  
+  const legendRange = [
+    1.1 * d3.min(colorScaleCompleteRange), 
+    1.1 * d3.max(colorScaleCompleteRange)
+  ];
+  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);
+  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);
+  legendSwatches[legendSwatches.length - 1] = legendRange[1];
+  
+  // Calculate the total width for the legend swatches to be used in setting the width of the container
+  const totalLegendWidth = swatchParams.width * swatchParams.num;
+  
+  // Append the swatches as a row
+  const swatchRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center") // Center the row of swatches
+    .style("width", "100%"); // Take up the full width to center the content
+
+  // Append the individual swatches
+  swatchRow.selectAll("div")
+    .data(legendSwatches)
+    .enter()
+    .append("div")
+    .style("width", `${swatchParams.width}px`)
+    .style("height", `${swatchParams.height}px`)
+    .style("background-color", d => colorScaleComplete(d));
+
+  // Append the label row
+  const labelRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center") // Center the row of labels
+    .style("width", `${totalLegendWidth}px`);
+
+  // Append the individual labels under the swatches
+  labelRow.selectAll("span")
+    .data(colorScaleCompleteRange)
+    .enter()
+    .append("span")
+    .text(d => {
+      if (d === d3.min(colorScaleCompleteRange)) {
+        return "<= " + d;
+      } else if (d === d3.max(colorScaleCompleteRange)) {
+        return ">= " + d;
+      }
+      return d;
+    })
+    // Apply the flex style only to the center elemnt so that the 
+    .style("flex", d => d === 0 ? "1" : null)
+    .style("text-align", "center") // Center the text within its flex item
+
+  return chart.node();
+
 }
 ```
 
 ```{ojs}
+//| label: heatmap_complete
+//| echo: false
+//| output: false
+//| code-fold: false
+{
+  const heatmap_complete = d3_soccer.heatmap(pitch)
+    .colorScale(colorScaleComplete)
+    .enableInteraction(true)
+    .onSelect((x,y,v) => {
+      d3.select('#pv-x-complete').text(x);       
+      d3.select('#pv-y-complete').text(y);
+      d3.select('#pv-value-complete').text(v.toFixed(3));
+    })
+    .parent_el('#heatmap-complete')
+    .interpolate(false);
+
+  d3.select('#heatmap-complete').html('').datum(pv_data_complete).call(heatmap_complete);
+
+  const svg = d3.select('#heatmap-complete').select('svg');
+
+  svg.append("rect")
+    .attr("x", passStartParams.x)
+    .attr("y", passStartParams.y)
+    .attr("width", tileParams.width)
+    .attr("height", tileParams.height)
+    .style("stroke", "red")
+    .style("fill", "none")
+    .style("stroke-width", "1px");
+}
+```
+
+#### From Anywhere on the Pitch, To Anywhere on the Pitch
+
+Now, to give the full picture, the interactive pitch below will dynamically update to show PV values associated with a pass starting from the tile that you hover over.
+
+```{ojs}
+//| label: heatmap_complete_nested-setup
+//| include: true
+//| code-fold: false
+//| fig-cap: A heatmap showing the average possession value (PV) of a completed pass from roughly the center spot (annotated in red) to any other spot on the pitch.
+{
+  const chart = d3.create("div")
+  const title = chart.append("div").attr("id", "heatmap-title-complete-nested")
+  title.append("p").html(`min PV: <span id='pv-min-complete-nested'>0</span>, max PV: <span id='pv-max-complete-nested'>0</span>`)
+  chart.append("div").attr("id", "heatmap-complete-nested")
+
+  const legendSwatchContainer = chart.append("div")
+    .attr("id", "heatmap-legend-complete-nested")
+    .style("display", "flex")
+    .style("flex-direction", "column") // Stack swatches and labels vertically
+    .style("align-items", "center") // Center the flex items
+    .style("width", "100%"); // Take up the full width to center the content
+  
+  const legendRange = [
+    1.1 * d3.min(colorScaleCompleteRange), 
+    1.1 * d3.max(colorScaleCompleteRange)
+  ];
+  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);
+  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);
+  legendSwatches[legendSwatches.length - 1] = legendRange[1];
+  
+  // Calculate the total width for the legend swatches to be used in setting the width of the container
+  const totalLegendWidth = swatchParams.width * swatchParams.num;
+  
+  // Append the swatches as a row
+  const swatchRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center") // Center the row of swatches
+    .style("width", "100%"); // Take up the full width to center the content
+
+  // Append the individual swatches
+  swatchRow.selectAll("div")
+    .data(legendSwatches)
+    .enter()
+    .append("div")
+    .style("width", `${swatchParams.width}px`)
+    .style("height", `${swatchParams.height}px`)
+    .style("background-color", d => colorScaleComplete(d));
+
+  // Append the label row
+  const labelRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center") // Center the row of labels
+    .style("width", `${totalLegendWidth}px`);
+
+  // Append the individual labels under the swatches
+  labelRow.selectAll("span")
+    .data(colorScaleCompleteRange)
+    .enter()
+    .append("span")
+    .text(d => {
+      if (d === d3.min(colorScaleCompleteRange)) {
+        return "<= " + d;
+      } else if (d === d3.max(colorScaleCompleteRange)) {
+        return ">= " + d;
+      }
+      return d;
+    })
+    // Apply the flex style only to the center elemnt so that the 
+    .style("flex", d => d === 0 ? "1" : null)
+    .style("text-align", "center") // Center the text within its flex item
+
+  return chart.node();
+
+}
+```
+
+```{ojs}
+//| label: heatmap_complete_nested
 //| echo: false
 //| output: false
 //| code-fold: false
 {  
-  const colorScale = d3.scaleOrdinal([0, 1]).range(['transparent', '#fdc500']);
-  const heatmap = d3_soccer.heatmap(pitch)
-  .colorScale(d3.scaleOrdinal([0, 1]).range(['white', 'white']))
-  .enableInteraction(true)
-  .onSelect((x,y,v) => {
+    const heatmap_complete_nested = d3_soccer.heatmap(pitch)
+      .colorScale(d3.scaleLinear().domain([-1, 1]).range(["white", "white"]))
+      .enableInteraction(true)
+      .onSelect((x,y,v) => {
+        const propRank = v[0].rank
+        const minValue = d3.min(v, d => d.value);
+        const maxValue = d3.max(v, d => d.value);
+        
+        d3.select('#pv-min-complete-nested').text(minValue.toFixed(3));
+        d3.select('#pv-max-complete-nested').text(maxValue.toFixed(3));
+        const cells = d3
+          .select("#heatmap-complete-nested")
+          .selectAll("rect.cell")
+          .data(v)
   
-  let cells = d3
-    .select('#heatmap')
-    .selectAll('rect.cell')
-    .data(v)
+        cells.enter()
+          .merge(cells) // Merge enter and update selections
+          .attr("x", d => d.x)
+          .attr("y", d => d.y)
+          .attr("width", d => d.width)
+          .attr("height", d => d.height)
+          .style("fill", d => colorScaleComplete(+d.value));
   
-  cells.enter()
-    //.append('rect')
-    //.attr("class", "cell")
-    .merge(cells)
-    .attr("x", d => d.x)
-    .attr("y", d => d.y)
-    .attr("width", d => d.width)
-    .attr("height", d => d.height)
-    .style("fill", d => colorScale(+d.value));
-      
-    cells.exit().remove()
-    
-    d3.select('#heatmap').selectAll('rect.cell').data(nested_pv_data)
-  })
-  .parent_el('#heatmap')
-  .interpolate(false);
-  
-  d3.select('#heatmap').html('').datum(nested_pv_data).call(heatmap);
+        cells.exit().remove()
+
+         d3.select("#heatmap-complete-nested").selectAll("rect.cell").data(nested_pv_data_complete)
+      })
+      .parent_el("#heatmap-complete-nested")
+      .interpolate(false);
+
+    d3.select("#heatmap-complete-nested").html("").datum(nested_pv_data_complete).call(heatmap_complete_nested);
 }
 ```
 
-#### From Anywhere on the Pitch
+### Unsuccessful Passes
 
-Try hovering a spot on the pitch below. Your mouse represents the area from which a pass is made. The highlighted cells show where ePV is positive if an incomplete pass is made to that area. Other areas (left blank) will have negative ePV if an incomplete pass is made there.
+#### From the Center Spot, To Anywhere on the Pitch
 
-### Successful Passes
+```{ojs}
+//| label: heatmap_incomplete-setup
+//| include: true
+//| code-fold: false
+{
+  const chart = d3.create("div")
+  const title = chart.append("div").attr("id", "heatmap-title-incomplete")
+  title.append("p").html(`PV: <span id='pv-value-incomplete'>0</span>`)
+  chart.append("div").attr("id", "heatmap-incomplete")
 
-#### From the Center Circle, To Anywhere on the Pitch
+  const legendSwatchContainer = chart.append("div")
+    .attr("id", "heatmap-legend-incomplete")
+    .style("display", "flex")
+    .style("flex-direction", "column") // Stack swatches and labels vertically
+    .style("align-items", "center") // Center the flex items
+    .style("width", "100%"); // Take up the full width to center the content
+  
+  const legendRange = [
+    1.1 * d3.min(colorScaleIncompleteRange), 
+    1.1 * d3.max(colorScaleIncompleteRange)
+  ];
+  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);
+  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);
+  legendSwatches[legendSwatches.length - 1] = legendRange[1];
+  
+  // Calculate the total width for the legend swatches to be used in setting the width of the container
+  const totalLegendWidth = swatchParams.width * swatchParams.num;
+  
+  // Append the swatches as a row
+  const swatchRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center") // Center the row of swatches
+    .style("width", "100%"); // Take up the full width to center the content
+
+  // Append the individual swatches
+  swatchRow.selectAll("div")
+    .data(legendSwatches)
+    .enter()
+    .append("div")
+    .style("width", `${swatchParams.width}px`)
+    .style("height", `${swatchParams.height}px`)
+    .style("background-color", d => colorScaleIncomplete(d));
+
+  // Append the label row
+  const labelRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center") // Center the row of labels
+    .style("width", `${totalLegendWidth}px`);
+
+  // Append the individual labels under the swatches
+  labelRow.selectAll("span")
+    .data(colorScaleIncompleteRange)
+    .enter()
+    .append("span")
+    .text(d => {
+      if (d === d3.min(colorScaleIncompleteRange)) {
+        return "<= " + d;
+      } else if (d === d3.max(colorScaleIncompleteRange)) {
+        return ">= " + d;
+      }
+      return d;
+    })
+    // Apply the flex style only to the center elemnt so that the 
+    .style("flex", d => d === 0 ? "1" : null)
+    .style("text-align", "center") // Center the text within its flex item
+
+  return chart.node();
+
+}
+```
+
+```{ojs}
+//| label: heatmap_incomplete
+//| echo: false
+//| output: false
+//| code-fold: false
+{
+  const heatmap_incomplete = d3_soccer.heatmap(pitch)
+    .colorScale(colorScaleIncomplete)
+    .enableInteraction(true)
+    .onSelect((x,y,v) => {
+      d3.select("#pv-x-incomplete").text(x);       
+      d3.select("#pv-y-incomplete").text(y);
+      d3.select("#pv-value-incomplete").text(v.toFixed(3));
+    })
+    .parent_el("#heatmap-incomplete")
+    .interpolate(false);
+
+  d3.select("#heatmap-incomplete").html("").datum(pv_data_incomplete).call(heatmap_incomplete);
+
+  const svg = d3.select("#heatmap-incomplete").select("svg");
+
+  svg.append("rect")
+    .attr("x", passStartParams.x)
+    .attr("y", passStartParams.y)
+    .attr("width", tileParams.width)
+    .attr("height", tileParams.height)
+    .style("stroke", "red")
+    .style("fill", "none")
+    .style("stroke-width", "1px");
+}
+```
 
 #### From Anywhere on the Pitch, To Anywhere on the Pitch
 
@@ -633,12 +977,12 @@ I'll note that the choice of model surely plays a role in the inference we'll ma
 ```{ojs}
 //| include: false
 pitch = d3_soccer.pitch()
-.height(300)
-.rotate(false)
-.showDirOfPlay(true)
-.shadeMiddleThird(false)
-.pitchStrokeWidth(0.5)
-.clip([[0, 0], [105, 68]]);
+  .height(300)
+  .rotate(false)
+  .showDirOfPlay(true)
+  .shadeMiddleThird(false)
+  .pitchStrokeWidth(0.5)
+  .clip([[0, 0], [105, 68]]);
 ```
 
 ```{ojs}
@@ -652,6 +996,88 @@ d3_soccer = require("d3-soccer@0.1.0")
 ```
 
 ```{ojs}
+//| label: pv_data_complete
 //| include: false
-nested_pv_data = FileAttachment("nested_pv_data.json").json()
+pv_data_complete  = FileAttachment("pv_data_12x16_complete.json").json()
 ```
+
+```{ojs}
+//| label: pv_data_incomplete
+//| include: false
+pv_data_incomplete = FileAttachment("pv_data_12x16_incomplete.json").json()
+```
+
+```{ojs}
+//| label: nested_pv_data_complete
+//| include: false
+nested_pv_data_complete  = FileAttachment("nested_pv_data_12x16_complete.json").json()
+```
+
+```{ojs}
+//| label: nested_pv_data_incomplete
+//| include: false
+nested_pv_data_incomplete = FileAttachment("nested_pv_data_12x16_incomplete.json").json()
+```
+
+```{ojs}
+//| label: colorScaleCompleteRange
+//| include: false
+colorScaleCompleteRange = [-0.025, 0, 0.025]
+```
+
+```{ojs}
+//| label: colorScaleIncompleteRange
+//| include: false
+colorScaleIncompleteRange = [-0.025, 0, 0.025]
+```
+
+```{ojs}
+//| label: colorScaleComplete
+//| include: false
+colorScaleComplete = d3.scaleLinear()
+  .domain(colorScaleCompleteRange)
+  .range(['#a6611a', 'white', '#018571']).clamp(true)
+```
+
+```{ojs}
+//| label: colorScaleIncomplete
+//| include: false
+colorScaleIncomplete = d3.scaleLinear()
+  .domain(colorScaleIncompleteRange)
+  .range(['#d01c8b', 'white', '#4dac26']).clamp(true)
+```
+
+```{ojs}
+//| label: swatchParams
+//| include: false
+swatchParams = {
+  return {
+    width: 40,
+    height: 20,
+    num: 7
+  }
+}
+```
+
+```{ojs}
+//| label: passStartParams
+//| include: false
+passStartParams = {
+  return {
+    x: 45.9375,
+    y: 28.33333
+  }
+}
+```
+
+```{ojs}
+//| label: tileParams
+//| include: false
+tileParams = {
+  return {
+    width: 6.5625,
+    height: 5.666667
+  }
+}
+```
+
