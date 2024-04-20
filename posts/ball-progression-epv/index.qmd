@@ -1,12 +1,12 @@
 ---
-title: Does completing your passes even matter?
-description: Identifying where incomplete passes can have positive impact on the pitch.
-date: 2024-04-01
-draft: true
+title: Ball Progression is All You Need
+description: Identifying where passes (even incomplete ones) have the most positive impact on the pitch.
+date: 2024-04-20
 categories:
   - r
   - soccer
   - observablejs
+image: header.png
 execute: 
   code-fold: show
   eval: true
@@ -16,22 +16,19 @@ execute:
 
 # Introduction
 
-I've written a lot about expected goals (xG) in soccer, but I haven't yet talked much about [possession value (PV) models](https://statsbomb.com/soccer-metrics/possession-value-models-explained/)[^1], another big topic in soccer analytics. What are they? Well, every PV model is different, but they all generally try assign value to every on-ball action on the pitch. Such a model can help inform decisions about how to improve player and team performance.
+I've written a lot about expected goals (xG) in soccer, but I haven't yet talked much about [possession value (PV) models](https://statsbomb.com/soccer-metrics/possession-value-models-explained/)[^1], another big topic in soccer analytics. What are they? Well, every PV model is different, but they all generally try to assign value to every on-ball action on the pitch. Such a model can help inform decisions about how to improve player and team performance.
 
 [^1]: Except in [this post](/posts/soccer-league-strength/), where I only briefly mention that I use a PV model.
 
 I heard someone recently say something like "PV models in soccer basically come down to ball progression". That's an interesting thought, and I add a hunch that it probably isn't too wrong.
 
-One way of getting at that idea is too look at how your PV model treats incomplete passes.
-
-1.  Does it say that all long passes are "good"? What role does the starting position of the pass play? (i.e. Are balls crossed into the 18-yard box from the wing treated similarly to goal kicks launched into the opponent's box?)
-2.  How does PV for an unsuccessful pass compare to a successful one, holding all else equal?
+One way of getting at that idea is to look at how your PV model treats incomplete passes. Does it say that all long passes are "good"? What is the importance of the starting and end points of the pass? How does PV for an unsuccessful pass compare to a successful one, holding all else equal?
 
 I attempt to answer some of these questions with [a VAEP model](https://dtai.cs.kuleuven.be/sports/vaep)--an [open-source PV model](https://fivethirtyeight.com/features/possession-is-the-puzzle-of-soccer-analytics-these-models-are-trying-to-solve-it/).[^2][^3]
 
 [^2]: My model is trained on 2013/14 - 2023/24 English Premier League data.
 
-[^3]: While all PV models [are similar conceptually](https://statsbomb.com/soccer-metrics/possession-value-models-explained/), it's important to identify how they differ in their target variables. VAEP specifically tries to quantify the difference in the probability of scoring and conceding in the next 10 actions. In contrast, expected threat (xT)--perhaps the most well known PV model--tries to quantify only the probability of scoring in the next 5 actions, not accounting for the conceding probability, which can undermine the "risk" associated with incomplete passes.
+[^3]: While all PV models [are similar conceptually](https://statsbomb.com/soccer-metrics/possession-value-models-explained/), it's important to identify how they differ in their target variables. VAEP specifically tries to quantify the difference in the probability of scoring and conceding in the next 10 actions. In contrast, expected threat (xT)--perhaps the most well-known PV model--tries to quantify only the probability of scoring in the next 5 actions, not accounting for the conceding probability, which can undermine the "risk" associated with incomplete passes.
 
 ```{r}
 #| label: setup
@@ -807,19 +804,19 @@ plot_pass_grid(
 
 ## Completed Passes
 
-We'll want to eventually look at the PV of incomplete passes, but it's probably easier to start with completed passes, as we have pretty strong intuition about them--pass the ball successfully closer to the goal, and you're most likely helping your team (i.e. positive PV).
+We'll want to eventually look at the PV of incomplete passes, but it's probably easier to start with completed passes, as we have a pretty strong intuition about them--pass the ball successfully closer to the goal, and you're most likely helping your team (i.e. positive PV).
 
 ### From One Spot, To Anywhere on the Pitch
 
-In the interactive 8x12 pitch below, the blue cell illustrates where a pass is made, and the colored cells illustrate the average possession value (PV) associated with all historical successful passes made to that area. Hovering over a cell shows the PV value above the pitch as well.[^4]
+In the interactive 8x12 pitch below, the blue cell illustrates where a pass is made, and the colored cells illustrate the average PV associated with all historicalLY successful passes made to that area. Hovering over a cell shows the PV value above the pitch as well.[^4]
 
-[^4]: Do not be alarmed by the small values! Values between 0.02 and 0.02 is very common for PV models.
+[^4]: Do not be alarmed by the small values! Values between 0.02 and 0.02 are very common for PV models. After all, the values represent goal probabilities over sequence of actions, and goals don't happen all that frequently in soccer.
 
-Overall, I'd say that this illustration matches intuition--forward completed passes into the final third should be assigned non-trivial positive value.
+Overall, I'd say that this illustration matches intuition--forward completed passes into the final third should be assigned A non-trivial positive value.
 
 ```{ojs}
 //| include: true
-//| fig-cap: A heatmap showing the average possession value (PV) of historical completed passes from the center spot (annotated in blue) to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with a complete pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which successful passes from the center spot have never been made.
+//| fig-cap: A heatmap showing the average possession value (PV) of historically completed passes from the center spot (annotated in blue) to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with a complete pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which successful passes from the center spot have never been made.
 {
   const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-complete-empirical")
@@ -929,13 +926,13 @@ Overall, I'd say that this illustration matches intuition--forward completed pas
 }
 ```
 
-Note that the gradient is for PV, not for relative frequency of completed passes from the center spot. While passes into the box from the center spot have really strong positive PV, they're uncommon because defenders are generally looking to stop those kinds of threatening passes.
+Note that the gradient in the pitch above is for PV, not for the relative frequency of completed passes from the center spot. While passes into the box from the center spot have really strong positive PV, they're uncommon because defenders are generally looking to stop those kinds of threatening passes.
 
 The gradient in the plot below illustrates the relative frequency of successful passes from the center spot directly.
 
 ```{ojs}
 //| include: true
-//| fig-cap: A heatmap where the gradient and text illustrates the relative frequency of historical successful passes from the center spot (annotated in blue) to all areas on the pitch. Black cells represent areas to which successful passes from the center spot have never been made.
+//| fig-cap: A heatmap where the gradient and text illustrate the relative frequency of historically successful passes from the center spot (annotated in blue) to all areas on the pitch. Black cells represent areas to which successful passes from the center spot have never been made.
 {
   const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-complete-empirical-prop")
@@ -999,7 +996,7 @@ Now, to give the full picture, the interactive pitch below dynamically updates t
 
 ```{ojs}
 //| include: true
-//| fig-cap: A heatmap showing the average possession value (PV) of historical completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.
+//| fig-cap: A heatmap showing the average possession value (PV) of historically completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.
 {
   const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-complete-empirical-nested")
@@ -1125,9 +1122,9 @@ Now, to give the full picture, the interactive pitch below dynamically updates t
 }
 ```
 
-There are several take-aways one might have from this view, but the big one that I have is this: As you move your mouse (i.e. the starting point of the pass) from the defender's box to the opponent's box, the consolidate green box of +0.025 PV doesn't change much. It stays basically at around the final quarter of the pitch. So you can't just complete a 30-yard pass from the top of your own box progressing the ball towards the middle of the pitch and expect to get anywhere near the same PV as completing a 30-yard pass from the center of the pitch to near the opponent's 18-yard box. The end point really matters.
+There are several takeaways one might have from this view, but the big one that I have is this: As you move your mouse (i.e. the starting point of the pass) from the defender's box to the opponent's box, the consolidated green box of +0.025 PV doesn't change much. It stays basically at around the final quarter of the pitch. So you can't just complete a 30-yard pass from the top of your own box progressing the ball towards the middle of the pitch and expect to get anywhere near the same PV as completing a 30-yard pass from the center of the pitch to near the opponent's 18-yard box. The end point really matters.
 
-This conclusion gets at our first question--"Are all long passes good?"--to which the answer so far is "not quite" (in the sense that "good" is more than just "positive PV" for completed passes). A long completed pass in your own half doesn't boast a huge positive PV. To get a more complete perspective, we'll plot out the PV for incomplete passes to see what the answer is there.
+This conclusion gets at our primary question--"Are all long passes good?"--to which the answer so far is "not quite" (in the sense that "good" is more than just "positive PV" for completed passes). A long completed pass in your own half doesn't boast a huge positive PV. To get a more complete perspective, we'll plot out the PV for incomplete passes to see what the answer is there.
 
 ## Incomplete Passes
 
@@ -1137,7 +1134,7 @@ Let's start with an example again, looking at PV for unsuccessful passes from th
 
 ```{ojs}
 //| include: true
-//| fig-cap: A heatmap showing the average possession value (PV) of historical incomplete passes from the center spot (annotated in blue) to all areas of the pitch. The relative frequency of unsuccessful passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with an incomplete pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which unsuccessful passes from the center spot have never been made.
+//| fig-cap: A heatmap showing the average possession value (PV) of historically incomplete passes from the center spot (annotated in blue) to all areas of the pitch. The relative frequency of unsuccessful passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with an incomplete pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which unsuccessful passes from the center spot have never been made.
 {
   const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-incomplete-empirical")
@@ -1247,19 +1244,19 @@ Let's start with an example again, looking at PV for unsuccessful passes from th
 }
 ```
 
-I think this grid is fairly intuitive.[^5] Incomplete passes backwards have fairly negative PVs, as those are leading to turnovers probably setting up the opponent for a good scoring opportunity. Incomplete passes forward mostly have neutral PVs, with some spots on the pitch having slightly positive PVs. Notably, a positive PV for an incomplete pass is a non-trivial realization (even if the positive PV is relatively small compared to an analogous successful pass).
+I think this grid is fairly intuitive.[^5] Incomplete passes backward have fairly negative PVs, as those are leading to turnovers probably setting up the opponent for a good scoring opportunity. Incomplete passes forward mostly have neutral PVs, with some spots on the pitch having slightly positive PVs. Notably, a positive PV for an incomplete pass is a non-trivial realization (even if the positive PV is relatively small compared to an analogous successful pass).
 
-[^5]: We observe lots of missingness near the defender's box. Such incomplete passes backwards would be very illogical no matter the game situation, so it's not surprising to see that such passes are not observed in our data set.
+[^5]: We observe lots of missingness near the defender's box. Such incomplete passes backward would be very illogical no matter the game situation, so it's not surprising to see that such passes are not observed in our data set.
 
-Some of the positive PV cells include the area at the top of the 18-yard-box, i.e. ["zone 14"](https://www.youtube.com/watch?v=_EFtACGzD7E). You can make the argument that the "risk" of losing possession to passes to zone 14 is justified from the potential to take a shot. Further a loss of possession in this area can actually be advantageous, as it leaves the opponent likely in a vulnerable position.
+Some of the positive PV cells include the area at the top of the 18-yard box, i.e. ["zone 14"](https://www.youtube.com/watch?v=_EFtACGzD7E). You can make the argument that the "risk" of losing possession to passes to zone 14 is justified from the potential to take a shot. Further, a loss of possession in this area can be advantageous, as it leaves the opponent likely in a vulnerable position.
 
 ### From Anywhere on the Pitch, To Anywhere on the Pitch
 
-Now lets scale up our pass PV grid to all incomplete passes. As with the dynamic successful pass heatmap, hovering over a cell will show PV associated with unsuccessful passes from that point on the pitch.
+Now let's scale up our pass PV grid to all incomplete passes. As with the dynamic successful pass heatmap, hovering over a cell will show PV associated with unsuccessful passes from that point on the pitch.
 
 ```{ojs}
 //| include: true
-//| fig-cap: A heatmap showing the average possession value (PV) of historical incomplete pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with an incomplete pass from the hover point are shown above the pitch. Black cells represent areas to which unsuccessful passes from the hover spot have never been made.
+//| fig-cap: A heatmap showing the average possession value (PV) of historically incomplete pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with an incomplete pass from the hover point are shown above the pitch. Black cells represent areas to which unsuccessful passes from the hover spot have never been made.
 {
   const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-incomplete-empirical-nested")
@@ -1381,17 +1378,24 @@ Now lets scale up our pass PV grid to all incomplete passes. As with the dynamic
 }
 ```
 
-Hovering my mouse over various areas in the middle third of the pitch, I consistently see slightly positive values near the top of the 18-yard box. This is not all that dissimilar from the trend observed with the successful pass pitch, where the passes into the final quarter of the pitch had strong positive PV from basically anywhere. And, like the interactive pitch for completed passes, a 30-yard incomplete pass forward from one's own 18-yard box doesn't have the same PV as a 30-yard incomplete pass forward from the halfline to the opponent's 18-yard box. Not all long incomplete passes are judged equally.
+Hovering my mouse over various areas in the middle third of the pitch, I consistently see slightly positive values near the top of the 18-yard box. This is not all that dissimilar from the trend observed with the successful pass pitch, where the passes into the final quarter of the pitch had strong positive PV from basically anywhere. And, like the interactive pitch for completed passes, a 30-yard incomplete pass forward from one's own 18-yard box doesn't have the same PV as a 30-yard incomplete pass forward from the half line to the opponent's 18-yard box. Not all long incomplete passes are judged equally.
 
 # Conclusion
+
+So, overall, my takeaways are as follows:
+
+1.  Not all long passes add the same kind of value. The pass really needs to be one that ends up near the box to create non-trivial positive PV
+2.  And, while completed passes will almost always add more value, incomplete passes can also have positive PV when they're played into dangerous areas.
+
+For those who have built PV models or are very familiar with them in some way, perhaps the latter observation is not an unsurprising result. Indeed, we'd hope that a PV model is able to see past the outcome of a pass and properly quantify the threat that a through ball can have, whether it's completed or not.
 
 ## Caveats
 
 -   The choice of model surely plays a role in the inference we'll make. Even [atomic VAEP](https://dtai.cs.kuleuven.be/sports/blog/introducing-atomic-spadl:-a-new-way-to-represent-event-stream-data), the cooler younger brother to the baseline VAEP model, may yield different answers due to the way that it treats passes.[^6]
 
--   Along the same lines, the gradients in the pitches are only as "good" as the quality of the model. While the cells show average PV values over many passes--there are over 3.4M total passes in the data set--the PV value may not match intuition if the model doesn't account for all relevant factors. If headed passes weren't treated differently from footed passes, the gradients would likely show a lot a more noise due to the randomness at which headed passes are successfully made.
+-   Along the same lines, the gradients in the pitches are only as "good" as the quality of the model. While the cells show average PV values over many passes--there are over 3.4M total passes in the data set--the PV value may not match intuition if the model doesn't account for all relevant factors. If headed passes weren't treated differently from footed passes, the gradients would likely show a lot more noise due to the randomness at which headed passes are successfully made.
 
--   The endpoint of incomplete passes is subject to a fundamental source of noise--interception locations. I've implicitly assumed that unsuccessful passes are intercepted very near to the intended target, but this is not always the case. Interceptions where, for example, the defender blocks a long through ball near where the pass is made, can skew the model training, exaggerating the value of short incomplete passes.
+-   The endpoint of incomplete passes is subject to a fundamental source of noise--interception locations. I've implicitly assumed that unsuccessful passes are intercepted very near the intended target, but this is not always the case. Interceptions where, for example, the defender blocks a long through ball near where the pass is made, can skew the model training, exaggerating the value of short incomplete passes.
 
 [^6]: Atomic VAEP splits passes into two actions--the pass itself and the reception (or lack of).
 
@@ -1472,14 +1476,6 @@ colorScaleComplete = d3.scaleLinear()
 colorScaleIncomplete = d3.scaleLinear()
   .domain(colorScaleIncompleteRange)
   .range(["#d01c8b", "white", "#4dac26"]).clamp(true)
-```
-
-```{ojs}
-//| label: colorScaleDiff
-//| include: false
-colorScaleDiff = d3.scaleLinear()
-  .domain(colorScaleDiffRange)
-  .range(["#7b3294", "white", "#008837"]).clamp(true)
 ```
 
 ```{ojs}
