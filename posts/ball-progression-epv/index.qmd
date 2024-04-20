@@ -99,11 +99,18 @@ games <- read_socceraction_parquet_releases('games') |>
     date = lubridate::date(game_date)
   )
 
-MODEL_COLS <- c('type_pass_a0', 'type_cross_a0', 'type_throw_in_a0', 'type_freekick_crossed_a0', 'type_freekick_short_a0', 'type_corner_crossed_a0', 'type_corner_short_a0', 'type_take_on_a0', 'type_foul_a0', 'type_tackle_a0', 'type_interception_a0', 'type_shot_a0', 'type_shot_penalty_a0', 'type_shot_freekick_a0', 'type_keeper_save_a0', 'type_keeper_claim_a0', 'type_keeper_punch_a0', 'type_keeper_pick_up_a0', 'type_clearance_a0', 'type_bad_touch_a0', 'type_non_action_a0', 'type_dribble_a0', 'type_goalkick_a0', 'bodypart_foot_a0', 'bodypart_head_a0', 'bodypart_other_a0', 'bodypart_head/other_a0', 'result_fail_a0', 'result_success_a0', 'result_offside_a0', 'result_owngoal_a0', 'result_yellow_card_a0', 'result_red_card_a0', 'goalscore_team', 'goalscore_opponent', 'goalscore_diff', 'start_x_a0', 'start_y_a0', 'end_x_a0', 'end_y_a0', 'dx_a0', 'dy_a0', 'movement_a0', 'start_dist_to_goal_a0', 'start_angle_to_goal_a0', 'end_dist_to_goal_a0', 'end_angle_to_goal_a0', 'period_id_a0', 'time_seconds_a0', 'time_seconds_overall_a0')
+MODEL_COLS <- c('type_pass_a0', 'type_throw_in_a0', 'type_freekick_crossed_a0', 'type_freekick_short_a0', 'type_corner_crossed_a0', 'type_corner_short_a0', 'type_take_on_a0', 'type_foul_a0', 'type_tackle_a0', 'type_interception_a0', 'type_shot_a0', 'type_shot_penalty_a0', 'type_shot_freekick_a0', 'type_keeper_save_a0', 'type_keeper_claim_a0', 'type_keeper_punch_a0', 'type_keeper_pick_up_a0', 'type_clearance_a0', 'type_bad_touch_a0', 'type_non_action_a0', 'type_dribble_a0', 'type_goalkick_a0', 'bodypart_foot_a0', 'bodypart_head_a0', 'bodypart_other_a0', 'bodypart_head/other_a0', 'result_fail_a0', 'result_success_a0', 'result_offside_a0', 'result_owngoal_a0', 'result_yellow_card_a0', 'result_red_card_a0', 'goalscore_team', 'goalscore_opponent', 'goalscore_diff', 'start_x_a0', 'start_y_a0', 'end_x_a0', 'end_y_a0', 'dx_a0', 'dy_a0', 'movement_a0', 'start_dist_to_goal_a0', 'start_angle_to_goal_a0', 'end_dist_to_goal_a0', 'end_angle_to_goal_a0', 'period_id_a0', 'time_seconds_a0', 'time_seconds_overall_a0')
 
 xy <- dplyr::inner_join(
   y,
-  x |> dplyr::select(game_id, action_id, tidyselect::all_of(MODEL_COLS)),
+  x |>
+    ## don't make this distinguishment for the purpose of simplifying this post.
+    ## passes near the corners tend to be crosses when they're incomplete and passes when they're complete.
+    ##   this is confusing for pedagogical purposes.
+    dplyr::mutate(
+      type_pass_a0 = type_pass_a0 == 1L | type_cross_a0
+    ) |> 
+    dplyr::select(game_id, action_id, tidyselect::all_of(MODEL_COLS)),
   by = dplyr::join_by(game_id, action_id)
 ) |> 
   dplyr::inner_join(
@@ -241,7 +248,7 @@ augment <- function(fits, df) {
   )
 }
 
-fits <- fit_models(xy, trees = 100)
+fits <- fit_models(xy, trees = 100, max_depth = 3, overwrite = TRUE)
 preds <- augment(fits = fits, df = xy)
 ```
 
@@ -297,7 +304,6 @@ calculate_angle_to_goal <- function(x, y) {
 
 base_non_atomic_features <- tibble::tibble(
   type_pass_a0 = c(1L),
-  type_cross_a0 = c(0L),
   type_throw_in_a0 = c(0L),
   type_freekick_crossed_a0 = c(0L),
   type_freekick_short_a0 = c(0L),
@@ -435,9 +441,9 @@ crossed_freq_grid <- dplyr::cross_join(
 t1 <- Sys.time()
 pass_location_counts <- dplyr::inner_join(
   xy |> 
-    dplyr::filter(type_pass_a0 == 1) |> 
+    dplyr::filter() |> 
     dplyr::filter(
-      result_success_a0 == 1L | result_fail_a0 == 1L
+      (result_success_a0 == 1L | result_fail_a0 == 1L)
     ) |> 
     dplyr::inner_join(
       preds |>
@@ -473,7 +479,10 @@ pass_location_counts <- dplyr::inner_join(
     end_y_a0 < next_end_y
   )
 ) |> 
-  dplyr::group_by(idx, result_success_a0, result_fail_a0) |> 
+  dplyr::group_by(
+    idx, 
+    pass_status = ifelse(result_success_a0 == 1L, 'complete', 'incomplete'),
+  ) |> 
   dplyr::summarize(
     n = dplyr::n(),
     dplyr::across(
@@ -502,7 +511,7 @@ t2 - t1
 
 pass_props <- pass_location_counts |> 
   dplyr::group_by(
-    pass_status = ifelse(result_success_a0 == 1L, 'complete', 'incomplete'),
+    pass_status,
     idx1,
     idy1
   ) |> 
@@ -558,10 +567,7 @@ export_df %>%
         y = j * Y_DELTA,
         width = X_DELTA,
         height = Y_DELTA,
-        value = pred,
-        pred_scores_actual,
-        pred_concedes_actual,
-        pred_actual
+        value = pred
       )  |> 
         dplyr::arrange(j, i) |> 
         tidyr::nest(
@@ -636,14 +642,29 @@ example_export_df %>%
         )
     }
   )
+
+example_export_df %>%
+  split(.$pass_status) |> 
+  purrr::iwalk(
+    \(.x, .y) {
+      .x |>
+        dplyr::select(-pass_status) |> 
+        dplyr::mutate(value = prop) |> 
+        jsonlite::write_json(
+          file.path(PROJ_DIR, sprintf('%s_actual_prop_data.json', .y)),
+          pretty = TRUE,
+        )
+    }
+  )
 ```
 
 ```{r}
 #| label: plot-debugging
 #| include: false
 #| eval: false
-plot_pass_grid <- function(x, y, f, ...) {
+plot_pass_grid <- function(x, y, f, pass_type = 'pass', ...) {
   df <- export_df |> 
+    dplyr::filter(pass_type == .env$pass_type) |> 
     dplyr::transmute(
       pass_status,
       n,
@@ -683,6 +704,7 @@ plot_pass_grid <- function(x, y, f, ...) {
     ) +
     ggplot2::geom_tile(
       data = tibble::tibble(idx2 = !!x, idy2 = !!y),
+      linewidth = 1,
       color = 'red',
       fill = 'white'
     ) +
@@ -706,7 +728,15 @@ plot_pass_grid <- function(x, y, f, ...) {
 plot_pass_grid(
   x = 7,
   y = 5,
-  f = \(.x) pmax(pmin(.x, 0.025), -0.025)
+  f = \(.x) pmax(pmin(.x, 0.025), -0.025),
+  pass_type = 'pass'
+)
+
+plot_pass_grid(
+  x = 7,
+  y = 5,
+  f = \(.x) pmax(pmin(.x, 0.025), -0.025),
+  pass_type = 'cross'
 )
 
 plot_pass_grid(
@@ -721,6 +751,26 @@ plot_pass_grid(
   f = \(.x) pmax(pmin(.x, 0.05), -0.05)
 )
 
+plot_pass_grid(
+  x = 13,
+  y = 1,
+  f = \(.x) pmax(pmin(.x, 0.05), -0.05),
+  pass_type = 'cross'
+)
+
+plot_pass_grid(
+  x = 13,
+  y = 1,
+  f = \(.x) pmax(pmin(.x, 0.05), -0.05),
+  pass_type = 'pass'
+)
+
+export_df |> 
+  filter(idx1 == '13', idy1 == '01') |> 
+  group_by(pass_type, pass_status) |> 
+  summarize(
+    n = sum(n, na.rm = TRUE)
+  )
 ```
 
 # Possession Value (PV) for Passes
@@ -735,15 +785,19 @@ In the interactive 12x16 pitch below, the blue tile illustrates where a **typica
 
 [^4]: Do not be alarmed by the small values! Values between 0.02 and 0.02 is very common for PV models.
 
-::: {.callout-note title=""Typical" and ""Hypothetical" collapse="false"} **Typical**: I've selected "constant" values for non-spatial features, i.e. game state of 0-0 with no time elapsed, pass taken with foot.
+::: {.callout-note title=""Typical" and ""Hypothetical" collapse="false"}
 
-**Hypothetical**: I'm generating one set of predictions (PV values) on an x-y grid rather than using (average) PV values from empirical data. (More on that in below.) :::
+**Typical**: I've selected "constant" values for non-spatial features, i.e. game state of 0-0 with no time elapsed, pass taken with foot.
+
+**Hypothetical**: I'm generating one set of predictions (PV values) on an x-y grid rather than using (average) PV values from empirical data. (More on that in below.)
+
+:::
 
 ```{ojs}
 //| include: true
 //| fig-cap: A heatmap showing the possession value (PV) of a typical successful pass from roughly the center spot (annotated in blue) to all areas on the pitch. The exact PV value associated with a successful pass ending at the hover point can be viewed above the pitch.
 {
-  const chart = d3.create("div")
+  const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-complete")
   title.append("p").html(`PV: <span id='pv-value-complete'>0</span>`)
   chart.append("div").attr("id", "heatmap-complete")
@@ -846,7 +900,7 @@ I called out the fact that the PV pitch above is a "hypothetical" and "typical" 
 //| include: true
 //| fig-cap: A heatmap showing the average possession value (PV) of empirical successful passes from the center spot (annotated in blue) to all areas on the pitch. The relative frequency of completed passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with a successful pass ending at the hover point can be viewed above the pitch.
 {
-  const chart = d3.create("div")
+  const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-complete-empirical")
   title.append("p").html(`PV: <span id='pv-value-complete-empirical'>0</span>`)
   chart.append("div").attr("id", "heatmap-complete-empirical")
@@ -955,6 +1009,68 @@ The gradient looks similar to our hypothetical pitch, which is what we hoped to 
 
 In this view I've also shown the relative frequency of the end points of passes from the center spot. (Note that the gradient is for PV, not for relative frequency.) The percentages highlight just how uncommon completed passes into the box are from the center spot. So yes, successful passes into the box add a lot of value, but in reality they are hard to complete, so they don't happen all that often.
 
+The gradient in the plot below highlights the relative frequency of successful passes from the center spot more directly.
+
+```{ojs}
+//| include: true
+//| fig-cap: A heatmap showing the relative frequency of actual successful passes from the center spot (annotated in blue) to all areas on the pitch.
+{
+  const chart = d3.create("div").style("background-color", "8f8f8f")
+  const title = chart.append("div").attr("id", "heatmap-title-complete-empirical-prop")
+  chart.append("div").attr("id", "heatmap-complete-empirical-prop")
+
+  return chart.node();
+}
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+{
+  const colorScaleSeq = d3.scaleSequential(d3.interpolateRgb("white", "gold"))
+    .domain([0, 0.1])
+    .clamp(true)
+  const heatmap_complete_empirical_prop = d3_soccer.heatmap(pitch)
+    .colorScale(colorScaleSeq)
+    .enableInteraction(false)
+    .parent_el("#heatmap-complete-empirical-prop")
+    .interpolate(false);
+
+  d3.select("#heatmap-complete-empirical-prop")
+    .html("")
+    .datum(complete_actual_prop_data)
+    .call(heatmap_complete_empirical_prop);
+
+  const svg = d3.select("#heatmap-complete-empirical-prop").select("svg");
+
+  const cells = svg.selectAll(".cell");
+
+  cells.each(function(d, i) {
+    const cell = d3.select(this);
+    const bbox = this.getBBox();
+
+    d3.select(this.parentNode)
+      .append("text")
+      .attr("x", bbox.x + bbox.width / 2)
+      .attr("y", bbox.y + bbox.height / 2)
+      .attr("text-anchor", "middle")
+      .attr("alignment-baseline", "central")
+      .style("font-size", "2.5px")
+      .style("pointer-events", "none")
+      .text((d.prop * 100).toFixed(1) + "%");
+  });
+
+  svg.append("rect")
+    .attr("x", passStartParams.x)
+    .attr("y", passStartParams.y)
+    .attr("width", tileParams.width)
+    .attr("height", tileParams.height)
+    .style("stroke", "blue")
+    .style("fill", "none")
+    .style("stroke-width", "1px");
+}
+```
+
 ### From Anywhere on the Pitch, To Anywhere on the Pitch
 
 Now, to give the full picture, the interactive pitch below dynamically updates to show PV values associated with a pass starting from ANY tile that you hover over. The minimum and maximum PV achieved with a successful pass from your hovered spot are shown in the text above the pitch.
@@ -963,7 +1079,7 @@ Now, to give the full picture, the interactive pitch below dynamically updates t
 //| include: true
 //| fig-cap: A heatmap showing the possession value (PV) of a typical successful pass from the hover spot to all areas on the pitch. The highest and lowest PV values across all end points associated with a completed pass from the hover point is shown above the pitch.
 {
-  const chart = d3.create("div")
+  const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-complete-nested")
   title.append("p").html(`min PV: <span id='pv-min-complete-nested'>0</span>, max PV: <span id='pv-max-complete-nested'>0</span>`)
   chart.append("div").attr("id", "heatmap-complete-nested")
@@ -1079,7 +1195,7 @@ Let's start with an example again, looking at PV for unsuccessful passes from th
 //| include: true
 //| fig-cap: A heatmap showing the possession value (PV) of a typical unsuccessful pass from roughly the center spot (annotated in blue) to all areas on the pitch. The exact PV value associated with an unsuccessful pass ending at the hover point can be viewed above the pitch.
 {
-  const chart = d3.create("div")
+  const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-incomplete")
   title.append("p").html(`PV: <span id='pv-value-incomplete'>0</span>`)
   chart.append("div").attr("id", "heatmap-incomplete")
@@ -1181,7 +1297,7 @@ As with our successful passes example, it's useful to vet our "hypothetical" and
 //| include: true
 //| fig-cap: A heatmap showing the average possession value (PV) of empirical unsuccessful passes from the center spot (annotated in blue) to all areas of the pitch. The relative frequency of incomplete passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with an unsuccessful pass ending at the hover point can be viewed above the pitch.
 {
-  const chart = d3.create("div")
+  const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-incomplete-empirical")
   title.append("p").html(`PV: <span id='pv-value-incomplete-empirical'>0</span>`)
   chart.append("div").attr("id", "heatmap-incomplete-empirical")
@@ -1254,7 +1370,10 @@ As with our successful passes example, it's useful to vet our "hypothetical" and
     .parent_el("#heatmap-incomplete-empirical")
     .interpolate(false);
 
-  d3.select("#heatmap-incomplete-empirical").html("").datum(incomplete_actual_pv_data).call(heatmap_incomplete_empirical);
+  d3.select("#heatmap-incomplete-empirical")
+    .html("")
+    .datum(incomplete_actual_pv_data)
+    .call(heatmap_incomplete_empirical);
 
   const svg = d3.select("#heatmap-incomplete-empirical").select("svg");
 
@@ -1302,7 +1421,7 @@ Now lets scale up our pass PV grid to all incomplete passes. As with the dynamic
 //| include: true
 //| fig-cap: A heatmap showing the possession value (PV) of an average unsuccessful pass from the hover spot to all areas on the pitch. The highest and lowest PV values across all end points associated with an incomplete pass from the hover point is shown above the pitch.
 {
-  const chart = d3.create("div")
+  const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-incomplete-nested")
   title.append("p").html(`min PV: <span id='pv-min-incomplete-nested'>0</span>, max PV: <span id='pv-max-incomplete-nested'>0</span>`)
   chart.append("div").attr("id", "heatmap-incomplete-nested")
@@ -1323,7 +1442,6 @@ Now lets scale up our pass PV grid to all incomplete passes. As with the dynamic
   legendSwatches[legendSwatches.length - 1] = legendRange[1];
   
   const totalLegendWidth = swatchParams.width * swatchParams.num;
-  
   
   const swatchRow = legendSwatchContainer.append("div")
     .style("display", "flex")
@@ -1383,7 +1501,7 @@ Now lets scale up our pass PV grid to all incomplete passes. As with the dynamic
         .data(v)
   
       cells.enter()
-        .merge(cells) // Merge enter and update selections
+        .merge(cells)
         .attr("x", d => d.x)
         .attr("y", d => d.y)
         .attr("width", d => d.width)
@@ -1414,12 +1532,22 @@ Hovering my mouse over various areas in the middle third of the pitch, I consist
 ```{ojs}
 //| include: false
 pitch = d3_soccer.pitch()
-.height(300)
-.rotate(false)
-.showDirOfPlay(true)
-.shadeMiddleThird(false)
-.pitchStrokeWidth(0.5)
-.clip([[0, 0], [105, 68]]);
+  .height(300)
+  .rotate(false)
+  .showDirOfPlay(true)
+  .shadeMiddleThird(false)
+  .pitchStrokeWidth(0.5)
+  .clip([[0, 0], [105, 68]]);
+```
+
+```{css}
+.custom-theme {
+  --background-color: #4B0082 ;
+  --color: #43FCD5 ;
+  --color-meta: #f3efef ;
+  --pitch-line-color: #E0FFFF ;
+  --pitch-shade-color: #cccccc ;
+}
 ```
 
 ```{ojs}
@@ -1445,6 +1573,12 @@ complete_actual_pv_data  = FileAttachment("complete_actual_pv_data.json").json()
 ```
 
 ```{ojs}
+//| label: complete_actual_prop_data
+//| include: false
+complete_actual_prop_data  = FileAttachment("complete_actual_prop_data.json").json()
+```
+
+```{ojs}
 //| label: incomplete_pv_data
 //| include: false
 incomplete_pv_data = FileAttachment("incomplete_pv_data.json").json()
@@ -1464,7 +1598,7 @@ complete_nested_pv_data  = FileAttachment("complete_nested_pv_data.json").json()
 
 ```{ojs}
 //| label: incomplete_nested_pv_data
-//| include: false
+//| include: true
 incomplete_nested_pv_data = FileAttachment("incomplete_nested_pv_data.json").json()
 ```
 
