@@ -1383,111 +1383,6 @@ Now lets scale up our pass PV grid to all incomplete passes. As with the dynamic
 
 Hovering my mouse over various areas in the middle third of the pitch, I consistently see slightly positive values near the top of the 18-yard box. This is not all that dissimilar from the trend observed with the successful pass pitch, where the passes into the final quarter of the pitch had strong positive PV from basically anywhere. And, like the interactive pitch for completed passes, a 30-yard incomplete pass forward from one's own 18-yard box doesn't have the same PV as a 30-yard incomplete pass forward from the halfline to the opponent's 18-yard box. Not all long incomplete passes are judged equally.
 
-## Difference Between Complete and Incomplete Passes
-
-We can see this more directly by actually plotting the difference in average PV from successful and unsuccessful passes.
-
-### From One Spot, To Anywhere on the Pitch
-
-Instead of looking at the center spot like our prior static examples--spoiler: the gradient will look largely the same as the completed pass pitch--we'll take a look at the spot where the gradient is fairly non-trivial--the corner spot.
-
-```{ojs}
-//| include: true
-//| fig-cap: A heatmap showing the average possession value (PV) of historical completed passes minus the average PV of historical incomplete passes from the corner spot (annotated in blue) to all areas of the pitch. The exact PV value difference associated with a pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which either successful or unsuccessful passes from the corner spot have never been made.
-{
-  const chart = d3.create("div").style("background-color", "8f8f8f")
-  const title = chart.append("div").attr("id", "heatmap-title-diff-empirical")
-  title.append("p").html(`Completed PV - Incomplete PV: <span id='pv-value-diff-empirical'>0</span>`)
-  chart.append("div").attr("id", "heatmap-diff-empirical")
-
-  const legendSwatchContainer = chart.append("div")
-    .attr("id", "heatmap-legend-diff-empirical")
-    .style("display", "flex")
-    .style("flex-direction", "column")
-    .style("align-items", "center")
-    .style("width", "100%");
-
-  const legendRange = [
-    1.1 * d3.min(colorScaleDiffRange),
-    1.1 * d3.max(colorScaleDiffRange)
-  ];
-  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);
-  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);
-  legendSwatches[legendSwatches.length - 1] = legendRange[1];
-
-  const totalLegendWidth = swatchParams.width * swatchParams.num;
-
-  const swatchRow = legendSwatchContainer.append("div")
-    .style("display", "flex")
-    .style("justify-content", "center")
-    .style("width", "100%");
-
-  swatchRow.selectAll("div")
-    .data(legendSwatches)
-    .enter()
-    .append("div")
-    .style("width", `${swatchParams.width}px`)
-    .style("height", `${swatchParams.height}px`)
-    .style("background-color", d => colorScaleDiff(d));
-
-  const labelRow = legendSwatchContainer.append("div")
-    .style("display", "flex")
-    .style("justify-content", "center")
-    .style("width", `${totalLegendWidth}px`);
-
-  labelRow.selectAll("span")
-    .data(colorScaleDiffRange)
-    .enter()
-    .append("span")
-    .text(d => {
-      if (d === d3.min(colorScaleDiffRange)) {
-        return d + " <=";
-      } else if (d === d3.max(colorScaleDiffRange)) {
-        return ">= " + d;
-      }
-      return d;
-    })
-    .style("flex", d => d === 0 ? "1" : null)
-    .style("text-align", "center")
-
-  return chart.node();
-}
-```
-
-```{ojs}
-//| echo: false
-//| output: false
-{
-  const heatmap_diff_empirical = d3_soccer.heatmap(pitch)
-    .colorScale(colorScaleDiff)
-    .enableInteraction(true)
-    .onSelect((x, y, v) => {
-      const cappedValue = Math.min(Math.max(v, -1), 1);
-      d3.select("#pv-value-diff-empirical").text(cappedValue.toFixed(3));
-    })
-    .parent_el("#heatmap-diff-empirical")
-    .interpolate(false);
-
-  d3.select("#heatmap-diff-empirical")
-    .html("")
-    .datum(diff_empirical_pv_data)
-    .call(heatmap_diff_empirical);
-
-  const svg = d3.select("#heatmap-diff-empirical").select("svg");
-
-  svg.append("rect")
-    .attr("x", passStartParamsDiff.x)
-    .attr("y", passStartParamsDiff.y)
-    .attr("width", cellParams.width)
-    .attr("height", cellParams.height)
-    .style("stroke", "blue")
-    .style("fill", "none")
-    .style("stroke-width", "1px");
-}
-```
-
-We see that there are a few cells--mostly on the edges of the box--where the difference between complete and incomplete pass PV is actually negative, indicating that historically the model has slightly favored incomplete passes to such areas! Now, this is an edge case, as there are very few permuations of start and end points like this. But of all the edge cases, we can sort of make sense of this--incomplete corner kicks often lead to quick turnovers back to the attacking team, often setting them up for shots that might be better than they could have achieved with the original pass.
-
 # Conclusion
 
 ## Caveats
@@ -1552,18 +1447,6 @@ incomplete_empirical_nested_pv_data = FileAttachment("incomplete_empirical_neste
 ```
 
 ```{ojs}
-//| label: diff_empirical_pv_data
-//| include: false
-diff_empirical_pv_data  = FileAttachment("diff_empirical_pv_data.json").json()
-```
-
-```{ojs}
-//| label: diff_empirical_nested_pv_data
-//| include: true
-diff_empirical_nested_pv_data = FileAttachment("diff_empirical_nested_pv_data.json").json()
-```
-
-```{ojs}
 //| label: colorScaleCompleteRange
 //| include: false
 colorScaleCompleteRange = [-0.025, 0, 0.025]
@@ -1573,12 +1456,6 @@ colorScaleCompleteRange = [-0.025, 0, 0.025]
 //| label: colorScaleIncompleteRange
 //| include: false
 colorScaleIncompleteRange = [-0.025, 0, 0.025]
-```
-
-```{ojs}
-//| label: colorScaleDiffRange
-//| include: false
-colorScaleDiffRange = [-0.025, 0, 0.025]
 ```
 
 ```{ojs}
@@ -1624,17 +1501,6 @@ passStartParams = {
   return {
     x: 43.75,
     y: 34
-  }
-}
-```
-
-```{ojs}
-//| label: passStartParamsDiff
-//| include: false
-passStartParamsDiff = {
-  return {
-    x: 96.25,
-    y: 59.5
   }
 }
 ```
