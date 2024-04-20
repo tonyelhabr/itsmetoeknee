@@ -812,7 +812,7 @@ In the interactive 8x12 pitch below, the blue cell illustrates where a pass is m
 
 [^4]: Do not be alarmed by the small values! Values between 0.02 and 0.02 are very common for PV models. After all, the values represent goal probabilities over sequence of actions, and goals don't happen all that frequently in soccer.
 
-Overall, I'd say that this illustration matches intuition--forward completed passes into the final third should be assigned A non-trivial positive value.
+Overall, I'd say that this illustration matches intuition--forward completed passes into the final third should be assigned a non-trivial positive value.
 
 ```{ojs}
 //| include: true
@@ -926,7 +926,7 @@ Overall, I'd say that this illustration matches intuition--forward completed pas
 }
 ```
 
-Note that the gradient in the pitch above is for PV, not for the relative frequency of completed passes from the center spot. While passes into the box from the center spot have really strong positive PV, they're uncommon because defenders are generally looking to stop those kinds of threatening passes.
+Note that the gradient in the pitch above is for PV, not for the relative frequency of completed passes from the center spot, which is instead shown as overlayed text. While passes into the box from the center spot have really strong positive PV, they're uncommon because defenders are generally looking to stop those kinds of threatening passes.
 
 The gradient in the plot below illustrates the relative frequency of successful passes from the center spot directly.
 
@@ -1124,7 +1124,9 @@ Now, to give the full picture, the interactive pitch below dynamically updates t
 
 There are several takeaways one might have from this view, but the big one that I have is this: As you move your mouse (i.e. the starting point of the pass) from the defender's box to the opponent's box, the consolidated green box of +0.025 PV doesn't change much. It stays basically at around the final quarter of the pitch. So you can't just complete a 30-yard pass from the top of your own box progressing the ball towards the middle of the pitch and expect to get anywhere near the same PV as completing a 30-yard pass from the center of the pitch to near the opponent's 18-yard box. The end point really matters.
 
-This conclusion gets at our primary question--"Are all long passes good?"--to which the answer so far is "not quite" (in the sense that "good" is more than just "positive PV" for completed passes). A long completed pass in your own half doesn't boast a huge positive PV. To get a more complete perspective, we'll plot out the PV for incomplete passes to see what the answer is there.
+This conclusion gets at our primary question--"Are all long passes good?"--to which the answer so far is "not quite" (in the sense that "good" is more than just "positive PV" for completed passes). A long completed pass in your own half doesn't boast a huge positive PV, unless it ends up near the opponent's box.
+
+To get a more complete perspective, we'll plot out the PV for incomplete passes to see what the answer is there.
 
 ## Incomplete Passes
 
@@ -1244,7 +1246,7 @@ Let's start with an example again, looking at PV for unsuccessful passes from th
 }
 ```
 
-I think this grid is fairly intuitive.[^5] Incomplete passes backward have fairly negative PVs, as those are leading to turnovers probably setting up the opponent for a good scoring opportunity. Incomplete passes forward mostly have neutral PVs, with some spots on the pitch having slightly positive PVs. Notably, a positive PV for an incomplete pass is a non-trivial realization (even if the positive PV is relatively small compared to an analogous successful pass).
+I think this grid is fairly intuitive.[^5] Incomplete passes backward have fairly negative PVs, as those are turnovers probably setting up the opponent for good scoring opportunities. Incomplete passes forward mostly have neutral PVs, with some spots on the pitch having slightly positive PVs. Notably, a positive PV for an incomplete pass is a non-trivial revelation.
 
 [^5]: We observe lots of missingness near the defender's box. Such incomplete passes backward would be very illogical no matter the game situation, so it's not surprising to see that such passes are not observed in our data set.
 
@@ -1382,22 +1384,24 @@ Hovering my mouse over various areas in the middle third of the pitch, I consist
 
 # Conclusion
 
-So, overall, my takeaways are as follows:
+Overall, my takeaways are as follows:
 
-1.  Not all long passes add the same kind of value. The pass really needs to be one that ends up near the box to create non-trivial positive PV
+1.  Not all long passes add the same kind of value. The pass has to be one that ends up near the box to create non-trivial positive PV.
 2.  And, while completed passes will almost always add more value, incomplete passes can also have positive PV when they're played into dangerous areas.
 
-For those who have built PV models or are very familiar with them in some way, perhaps the latter observation is not an unsurprising result. Indeed, we'd hope that a PV model is able to see past the outcome of a pass and properly quantify the threat that a through ball can have, whether it's completed or not.
+For those who have built PV models or are very familiar with them in some way, perhaps the latter observation is not an unsurprising result. Indeed, we should want our PV models to see past the outcome of a pass and properly quantify the threat that a through ball can have, whether it's completed or not.
 
 ## Caveats
 
 -   The choice of model surely plays a role in the inference we'll make. Even [atomic VAEP](https://dtai.cs.kuleuven.be/sports/blog/introducing-atomic-spadl:-a-new-way-to-represent-event-stream-data), the cooler younger brother to the baseline VAEP model, may yield different answers due to the way that it treats passes.[^6]
 
--   Along the same lines, the gradients in the pitches are only as "good" as the quality of the model. While the cells show average PV values over many passes--there are over 3.4M total passes in the data set--the PV value may not match intuition if the model doesn't account for all relevant factors. If headed passes weren't treated differently from footed passes, the gradients would likely show a lot more noise due to the randomness at which headed passes are successfully made.
+-   Along the same lines, the gradients in the pitches are only as "good" as the quality of the model. While the cells show average PV values over many passes[^7], the PV value may not match intuition if the model doesn't account for all relevant factors. If headed passes weren't treated differently from footed passes, the gradients would likely show a lot more noise due to the randomness at which headed passes are successfully made.
 
 -   The endpoint of incomplete passes is subject to a fundamental source of noise--interception locations. I've implicitly assumed that unsuccessful passes are intercepted very near the intended target, but this is not always the case. Interceptions where, for example, the defender blocks a long through ball near where the pass is made, can skew the model training, exaggerating the value of short incomplete passes.
 
 [^6]: Atomic VAEP splits passes into two actions--the pass itself and the reception (or lack of).
+
+[^7]: There are over 3.4M total passes in the data set.
 
 ```{ojs}
 //| include: false
