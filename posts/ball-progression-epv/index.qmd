@@ -1034,30 +1034,32 @@ Now, to give the full picture, the interactive pitch below dynamically updates t
         .attr("height", d => d.height)
         .style("fill", d => colorScaleComplete(+d.value));
 
-      cells.each(function(d, i) {
-        const cell = d3.select(this.parentNode);
-        const existingText = cell.select("text")
-        if (!existingText.empty()) {
-          existingText.text((d.prop * 100).toFixed(1) + "%");
-        } else {
-          const bbox = this.getBBox();
-          cell.append("text")
-            .attr("x", bbox.x + bbox.width / 2)
-            .attr("y", bbox.y + bbox.height / 2)
-            .attr("text-anchor", "middle")
-            .attr("alignment-baseline", "central")
-            .style("font-size", "3px")
-            .style("pointer-events", "none")
-            .text((d.prop * 100).toFixed(1) + "%");
-        }
-      });
   
       cells.exit().remove()
   
       d3.select("#heatmap-complete-empirical-nested")
         .selectAll("rect.cell")
         .data(complete_empirical_nested_pv_data)
-        
+
+      const updatedSvg = d3.select("#heatmap-complete-empirical-nested").select("svg");
+
+      const updatedCells = updatedSvg.selectAll(".cell");
+      
+      updatedCells.each(function(d, i) {
+        const cell = d3.select(this);
+        const bbox = this.getBBox();
+    
+        d3.select(this.parentNode)
+          .append("text")
+          .attr("x", bbox.x + bbox.width / 2)
+          .attr("y", bbox.y + bbox.height / 2)
+          .attr("text-anchor", "middle")
+          .attr("alignment-baseline", "central")
+          .style("font-size", "3px")
+          .style("pointer-events", "none")
+          .text((d.prop * 100).toFixed(1) + "%");
+      });
+
     })
     .parent_el("#heatmap-complete-empirical-nested")
     .interpolate(false);
