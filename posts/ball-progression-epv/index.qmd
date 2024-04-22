@@ -2,6 +2,7 @@
 title: Ball Progression is All You Need
 description: Identifying where passes (even incomplete ones) have the most positive impact on the pitch.
 date: 2024-04-20
+date-modified: 2024-04-22
 categories:
   - r
   - soccer
@@ -61,6 +62,15 @@ library(ggplot2) ## local dev
 PROJ_DIR <- 'posts/ball-progression-epv'
 
 MODEL_COLS <- c('type_pass_a0', 'type_throw_in_a0', 'type_freekick_crossed_a0', 'type_freekick_short_a0', 'type_corner_crossed_a0', 'type_corner_short_a0', 'type_take_on_a0', 'type_foul_a0', 'type_tackle_a0', 'type_interception_a0', 'type_shot_a0', 'type_shot_penalty_a0', 'type_shot_freekick_a0', 'type_keeper_save_a0', 'type_keeper_claim_a0', 'type_keeper_punch_a0', 'type_keeper_pick_up_a0', 'type_clearance_a0', 'type_bad_touch_a0', 'type_non_action_a0', 'type_dribble_a0', 'type_goalkick_a0', 'bodypart_foot_a0', 'bodypart_head_a0', 'bodypart_other_a0', 'bodypart_head/other_a0', 'result_fail_a0', 'result_success_a0', 'result_offside_a0', 'result_owngoal_a0', 'result_yellow_card_a0', 'result_red_card_a0', 'goalscore_team', 'goalscore_opponent', 'goalscore_diff', 'start_x_a0', 'start_y_a0', 'end_x_a0', 'end_y_a0', 'dx_a0', 'dy_a0', 'movement_a0', 'start_dist_to_goal_a0', 'start_angle_to_goal_a0', 'end_dist_to_goal_a0', 'end_angle_to_goal_a0', 'period_id_a0', 'time_seconds_a0', 'time_seconds_overall_a0')
+
+MODEL_ID_COLS <- c(
+  'competition_id',
+  'season_id',
+  'game_id',
+  'action_id',
+  'team_id',
+  'period_id'
+)
 ```
 
 ```{r}
@@ -270,6 +280,170 @@ preds <- qs::qread(file.path(PROJ_DIR, 'preds.qs'))
 ```
 
 ```{r}
+#| label: vaep-setup
+#| include: false
+#| eval: false
+prev <- function(x) {
+  prev_x <- c(NA, x[-length(x)])
+  prev_x[1] <- x[1]
+  prev_x
+}
+
+## https://github.com/ML-KULeuven/socceraction/blob/master/socceraction/vaep/formula.py
+## https://github.com/ML-KULeuven/socceraction/blob/master/socceraction/atomic/vaep/formula.py
+get_vaep_prev_actions <- function(
+    team_id,
+    time_seconds,
+    type_name,
+    result_name,
+    concedes,
+    scores,
+    pov = 'scores',
+    same_phase_seconds = 10
+) {
+  same_team <- prev(team_id) == team_id
+  if (pov == 'scores') {
+    pos <- scores
+    neg <- concedes
+  } else if (pov == 'concedes') {
+    pos <- concedes
+    neg <- scores
+  }
+  prev_actions <- prev(pos) * same_team + prev(neg) * !same_team
+  too_long_idx <- abs(time_seconds - prev(time_seconds)) > same_phase_seconds
+  prev_actions[too_long_idx] <- 0
+  
+  prev_goal_idx <- (prev(type_name) %in% c('shot', 'shot_freekick', 'shot_penalty')) & (prev(result_name) == 'success')
+  prev_actions[prev_goal_idx] <- 0
+  prev_actions
+}
+
+get_ovaep_value <- function(type_name, scores, ...) {
+  prev_scores <- get_vaep_prev_actions(pov = 'scores', type_name = type_name, scores = scores, ...)
+  penalty_idx <- type_name == 'shot_penalty'
+  prev_scores[penalty_idx] <- 0.792453
+  
+  # fixed odds of scoring when corner
+  corner_idx <- type_name %in% c('corner_crossed', 'corner_short')
+  prev_scores[corner_idx] <- 0.046500
+  
+  coalesce(scores - prev_scores, 0)
+}
+
+get_dvaep_value <- function(concedes, ...) {
+  prev_concedes <- get_vaep_prev_actions(pov = 'concedes', concedes = concedes, ...)
+  coalesce(-(concedes - prev_concedes), 0)
+}
+
+get_vaep_values <- function(scores, concedes, ...) {
+  tibble(
+    ovaep = get_ovaep_value(
+      scores = scores, 
+      concedes = concedes,
+      ...
+    ),
+    dvaep = get_dvaep_value(
+      scores = scores, 
+      concedes = concedes,
+      ...
+    ),
+    vaep = ovaep + dvaep
+  )
+}
+
+undummify <- function(xy, rgx) {
+  rgx2 <- paste0(rgx, '|_a0')
+  xy |> 
+    select(
+      all_of(MODEL_ID_COLS), 
+      starts_with(rgx)
+    ) |>
+    pivot_longer(starts_with(rgx)) |> 
+    filter(value == 1L) |> 
+    mutate(name = stringr::str_remove_all(name, rgx2))
+}
+
+types <- undummify(xy, 'type_') |> 
+  select(
+    all_of(MODEL_ID_COLS),
+    type_name = name
+  )
+
+results <- undummify(xy, 'result_') |> 
+  select(
+    all_of(MODEL_ID_COLS),
+    result_name = name
+  )
+
+xy_and_preds <- xy |> 
+  select(
+    all_of(MODEL_ID_COLS),
+    time_seconds = time_seconds_a0,
+    type_pass_a0
+  ) |> 
+  left_join(
+    types,
+    by = join_by(!!!MODEL_ID_COLS)
+  ) |> 
+  left_join(
+    results,
+    by = join_by(!!!MODEL_ID_COLS)
+  ) |> 
+  left_join(
+    preds |> 
+      select(
+        all_of(MODEL_ID_COLS),
+        scores,
+        concedes,
+        pred_scores,
+        pred_concedes,
+        pred
+      ),
+    by = join_by(!!!MODEL_ID_COLS)
+  )
+
+vaep <- xy_and_preds |> 
+  group_split(game_id, period_id) |> 
+  map_dfr(
+    ~{
+      bind_cols(
+        .x |> 
+          select(
+            all_of(MODEL_ID_COLS), 
+            scores,
+            concedes,
+            pred_scores,
+            pred_concedes,
+            pred
+          ),
+        get_vaep_values(
+          team_id = .x$team_id, 
+          time_seconds = .x$time_seconds, 
+          type_name = .x$type_name, 
+          result_name = .x$result_name, 
+          concedes = .x$pred_concedes,
+          scores = .x$pred_scores
+        )
+      )
+    }
+  )
+```
+
+```{r}
+#| label: vaep-save
+#| include: false
+#| eval: false
+qs::qsave(vaep, file.path(PROJ_DIR, 'vaep.qs'))
+```
+
+```{r}
+#| label: vaep-read
+#| include: false
+#| eval: false
+vaep <- qs::qread(file.path(PROJ_DIR, 'vaep.qs'))
+```
+
+```{r}
 #| label: pred-prep
 #| include: false
 #| eval: false
@@ -451,7 +625,7 @@ empirical_pass_location_counts <- dplyr::inner_join(
       (result_success_a0 == 1L | result_fail_a0 == 1L)
     ) |> 
     dplyr::inner_join(
-      preds |>
+      vaep |>
         dplyr::select(
           competition_id,
           season_id,
@@ -461,7 +635,10 @@ empirical_pass_location_counts <- dplyr::inner_join(
           action_id,
           pred_scores,
           pred_concedes,
-          pred
+          pred,
+          ovaep,
+          dvaep,
+          vaep
         ),
       by = dplyr::join_by(
         competition_id,
@@ -494,7 +671,10 @@ empirical_pass_location_counts <- dplyr::inner_join(
       c(
         pred_scores,
         pred_concedes,
-        pred
+        pred,
+        ovaep,
+        dvaep,
+        vaep
       ),
       list(actual = \(.x) mean(.x, na.rm = TRUE))
     )
@@ -525,7 +705,8 @@ empirical_pass_props <- empirical_pass_location_counts |>
     idy2,
     n,
     prop = n / sum(n),
-    pred_actual
+    pred_actual,
+    vaep_actual
   ) |> 
   dplyr::ungroup() |> 
   dplyr::arrange(pass_status, dplyr::desc(prop))
@@ -547,7 +728,8 @@ pv_grid <- dplyr::bind_rows(
       n,
       prop,
       pred,
-      pred_actual
+      pred_actual,
+      vaep_actual
     ),
   init_pv_grid |> 
     dplyr::mutate(
@@ -556,7 +738,8 @@ pv_grid <- dplyr::bind_rows(
           n,
           prop,
           pred,
-          pred_actual
+          pred_actual,
+          vaep_actual
         ),
         \(.x) ifelse(pass_status == 'incomplete', -.x, .x)
       )
@@ -574,7 +757,8 @@ pv_grid <- dplyr::bind_rows(
           n,
           prop,
           pred,
-          pred_actual
+          pred_actual,
+          vaep_actual
         ),
         \(.x) sum(.x)
       )
@@ -601,45 +785,58 @@ pv_grid <- qs::qread(file.path(PROJ_DIR, 'pv_grid.qs'))
 #| label: pv_grid
 #| include: false
 #| eval: false
-pv_grid %>%
-  split(.$pass_status) |> 
-  purrr::iwalk(
-    \(.x, .y) {
-      
-      dplyr::transmute(
-        .x,
-        parent_i = as.integer(idx1),
-        parent_j = as.integer(idy1),
-        i = as.integer(idx2),
-        j = as.integer(idy2),
-        x = i * X_DELTA,
-        y = j * Y_DELTA,
-        width = X_DELTA,
-        height = Y_DELTA,
-        value = pred_actual,
-        prop
-      )  |> 
-        dplyr::arrange(j, i) |> 
-        tidyr::nest(
-          value = -c(parent_i, parent_j)
-        ) |> 
+export_nested_pv_grid <- function(col, name) {
+  
+  pv_grid %>%
+    split(.$pass_status) |> 
+    purrr::iwalk(
+      \(.x, .y) {
+        
         dplyr::transmute(
-          i = parent_i,
-          j = parent_j,
+          .x,
+          parent_i = as.integer(idx1),
+          parent_j = as.integer(idy1),
+          i = as.integer(idx2),
+          j = as.integer(idy2),
           x = i * X_DELTA,
           y = j * Y_DELTA,
           width = X_DELTA,
           height = Y_DELTA,
-          value
-        ) |> 
-        dplyr::arrange(j, i)  |> 
-        jsonlite::write_json(
-          file.path(PROJ_DIR, sprintf('%s_empirical_nested_pv_data.json', .y)),
-          pretty = TRUE,
-          auto_unbox = TRUE
-        )
-    }
-  )
+          value = .data[[col]],
+          prop
+        )  |> 
+          dplyr::arrange(j, i) |> 
+          tidyr::nest(
+            value = -c(parent_i, parent_j)
+          ) |> 
+          dplyr::transmute(
+            i = parent_i,
+            j = parent_j,
+            x = i * X_DELTA,
+            y = j * Y_DELTA,
+            width = X_DELTA,
+            height = Y_DELTA,
+            value
+          ) |> 
+          dplyr::arrange(j, i)  |> 
+          jsonlite::write_json(
+            file.path(PROJ_DIR, sprintf('%s_empirical_nested_%s_data.json', .y, name)),
+            pretty = TRUE,
+            auto_unbox = TRUE
+          )
+      }
+    )
+}
+
+export_nested_pv_grid(
+  col = 'pred_actual',
+  name = 'pv'
+)
+
+export_nested_pv_grid(
+  col = 'vaep_actual',
+  name = 'vaep'
+)
 
 
 ## values for blue cell in OJS
@@ -808,7 +1005,7 @@ We'll want to eventually look at the PV of incomplete passes, but it's probably 
 
 ### From One Spot, To Anywhere on the Pitch
 
-In the interactive 8x12 pitch below, the blue cell illustrates where a pass is made, and the colored cells illustrate the average PV associated with all historicalLY successful passes made to that area. Hovering over a cell shows the PV value above the pitch as well.[^4]
+In the interactive 8x12 pitch below, the blue cell illustrates where a pass is made, and the colored cells illustrate the average PV associated with all historicalLy successful passes made to that area. Hovering over a cell shows the PV value above the pitch as well.[^4]
 
 [^4]: Do not be alarmed by the small values! Values between 0.02 and 0.02 are very common for PV models. After all, the values represent goal probabilities over sequence of actions, and goals don't happen all that frequently in soccer.
 
@@ -996,7 +1193,7 @@ Now, to give the full picture, the interactive pitch below dynamically updates t
 
 ```{ojs}
 //| include: true
-//| fig-cap: A heatmap showing the average possession value (PV) of historically completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.
+//| fig-cap: A heatmap showing the average possession value (PV) of historically completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.
 {
   const chart = d3.create("div").style("background-color", "8f8f8f")
   const title = chart.append("div").attr("id", "heatmap-title-complete-empirical-nested")
@@ -1114,7 +1311,6 @@ Now, to give the full picture, the interactive pitch below dynamically updates t
     .parent_el("#heatmap-complete-empirical-nested")
     .interpolate(false);
   
-  // plot heatmap
   d3.select("#heatmap-complete-empirical-nested")
     .html("")
     .datum(complete_empirical_nested_pv_data)
@@ -1403,6 +1599,299 @@ For those who have built PV models or are very familiar with them in some way, p
 
 [^7]: There are over 3.4M total passes in the data set.
 
+# Appendix
+
+## VAEP
+
+For those really interested in the details, the PV I've been showing is actually the goal probabilities underlying the VAEP framework, but not actually VAEP. In other words, I've been showing
+
+$$
+P_{\text{goal}}(S_i, x) = P_{\text{scores}}(S_i, x) + (-P_{\text{concedes}}(S_i, x))
+$$ {#eq-p-goal}
+
+where $S_i$ is the $i$th game state and $x$ is the team, either home or visiting. But VAEP is actually
+
+$$
+V(a_i, x) = \Delta P_{\text{scores}}(a_i, x) + (-\Delta P_{\text{concedes}}(a_i, x))
+$$ {#eq-vaep}
+
+where
+
+$$
+\Delta P_{\text{scores}}(a_i, x) = P_{\text{scores}}(S_i, x) - P_{\text{scores}}(S_{i-1}, x)
+$$ {#eq-delta-p-scores}
+
+for action $a_i$ moving the game from state $S_{i-1}$ to $S_i$, and where $\Delta P_{\text{concedes}}(a_i, x)$ is defined similarly.
+
+VAEP directly reflects the value added by an action relative to the prior action. For those who have worked with expected threat (xT) before, this is analogous to [the "xT created" metric](https://karun.in/blog/expected-threat.html), as described by Singh.
+
+> ... \[T\]he point of xT was to come up with a metric that can quantify threat at any location on the pitch... \[W\]e can value individual player actions in buildup play by computing the difference in xT between the start and end locations. In other words, we will say that an action that moves the ball from location $(x,y)$ to location $(z,w)$ has value $\texttt{xT}_{z,w} - \texttt{xT}_{x,y}$.
+
+### Complete Passes
+
+Assuming the reader is comfortable with the plotting style and notations before, we now skip to re-creating the dynamic completed pass pitch.
+
+```{ojs}
+//| include: true
+//| fig-cap: A heatmap showing the average VAEP of historically completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest VAEP values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.
+{
+  const chart = d3.create("div").style("background-color", "8f8f8f")
+  const title = chart.append("div").attr("id", "heatmap-vaep-title-complete-empirical-nested")
+  title.append("p").html(`min VAEP: <span id='vaep-min-complete-empirical-nested'>0</span>, max VAEP: <span id='vaep-max-complete-empirical-nested'>0</span>`)
+  chart.append("div").attr("id", "heatmap-vaep-complete-empirical-nested")
+  
+  const legendSwatchContainer = chart.append("div")
+    .attr("id", "heatmap-vaep-legend-complete-empirical-nested")
+    .style("display", "flex")
+    .style("flex-direction", "column")
+    .style("align-items", "center")
+    .style("width", "100%");
+  
+  const legendRange = [
+    1.1 * d3.min(colorScaleCompleteRange),
+    1.1 * d3.max(colorScaleCompleteRange)
+  ];
+  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);
+  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);
+  legendSwatches[legendSwatches.length - 1] = legendRange[1];
+  
+  const totalLegendWidth = swatchParams.width * swatchParams.num;
+  
+  const swatchRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center")
+    .style("width", "100%");
+  
+  swatchRow.selectAll("div")
+    .data(legendSwatches)
+    .enter()
+    .append("div")
+    .style("width", `${swatchParams.width}px`)
+    .style("height", `${swatchParams.height}px`)
+    .style("background-color", d => colorScaleComplete(d));
+  
+  const labelRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center")
+    .style("width", `${totalLegendWidth}px`);
+  
+  
+  labelRow.selectAll("span")
+    .data(colorScaleCompleteRange)
+    .enter()
+    .append("span")
+    .text(d => {
+      if (d === d3.min(colorScaleCompleteRange)) {
+        return d + " <=";
+      } else if (d === d3.max(colorScaleCompleteRange)) {
+        return ">= " + d;
+      }
+      return d;
+    })
+    .style("flex", d => d === 0 ? "1" : null)
+    .style("text-align", "center")
+  
+  return chart.node();
+
+}
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+{  
+  const heatmap_vaep_complete_empirical_nested = d3_soccer.heatmap(pitch)
+    .colorScale(d3.scaleLinear().domain([-1, 1]).range(["white", "white"]))
+    .enableInteraction(true)
+    .onSelect((x, y, v) => {
+      const rawMinValue = d3.min(v, d => d.value);
+      const rawMaxValue = d3.max(v, d => d.value);
+      const minValue = Math.max(rawMinValue, -1);
+      const maxValue = Math.min(rawMaxValue, 1);
+  
+      d3.select("#vaep-min-complete-empirical-nested").text(minValue.toFixed(3));
+      d3.select("#vaep-max-complete-empirical-nested").text(maxValue.toFixed(3));
+      const cells = d3
+        .select("#heatmap-vaep-complete-empirical-nested")
+        .selectAll("rect.cell")
+        .data(v)
+  
+      cells.enter()
+        .merge(cells)
+        .attr("x", d => d.x)
+        .attr("y", d => d.y)
+        .attr("width", d => d.width)
+        .attr("height", d => d.height)
+        .style("fill", d => colorScaleComplete(+d.value));
+
+      d3.select("#heatmap-vaep-complete-empirical-nested")
+        .selectAll("text")
+        .remove();
+        
+      cells.each(function(d, i) {
+        const cell = d3.select(this.parentNode);
+        const bbox = this.getBBox();
+        cell.append("text")
+          .attr("x", bbox.x + bbox.width / 2)
+          .attr("y", bbox.y + bbox.height / 2)
+          .attr("text-anchor", "middle")
+          .attr("alignment-baseline", "central")
+          .style("font-size", "3px")
+          .style("pointer-events", "none")
+          .text((d.prop * 100).toFixed(1) + "%");
+      });
+      
+      cells.exit().remove();
+
+      d3.select("#heatmap-vaep-complete-empirical-nested")
+        .selectAll("rect.cell")
+        .data(complete_empirical_nested_vaep_data)
+
+    })
+    .parent_el("#heatmap-vaep-complete-empirical-nested")
+    .interpolate(false);
+  
+  d3.select("#heatmap-vaep-complete-empirical-nested")
+    .html("")
+    .datum(complete_empirical_nested_vaep_data)
+    .call(heatmap_vaep_complete_empirical_nested);
+}
+```
+
+The big takeaway for me here is that there are a lot more cells on the pitch showing negative values (now VAEP instead of "PV"), especially for passes backward. This makes sense, as the model should see that, on average, such passes put the ball in a less advantageous position.
+
+Recall that our pre-Appendix "PV" pitches account for the probability of conceding. Instances in which the pre-Appendix complete pass pitch shows a negative value indicate a pass start-end pair in which the probability of conceding increases more than the probability of scoring increases (or instances in which the probability of conceding decreases less than the probability of scoring decreases). Naturally, this resulted in a few negative start-to-end pass location combinations, particularly for passes sent very far backward. But now that we're also accounting for the value of the prior action with VAEP, the pitch shows a lot more negatively valued start-end pairs, particularly for short passes backward.
+
+### Incomplete Passes
+
+And now we re-create the dynamic pitch for incomplete passes, but showing VAEP instead of goal probability.
+
+```{ojs}
+//| include: true
+//| fig-cap: A heatmap showing the average VAEP of historically incomplete pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest VAEP values across all end points associated with an incomplete pass from the hover point are shown above the pitch. Black cells represent areas to which unsuccessful passes from the hover spot have never been made.
+{
+  const chart = d3.create("div").style("background-color", "8f8f8f")
+  const title = chart.append("div").attr("id", "heatmap-vaep-title-incomplete-empirical-nested")
+  title.append("p").html(`min VAEP: <span id='vaep-min-incomplete-empirical-nested'>0</span>, max VAEP: <span id='vaep-max-incomplete-empirical-nested'>0</span>`)
+  chart.append("div").attr("id", "heatmap-vaep-incomplete-empirical-nested")
+  
+  const legendSwatchContainer = chart.append("div")
+    .attr("id", "heatmap-vaep-legend-incomplete-empirical-nested")
+    .style("display", "flex")
+    .style("flex-direction", "column")
+    .style("align-items", "center")
+    .style("width", "100%");
+  
+  const legendRange = [
+    1.1 * d3.min(colorScaleIncompleteRange),
+    1.1 * d3.max(colorScaleIncompleteRange)
+  ];
+  const stepSize = (legendRange[1] - legendRange[0]) / (swatchParams.num - 1);
+  const legendSwatches = d3.range(legendRange[0], legendRange[1] + stepSize, stepSize);
+  legendSwatches[legendSwatches.length - 1] = legendRange[1];
+  
+  const totalLegendWidth = swatchParams.width * swatchParams.num;
+  
+  const swatchRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center")
+    .style("width", "100%");
+  
+  swatchRow.selectAll("div")
+    .data(legendSwatches)
+    .enter()
+    .append("div")
+    .style("width", `${swatchParams.width}px`)
+    .style("height", `${swatchParams.height}px`)
+    .style("background-color", d => colorScaleIncomplete(d));
+  
+  const labelRow = legendSwatchContainer.append("div")
+    .style("display", "flex")
+    .style("justify-content", "center")
+    .style("width", `${totalLegendWidth}px`);
+  
+  labelRow.selectAll("span")
+    .data(colorScaleIncompleteRange)
+    .enter()
+    .append("span")
+    .text(d => {
+      if (d === d3.min(colorScaleIncompleteRange)) {
+        return d + " <=";
+      } else if (d === d3.max(colorScaleIncompleteRange)) {
+        return ">= " + d;
+      }
+      return d;
+    })
+    .style("flex", d => d === 0 ? "1" : null)
+    .style("text-align", "center")
+  
+  return chart.node();
+}
+```
+
+```{ojs}
+//| echo: false
+//| output: false
+{  
+  const heatmap_incomplete_empirical_nested = d3_soccer.heatmap(pitch)
+    .colorScale(d3.scaleLinear().domain([-1, 1]).range(["white", "white"]))
+    .enableInteraction(true)
+    .onSelect((x, y, v) => {
+      const rawMinValue = d3.min(v, d => d.value);
+      const rawMaxValue = d3.max(v, d => d.value);
+      const minValue = Math.max(rawMinValue, -1);
+      const maxValue = Math.min(rawMaxValue, 1);
+  
+      d3.select('#vaep-min-incomplete-empirical-nested').text(minValue.toFixed(3));
+      d3.select('#vaep-max-incomplete-empirical-nested').text(maxValue.toFixed(3));
+      const cells = d3
+        .select("#heatmap-vaep-incomplete-empirical-nested")
+        .selectAll("rect.cell")
+        .data(v);
+  
+      cells.enter()
+        .merge(cells)
+        .attr("x", d => d.x)
+        .attr("y", d => d.y)
+        .attr("width", d => d.width)
+        .attr("height", d => d.height)
+        .style("fill", d => colorScaleIncomplete(+d.value));
+        
+      d3.select("#heatmap-vaep-incomplete-empirical-nested")
+        .selectAll("text")
+        .remove();
+        
+      cells.each(function(d, i) {
+        const cell = d3.select(this.parentNode);
+        const bbox = this.getBBox();
+        cell.append("text")
+          .attr("x", bbox.x + bbox.width / 2)
+          .attr("y", bbox.y + bbox.height / 2)
+          .attr("text-anchor", "middle")
+          .attr("alignment-baseline", "central")
+          .style("font-size", "3px")
+          .style("pointer-events", "none")
+          .text((d.prop * 100).toFixed(1) + "%");
+      });
+      
+      cells.exit().remove();
+  
+      d3.select("#heatmap-vaep-incomplete-empirical-nested")
+        .selectAll("rect.cell")
+        .data(incomplete_empirical_nested_pv_data);
+    })
+    .parent_el("#heatmap-vaep-incomplete-empirical-nested")
+    .interpolate(false);
+  
+  d3.select("#heatmap-vaep-incomplete-empirical-nested")
+    .html("")
+    .datum(incomplete_empirical_nested_pv_data)
+    .call(heatmap_incomplete_empirical_nested);
+}
+```
+
+Compared to the prior dynamic pitch for incomplete passes, this one looks visually similar for most start-end location pairs. Perhaps this is not surprising, as our pre-Appendix pitches were accounting for the probability of conceding already. Accounting for the value of the pre-pass state only seems to re-enforce the incomplete pass trends we observed before--an incomplete pass can have a positive impact, but only really in cases in which the ball is passed into the box or near the top of the box.
+
 ```{ojs}
 //| include: false
 pitch = d3_soccer.pitch()
@@ -1452,6 +1941,18 @@ incomplete_empirical_pv_data  = FileAttachment("incomplete_empirical_pv_data.jso
 //| label: incomplete_empirical_nested_pv_data
 //| include: true
 incomplete_empirical_nested_pv_data = FileAttachment("incomplete_empirical_nested_pv_data.json").json()
+```
+
+```{ojs}
+//| label: complete_empirical_nested_vaep_data
+//| include: true
+complete_empirical_nested_vaep_data = FileAttachment("complete_empirical_nested_vaep_data.json").json()
+```
+
+```{ojs}
+//| label: incomplete_empirical_nested_vaep_data
+//| include: true
+incomplete_empirical_nested_vaep_data = FileAttachment("incomplete_empirical_nested_vaep_data.json").json()
 ```
 
 ```{ojs}
