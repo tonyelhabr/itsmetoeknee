@@ -1878,19 +1878,19 @@ And now we re-create the dynamic pitch for incomplete passes, but showing VAEP i
   
       d3.select("#heatmap-vaep-incomplete-empirical-nested")
         .selectAll("rect.cell")
-        .data(incomplete_empirical_nested_pv_data);
+        .data(incomplete_empirical_nested_vaep_data);
     })
     .parent_el("#heatmap-vaep-incomplete-empirical-nested")
     .interpolate(false);
   
   d3.select("#heatmap-vaep-incomplete-empirical-nested")
     .html("")
-    .datum(incomplete_empirical_nested_pv_data)
+    .datum(incomplete_empirical_nested_vaep_data)
     .call(heatmap_incomplete_empirical_nested);
 }
 ```
 
-Compared to the prior dynamic pitch for incomplete passes, this one looks visually similar for most start-end location pairs. Perhaps this is not surprising, as our pre-Appendix pitches were accounting for the probability of conceding already. Accounting for the value of the pre-pass state only seems to re-enforce the incomplete pass trends we observed before--an incomplete pass can have a positive impact, but only really in cases in which the ball is passed into the box or near the top of the box.
+Compared to the pre-Appendix dynamic pitch for incomplete passes, this one shows a lot more negative values. In fact, there is only a very small subset of end points--those near the penalty spot--where an incomplete pass can have positive VAEP, no matter the starting point. So, when accounting for the value of the prior action with VAEP, it appears that incomplete passes only have positive impact in a handful of situations.
 
 ```{ojs}
 //| include: false
