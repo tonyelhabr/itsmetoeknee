@@ -20511,6 +20511,19 @@ No matching items
 
 
 
+<div class="callout callout-style-default callout-note callout-titled" data-code-fold="true" title="Updates">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Updates
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><em>Wording in this post was updated after the original posting. Originally an outperformance ratio greater than 1 was mistakenly called “underperforming”, and a ratio less than 1 was mistakenly called “overperforming”. The wording has been fixed.</em></p>
+</div>
+</div>
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
 <p>This blog post is my attempt to replicate the results in Laurie Shaw’s 2018 blog post <a href="http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html">“Exceeding Expected Goals”</a>. Specifically, I want to shed light on how to implement <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model">Gamma-Poisson</a> <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method">empirical Bayes</a> (EB) estimation. If you don’t care at all about the theory behind EB and its application to this context, then go ahead and skip ahead to the “Implementation” section.</p>
@@ -20545,9 +20558,9 @@ Note
 </section>
 <section id="gamma-poisson-eb-estimation" class="level3">
 <h3 class="anchored" data-anchor-id="gamma-poisson-eb-estimation">Gamma-Poisson EB estimation</h3>
-<p>Now, for my replication of Shaw’s analysis, we’re going to be focusing on the ratio of a player’s goals, <img src="https://latex.codecogs.com/png.latex?G">, divided by their <a href="../../posts/epl-xpts-simulation-1">expected goals</a>), <img src="https://latex.codecogs.com/png.latex?xG">, summed up over a fixed period. Shaw refers to this as “overperformance” <img src="https://latex.codecogs.com/png.latex?O"> for a player <img src="https://latex.codecogs.com/png.latex?p">:</p>
+<p>Now, for my replication of Shaw’s analysis, we’re going to be focusing on the ratio of a player’s goals, <img src="https://latex.codecogs.com/png.latex?G">, divided by their <a href="../../posts/epl-xpts-simulation-1">expected goals</a>), <img src="https://latex.codecogs.com/png.latex?xG">, summed up over a fixed period. Shaw refers to this as “outperformance” <img src="https://latex.codecogs.com/png.latex?O"> for a player <img src="https://latex.codecogs.com/png.latex?p">:</p>
 <p><span id="eq-o"><img src="https://latex.codecogs.com/png.latex?%0AO_p%20=%20%5Cfrac%7BG_p%7D%7BxG_p%7D%0A%5Ctag%7B4%7D"></span></p>
-<p>While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in Equation&nbsp;1, Shaw used a <a href="https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family">Gamma-Poisson</a> EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts <em>and</em> what you’re trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a <img src="https://latex.codecogs.com/png.latex?O_p"> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, batting average is bounded between 0 and 1.</p>
+<p>While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in Equation&nbsp;1, Shaw used a <a href="https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family">Gamma-Poisson</a> EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts <em>and</em> what you’re trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a <img src="https://latex.codecogs.com/png.latex?O_p"> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates overperformance; and a ratio less than 1 indicates underperformance. On, the other hand, batting average is bounded between 0 and 1.</p>
 <p>Now, despite the naming of conjugate prior pairs–e.g.&nbsp;“Beta-Binomial” and “Gamma-Poisson”, where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second–let’s not forget that there is a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the “kernel” (i.e.&nbsp;the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)</p>
 <p>In practice, this means that we’ll be using the Gamma distribution for both estimating hyperparameters and posterior sampling. Perhaps surprising to the reader, you won’t need any Poisson functions in the code implementation. Rather, the Poisson distribution is pertinent to implementation only to the extent that the Gamma distribution happens to be the most reasonable distribution to pair with it.</p>
 <p>I’ve woefully explained away a lot of details here, but hopefully this all makes sense to those with a basic understanding of the Gamma and Poisson distributions themselves.</p>
@@ -22564,7 +22577,7 @@ font-style: inherit;">7</span></span>
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
 <p>Having not seen a very clear example of Gamma-Prior EB implementation on the internet–although there are several good explanations with toy examples such as <a href="https://vioshyvo.github.io/Bayesian_inference/conjugate-distributions.html">this e-book chapter from Hyvönen and Topias Tolonen</a>–I hope I’ve perhaps un-muddied the waters for at least one interested reader.</p>
-<p>As for the actual application of <img src="https://latex.codecogs.com/png.latex?G%20/%20xG"> for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has zero year-over-year stability, i.e.&nbsp;one shouldn’t use a player’s raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of <img src="https://latex.codecogs.com/png.latex?O_p"> certainly is an improvement over raw <img src="https://latex.codecogs.com/png.latex?G%20/%20xG"> itself.</p>
+<p>As for the actual application of <img src="https://latex.codecogs.com/png.latex?G%20/%20xG"> for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has zero year-over-year stability, i.e.&nbsp;one shouldn’t use a player’s raw or adjusted G/xG ratio in one season to try to predict whether their outperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of <img src="https://latex.codecogs.com/png.latex?O_p"> certainly is an improvement over raw <img src="https://latex.codecogs.com/png.latex?G%20/%20xG"> itself.</p>
 <p>Comparing hypothetical player A with 6 goals on 2 xG (<img src="https://latex.codecogs.com/png.latex?O_p%20=%203">) vs.&nbsp;player B with 120 goals on 100 xG directly (<img src="https://latex.codecogs.com/png.latex?O_p%20=%201.2">) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A’s <img src="https://latex.codecogs.com/png.latex?O_p"> would be shrunken back towards 1, and player B’s adjustment would be effectively nothing, indicating that player B’s shooting performance is stronger, on average.</p>
 
 

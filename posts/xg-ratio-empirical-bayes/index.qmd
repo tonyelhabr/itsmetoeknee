@@ -2,6 +2,7 @@
 title: Measuring Shooting Overperformance in Soccer
 description: Using empirical Bayes and the Gamma-Poisson conjugate pair
 date: 2023-08-28
+date-modified: 2024-04-26
 categories:
   - r
   - soccer
@@ -12,6 +13,10 @@ execute:
   include: true
   echo: true
 ---
+
+::: {.callout-note code-fold="true" title="Updates"}
+*Wording in this post was updated after the original posting. Originally an outperformance ratio greater than 1 was mistakenly called "underperforming", and a ratio less than 1 was mistakenly called "overperforming". The wording has been fixed.*
+:::
 
 ## Introduction
 
@@ -60,13 +65,13 @@ If, for example, `alpha0 = 70` and `beta0 = 163`, then the prior estimate of bat
 
 ### Gamma-Poisson EB estimation
 
-Now, for my replication of Shaw's analysis, we're going to be focusing on the ratio of a player's goals, $G$, divided by their [expected goals](/posts/epl-xpts-simulation-1)), $xG$, summed up over a fixed period. Shaw refers to this as "overperformance" $O$ for a player $p$:
+Now, for my replication of Shaw's analysis, we're going to be focusing on the ratio of a player's goals, $G$, divided by their [expected goals](/posts/epl-xpts-simulation-1)), $xG$, summed up over a fixed period. Shaw refers to this as "outperformance" $O$ for a player $p$:
 
 $$
 O_p = \frac{G_p}{xG_p}
 $$ {#eq-o}
 
-While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in @eq-ba, Shaw used a [Gamma-Poisson](https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family) EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts *and* what you're trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, batting average is bounded between 0 and 1.
+While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in @eq-ba, Shaw used a [Gamma-Poisson](https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family) EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts *and* what you're trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates overperformance; and a ratio less than 1 indicates underperformance. On, the other hand, batting average is bounded between 0 and 1.
 
 Now, despite the naming of conjugate prior pairs--e.g. "Beta-Binomial" and "Gamma-Poisson", where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second--let's not forget that there is a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the "kernel" (i.e. the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)
 
@@ -543,6 +548,6 @@ For those who follow the EPL, The usual suspects, like Heung-Min Son, show up am
 
 Having not seen a very clear example of Gamma-Prior EB implementation on the internet--although there are several good explanations with toy examples such as [this e-book chapter from Hyvönen and Topias Tolonen](https://vioshyvo.github.io/Bayesian_inference/conjugate-distributions.html)--I hope I've perhaps un-muddied the waters for at least one interested reader.
 
-As for the actual application of $G / xG$ for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has zero year-over-year stability, i.e. one shouldn't use a player's raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of $O_p$ certainly is an improvement over raw $G / xG$ itself.
+As for the actual application of $G / xG$ for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has zero year-over-year stability, i.e. one shouldn't use a player's raw or adjusted G/xG ratio in one season to try to predict whether their outperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of $O_p$ certainly is an improvement over raw $G / xG$ itself.
 
 Comparing hypothetical player A with 6 goals on 2 xG ($O_p = 3$) vs. player B with 120 goals on 100 xG directly ($O_p = 1.2$) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A's $O_p$ would be shrunken back towards 1, and player B's adjustment would be effectively nothing, indicating that player B's shooting performance is stronger, on average.

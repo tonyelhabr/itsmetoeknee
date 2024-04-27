@@ -70,8 +70,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../../assets/img/keyboard.png" rel="icon" type="image/png">
 <script src="../../site_libs/quarto-listing/list.min.js"></script>
 <script src="../../site_libs/quarto-listing/quarto-listing.js"></script>
-<script src="../../site_libs/cookie-consent/cookie-consent.js"></script>
-<link href="../../site_libs/cookie-consent/cookie-consent.css" rel="stylesheet">
 <script src="../../site_libs/quarto-html/quarto.js"></script>
 <script src="../../site_libs/quarto-html/popper.min.js"></script>
 <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -134,29 +132,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-TKB26G5GZW"></script>
 
-<script type="text/plain" cookie-consent="tracking">
+<script type="text/javascript">
 
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 </script>
-
-<script type="text/javascript" charset="UTF-8">
-document.addEventListener('DOMContentLoaded', function () {
-cookieconsent.run({
-  "notice_banner_type":"simple",
-  "consent_type":"implied",
-  "palette":"light",
-  "language":"en",
-  "page_load_consent_levels":["strictly-necessary","functionality","tracking","targeting"],
-  "notice_banner_reject_button_hide":false,
-  "preferences_center_close_button_hide":false,
-  "website_name":""
-  });
-});
-</script> 
-  
 
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -288,12 +270,31 @@ cookieconsent.run({
     </div>
   </div>
   
+    <div>
+    <div class="quarto-title-meta-heading">Modified</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date-modified">April 26, 2024</p>
+    </div>
+  </div>
     
   </div>
   
 
 </header>
 
+<div class="callout callout-style-default callout-note callout-titled" data-code-fold="true" title="Updates">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Updates
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><em>Wording in this post was updated after the original posting. Originally an outperformance ratio greater than 1 was mistakenly called “underperforming”, and a ratio less than 1 was mistakenly called “overperforming”. The wording has been fixed.</em></p>
+</div>
+</div>
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
 <p>This blog post is my attempt to replicate the results in Laurie Shaw’s 2018 blog post <a href="http://eightyfivepoints.blogspot.com/2018/09/exceeding-expected-goals.html">“Exceeding Expected Goals”</a>. Specifically, I want to shed light on how to implement <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model">Gamma-Poisson</a> <a href="https://en.wikipedia.org/wiki/Empirical_Bayes_method">empirical Bayes</a> (EB) estimation. If you don’t care at all about the theory behind EB and its application to this context, then go ahead and skip ahead to the “Implementation” section.</p>
@@ -334,11 +335,11 @@ Note
 </section>
 <section id="gamma-poisson-eb-estimation" class="level3">
 <h3 class="anchored" data-anchor-id="gamma-poisson-eb-estimation">Gamma-Poisson EB estimation</h3>
-<p>Now, for my replication of Shaw’s analysis, we’re going to be focusing on the ratio of a player’s goals, <span class="math inline">\(G\)</span>, divided by their <a href="../../posts/epl-xpts-simulation-1">expected goals</a>), <span class="math inline">\(xG\)</span>, summed up over a fixed period. Shaw refers to this as “overperformance” <span class="math inline">\(O\)</span> for a player <span class="math inline">\(p\)</span>:</p>
+<p>Now, for my replication of Shaw’s analysis, we’re going to be focusing on the ratio of a player’s goals, <span class="math inline">\(G\)</span>, divided by their <a href="../../posts/epl-xpts-simulation-1">expected goals</a>), <span class="math inline">\(xG\)</span>, summed up over a fixed period. Shaw refers to this as “outperformance” <span class="math inline">\(O\)</span> for a player <span class="math inline">\(p\)</span>:</p>
 <p><span id="eq-o"><span class="math display">\[
 O_p = \frac{G_p}{xG_p}
 \tag{4}\]</span></span></p>
-<p>While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in <a href="#eq-ba">Equation&nbsp;1</a>, Shaw used a <a href="https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family">Gamma-Poisson</a> EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts <em>and</em> what you’re trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. On, the other hand, batting average is bounded between 0 and 1.</p>
+<p>While one might be tempted to use Beta-Binomial EB since this setup seems similar to batting average in <a href="#eq-ba">Equation&nbsp;1</a>, Shaw used a <a href="https://www.bayesrulesbook.com/chapter-5#gamma-poisson-conjugate-family">Gamma-Poisson</a> EB adjustment, and justifiably so. Gamma-Poisson makes more sense when the underlying data consists of counts <em>and</em> what you’re trying to estimate is a rate or ratio, not a proportion bounded between 0 and 1. Note that a <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates overperformance; and a ratio less than 1 indicates underperformance. On, the other hand, batting average is bounded between 0 and 1.</p>
 <p>Now, despite the naming of conjugate prior pairs–e.g.&nbsp;“Beta-Binomial” and “Gamma-Poisson”, where the prior distribution is represented by the first distribution and the likelihood distribution is indicated by the second–let’s not forget that there is a third distribution to be noted: the posterior. In the case of the Gamma-Poisson model, the unnormalized posterior distribution of the “kernel” (i.e.&nbsp;the prior and likelihood pair) is a Gamma distribution. (This is always the case with Gamma-Prior kernels.)</p>
 <p>In practice, this means that we’ll be using the Gamma distribution for both estimating hyperparameters and posterior sampling. Perhaps surprising to the reader, you won’t need any Poisson functions in the code implementation. Rather, the Poisson distribution is pertinent to implementation only to the extent that the Gamma distribution happens to be the most reasonable distribution to pair with it.</p>
 <p>I’ve woefully explained away a lot of details here, but hopefully this all makes sense to those with a basic understanding of the Gamma and Poisson distributions themselves.</p>
@@ -789,7 +790,7 @@ O_p = \frac{G_p}{xG_p}
 <section id="conclusion" class="level2">
 <h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
 <p>Having not seen a very clear example of Gamma-Prior EB implementation on the internet–although there are several good explanations with toy examples such as <a href="https://vioshyvo.github.io/Bayesian_inference/conjugate-distributions.html">this e-book chapter from Hyvönen and Topias Tolonen</a>–I hope I’ve perhaps un-muddied the waters for at least one interested reader.</p>
-<p>As for the actual application of <span class="math inline">\(G / xG\)</span> for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has zero year-over-year stability, i.e.&nbsp;one shouldn’t use a player’s raw or adjusted G/xG ratio in one season to try to predict whether their overperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of <span class="math inline">\(O_p\)</span> certainly is an improvement over raw <span class="math inline">\(G / xG\)</span> itself.</p>
+<p>As for the actual application of <span class="math inline">\(G / xG\)</span> for evaluating shooting performance, I have mixed feelings about it. Further analysis shows that it has zero year-over-year stability, i.e.&nbsp;one shouldn’t use a player’s raw or adjusted G/xG ratio in one season to try to predict whether their outperformance ratio will sustain in the next season. On the other hand, by simply making player estimates more comparable, the EB adjustment of <span class="math inline">\(O_p\)</span> certainly is an improvement over raw <span class="math inline">\(G / xG\)</span> itself.</p>
 <p>Comparing hypothetical player A with 6 goals on 2 xG (<span class="math inline">\(O_p = 3\)</span>) vs.&nbsp;player B with 120 goals on 100 xG directly (<span class="math inline">\(O_p = 1.2\)</span>) is unfair; the former could be performing at an unsustainable rate, while the latter has demonstrated sustained overperformance over a lot more time. Indeed, applying the EB adjustment to these hypothetical numbers, player A’s <span class="math inline">\(O_p\)</span> would be shrunken back towards 1, and player B’s adjustment would be effectively nothing, indicating that player B’s shooting performance is stronger, on average.</p>
 
 
@@ -1223,17 +1224,6 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 });
 </script>
 </div> <!-- /content -->
-<footer class="footer">
-  <div class="nav-footer">
-    <div class="nav-footer-left">
-      &nbsp;
-    </div>   
-    <div class="nav-footer-center"><div class="cookie-consent-footer"><a href="#" id="open_preferences_center">Cookie Preferences</a></div></div>
-    <div class="nav-footer-right">
-      &nbsp;
-    </div>
-  </div>
-</footer>
 
 
 
