@@ -16,16 +16,346 @@ execute:
 
 # Introduction
 
-Once upon a time I wrote about the "Bundesliga tax", generating a set of generic "lookup tables" one could use to forecast the performance drop off (or improvement) when transferring from one major league to another. That's one end of the spectrum.
+Towards the end of each soccer season, we naturally start to look back at player performances, often looking to seems to have improved the most compared to their past seasons. Or, on the other end of the spectrum, who disappointed the most. We may have different motivations for doing so--e.g. we may be trying to attribute team over- and under-performance to individuals, we may be hypothesizing who is likely to be transferred or resigned, etc.
 
-The other end of the spectrum is "How unexpected (or "unlikely") was player X's shooting performance this season?" That question is often posed when observing a large difference in a player's goals scored and expected goals (xG). For instance, if a player only scored 5 goals in a given season on 8 xG, their "under-performance" of 3 goals is certainly notable, as its about 37.5% lower than expected (i.e. `(5 - 8) / 8`). The "Overperformance ($O$)" ratio of goals to expected goals (G / xG)--[I've written about before](posts/xg-ratio-empirical-bayes/)--is the common way of understanding shooting performance. Intuitively, an $O$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance
+The question "How unexpected (or "unlikely") was player X's shooting performance this season?" is often posed when observing a large difference in a player's goals scored and [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/). For instance, if a striker only scored 8 goals in a given season on 12 xG, their "underperformance" of 4 goals is certainly notable, as its about 50% lower than expected (i.e. `(8 - 12) / 12`).
 
-Since then, I've been asked how would go about quantifying how unlikely an individual player's season was.
+The "Outperformance ($O$)" ratio of goals to expected goals ($O = \frac{G}{xG}$)--[something I've written about before](posts/xg-ratio-empirical-bayes/)--is the common way of understanding shooting performance. Intuitively, an $O$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with an $O$ ratio of 0.67 (i.e. $O = \frac{8}{12} = 0.75$).
 
-In this post I show several approaches to doing so.
+In most cases, we have prior seasons of data to use when evaluating a player's $O$ ratio for a given season. For example, let's say our hypothetical player scored 12 goals on 10 xG ($O = 1.2$) in the season prior, and 11 goals on 10 xG ($O = 1.1$) before that. Putting things in perspective, an $O = 0.75$ after those performances seems even more likely, compared to an "average" player who theoretically achieves $O = 1$ ratio every year.
 
-## Approach 1
+So how do we put a number on the unlikeliness of that $O = 0.75$ for our hypothetical player, accounting for their prior season-long performances?
+
+### Data
+
+For this post, I'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 2023/24 seasons of the [the Big 5 European soccer leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats). Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.
 
 ```{r}
+#| label: setup
+#| code-fold: true
+#| code-summary: "Setup"
+library(dplyr)
+library(purrr)
+library(rlang)
 
+library(worldfootballR)
+
+COUNTRIES <- c('ENG', 'ESP', 'GER', 'ITA', 'FRA')
+GENDERS <- 'M'
+SEASON_END_YEARS <- 2018:2024
+TIER <- '1st'
+PROJ_DIR <- 'posts/xg-likelihood'
 ```
+
+```{r}
+#| label: shooting-old
+#| code-fold: true
+#| code-summary: "Get player+season-level shooting data"
+#| include: false
+# COUNTRIES <- c('ENG', 'ESP', 'GER', 'ITA', 'FRA')
+# GENDERS <- 'M'
+# SEASON_END_YEARS <- 2018:2024
+# PROJ_DIR <- 'posts/xg-likelihood'
+# ## Issue with binding rows
+# raw_shooting <- worldfootballR::fb_league_stats(
+#   country = COUNTRIES,
+#   gender = GENDERS,
+#   season_end_year = SEASON_END_YEARS,
+#   stat_type = 'shooting',
+#   team_or_player = 'player'
+# )
+# raw_shooting <- purrr::map_dfr(
+#   rlang::set_names(COUNTRIES),
+#   \(country) {
+#     purrr::map_dfr(
+#       rlang::set_names(GENDERS),
+#       \(gender) {
+#         purrr::map_dfr(
+#           rlang::set_names(SEASON_END_YEARS),
+#           \(season_end_year) {
+#             path <- file.path(PROJ_DIR, sprintf('%s-%s-%s.qs', country, gender, season_end_year))
+#             res <- if (file.exists(path)) {
+#               qs::qread(path)
+#             } else {
+#             worldfootballR::fb_league_stats(
+#               country = country,
+#               gender = gender,
+#               season_end_year = season_end_year,
+#               stat_type = 'shooting',
+#               team_or_player = 'player'
+#             )
+#             }
+#             ## 2024 season has "{age}-{days}" while prior seasons do not
+#             if (season_end_year < 2024) {
+#               res$Age <- as.character(res$Age)
+#             }
+#             res |> 
+#               dplyr::mutate(
+#                 Country = country,
+#                 Season_End_Year = season_end_year,
+#                 Gender = gender,
+#                 .before = 1
+#               )
+#           }
+#         )
+#       }
+#     )
+#   }
+# )
+# np_shooting <- raw_shooting |> 
+#   dplyr::filter(Player |> stringr::str_detect('Erling Haaland')) |> 
+#   dplyr::transmute(
+#     season_end_year = Season_End_Year, 
+#     shots = Sh_Standard - PKatt_Standard, 
+#     g = Gls_Standard - PK_Standard, 
+#     xg = npxG_Expected
+#   ) |> 
+#   dplyr::arrange(season_end_year)
+```
+
+In our first approach, we need just season+player-level shot data, which can be retrieved as follows.
+
+```{r}
+#| label: np_player_season_shooting
+#| code-fold: true
+#| code-summary: "Get player+season-level shooting data"
+#| include: true
+raw_player_season_shooting <- worldfootballR::load_fb_big5_advanced_season_stats(
+  season_end_year = SEASON_END_YEARS,
+  stat_type = 'shooting',
+  team_or_player = 'player'
+) |> 
+  tibble::as_tibble()
+#> → Data last updated 2024-04-25 17:35:01 UTC
+
+np_player_season_shooting <- raw_player_season_shooting |> 
+  ## Exclude penalties (i.e. "non-penalty", indicated with `np_` in variable names)
+  dplyr::mutate(
+    player = Player,
+    player_id = Url |> dirname() |> basename(),
+    season_end_year = Season_End_Year,
+  ) |>
+  ## aggregate over players who have played with multiple teams in the same season
+  dplyr::summarize(
+    .by = c(player, player_id, season_end_year),
+    shots = sum(Sh_Standard - PKatt_Standard), 
+    g = sum(Gls_Standard - PK_Standard), 
+    xg = sum(npxG_Expected)
+  ) |> 
+  dplyr::mutate(
+    o = g / xg
+  )
+dplyr::glimpse(np_player_season_shooting)
+#> Rows: 18,584
+#> Columns: 7
+#> $ player          <chr> "Martin Agirregabiria", "Alexis", "Burgui", "Er…
+#> $ player_id       <chr> "355c883a", "db0cd1ae", "45e304c8", "ed79b7d3",…
+#> $ season_end_year <int> 2018, 2018, 2018, 2018, 2018, 2018, 2018, 2018,…
+#> $ shots           <dbl> 3, 13, 15, 6, 3, 8, 18, 0, 22, 52, 33, 62, 0, 2…
+#> $ g               <dbl> 0, 1, 1, 1, 0, 0, 1, 0, 3, 6, 3, 10, 0, 0, 0, 2…
+#> $ xg              <dbl> 0.1, 1.2, 0.7, 1.7, 0.1, 0.8, 1.2, 0.0, 1.8, 3.…
+#> $ o               <dbl> 0.0000000, 0.8333333, 1.4285714, 0.5882353, 0.0…
+```
+
+```{r}
+#| label: np_player_season_shooting-save
+#| code-fold: true
+#| code-summary: "Get player+season-level shooting data"
+#| include: false
+qs::qsave(np_player_season_shooting, file.path(PROJ_DIR, 'np_player_season_shooting.qs'))
+```
+
+```{r}
+#| label: np_player_season_shooting-read
+#| include: false
+np_player_season_shooting <- qs::qsave(file.path(PROJ_DIR, 'np_player_season_shooting.qs'))
+```
+
+```{r}
+#| label: players_to_evaluate
+#| include: false
+players_to_evaluate <- dplyr::inner_join(
+  np_player_season_shooting |> 
+    dplyr::filter(season_end_year < 2024L) |>
+    dplyr::summarize(
+      .by = c(player_id, player),
+      prior_season_count = n(), 
+      prior_season_count_with_pos_o = sum(o > 1),
+      dplyr::across(
+        c(
+          shots,
+          g,
+          xg,
+        ),
+        \(.x) sum(.x),
+        .names = 'prior_season_{.col}'
+      )
+    ) |>
+    dplyr::filter(prior_season_count == prior_season_count_with_pos_o) |> 
+    dplyr::arrange(dplyr::desc(prior_season_shots)),
+  np_player_season_shooting |> 
+    dplyr::filter(season_end_year == 2024L, o < 1) |> 
+    dplyr::select(
+      player_id,
+      shots,
+      g,
+      xg,
+      o
+    ) |> 
+    dplyr::rename_with(
+      \(.x) paste0('latest_season_', .x),
+      c('shots', 'g', 'xg', 'o')
+    ),
+  by = dplyr::join_by(player_id)
+)
+```
+
+For the rest of our approaches, we'll need shot-level data.
+
+```{r}
+#| label: shots
+#| code-fold: false
+#| code-summary: "Get shot-level data"
+raw_shots <- worldfootballR::load_fb_match_shooting(
+  country = COUNTRIES,
+  tier = TIERS,
+  gender = GENDERS,
+  season_end_year = SEASON_END_YEARS
+)
+#> → Data last updated 2024-04-25 17:52:47 UTC
+
+np_shots <- raw_shots |> 
+  ## Drop penalties
+  dplyr::filter(
+    !dplyr::coalesce((Distance == '13' & round(as.double(xG), 2) == 0.79), FALSE)
+  ) |> 
+  dplyr::transmute(
+    season_end_year = Season_End_Year,
+    player = Player,
+    player_id = Player_Href |> dirname() |> basename(),
+    g = as.integer(Outcome == 'Goal'),
+    xg = as.double(xG)
+  )
+dplyr::glimpse(np_shots)
+#> Rows: 306,654
+#> Columns: 5
+#> $ season_start_year <dbl> 2017, 2017, 2017, 2017, 2017, 2017, 2017, 201…
+#> $ player            <chr> "Alexandre Lacazette", "Alex Oxlade-Chamberla…
+#> $ player_id         <chr> "9dbb75ca", "38c7feef", "38c7feef", "ce5143da…
+#> $ g                 <int> 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, …
+#> $ xg                <dbl> 0.06, 0.04, 0.03, 0.34, 0.02, 0.07, 0.05, 0.0…
+```
+
+```{r}
+#| label: np_shots-save
+#| code-fold: true
+#| include: false
+qs::qsave(np_shots, file.path(PROJ_DIR, 'np_shots.qs'))
+```
+
+```{r}
+#| label: np_shots-read
+#| include: false
+np_shots <- qs::qsave(file.path(PROJ_DIR, 'np_shots.qs'))
+```
+
+```{r}
+#| label: player_season_np_shots
+player_season_np_shots <- np_shots |> 
+  dplyr::filter(player == 'James Maddison') |>
+  dplyr::summarize(
+    .by = c(season_end_year), 
+    shots = dplyr::n(),
+    dplyr::across(c(g, xg), sum)
+  )
+```
+
+We'll focus on one player in particular--James Maddison. Maddison. has had a sub-par 2023/2024 season for his own standards
+
+```{r}
+#| label: maddison_np_season_shooting
+#| code-fold: false
+maddison_np_season_shooting <- np_player_season_shooting |>
+  dplyr::filter(player == 'James Maddison')
+maddison_np_season_shooting
+#> # A tibble: 6 × 7
+#>   player         player_id season_end_year shots     g    xg     o
+#>   <chr>          <chr>               <int> <dbl> <dbl> <dbl> <dbl>
+#> 1 James Maddison ee38d9c5             2019    79     6   5.9 1.02 
+#> 2 James Maddison ee38d9c5             2020    74     6   5.3 1.13 
+#> 3 James Maddison ee38d9c5             2021    75     8   3.8 2.11 
+#> 4 James Maddison ee38d9c5             2022    72    12   7.5 1.6  
+#> 5 James Maddison ee38d9c5             2023    81     9   6.6 1.36 
+#> 6 James Maddison ee38d9c5             2024    47     4   4.7 0.851
+```
+
+## Analysis
+
+### Approach 1: $t$-test
+
+If you have some background in statistics, perhaps the first approach that comes to mind is a [$t$-test](https://en.wikipedia.org/wiki/Student%27s_t-test).
+
+```{r}
+#| label: maddison_np_season_shooting-t-test
+#| code-fold: false
+#| code-summary: "Performing a t-test for likelihood of Maddison's 2024 outperformance"
+latest_o <- maddison_np_season_shooting |> 
+  dplyr::filter(season_end_year == 2024L) |> 
+  dplyr::pull(o)
+
+maddison_np_season_shooting |> 
+  dplyr::filter(season_end_year < 2024) |> 
+  dplyr::summarise(
+    mean = weighted.mean(o, w = shots),
+    sd = sqrt(sum(shots * (o - weighted.mean(o, w = shots))^2) / sum(shots))
+  ) |> 
+  dplyr::mutate(
+    z_score = (latest_o - mean) / sd,
+    p_value = 2 * pnorm(-abs(z_score))
+  )
+#> [1] 0.1705488
+```
+
+In reality, this isn't giving us a percentage of likelihood of the outcome. Rather, the p-value measures the probability of obtaining an outperformance as extreme as the one observed in 2023/24 (or more extreme) if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between Maddison's actual outperformance ratio in the 2023/24 season and the distribution of outperformance ratios observed in previous seasons.
+
+### Approach 2: Sampling from Shrunken Outperformance Estimates
+
+```{r}
+#| label: gb-posterior-sampling
+#| code-fold: true
+#| code-summary: "Sampling from a Gamma-Poisson posterior distribution"
+```
+
+### Approach 3: Sampling from Prior History of Shots
+
+```{r}
+#| label: shots
+raw_shots <- worldfootballR::load_fb_match_shooting(
+  country = c('ENG', 'ESP', 'GER', 'ITA', 'FRA'),
+  tier = '1st',
+  gender = 'M',
+  season_end_year = c(2018:2024)
+)
+
+players_of_interest <- c("Erling Haaland", "Harry Kane")
+shots <- raw_shots |> 
+  filter(Player %in% players_of_interest) |> 
+  ## Drop penalties
+  filter(
+    !coalesce((Distance == '13' & round(as.double(xG), 2) == 0.79), FALSE)
+  ) |> 
+  transmute(
+    season_start_year = Season_End_Year - 1,
+    player = Player,
+    g = as.integer(Outcome == 'Goal'),
+    xg = as.double(xG)
+  )
+```
+
+### Approach 4: Sampling from Entire History of Shots
+
+### Approach 5: Sampling from Entire History of Shots, Resampling Outcomes
+
+# Conclusion
+
+Once upon a time I wrote about [quantifying the relative strength of top tier domestic soccer leagues](posts/soccer-league-strength). The main motivation for this was to have a general framework with which to forecast the performance drop off (or improvement) of a player when transferring from one major league to another, i.e. to answer "How many more or less goals might we expect from player X when they transfer from league A to league B?". Notably, Erling Haaland's transfer from the Bundesliga to the English Premier League vehemently defied the figures I found there, which showed around a 17% drop off.
