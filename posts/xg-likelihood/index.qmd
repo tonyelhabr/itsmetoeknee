@@ -178,18 +178,18 @@ players_to_evaluate <- dplyr::inner_join(
       o
     ) |> 
     dplyr::rename_with(
-      \(.x) paste0('latest_', .x),
+      \(.x) paste0('target_', .x),
       c('shots', 'g', 'xg', 'o')
     ),
   by = dplyr::join_by(player_id)
 )
 
 players_to_evaluate |> 
-  dplyr::filter(prior_count == prior_count_with_pos_o, latest_o < 1) |> 
+  dplyr::filter(prior_count == prior_count_with_pos_o, target_o < 1) |> 
   dplyr::arrange(dplyr::desc(prior_shots))
 
 players_to_evaluate |> 
-  dplyr::filter(prior_count == prior_count_with_neg_o, latest_o > 1) |> 
+  dplyr::filter(prior_count == prior_count_with_neg_o, target_o > 1) |> 
   dplyr::arrange(dplyr::desc(prior_shots))
 ```
 
@@ -203,7 +203,7 @@ PLAYERS_OF_INTEREST <- c(
   'dc62b55d' = 'Matheus Cunha'
 )
 select_np_season_shooting <- player_season_np_shots |>
-  dplyr::filter(player %in% unname(PLAYERS_OF_INTEREST))
+  dplyr::filter(player_id %in% names(PLAYERS_OF_INTEREST))
 select_np_season_shooting
 #> # A tibble: 12 × 7
 #>    player_id player         season_end_year shots     g    xg     o
@@ -232,10 +232,10 @@ If you have some background in statistics, perhaps the first approach that comes
 #| label: select_np_season_shooting-t-test
 #| code-fold: false
 #| code-summary: "Performing a t-test for likelihood of Maddison's 2024 outperformance"
-LATEST_SEASON_END_YEAR <- 2024
+TARGET_SEASON_END_YEAR <- 2024
 
 select_np_season_shooting |> 
-  dplyr::filter(season_end_year < LATEST_SEASON_END_YEAR) |> 
+  dplyr::filter(season_end_year < TARGET_SEASON_END_YEAR) |> 
   dplyr::summarise(
     .by = c(player_id, player),
     mean = weighted.mean(o, w = shots),
@@ -244,17 +244,17 @@ select_np_season_shooting |>
   ) |> 
   dplyr::inner_join(
     select_np_season_shooting |> 
-      dplyr::filter(season_end_year == LATEST_SEASON_END_YEAR) |> 
-      dplyr::select(player_id, latest_o = o),
+      dplyr::filter(season_end_year == TARGET_SEASON_END_YEAR) |> 
+      dplyr::select(player_id, target_o = o),
     by = dplyr::join_by(player_id)
   ) |> 
   dplyr::mutate(
-    z_score = (latest_o - mean) / sd,
+    z_score = (target_o - mean) / sd,
     p_value = 2 * pnorm(-abs(z_score))
   ) |> 
   dplyr::arrange(player)
 #> # A tibble: 2 × 7
-#>   player_id player          mean    sd latest_o z_score p_value
+#>   player_id player          mean    sd target_o z_score p_value
 #>   <chr>     <chr>          <dbl> <dbl>    <dbl>   <dbl>   <dbl>
 #> 1 ee38d9c5  James Maddison 1.40  0.378    0.847   -1.47  0.141 
 #> 2 dc62b55d  Matheus Cunha  0.757 0.182    1.16     2.24  0.0250
@@ -312,13 +312,13 @@ select_resampled_shots <- purrr::imap_dfr(
     player_shots <- np_shots |> 
       dplyr::filter(player_id == .player_id)
     
-    latest_shots <- player_shots |>
-      dplyr::filter(season_end_year == LATEST_SEASON_END_YEAR)
+    target_shots <- player_shots |>
+      dplyr::filter(season_end_year == TARGET_SEASON_END_YEAR)
     
     player_shots |>
-      dplyr::filter(season_end_year < LATEST_SEASON_END_YEAR) |> 
+      dplyr::filter(season_end_year < TARGET_SEASON_END_YEAR) |> 
       resample_player_shots(
-        n_shots_to_sample = nrow(latest_shots)
+        n_shots_to_sample = nrow(target_shots)
       ) |> 
       dplyr::mutate(
         player_id = .player_id,
@@ -327,22 +327,22 @@ select_resampled_shots <- purrr::imap_dfr(
   }
 )
 
-select_resampled_shots_with_latest_o <- select_resampled_shots |> 
+select_resampled_shots_with_target_o <- select_resampled_shots |> 
   dplyr::inner_join(
     player_season_np_shots |> 
-      dplyr::filter(season_end_year == LATEST_SEASON_END_YEAR) |> 
+      dplyr::filter(season_end_year == TARGET_SEASON_END_YEAR) |> 
       dplyr::select(
         player_id,
-        latest_o = o
+        target_o = o
       ),
     by = dplyr::join_by(player_id)
   )
 
-select_resampled_props <- select_resampled_shots_with_latest_o |> 
+select_resampled_props <- select_resampled_shots_with_target_o |> 
   dplyr::summarize(
     .by = c(player_id, player),
-    prop_lte = sum(o <= latest_o) / n(),
-    prop_gte = sum(o >= latest_o) / n()
+    prop_lte = sum(o <= target_o) / n(),
+    prop_gte = sum(o >= target_o) / n()
   ) |> 
   dplyr::arrange(player)
 select_resampled_props
@@ -425,13 +425,13 @@ group_palette <- c(
   'lte' = '#f15bb5'
 )
 
-maddison_resampled_shots_with_latest_o <- select_resampled_shots_with_latest_o |>
+maddison_resampled_shots_with_target_o <- select_resampled_shots_with_target_o |>
   dplyr::filter(player == 'James Maddison') |> 
   dplyr::mutate(
-    group = ifelse(o <= latest_o, 'lte', 'other')
+    group = ifelse(o <= target_o, 'lte', 'other')
   )
 
-maddison_resampled_shots_plot <- maddison_resampled_shots_with_latest_o |> 
+maddison_resampled_shots_plot <- maddison_resampled_shots_with_target_o |> 
   ggplot2::ggplot() +
   ggplot2::aes(
     x = o
@@ -450,12 +450,6 @@ maddison_resampled_shots_plot <- maddison_resampled_shots_with_latest_o |>
     linetype = 1,
     linewidth = 1.5
   ) +
-  # ggplot2::geom_vline(
-  #   ggplot2::aes(xintercept = mean(adj_o_samples)),
-  #   color = 'white',
-  #   linetype = 2,
-  #   linewidth = 1
-  # ) +
   ggplot2::coord_cartesian(
     ylim = c(0, 48), 
     xlim = c(0, 4),
@@ -560,48 +554,21 @@ The code that follows is similar to that from [my own prior art](/posts/xg-empir
 #| code-fold: true
 #| code-summary: "Sampling from a Gamma-Poisson posterior distribution"
 ## Similar to my code in /posts/xg-empirical-bayes
-N_SIMS <- 10000
-MIN_PRIOR_SHOTS <- 50
+# N_SIMS <- 10000
 
-init_player_np_shots <- player_season_np_shots |> 
-  dplyr::mutate(is_latest = season_end_year == LATEST_SEASON_END_YEAR) |> 
+player_np_shots <- player_season_np_shots |> 
+  dplyr::mutate(
+    is_target = season_end_year == TARGET_SEASON_END_YEAR
+  ) |> 
   dplyr::summarize(
-    .by = c(is_latest, player_id, player),
+    .by = c(is_target, player_id, player),
     dplyr::across(
       c(shots, g, xg),
       \(.x) sum(.x, na.rm = TRUE)
     )
   ) |> 
   dplyr::mutate(o = g / xg) |> 
-  dplyr::arrange(player, player_id, is_latest)
-
-## Player must have
-## 1. shots in latest season
-## 2. more shots in all prior seasons combined than latest season
-eligible_players <- init_player_np_shots |> 
-  dplyr::transmute(
-    player_id,
-    latest = ifelse(is_latest, 'latest', 'prior'),
-    shots
-  ) |> 
-  tidyr::pivot_wider(
-    names_from = latest,
-    values_from = shots,
-    values_fill = 0L
-  ) |> 
-  dplyr::filter(latest > 0, prior > latest)
-  
-player_np_shots <- init_player_np_shots |> 
-  dplyr::semi_join(
-    eligible_players,
-    by = dplyr::join_by(player_id)
-  )
-
-prior_player_np_shots <- player_np_shots |> 
-  dplyr::filter(!is_latest)
-
-latest_player_np_shots <- player_np_shots |>
-  dplyr::filter(is_latest)
+  dplyr::arrange(player, player_id, is_target)
 
 estimate_prior_distr_params <- function(x) {
   prior_distr <- MASS::fitdistr(
@@ -621,7 +588,7 @@ simulate_gamma_posterior <- function(
     trials, 
     prior_shape, 
     prior_rate, 
-    n_sims = N_SIMS,
+    n_sims = 10000,
     seed = 42
 ) {
   posterior_shape <- prior_shape + successes
@@ -638,22 +605,6 @@ simulate_gamma_posterior <- function(
   )
 }
 
-estimate_gamma_posterior <- function(df, prior_params) {
-  df$adj_o <- purrr::map2(
-    df$g, 
-    df$xg,
-    function(g, xg) {
-      simulate_gamma_posterior(
-        successes = g,
-        trials = xg,
-        prior_shape = prior_params$shape,
-        prior_rate = prior_params$rate
-      )
-    }
-  )
-  df
-}
-
 unnest_posterior <- function(df) {
   df |> 
     dplyr::select(
@@ -667,72 +618,110 @@ unnest_posterior <- function(df) {
     dplyr::arrange(desc(adj_o_mean))
 }
 
-prior_params <- prior_player_np_shots |> 
-  dplyr::filter(
-    shots >= MIN_PRIOR_SHOTS,
-    g > 0
-  ) |> 
-  dplyr::pull(o) |> 
-  estimate_prior_distr_params()
+posterior_select_np_shots <- purrr::imap_dfr(
+  PLAYERS_OF_INTEREST,
+  \(.player, .player_id) {
+    
+    player_np_shots <- np_shots |> 
+      dplyr::filter(player_id == .player_id) |> 
+      dplyr::mutate(is_target = season_end_year == TARGET_SEASON_END_YEAR)
+    
+    prior_player_np_shots <- player_np_shots |> 
+      dplyr::filter(!is_target)
+    
+    target_player_np_shots <- player_np_shots |> 
+      dplyr::filter(is_target)
+    
+    n_target_shots <- nrow(target_player_np_shots)
+    
+    numbered_player_np_shots <- prior_player_np_shots |> 
+      dplyr::arrange(match_date, minute) |> 
+      dplyr::mutate(
+        rn = dplyr::row_number(),
+        fold = 1L + (rn %/% n_target_shots)
+      )
 
-posterior_player_np_shots <- prior_player_np_shots |> 
-  estimate_gamma_posterior(prior_params = prior_params) |> 
-  unnest_posterior()
-
-prop_sims_with_latest_actual <- posterior_player_np_shots |> 
-  dplyr::inner_join(
-    latest_player_np_shots |> 
-      dplyr::select(
-        player_id,
-        latest_shots = shots, latest_g = g, latest_xg = xg, latest_o = o
-      ),
-    by = dplyr::join_by(player_id)
-  ) |> 
-  dplyr::filter(latest_shots > 0) |> 
-  dplyr::mutate(
-    ## In what percentage of posterior samples do we observe a result lower than what actually happened in 2023/24?
-    prop_lte = purrr::map2_dbl(
-      adj_o_samples,
-      latest_o,
-      \(.x, .y) {
-        sum(.x <= .y) / length(.x)
-      }
-    ),
-    prop_gte = purrr::map2_dbl(
-      adj_o_samples,
-      latest_o,
-      \(.x, .y) {
-        sum(.x >= .y) / length(.x)
-      }
-    ),
-    lower_tail = purrr::map_dbl(
-      latest_o,
-      \(.x) {
-        pgamma(.x, shape = prior_params$shape, rate = prior_params$rate)
-      }
+    prior_distr_shots <- numbered_player_np_shots |> 
+      dplyr::summarize(
+        .by = c(fold),
+        shots = dplyr::n(),
+        dplyr::across(c(g, xg), \(.x) sum(.x))
+      ) |> 
+      dplyr::filter(shots >= (0.75 * n_target_shots)) |> 
+      dplyr::mutate(o = g / xg)
+    
+    prior_params <- estimate_prior_distr_params(prior_distr_shots$o)
+    
+    agg_player_np_shots <- player_np_shots |>
+      dplyr::summarize(
+        .by = c(is_target),
+        shots = dplyr::n(),
+        dplyr::across(c(g, xg), \(.x) sum(.x))
+      ) |> 
+      dplyr::mutate(o = g / xg)
+    
+    agg_prior_player_np_shots <- agg_player_np_shots |> 
+      dplyr::filter(!is_target)
+    
+    agg_target_player_np_shots <- agg_player_np_shots |> 
+      dplyr::filter(is_target)
+    
+    posterior <- simulate_gamma_posterior(
+      successes = agg_prior_player_np_shots$g,
+      trials = agg_prior_player_np_shots$xg,
+      prior_shape = prior_params$shape,
+      prior_rate = prior_params$rate
     )
-  )
+    
+    prop_lte <- pgamma(
+      agg_target_player_np_shots$o, 
+      shape = prior_params$shape, 
+      rate = prior_params$rate,
+      lower.tail = TRUE
+    )
+    
+    list(
+      'player_id' = .player_id,
+      'player' = .player,
+      'prior_params' = list(prior_params),
+      'posterior' = list(posterior),
+      'prior_shots' = agg_prior_player_np_shots$shots,
+      'prior_g' = agg_prior_player_np_shots$g,
+      'prior_xg' = agg_prior_player_np_shots$xg,
+      'prior_o' = agg_prior_player_np_shots$o,
+      'target_shots' = n_target_shots,
+      'target_g' = agg_target_player_np_shots$g,
+      'target_xg' = agg_target_player_np_shots$xg,
+      'target_o' = agg_target_player_np_shots$o,
+      'prop_lte' = prop_lte,
+      'prop_gte' = 1 - prop_lte
+    )
+  }
+)
+
+posterior_select_np_shots |> 
+  dplyr::select(player_id, player, prop_lte, prop_gte)
 ```
 
 We see that Maddison's 2023/24 $O$ value of 0.847 (or worse) occurs in only 0.43% of simulations.
 
 ```{r}
-#| label: prop_sims_with_latest_actual-maddison
+#| label: prop_sims_with_target_actual-maddison
 #| code-fold: false
 #| code-summary: "Count of Maddison's EB posterior samples below his actual 2023/24 outperformance ratio"
-maddison_prop_sims_with_latest_actual <- prop_sims_with_latest_actual |> 
+maddison_prop_sims_with_target_actual <- prop_sims_with_target_actual |> 
   dplyr::filter(player == 'James Maddison')
 
-maddison_prop_sims_with_latest_actual |> 
+maddison_prop_sims_with_target_actual |> 
   dplyr::select(
     player,
     prior_o,
     adj_o_mean,
-    latest_o,
+    target_o,
     prop_lte
   )
 #> # A tibble: 1 × 5
-#>   player         prior_o adj_o_mean latest_o prop_lte
+#>   player         prior_o adj_o_mean target_o prop_lte
 #>   <chr>            <dbl>      <dbl>    <dbl>    <dbl>
 #> 1 James Maddison    1.38       1.28    0.847   0.0043
 ```
@@ -740,22 +729,22 @@ maddison_prop_sims_with_latest_actual |>
 We can do something similar to see how unlikely Cunha's overperformance in 2023/24 was.
 
 ```{r}
-#| label: prop_sims_with_latest_actual-maddison
+#| label: prop_sims_with_target_actual-maddison
 #| code-fold: false
 #| code-summary: "Count of Cunha's EB posterior samples below his actual 2023/24 outperformance ratio"
-cunha_prop_sims_with_latest_actual <- prop_sims_with_latest_actual |> 
+cunha_prop_sims_with_target_actual <- prop_sims_with_target_actual |> 
   dplyr::filter(player == 'Matheus Cunha')
 
-cunha_prop_sims_with_latest_actual |> 
+cunha_prop_sims_with_target_actual |> 
   dplyr::select(
     player,
     prior_o = o,
     adj_o_mean,
-    latest_o,
+    target_o,
     prop_gte
   )
 #> # A tibble: 1 × 5
-#>   player        prior_o adj_o_mean latest_o prop_gte
+#>   player        prior_o adj_o_mean target_o prop_gte
 #>   <chr>           <dbl>      <dbl>    <dbl>    <dbl>
 #> 1 Matheus Cunha   0.772      0.823     1.16   0.0214
 ```
@@ -765,7 +754,7 @@ Cunha's 2023/24 $O$ of 1.16 (or better) is only seen in 2.14% of simulations.
 Unfortunately, looking at the whole spectrum of players, it looks like this approach tends to over- and under-estimate likelihood. The histogram below shows that this approach finds that over 50% of player outcomes in the 2023/24 season were less than 5% likely. This is clearly miscalibrated--we should expect to see just 5% of player $O$ values being only 5% likely in any given season.
 
 ```{r}
-prop_lte_hist <- prop_sims_with_latest_actual |>
+prop_lte_hist <- prop_sims_with_target_actual |>
   ggplot2::ggplot() +
   ggplot2::aes(
     x = prop_lte
@@ -802,7 +791,7 @@ ggsave(
 #| label: prior_o_bucket-plot-debug
 #| include: false
 #| 
-prop_sims_with_latest_actual |> 
+prop_sims_with_target_actual |> 
 mutate(
   prior_o_bucket = cut(
     prior_o,
@@ -837,7 +826,7 @@ Without sampling from the posterior, we could achieve basically the same result 
 
 ```{r}
 pgamma(
-  maddison_prop_sims_with_latest_actual$latest_o,
+  maddison_prop_sims_with_target_actual$target_o,
   shape = prior_params$shape, 
   rate = prior_params$rate
 )
