@@ -20,9 +20,15 @@ Towards the end of each soccer season, we naturally start to look back at player
 
 The question "How unexpected (or "unlikely") was player X's shooting performance this season?" is often posed when observing a large difference in a player's goals scored and [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/). For instance, if a striker only scored 8 goals in a given season on 12 xG, their "underperformance" of 4 goals is certainly notable, as its about 50% lower than expected (i.e. `(8 - 12) / 12`).
 
-The ["Outperformance" ($O$) ratio](posts/xg-ratio-empirical-bayes/) of non-penalty goals to expected goals ($O = \frac{G}{xG}$) is perhaps the most common way of evaluating shooting performance.[^1] Intuitively, an $O$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with an $O$ ratio of 0.67 (i.e. $O = \frac{8}{12} = 0.75$).
+The ["Outperformance" ($O$) ratio](/posts/xg-ratio-empirical-bayes/)--the ratio of a player $p$'s (non-penalty) goals $G$ to expected goals $xG$--is perhaps the most common way of evaluating shooting performance.[^1]
 
 [^1]: The raw difference between goals and xG is another reasonable measure of shooting performance, but it can "hide" shot volume. Is it fair to compare a player who take 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. But $O$ would be 1.2 and 3 respectively, hinting at the former player's small sample size (since no one can reasonably expect to sustain an $O$ greater than 1.5 or 2 over many shots).
+
+$$
+O_p = \frac{G_p}{xG_p}
+$$ {#eq-o}
+
+Intuitively, an $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with an $O$ ratio of 0.67 (i.e. $O = \frac{8}{12} = 0.75$).
 
 In most cases, we have prior seasons of data to use when evaluating a player's $O$ ratio for a given season. For example, let's say our hypothetical player scored 12 goals on 10 xG ($O = 1.2$) in the season prior, and 11 goals on 10 xG ($O = 1.1$) before that. Putting things in perspective, an $O = 0.75$ after those performances seems even more likely, compared to an "average" player who theoretically achieves $O = 1$ ratio every year.
 
@@ -39,8 +45,11 @@ For this post, I'll be using public data from [FBref](https://fbref.com/) for th
 library(dplyr)
 library(purrr)
 library(rlang)
+library(tidyr)
 
 library(worldfootballR)
+
+library(qs)
 
 COUNTRIES <- c('ENG', 'ESP', 'GER', 'ITA', 'FRA')
 GENDERS <- 'M'
@@ -133,8 +142,8 @@ qs::qsave(player_season_np_shots, file.path(PROJ_DIR, 'player_season_np_shots.qs
 ```{r}
 #| label: np_shots-read
 #| include: false
-np_shots <- qs::qsave(file.path(PROJ_DIR, 'np_shots.qs'))
-player_season_np_shots <- qs::qsave(file.path(PROJ_DIR, 'player_season_np_shots.qs'))
+np_shots <- qs::qread(file.path(PROJ_DIR, 'np_shots.qs'))
+player_season_np_shots <- qs::qread(file.path(PROJ_DIR, 'player_season_np_shots.qs'))
 ```
 
 ```{r}
@@ -189,8 +198,12 @@ We'll focus on one player in particular--[James Maddison](https://fbref.com/en/p
 ```{r}
 #| label: select_np_season_shooting
 #| code-fold: false
+PLAYERS_OF_INTEREST <- c(
+  'ee38d9c5' = 'James Maddison',
+  'dc62b55d' = 'Matheus Cunha'
+)
 select_np_season_shooting <- player_season_np_shots |>
-  dplyr::filter(player %in% c('James Maddison', 'Matheus Cunha'))
+  dplyr::filter(player %in% unname(PLAYERS_OF_INTEREST))
 select_np_season_shooting
 #> # A tibble: 12 × 7
 #>    player_id player         season_end_year shots     g    xg     o
@@ -224,7 +237,7 @@ LATEST_SEASON_END_YEAR <- 2024
 select_np_season_shooting |> 
   dplyr::filter(season_end_year < LATEST_SEASON_END_YEAR) |> 
   dplyr::summarise(
-    .by = c(player),
+    .by = c(player_id, player),
     mean = weighted.mean(o, w = shots),
     ## could also use a function like Hmisc::wtd.var for weighted variance
     sd = sqrt(sum(shots * (o - weighted.mean(o, w = shots))^2) / sum(shots))
@@ -232,25 +245,315 @@ select_np_season_shooting |>
   dplyr::inner_join(
     select_np_season_shooting |> 
       dplyr::filter(season_end_year == LATEST_SEASON_END_YEAR) |> 
-      dplyr::select(player, latest_o = o),
-    by = dplyr::join_by(player)
+      dplyr::select(player_id, latest_o = o),
+    by = dplyr::join_by(player_id)
   ) |> 
   dplyr::mutate(
     z_score = (latest_o - mean) / sd,
     p_value = 2 * pnorm(-abs(z_score))
-  )
-#> [1] 0.1705488
+  ) |> 
+  dplyr::arrange(player)
+#> # A tibble: 2 × 7
+#>   player_id player          mean    sd latest_o z_score p_value
+#>   <chr>     <chr>          <dbl> <dbl>    <dbl>   <dbl>   <dbl>
+#> 1 ee38d9c5  James Maddison 1.40  0.378    0.847   -1.47  0.141 
+#> 2 dc62b55d  Matheus Cunha  0.757 0.182    1.16     2.24  0.0250
 ```
 
 In reality, this isn't giving us a percentage of likelihood of the outcome. Rather, the p-value measures the probability of obtaining an outperformance as extreme as the one observed in 2023/24 (or more extreme) if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player's actual outperformance ratio in the 2023/24 season and the distribution of outperformance ratios observed in previous seasons.
 
-The t-test indicates that Cunha's goals-to-xG ratio this year violates the null hypothesis, suggesting that this season has been significantly remarkable for him. On the other hand, the t-test indicates that there is **not** sufficient evidence that Maddison's $O$ this season is significantly worse than his $O$ in prior seasons
+The t-test indicates that Cunha's goals-to-xG ratio this year violates the null hypothesis, suggesting that this season has been significantly remarkable for him. On the other hand, the t-test indicates that there is **not** sufficient evidence that Maddison's $O$ this season is significantly worse than his $O$ in prior seasons.
 
-### Approach 2: Sampling from Shrunken Outperformance Estimates
+### Approach 2: Sampling from Prior History of Shots
 
-Pulling from [my own prior art](/posts/xg-empirical-bayes), we can apply [Gamma-Poisson](https://en.wikipedia.org/wiki/Empirical_Bayes_method#Poisson%E2%80%93gamma_model) [Empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) (EB) shrinkage to create a better estimate what each player's "true" outperformance ratio $O$ is, up through the latest season. Typically we'd summarize the posterior distribution in EB estimation with the mean, e.g. "Maddison's observed outperformance ratio through 2022/23 is 1.21, and his shrunken EB estimate (mean of the posterior) is 1.13".
+We're not going to get very far just using a "traditional" approach, nor just by looking at the player-season level. We need to dive into shot-level data to more robustly understand uncertainty.
 
-But we can do more with the posterior distribution. For estimating the unlikelihood of observed 2023/24 outcomes, we can count up in how many posterior samples a player's outperformance ratio is less than his actual 2023/24 outperformance ratio.
+A fairly simple approach to quantifying unlikeness (that may be just "good enough") is this:
+
+1.  **Sample** $N_p$ shots from a player's past shots in $M$ simulations. (Change nothing about the shot's xG and goal outcomes.) $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $M$ should be set to some fairly large number, so as to achieve stability in the results.
+2.  To quantify unlikeliness of an underperforming season (relative to a given player's past seasons), **count up in how many simulations** $m^+$ the outperformance ratio $O$ of the resampled shots is lower than the observed $O_{p, \text{target}}$ ratio in the target season for the player.[^2] The proportion $U^- = \frac{m^-}{M}$ represents the unlikeness of a given player's observed $O$ in the target season.
+
+[^2]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $m^-$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $U^+ = \frac{m^+}{M}$.
+
+Here's how that looks in code.
+
+```{r}
+#| label: select_resampled_props
+#| code-fold: false
+#| code-summary: "Resample player shots to estimate unlikeliness"
+resample_player_shots <- function(
+    shots, 
+    n_shots_to_sample, 
+    n_sims = 1000,
+    replace = TRUE,
+    seed = 42
+) {
+  
+  withr::local_seed(seed)
+  purrr::map_dfr(
+    1:n_sims,
+    \(.sim) {
+      sampled_shots <- shots |> 
+        slice_sample(n = n_shots_to_sample, replace = replace)
+      
+      list(
+        sim = .sim,
+        xg = sum(sampled_shots$xg),
+        g = sum(sampled_shots$g),
+        o = sum(sampled_shots$g) / sum(sampled_shots$xg)
+      )
+    }
+  )
+}
+
+select_resampled_shots <- purrr::imap_dfr(
+  PLAYERS_OF_INTEREST,
+  \(.player, .player_id) {
+    player_shots <- np_shots |> 
+      dplyr::filter(player_id == .player_id)
+    
+    latest_shots <- player_shots |>
+      dplyr::filter(season_end_year == LATEST_SEASON_END_YEAR)
+    
+    player_shots |>
+      dplyr::filter(season_end_year < LATEST_SEASON_END_YEAR) |> 
+      resample_player_shots(
+        n_shots_to_sample = nrow(latest_shots)
+      ) |> 
+      dplyr::mutate(
+        player_id = .player_id,
+        player = .player
+      )
+  }
+)
+
+select_resampled_shots_with_latest_o <- select_resampled_shots |> 
+  dplyr::inner_join(
+    player_season_np_shots |> 
+      dplyr::filter(season_end_year == LATEST_SEASON_END_YEAR) |> 
+      dplyr::select(
+        player_id,
+        latest_o = o
+      ),
+    by = dplyr::join_by(player_id)
+  )
+
+select_resampled_props <- select_resampled_shots_with_latest_o |> 
+  dplyr::summarize(
+    .by = c(player_id, player),
+    prop_lte = sum(o <= latest_o) / n(),
+    prop_gte = sum(o >= latest_o) / n()
+  ) |> 
+  dplyr::arrange(player)
+select_resampled_props
+#> # A tibble: 2 × 4
+#>   player_id player         prop_lte prop_gte
+#>   <chr>     <chr>             <dbl>    <dbl>
+#> 1 ee38d9c5  James Maddison    0.163    0.837
+#> 2 dc62b55d  Matheus Cunha     0.898    0.103
+```
+
+```{r}
+#| label: select_resampled_props-save
+#| code-fold: true
+#| include: false
+qs::qsave(select_resampled_props, file.path(PROJ_DIR, 'select_resampled_props.qs'))
+```
+
+These results imply that Maddison's 2023/24 outperformance ratio of 0.847 (or worse) occurs in 16.3% of simulations, and that Cunha's 2023/24 $O$ ratio of 1.16 (or better) occurs in 10.3% of simulations. Honestly those numbers feel fairly reasonable.
+
+This approach is fairly simplistic and elegant--we just sample shots from a player's history and count up the outcomes with respect to a target threshold.
+
+```{r}
+#| label: plot-maddison-sims
+#| code-fold: true
+#| code-summary: "Plotting Maddison's resamples shots"
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
+
+TAG_LABEL <- htmltools::tagList(
+  htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
+  htmltools::tags$span("@TonyElHabr"),
+)
+CAPTION_LABEL <- '**Data**: Opta via fbref. Updated through 2024-04-26.'
+# SUBTITLE_LABEL <- 'Big 5 Leagues, 2017/18 - 2022/23'
+PLOT_RESOLUTION <- 300
+WHITISH_FOREGROUND_COLOR <- 'white'
+COMPLEMENTARY_FOREGROUND_COLOR <- '#cbcbcb' # '#f1f1f1'
+BLACKISH_BACKGROUND_COLOR <- '#1c1c1c'
+COMPLEMENTARY_BACKGROUND_COLOR <- '#4d4d4d'
+FONT <- 'Titillium Web'
+sysfonts::font_add_google(FONT, FONT)
+## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = PLOT_RESOLUTION)
+
+ggplot2::theme_set(ggplot2::theme_minimal())
+ggplot2::theme_update(
+  text = ggplot2::element_text(family = FONT),
+  title = ggplot2::element_text(size = 18, color = WHITISH_FOREGROUND_COLOR),
+  plot.title = ggtext::element_markdown(face = 'bold', size = 18, color = WHITISH_FOREGROUND_COLOR),
+  plot.title.position = 'plot',
+  plot.subtitle = ggtext::element_markdown(size = 18, color = COMPLEMENTARY_FOREGROUND_COLOR),
+  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
+  # axis.title = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.x = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.y = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.line = ggplot2::element_blank(),
+  strip.text = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0),
+  panel.grid.major = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor.x = ggplot2::element_blank(),
+  panel.grid.minor.y = ggplot2::element_blank(),
+  plot.margin = ggplot2::margin(10, 20, 10, 20),
+  plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
+  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain'),
+  plot.caption.position = 'plot',
+  plot.tag = ggtext::element_markdown(size = 10, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
+  plot.tag.position = c(0.99, 0.01),
+  panel.spacing.x = grid::unit(2, 'lines'),
+  panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
+)
+
+group_palette <- c(
+  'gte' = '#00bbf9',
+  'other' = '#6E7275',
+  'lte' = '#f15bb5'
+)
+
+maddison_resampled_shots_with_latest_o <- select_resampled_shots_with_latest_o |>
+  dplyr::filter(player == 'James Maddison') |> 
+  dplyr::mutate(
+    group = ifelse(o <= latest_o, 'lte', 'other')
+  )
+
+maddison_resampled_shots_plot <- maddison_resampled_shots_with_latest_o |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = o
+  ) +
+  ggplot2::geom_histogram(
+    ggplot2::aes(fill = group),
+    binwidth = 0.05,
+    show.legend = FALSE
+  ) +
+  ggplot2::scale_fill_manual(
+    values = group_palette
+  ) +
+  ggplot2::geom_vline(
+    ggplot2::aes(xintercept = 1),
+    color = 'white',
+    linetype = 1,
+    linewidth = 1.5
+  ) +
+  # ggplot2::geom_vline(
+  #   ggplot2::aes(xintercept = mean(adj_o_samples)),
+  #   color = 'white',
+  #   linetype = 2,
+  #   linewidth = 1
+  # ) +
+  ggplot2::coord_cartesian(
+    ylim = c(0, 48), 
+    xlim = c(0, 4),
+    expand = FALSE,
+    clip = 'off'
+  ) +
+  ggplot2::annotate(
+    geom = 'text',
+    x = 0.95,
+    y = 45,
+    hjust = 1,
+    label = 'Underperformance',
+    color = WHITISH_FOREGROUND_COLOR,
+    fontface = 'bold',
+    family = FONT,
+    size = 12 / .pt
+  ) +
+  ggplot2::annotate(
+    geom = 'text',
+    x = 1.05,
+    y = 45,
+    hjust = 0,
+    label = 'Overperformance',
+    color = WHITISH_FOREGROUND_COLOR,
+    fontface = 'bold',
+    family = FONT,
+    size = 12 / .pt
+  ) +
+  ggplot2::annotate(
+    geom = 'text',
+    x = 2.5,
+    y = 45,
+    hjust = 0,
+    vjust = 1,
+    label = "An outperformance ratio of 0.847\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in only\n0.43% of 10k simulations",
+    color = group_palette[['lte']],
+    fontface = 'italic',
+    family = FONT,
+    size = 11 / .pt
+  ) +
+  ggplot2::annotate(
+    geom = 'curve',
+    x = 2.4,
+    y = 40,
+    xend = 0.8,
+    yend = 26,
+    arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
+    linewidth = 0.5,
+    curvature = 0.25,
+    color = group_palette[['lte']]
+  )  +
+  ggplot2::annotate(
+    ggpath::GeomFromPath,
+    x = 4,
+    y = 55,
+    path = file.path(PROJ_DIR, '493165.png'),
+    width = 0.08
+  ) +
+  ggplot2::theme(
+    plot.title = ggtext::element_markdown(size = 16),
+    plot.subtitle = ggtext::element_markdown(size = 12)
+  ) +
+  ggplot2::labs(
+    title = 'Resampled Shooting Outperformance Ratio (G / xG) for James Maddison',
+    subtitle = "Shots Sampled From Maddison's 2018/19 - 2022/2023 Seasons",
+    x = 'Outperformance Ratio (G / xG)',
+    y = 'Count of Simulations',
+    caption = CAPTION_LABEL,
+    tag = TAG_LABEL
+  )
+
+ggplot2::ggsave(
+  maddison_resampled_shots_plot,
+  filename = file.path(PROJ_DIR, 'maddison-resampled-samples.png'),
+  width = 8,
+  height = 8 / 1.5
+)
+```
+
+So is this good enough? Maybe. There are some caveats I can think of:
+
+1.  We're implicitly making an assumption that a player's past shot profile is representative of their future shot profile.
+2.  We're effectively treating each player's G / xG ratio as constant and only trying to understand the uncertainty around it.
+
+These things don't necessarily mean that this methodology is bad--it just has its caveats.
+
+### Approach 3: Sampling from the Posterior of an Empirical Bayes Shrunken Estimate
+
+Pulling from [my own prior art](/posts/xg-empirical-bayes), we can apply [Empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) (EB) shrinkage to create a less noisy estimate what each player's outperformance ratio $O$ might be in the long run. Shrinking a given player's observed $O$ ratio effectively addresses one of the shortcomings of approach 2, where we implicitly treated a player's historical G / xG ratio as truth.
+
+Typically we'd summarize the posterior distribution in EB estimation with the mean, e.g. "Maddison's observed outperformance ratio through 2022/23 is 1.21, and his shrunken EB estimate (mean of the posterior) is 1.13". But we can do more with the posterior distribution.
+
+For estimating the unlikeliness of observed 2023/24 outcomes, we do as follows:
+
+1.  Apply EB shrinkage to a player's outperformance ratio $O_p$, excluding the target season.
+2.  Determine unlikeness in the same manner as step 2 from approach 2, i.e. We count up the number of posterior samples in which the sampled $\hat{O}_p$ is less than the player's observed $O_p$ in the target season.
+
+The code that follows is similar to that from [my own prior art](/posts/xg-empirical-bayes), but notably we estimate prior distribution parameter values for each player separately.
 
 ```{r}
 #| label: eb-posterior-sampling
@@ -259,26 +562,50 @@ But we can do more with the posterior distribution. For estimating the unlikelih
 ## Similar to my code in /posts/xg-empirical-bayes
 N_SIMS <- 10000
 MIN_PRIOR_SHOTS <- 50
-player_np_shots <- player_season_np_shots |> 
-  dplyr::mutate(is_prior = season_end_year < LATEST_SEASON_END_YEAR) |> 
+
+init_player_np_shots <- player_season_np_shots |> 
+  dplyr::mutate(is_latest = season_end_year == LATEST_SEASON_END_YEAR) |> 
   dplyr::summarize(
-    .by = c(is_prior, player_id, player),
+    .by = c(is_latest, player_id, player),
     dplyr::across(
       c(shots, g, xg),
       \(.x) sum(.x, na.rm = TRUE)
     )
   ) |> 
-  dplyr::mutate(o = g / xg)
+  dplyr::mutate(o = g / xg) |> 
+  dplyr::arrange(player, player_id, is_latest)
+
+## Player must have
+## 1. shots in latest season
+## 2. more shots in all prior seasons combined than latest season
+eligible_players <- init_player_np_shots |> 
+  dplyr::transmute(
+    player_id,
+    latest = ifelse(is_latest, 'latest', 'prior'),
+    shots
+  ) |> 
+  tidyr::pivot_wider(
+    names_from = latest,
+    values_from = shots,
+    values_fill = 0L
+  ) |> 
+  dplyr::filter(latest > 0, prior > latest)
+  
+player_np_shots <- init_player_np_shots |> 
+  dplyr::semi_join(
+    eligible_players,
+    by = dplyr::join_by(player_id)
+  )
 
 prior_player_np_shots <- player_np_shots |> 
-  dplyr::filter(is_prior)
+  dplyr::filter(!is_latest)
 
-empirical_player_np_shots <- player_np_shots |>
-  dplyr::filter(!is_prior)
+latest_player_np_shots <- player_np_shots |>
+  dplyr::filter(is_latest)
 
-estimate_prior_distr_params <- function(df) {
+estimate_prior_distr_params <- function(x) {
   prior_distr <- MASS::fitdistr(
-    df$o,
+    x,
     dgamma,
     start = list(shape = 1, rate = 1)
   )
@@ -345,6 +672,7 @@ prior_params <- prior_player_np_shots |>
     shots >= MIN_PRIOR_SHOTS,
     g > 0
   ) |> 
+  dplyr::pull(o) |> 
   estimate_prior_distr_params()
 
 posterior_player_np_shots <- prior_player_np_shots |> 
@@ -353,7 +681,7 @@ posterior_player_np_shots <- prior_player_np_shots |>
 
 prop_sims_with_latest_actual <- posterior_player_np_shots |> 
   dplyr::inner_join(
-    empirical_player_np_shots |> 
+    latest_player_np_shots |> 
       dplyr::select(
         player_id,
         latest_shots = shots, latest_g = g, latest_xg = xg, latest_o = o
@@ -409,179 +737,6 @@ maddison_prop_sims_with_latest_actual |>
 #> 1 James Maddison    1.38       1.28    0.847   0.0043
 ```
 
-Plotting out the samples is perhaps more intuitive.
-
-```{r}
-#| label: plot-maddison-sims
-#| code-fold: true
-#| code-summary: "Plotting Maddison's EB posterior samples below his actual 2023/24 outperformance ratio"
-library(ggplot2)
-library(sysfonts)
-library(showtext)
-library(ggtext)
-library(htmltools)
-
-TAG_LABEL <- htmltools::tagList(
-  htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
-  htmltools::tags$span("@TonyElHabr"),
-)
-CAPTION_LABEL <- '**Data**: Opta via fbref. Updated through 2024-04-26.'
-# SUBTITLE_LABEL <- 'Big 5 Leagues, 2017/18 - 2022/23'
-PLOT_RESOLUTION <- 300
-WHITISH_FOREGROUND_COLOR <- 'white'
-COMPLEMENTARY_FOREGROUND_COLOR <- '#cbcbcb' # '#f1f1f1'
-BLACKISH_BACKGROUND_COLOR <- '#1c1c1c'
-COMPLEMENTARY_BACKGROUND_COLOR <- '#4d4d4d'
-FONT <- 'Titillium Web'
-sysfonts::font_add_google(FONT, FONT)
-## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
-sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
-showtext::showtext_auto()
-showtext::showtext_opts(dpi = PLOT_RESOLUTION)
-
-ggplot2::theme_set(ggplot2::theme_minimal())
-ggplot2::theme_update(
-  text = ggplot2::element_text(family = FONT),
-  title = ggplot2::element_text(size = 18, color = WHITISH_FOREGROUND_COLOR),
-  plot.title = ggtext::element_markdown(face = 'bold', size = 18, color = WHITISH_FOREGROUND_COLOR),
-  plot.title.position = 'plot',
-  plot.subtitle = ggtext::element_markdown(size = 18, color = COMPLEMENTARY_FOREGROUND_COLOR),
-  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
-  # axis.title = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
-  axis.title.x = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
-  axis.title.y = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
-  axis.line = ggplot2::element_blank(),
-  strip.text = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0),
-  panel.grid.major = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
-  panel.grid.minor = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
-  panel.grid.minor.x = ggplot2::element_blank(),
-  panel.grid.minor.y = ggplot2::element_blank(),
-  plot.margin = ggplot2::margin(10, 20, 10, 20),
-  plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
-  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain'),
-  plot.caption.position = 'plot',
-  plot.tag = ggtext::element_markdown(size = 10, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
-  plot.tag.position = c(0.99, 0.01),
-  panel.spacing.x = grid::unit(2, 'lines'),
-  panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
-)
-
-group_palette <- c(
-  'is_gte' = '#00bbf9',
-  'is_other' = '#6E7275',
-  'is_lte' = '#f15bb5'
-)
-maddison_posterior_samples <- maddison_prop_sims_with_latest_actual |>
-  dplyr::select(adj_o_samples, latest_o) |> 
-  tidyr::unnest_longer(adj_o_samples) |> 
-  dplyr::mutate(
-    group = ifelse(adj_o_samples <= latest_o, 'is_lte', 'is_gt')
-  )
-
-maddison_posterior_samples_plot <- maddison_posterior_samples |> 
-  ggplot2::ggplot() +
-  ggplot2::aes(
-    x = adj_o_samples
-  ) +
-  ggplot2::geom_histogram(
-    ggplot2::aes(fill = group),
-    binwidth = 0.01,
-    show.legend = FALSE
-  ) +
-  ggplot2::scale_fill_manual(
-    values = group_palette
-  ) +
-  ggplot2::geom_vline(
-    ggplot2::aes(xintercept = 1),
-    color = 'white',
-    linetype = 1,
-    linewidth = 1.5
-  ) +
-  # ggplot2::geom_vline(
-  #   ggplot2::aes(xintercept = mean(adj_o_samples)),
-  #   color = 'white',
-  #   linetype = 2,
-  #   linewidth = 1
-  # ) +
-  ggplot2::coord_cartesian(
-    ylim = c(0, 275), 
-    xlim = c(0.5, 2),
-    expand = FALSE,
-    clip = 'off'
-  ) +
-  ggplot2::annotate(
-    geom = 'text',
-    x = 0.98,
-    y = 270,
-    hjust = 1,
-    label = 'Underperformance',
-    color = WHITISH_FOREGROUND_COLOR,
-    fontface = 'bold',
-    family = FONT,
-    size = 14 / .pt
-  ) +
-  ggplot2::annotate(
-    geom = 'text',
-    x = 1.02,
-    y = 270,
-    hjust = 0,
-    label = 'Overperformance',
-    color = WHITISH_FOREGROUND_COLOR,
-    fontface = 'bold',
-    family = FONT,
-    size = 14 / .pt
-  ) +
-  ggplot2::annotate(
-    geom = 'text',
-    x = 0.51,
-    y = 110,
-    hjust = 0,
-    vjust = 0,
-    label = "An outperformance ratio of 0.847\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in only\n0.43% of 10k simulations",
-    color = group_palette[['is_lte']],
-    fontface = 'italic',
-    family = FONT,
-    size = 11 / .pt
-  ) +
-  ggplot2::annotate(
-    geom = 'curve',
-    x = 0.7,
-    y = 105,
-    xend = 0.75,
-    yend = 10,
-    arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
-    linewidth = 0.5,
-    curvature = 0.25,
-    color = group_palette[['is_lte']]
-  )  +
-  ggplot2::annotate(
-    ggpath::GeomFromPath,
-    x = 1.95,
-    y = 310,
-    path = file.path(PROJ_DIR, '493165.png'),
-    width = 0.08
-  ) +
-  ggplot2::theme(
-    plot.title = ggtext::element_markdown(size = 16),
-    plot.subtitle = ggtext::element_markdown(size = 12)
-  ) +
-  ggplot2::labs(
-    title = 'Posterior Samples from Empirical Bayes Estimation of <br/>Shooting Outperformance Ratio (G / xG) for James Maddison',
-    subtitle = 'Prior Distribution Estimated from 2018/19 - 2022/2023 Seasons',
-    x = 'Outperformance Ratio (G / xG)',
-    y = 'Count of Posterior Samples',
-    caption = CAPTION_LABEL,
-    tag = TAG_LABEL
-  )
-
-ggplot2::ggsave(
-  maddison_posterior_samples_plot,
-  filename = file.path(PROJ_DIR, 'maddison-posterior-samples.png'),
-  width = 8,
-  height = 8 / 1.5
-)
-```
-
 We can do something similar to see how unlikely Cunha's overperformance in 2023/24 was.
 
 ```{r}
@@ -610,31 +765,37 @@ Cunha's 2023/24 $O$ of 1.16 (or better) is only seen in 2.14% of simulations.
 Unfortunately, looking at the whole spectrum of players, it looks like this approach tends to over- and under-estimate likelihood. The histogram below shows that this approach finds that over 50% of player outcomes in the 2023/24 season were less than 5% likely. This is clearly miscalibrated--we should expect to see just 5% of player $O$ values being only 5% likely in any given season.
 
 ```{r}
-maddison_posterior_samples_plot <- maddison_posterior_samples |> 
+prop_lte_hist <- prop_sims_with_latest_actual |>
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = adj_o_samples
+    x = prop_lte
   ) +
   ggplot2::geom_histogram(
-    ggplot2::aes(fill = group),
-    binwidth = 0.01,
-    show.legend = FALSE
+    fill = 'white',
+    bins = 10
   ) +
-  ggplot2::scale_fill_manual(
-    values = group_palette
+  scale_x_continuous(
+    labels = scales::percent,
+    breaks = seq(0, 1, by = 0.1)
   ) +
-  ggplot2::geom_vline(
-    ggplot2::aes(xintercept = 1),
-    color = 'white',
-    linetype = 1,
-    linewidth = 1.5
+  theme(
+    panel.grid.major.x = element_blank(),
+    plot.title = ggtext::element_markdown(size = 16),
+    plot.subtitle = ggtext::element_markdown(size = 12)
   ) +
-  ggplot2::geom_vline(
-    ggplot2::aes(xintercept = mean(adj_o_samples)),
-    color = 'white',
-    linetype = 2,
-    linewidth = 1
+  labs(
+    title = '% Unlikelihood of 2023/24 Outperformance Ratio (G / xG)',
+    subtitle = 'If this method were properly calibrated, this histogram would look like a uniform distribution',
+    y = 'Count of Players',
+    x = '% Unlikelihood'
   )
+# prop_lte_hist
+ggsave(
+  prop_lte_hist,
+  filename = file.path(PROJ_DIR, 'prop-lte-hist.png'),
+  width = 7,
+  height = 7 / 1.5
+)
 ```
 
 ```{r}
@@ -642,12 +803,12 @@ maddison_posterior_samples_plot <- maddison_posterior_samples |>
 #| include: false
 #| 
 prop_sims_with_latest_actual |> 
-  mutate(
-    prior_o_bucket = cut(
-      prior_o,
-      c(-Inf, 0.5, 0.75, 0.9, 1.1, 1.25, 1.5, Inf)
-    )
-  ) |> 
+mutate(
+  prior_o_bucket = cut(
+    prior_o,
+    c(-Inf, 0.5, 0.75, 0.9, 1.1, 1.25, 1.5, Inf)
+  )
+) |> 
   ggplot() +
   aes(
     x = prop_lte,
@@ -682,36 +843,6 @@ pgamma(
 )
 #> [1] 0.09778753
 ```
-
-### Approach 2: Sampling from Prior History of Shots
-
-```{r}
-#| label: shots
-raw_shots <- worldfootballR::load_fb_match_shooting(
-  country = c('ENG', 'ESP', 'GER', 'ITA', 'FRA'),
-  tier = '1st',
-  gender = 'M',
-  season_end_year = c(2018:2024)
-)
-
-players_of_interest <- c("Erling Haaland", "Harry Kane")
-shots <- raw_shots |> 
-  filter(Player %in% players_of_interest) |> 
-  ## Drop penalties
-  filter(
-    !coalesce((Distance == '13' & round(as.double(xG), 2) == 0.79), FALSE)
-  ) |> 
-  transmute(
-    season_start_year = Season_End_Year - 1,
-    player = Player,
-    g = as.integer(Outcome == 'Goal'),
-    xg = as.double(xG)
-  )
-```
-
-### Approach 4: Sampling from Entire History of Shots
-
-### Approach 5: Sampling from Entire History of Shots, Resampling Outcomes
 
 # Conclusion
 
