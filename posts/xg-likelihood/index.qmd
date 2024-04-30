@@ -278,12 +278,12 @@ The t-test indicates that Cunha's goals-to-xG ratio this year violates the null 
 
 We're not going to get very far just using a "traditional" approach, nor just by looking at the player-season level. We need to dive into shot-level data to more robustly understand uncertainty.
 
-A fairly simple approach to quantifying unlikeness (that may be just "good enough") is this:
+A fairly simple approach to quantifying unlikeness goes like this:
 
-1.  **Sample** $N_p$ shots from a player's past shots in $M$ simulations. (Change nothing about the shot's xG and goal outcomes.) $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $M$ should be set to some fairly large number, so as to achieve stability in the results.
-2.  To quantify unlikeliness of an underperforming season (relative to a given player's past seasons), **count up in how many simulations** $m^+$ the outperformance ratio $O$ of the resampled shots is lower than the observed $O_{p, \text{target}}$ ratio in the target season for the player.[^2] The proportion $U^- = \frac{m^-}{M}$ represents the unlikeness of a given player's observed $O$ in the target season.
+1.  Sample $N_{p,\text{target}}$ shots (with replacement) from a player's past shots $S_{p,\text{target}'}$. Repeat this for $R$ resamples. (Change nothing about the shot's xG and goal outcomes.) $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $M$ should be set to some fairly large number, so as to achieve stability in the results.
+2.  Then, to quantify unlikeliness of an underperforming season (relative to a given player's past seasons), count the number of resamples $r^-$ in which the outperformance ratio $\hat{O}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $O_{p,\text{target}}$ ratio in the target season for the player.[^2] The proportion $\Pi^- = \frac{r^-}{R}$ represents the unlikeness of a given player's observed $O_{p,\text{target}}$ in the target season.
 
-[^2]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $m^-$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $U^+ = \frac{m^+}{M}$.
+[^2]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $r^+$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $\Pi^+ = \frac{r^+}{r}$.
 
 Here's how that looks in code.
 
@@ -397,14 +397,14 @@ select_resampled_props
 #> 2 dc62b55d  Matheus Cunha    0.772    1.16     0.898
 ```
 
-These results imply that Maddison's 2023/24 outperformance ratio of 0.847 (or worse) occurs in 16.3% of simulations (`prop_lte`), and that Cunha's 2023/24 $O$ ratio of 1.16 (or better) occurs in 10.3% of simulations (`1 - prop_lte`). Honestly those numbers feel fairly reasonable.
+These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.847 (or worse) occurs in 16.3% of simulations (`prop_lte`), and that Cunha's 2023/24 $O$ ratio of 1.16 (or better) occurs in 10.3% of simulations (`1 - prop_lte`). Honestly those numbers feel fairly reasonable.
 
 This approach is fairly simplistic and elegant--we just sample shots from a player's history and count up the outcomes with respect to a target threshold.
 
 ```{r}
 #| label: plot-maddison-sims
 #| code-fold: true
-#| code-summary: "Plotting Maddison's resamples shots"
+#| code-summary: "Plotting Maddison's resampled shots"
 library(ggplot2)
 library(sysfonts)
 library(showtext)
@@ -569,13 +569,11 @@ ggplot2::ggsave(
 So is this good enough? Maybe. There are some caveats I can think of:
 
 1.  We're implicitly making an assumption that a player's past shot profile is representative of their future shot profile.
-2.  We're effectively treating each player's G / xG ratio as constant and only trying to understand the uncertainty around it.
+2.  We're effectively treating each player's $G / xG$ ratio as constant and only trying to understand the uncertainty around it.
 
-These things don't necessarily mean that this methodology is bad--it just has its caveats.
+These things don't necessarily mean that this methodology is bad--it just has its caveats. On the other hand, one notable advantage of this approach is that it is "non-parametric"--we don't assume anything about the underlying distribution of a player's $O_p$; we simply let the power of resampling shape the distribution of outcomes, which should look different for a striker that only takes shots near the goal and a defender that only launches shots from outside the box.
 
-#### Aside
-
-Oh, and you can get odd outcomes. For example, looking at Haaland's numbers from 2023/24, this procedure finds his outcome to be extremely unlikely. We know that it like is, but just a 0.4% outcome seems like an understimate.
+One way to check on the robustness of this approach is to see what the distribution of unlikeness $\Pi^-$ looks like across all players $P$. We should expect a distribution that looks relatively uniform--in other words, about 10% of players should have a 90th percentile unlikely outcomes (i.e. very likely), 10% of players should have a 10th percentile unlikely outcome (i.e. very unlikely), and so on.
 
 ```{r}
 #| label: all-resamples
@@ -639,6 +637,27 @@ all_resampled_props <- all_resampled_shots |>
     prop_lte = sum(o <= target_o) / n()
   ) |> 
   dplyr::arrange(prop_lte)
+```
+
+```{r}
+#| label: all_resampled_shots-save
+#| include: false
+qs::qsave(all_resampled_shots, file.path(PROJ_DIR, 'all_resampled_shots.qs'))
+```
+
+```{r}
+#| label: all_resampled_shots-read
+#| include: false
+all_resampled_shots <- qs::qread(file.path(PROJ_DIR, 'all_resampled_shots.qs'))
+```
+
+Indeed, the histogram below follows a fairly uniform distribution, with a bit of irregularity at the very edges.
+
+Who exactly is in the edges of the spectrum?
+
+Well, notably, [Manchester City's striker Erling Haaland](https://archive.is/https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/) shows up as having the most unlikely outcome for the 2023/24 season using this methodology.
+
+```{r}
 all_resampled_props
 #> # A tibble: 593 × 6
 #>    player              prior_o target_o prior_shots target_shots prop_lte
@@ -657,28 +676,22 @@ all_resampled_props
 #> # ℹ Use `print(n = ...)` to see more rows
 ```
 
-```{r}
-#| label: all_resampled_shots-save
-#| include: false
-qs::qsave(all_resampled_shots, file.path(PROJ_DIR, 'all_resampled_shots.qs'))
-```
+Haaland's peculiar season has been noted among fans and the media, and it's interesting to see that this methodology has put the odds of such an outcome at just 0.4%. Perhaps that's right, but I honestly think that's just a little too extreme.
 
-```{r}
-#| label: all_resampled_shots-read
-#| include: false
-all_resampled_shots <- qs::qread(file.path(PROJ_DIR, 'all_resampled_shots.qs'))
-```
+Let's see if we can improve on things with another approach.
 
-### Approach 2: Sampling from the Posterior of an Empirical Bayes Shrunken Estimate
+### Approach 2: Sampling from a Gamma Distribution
 
-Borrowing from [my own prior art](/posts/xg-empirical-bayes), we can apply an [Empirical Bayes](https://en.wikipedia.org/wiki/Empirical_Bayes_method) (EB) procedure to create a less noisy estimate what each player's outperformance ratio $O$ might be in the long run.[^3] Shrinking a given player's observed $O$ ratio effectively addresses one of the shortcomings of approach 2, where we implicitly treated a player's historical G / xG ratio as static truth.
+Borrowing from [my own prior art](/posts/xg-empirical-bayes), we can use the Gamma distribution to create a less noisy estimate of what each player's outperformance ratio $O$ might be in the long run.[^3][^4]
 
 [^3]: Typically we'd summarize the posterior distribution in EB estimation with the mean, e.g. "Maddison's observed outperformance ratio through 2022/23 is 1.21, and his shrunken EB estimate (mean of the posterior) is 1.13". But we can do more with the posterior distribution.
 
+[^4]: Shrinking a given player's observed $O$ ratio effectively addresses one of the shortcomings of approach 1, where we implicitly treated a player's historical G / xG ratio as static truth.
+
 For estimating the unlikeliness of observed 2023/24 outcomes, we do as follows:
 
-1.  Apply EB shrinkage to a player's outperformance ratio $O_p$, excluding the target season.
-2.  Determine unlikeness in the same manner as step 2 from approach 2, i.e. We count up the number of posterior samples in which the sampled $\hat{O}_p$ is less than the player's observed $O_p$ in the target season.
+1.  Estimate a Gamma distribution $\Gamma_{p,\text{target}'}$ to model a player's outperformance ratio across all shots, excluding those in the target season--$\hat{O}_{p,\text{target}'}$.
+2.  Calculate the probability that $\hat{O}_{p,\text{target}'}$ is less than or equal to the player's observed $O_{p,\text{target}}$ in the target season.
 
 The code that follows shares similarities to [my prior code](/posts/xg-empirical-bayes), but notably we estimate prior distribution parameter values for each player separately.
 
