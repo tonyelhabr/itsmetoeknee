@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Tony’s Blog - Tony ElHabr</title>
+<title>Tony's Blog – drafts</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -31,9 +31,12 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
 <link href="./assets/img/keyboard.png" rel="icon" type="image/png">
+<script src="site_libs/quarto-listing/list.min.js"></script>
+<script src="site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
 <link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="prefetch" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
@@ -61,6 +64,35 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
+<script>
+
+  window.document.addEventListener("DOMContentLoaded", function (_event) {
+    const listingTargetEl = window.document.querySelector('#listing-listing .list');
+    if (!listingTargetEl) {
+      // No listing discovered, do not attach.
+      return; 
+    }
+
+    const options = {
+      valueNames: ['listing-date','listing-title','listing-author','listing-image','listing-description',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] },{ data: ['listing-file-modified-sort'] }],
+      
+      searchColumns: ["listing-date","listing-title","listing-author","listing-image","listing-description"],
+    };
+
+    window['quarto-listings'] = window['quarto-listings'] || {};
+    window['quarto-listings']['listing-listing'] = new List('listing-listing', options);
+
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  });
+
+  window.addEventListener('hashchange',() => {
+    if (window['quarto-listing-loaded']) {
+      window['quarto-listing-loaded']();
+    }
+  })
+  </script>
 <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-TKB26G5GZW"></script>
 
 <script type="text/javascript">
@@ -71,11 +103,9 @@ gtag('js', new Date());
 gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 </script>
 
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
-<meta name="twitter:title" content="Tony’s Blog - Tony ElHabr">
-<meta name="twitter:description" content="">
-<meta name="twitter:site" content="@TonyElHabr">
-<meta name="twitter:card" content="summary">
 </head>
 
 <body class="nav-fixed">
@@ -96,7 +126,7 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="./index.html" rel="" target="" aria-current="page">
+    <a class="nav-link" href="./index.html" rel="" target="">
  <span class="menu-text">About</span></a>
   </li>  
   <li class="nav-item">
@@ -141,62 +171,49 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">On this page</h2>
-  <ul>
-  <li><a href="#education" id="toc-education" class="nav-link active" data-scroll-target="#education">Education</a>
-  <ul class="collapse">
-  <li><a href="#interests" id="toc-interests" class="nav-link" data-scroll-target="#interests">Interests</a></li>
-  <li><a href="#other" id="toc-other" class="nav-link" data-scroll-target="#other">Other</a></li>
-  </ul></li>
-  </ul>
-</nav>
+        
     </div>
 <!-- main -->
-<div class="quarto-about-jolla">
-  <img src="tony.jpg" class="about-image
-  round " style="height: 15em; width: 15em;">
- <header id="title-block-header" class="quarto-title-block default">
-<div class="quarto-title">
-<h1 class="title">Tony ElHabr</h1>
-</div>
-<div class="quarto-title-meta">
-  </div>
-</header><main class="content" id="quarto-document-content">
-
-<p>Decision scientist at <a href="https://www.heb.com/">H-E-B</a></p>
-<section id="education" class="level2">
-<h2 data-anchor-id="education">Education</h2>
-<p>M.S. in Analytics, May 2020 | Georgia Institute of Technology<br>B.S. in Electrical Engineering, May 2016 | The University of Texas at Austin</p>
-<section id="interests" class="level3">
-<h3 data-anchor-id="interests">Interests</h3>
-<p>sports analytics<br>data science<br>memes</p>
-</section>
-<section id="other" class="level3">
-<h3 data-anchor-id="other">Other</h3>
-<p>2021 NFL Big Data Bowl Finalist<br> Contestant on seasons 0 and 1 of <a href="https://www.notion.so/Sliced-Show-c7bd26356e3a42279e2dfbafb0480073">“Sliced”</a><br> <a href="https://rweekly.org/">RWeekly newsletter</a> curator</p>
+<main class="content" id="quarto-document-content">
 
 
-</section>
-</section>
-</main> 
-  <hr class="about-sep">
-   <div class="about-links">
-  <a href="https://github.com/tonyelhabr" class="about-link" rel="" target="">
-    <i class="bi bi-github"></i>
-     <span class="about-link-text">Github</span>
-  </a>
-  <a href="https://twitter.com/TonyElHabr" class="about-link" rel="" target="">
-    <i class="bi bi-twitter"></i>
-     <span class="about-link-text">Twitter</span>
-  </a>
-  <a href="https://www.linkedin.com/in/tony-elhabr/" class="about-link" rel="" target="">
-    <i class="bi bi-linkedin"></i>
-     <span class="about-link-text">LinkedIn</span>
-  </a>
+
+
+
+
+
+<div class="quarto-listing quarto-listing-container-default" id="listing-listing">
+<div class="list quarto-listing-default">
+<div class="quarto-post image-right" data-index="0" data-categories="r,soccer" data-listing-date-sort="1714798800000" data-listing-file-modified-sort="1714511554480" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="43">
+<div class="thumbnail">
+<p><a href="./drafts/xg-likelihood/index.html"> <img src="./drafts/xg-likelihood/maddison-resampled-o.png" class="thumbnail-image"> </a></p>
+</div>
+<div class="body">
+<a href="./drafts/xg-likelihood/index.html">
+<h3 class="no-anchor listing-title">
+Shooting Performance Likeliness
+</h3>
+<div class="listing-subtitle">
+
+</div>
+<div class="listing-description">
+<p>Quantifying how unlikely a player’s season-long shooting performance was</p>
+</div>
+</a>
+</div>
+<div class="metadata">
+<a href="./drafts/xg-likelihood/index.html">
+<div class="listing-date">
+May 4, 2024
+</div>
+</a>
 </div>
 </div>
- <!-- /main -->
+</div>
+<div class="listing-no-matching d-none">
+No matching items
+</div>
+</div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
@@ -332,6 +349,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   } else {
     toggleColorMode(false);
   }
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
   const isCodeAnnotation = (el) => {
     for (const clz of el.classList) {
       if (clz.startsWith('code-annotation-')) {                     
