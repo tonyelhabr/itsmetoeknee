@@ -8,7 +8,7 @@ toc-expand: true
 categories:
   - r
   - soccer
-image: maddison-resampled-o.png
+image: maddison_uu_approach3.png
 execute: 
   code-fold: show
   eval: false
@@ -20,7 +20,7 @@ execute:
 
 Towards the end of each soccer season, we naturally start to look back at player performances, often looking to seems to have improved the most compared to their past seasons. Or, on the other end of the spectrum, who disappointed the most. We may have different motivations for doing so--e.g. we may be trying to attribute team over- and under-performance to individuals, we may be hypothesizing who is likely to be transferred or resigned, etc.
 
-The question "How unexpected (or "unlikely") was player X's shooting performance this season?" is often posed when observing a large difference in a player's goals scored and [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/). For instance, if a striker only scored 8 goals in a given season on 12 xG, their "underperformance" of 4 goals is certainly notable, as its about 50% lower than expected (i.e. `(8 - 12) / 12`).
+The question "How unexpected (or "unlikely") was player X's shooting performance this season?" is often posed when observing a large difference in a player's goals scored and [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/). For instance, if a striker only scores 9 goals on 12 xG in a given season, their "underperformance" of 3 goals is certainly notable, as its about 25% lower than expected (i.e. `(9 - 12) / 12`).
 
 The ["Outperformance" ($O_p$) ratio](/posts/xg-ratio-empirical-bayes/)--the ratio of a player $p$'s (non-penalty) goals $G_p$ to expected goals $xG_p$--is perhaps the most common way of evaluating a player's shooting performance.[^1]
 
@@ -28,17 +28,17 @@ The ["Outperformance" ($O_p$) ratio](/posts/xg-ratio-empirical-bayes/)--the rati
 
 $$
 O_p = \frac{G_p}{xG_p}
-$$ {#eq-o}
+$$
 
-Intuitively, an $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with an $O_p$ ratio of 0.67 (i.e. $O_p = \frac{8}{12} = 0.75$).
+An $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with $O_p = \frac{8}{12} = 0.67$.
 
-In most cases, we have prior seasons of data to use when evaluating a player's $O_p$ ratio for a given season. For example, let's say our hypothetical player scored 12 goals on 10 xG ($O_p = 1.2$) in the season prior, and 11 goals on 10 xG ($O_p = 1.1$) before that. Putting things in perspective, an $O_p = 0.75$ after those performances seems unlikely, especially compared to an "average" player who theoretically achieves $O = 1$ ratio every year.
+In most cases, we have prior seasons of data to use when evaluating a player's $O_p$ ratio for a given season. For example, let's say our hypothetical player scored 12 goals on 10 xG ($O_p = 1.2$) in the season prior, and 11 goals on 10 xG ($O_p = 1.1$) before that. Putting things in perspective, an $O_p = 0.75$ after those performances seems fairly unlikely, especially compared to an "average" player who theoretically achieves $O_p = 1$ ratio every year.
 
-So how do we put a number on the unlikeliness of that $O = 0.75$ for our hypothetical player, accounting for their prior season-long performances?
+So how do we put a number on the unlikeliness of that $O_p = 0.75$ for our hypothetical player, accounting for their prior season-long performances?
 
 ### Data
 
-For this post, I'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 2023/24 seasons of the [the Big 5 European soccer leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats). Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.
+I'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 2023/24 seasons of the [the Big 5 European soccer leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), updated through April 26. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.
 
 ```{r}
 #| label: setup
@@ -72,10 +72,10 @@ reprex_print <- function(...) {
 ```
 
 ```{r}
-#| label: shots
+#| label: raw-data-pull
+#| include: true
 #| code-fold: true
-#| echo: true
-#| code-summary: "Get shot-level data"
+#| code-summary: "Get shot data"
 raw_shots <- worldfootballR::load_fb_match_shooting(
   country = COUNTRIES,
   tier = TIERS,
@@ -159,62 +159,67 @@ player_season_np_shots <- qs::qread(file.path(PROJ_DIR, 'player_season_np_shots.
 
 ```{r}
 #| label: players_to_evaluate
-players_to_evaluate <- dplyr::inner_join(
-  player_season_np_shots |> 
-    dplyr::filter(season_end_year < 2024L) |>
-    dplyr::summarize(
-      .by = c(player_id, player),
-      prior_count = n(), 
-      prior_count_with_pos_o = sum(o > 1),
-      prior_count_with_neg_o = sum(o < 1),
-      dplyr::across(
-        c(
-          shots,
-          g,
-          xg,
-        ),
-        \(.x) sum(.x),
-        .names = 'prior_{.col}'
-      )
-    ) |>
-    dplyr::arrange(dplyr::desc(prior_shots)),
-  player_season_np_shots |> 
-    dplyr::filter(season_end_year == 2024L) |> 
-    dplyr::select(
-      player_id,
-      shots,
-      g,
-      xg,
-      o
-    ) |> 
-    dplyr::rename_with(
-      \(.x) paste0('target_', .x),
-      c('shots', 'g', 'xg', 'o')
-    ),
-  by = dplyr::join_by(player_id)
-)
-
-players_to_evaluate |> 
-  dplyr::filter(prior_count == prior_count_with_pos_o, target_o < 1) |> 
-  dplyr::arrange(dplyr::desc(prior_shots))
-
-players_to_evaluate |> 
-  dplyr::filter(prior_count == prior_count_with_neg_o, target_o > 1) |> 
-  dplyr::arrange(dplyr::desc(prior_shots))
+## Choose Maddison and Cunha based off of this
+# players_to_evaluate <- dplyr::inner_join(
+#   player_season_np_shots |> 
+#     dplyr::filter(season_end_year < 2024L) |>
+#     dplyr::summarize(
+#       .by = c(player_id, player),
+#       prior_count = n(), 
+#       prior_count_with_pos_o = sum(o > 1),
+#       prior_count_with_neg_o = sum(o < 1),
+#       dplyr::across(
+#         c(
+#           shots,
+#           g,
+#           xg,
+#         ),
+#         \(.x) sum(.x),
+#         .names = 'prior_{.col}'
+#       )
+#     ) |>
+#     dplyr::arrange(dplyr::desc(prior_shots)),
+#   player_season_np_shots |> 
+#     dplyr::filter(season_end_year == 2024L) |> 
+#     dplyr::select(
+#       player_id,
+#       shots,
+#       g,
+#       xg,
+#       o
+#     ) |> 
+#     dplyr::rename_with(
+#       \(.x) paste0('target_', .x),
+#       c('shots', 'g', 'xg', 'o')
+#     ),
+#   by = dplyr::join_by(player_id)
+# )
+# 
+# players_to_evaluate |> 
+#   dplyr::filter(prior_count == prior_count_with_pos_o, target_o < 1) |> 
+#   dplyr::arrange(dplyr::desc(prior_shots))
+# 
+# players_to_evaluate |> 
+#   dplyr::filter(prior_count == prior_count_with_neg_o, target_o > 1) |> 
+#   dplyr::arrange(dplyr::desc(prior_shots))
 ```
 
-We'll focus on one player in particular--[James Maddison](https://fbref.com/en/players/ee38d9c5/James-Maddison) and [Matheus Cunha](https://fbref.com/en/players/dc62b55d/Matheus-Cunha). Maddison has had a sub-par 2023/2024 season for his own standards, underperforming his xG for the first time in since he started playing in the Premier League in 2018/19. On the other hand, Cunha--who has bounced around teams across the Bundesliga, La Liga, and most recently the Premier League--has overperformed his xG for the first time this season.
+We'll focus on two players in particular--[James Maddison](https://fbref.com/en/players/ee38d9c5/James-Maddison) and [Matheus Cunha](https://fbref.com/en/players/dc62b55d/Matheus-Cunha). Maddison has had a sub-par 2023/2024 season for his own standards, underperforming his xG for the first time in since he started playing in the Premier League in 2018/19. On the other hand, Cunha--who has bounced around teams across the Bundesliga, La Liga, and most recently the Premier League--has overperformed his xG for the first time this season.[^2]
+
+[^2]: If you look at Cunha's FBref page, it will show partial seasons where he has been transferred and has overperformed either before or after being transferred. But when combining the partial seasons into a whole seasons, he had never managed to have an $O_p$ greater than 1 until 2023/24.
 
 ```{r}
-#| label: select_np_season_shooting
-#| echo: true
+#| label: select_player_season_np_shots
+#| include: true
+#| code-fold: show
+#| code-summary: "Players to highlight throughout this post"
 SELECT_PLAYERS <- c(
   'ee38d9c5' = 'James Maddison',
   'dc62b55d' = 'Matheus Cunha'
 )
-select_np_season_shooting <- player_season_np_shots |>
+select_player_season_np_shots <- player_season_np_shots |>
   dplyr::filter(player_id %in% names(SELECT_PLAYERS))
-select_np_season_shooting
+select_player_season_np_shots
 #> # A tibble: 12 × 7
 #>    player_id player         season_end_year shots     g    xg     o
 #>    <chr>     <chr>                    <int> <int> <int> <dbl> <dbl>
@@ -232,80 +237,13 @@ select_np_season_shooting
 #> 12 ee38d9c5  James Maddison            2024    49     4  4.72 0.847
 ```
 
-## Analysis
-
-### Approach 0: $t$-test
-
-If you have some background in statistics, perhaps the first approach that comes to mind is a [$t$-test](https://en.wikipedia.org/wiki/Student%27s_t-test) (using shot-weighted averages and standard deviations).
-
 ```{r}
-#| label: select_t_test
+#| label: more-setup
 #| include: true
 #| code-fold: true
-#| code-summary: "Approach 0"
+#| code-summary: "More variables useful for the rest of the post"
 TARGET_SEASON_END_YEAR <- 2024
 
-select_t_test <- select_np_season_shooting |> 
-  dplyr::filter(season_end_year < TARGET_SEASON_END_YEAR) |> 
-  dplyr::summarise(
-    .by = c(player_id, player),
-    mean = weighted.mean(o, w = shots),
-    ## could also use a function like Hmisc::wtd.var for weighted variance
-    sd = sqrt(sum(shots * (o - weighted.mean(o, w = shots))^2) / sum(shots))
-  ) |> 
-  dplyr::inner_join(
-    select_np_season_shooting |> 
-      dplyr::filter(season_end_year == TARGET_SEASON_END_YEAR) |> 
-      dplyr::select(player_id, target_o = o),
-    by = dplyr::join_by(player_id)
-  ) |> 
-  dplyr::mutate(
-    z_score = (target_o - mean) / sd,
-    p_value = 2 * pnorm(-abs(z_score))
-  ) |> 
-  dplyr::arrange(player)
-```
-
-```{r}
-#| label: select_t_test-show
-#| include: true
-#| code-fold: show
-#| code-summary: "Output from Approach 0"
-select_t_test
-#> # A tibble: 2 × 7
-#>   player_id player          mean    sd target_o z_score p_value
-#>   <chr>     <chr>          <dbl> <dbl>    <dbl>   <dbl>   <dbl>
-#> 1 ee38d9c5  James Maddison 1.40  0.378    0.847   -1.47  0.141 
-#> 2 dc62b55d  Matheus Cunha  0.757 0.182    1.16     2.24  0.0250
-```
-
-In reality, this isn't giving us a percentage of likelihood of the outcome. Rather, the p-value measures the probability of obtaining an outperformance as extreme as the one observed in 2023/24 (or more extreme) if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player's actual outperformance ratio in the 2023/24 "target" season and the distribution of outperformance ratios observed in previous seasons.
-
-The t-test indicates that Cunha's goals-to-xG ratio this year violates the null hypothesis, suggesting that this season has been significantly remarkable for him. On the other hand, the t-test indicates that there is not sufficient evidence that Maddison's $O_p$ this season is significantly worse than his $O_p$ in prior seasons.
-
-### Approach 1: Resampling from Prior History of Shots
-
-We're not going to get very far just using a traditional approach, nor just by looking at the player-season level. We need to dive into shot-level data to more robustly understand uncertainty.
-
-Here's a more sophisticated approach to quantifying the unlikeliness of a "target" season's $G / xG$ ratio:
-
-1.  Sample $N_{p,\text{target}}$ shots (with replacement[^2]) from a player's past shots $S_{p,\text{target}'}$. Repeat this for $R$ resamples.[^3]
-2.  Then, to quantify unlikeliness of an underperforming season, count the number of resamples $r^-$ in which the outperformance ratio $\hat{O}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $O_{p,\text{target}}$ ratio in the target season for the player.[^4] The proportion $\Pi^- = \frac{r^-}{R}$ represents the unlikeness of a given player's observed $O_{p,\text{target}}$ in the target season.
-
-[^2]: One could argue that without replacement is also reasonable. However, some players wouldn't have enough shots from prior seasons to match their volume of shots in 2023/24.
-
-[^3]: (Change nothing about the shot's xG and goal outcomes.) $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $M$ should be set to some fairly large number, so as to achieve stability in the results.
-
-[^4]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $r^+$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $\Pi^+ = \frac{r^+}{r}$.
-
-Here's how that looks in code.
-
-```{r}
-#| label: select_resampled_props
-#| include: true
-#| code-fold: true
-#| code-summary: "Approach 1"
-## To have a variable to reference for player-level target and aggregate prior stats
 player_np_shots <- player_season_np_shots |> 
   dplyr::mutate(
     is_target = season_end_year == TARGET_SEASON_END_YEAR
@@ -333,6 +271,194 @@ wide_player_np_shots <- player_np_shots |>
     names_glue = '{which}_{.value}'
   )
 
+all_players_to_evaluate <- wide_player_np_shots |> 
+  tidyr::drop_na(prior_o, target_o) |> 
+  dplyr::filter(
+    prior_shots >= 50,
+    target_shots >= 10,
+    prior_g > 0, 
+    target_g > 0
+  )
+```
+
+## Methods and Analysis
+
+### Approach 0: $t$-test
+
+If you have some background in statistics, perhaps the first approach that comes to mind is a [$t$-test](https://en.wikipedia.org/wiki/Student%27s_t-test) (using shot-weighted averages and standard deviations).[^3]
+
+[^3]: This is a two-sided test
+
+```{r}
+#| label: select_t_test
+#| include: true
+#| code-fold: true
+#| code-summary: "Approach 0"
+## The actual t-test
+approach0 <- select_player_season_np_shots |> 
+  dplyr::filter(season_end_year < TARGET_SEASON_END_YEAR) |> 
+  dplyr::summarise(
+    .by = c(player),
+    mean = weighted.mean(o, w = shots),
+    ## could also use a function like Hmisc::wtd.var for weighted variance
+    sd = sqrt(sum(shots * (o - weighted.mean(o, w = shots))^2) / sum(shots))
+  ) |> 
+  dplyr::inner_join(
+    wide_player_np_shots |> 
+      dplyr::select(player, prior_o, target_o),
+    by = dplyr::join_by(player)
+  ) |> 
+  dplyr::mutate(
+    z_score = (target_o - mean) / sd,
+    uu = pnorm(-abs(z_score)),
+    ou = pnorm(abs(z_score))
+  ) |> 
+  dplyr::select(-c(mean, sd)) |> 
+  dplyr::arrange(player)
+```
+
+```{r}
+#| label: approach0-show
+#| include: true
+#| code-fold: show
+#| code-summary: "Approach 0 output"
+approach0 |> dplyr::select(player, prior_o, target_o, uu, ou)
+#> # A tibble: 2 × 5
+#>   player         prior_o target_o     uu    ou
+#>   <chr>            <dbl>    <dbl>  <dbl> <dbl>
+#> 1 James Maddison   1.38     0.847 0.0707 0.929
+#> 2 Matheus Cunha    0.772    1.16  0.0125 0.988
+```
+
+#### Discussion
+
+In reality, this isn't giving us a percentage of likelihood of the outcome. Rather, the p-value measures the probability of obtaining an outperformance as extreme as the one observed in 2023/24 (or more extreme) if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player's actual outperformance ratio in the 2023/24 "target" season and the distribution of outperformance ratios observed in previous seasons.
+
+The t-test indicates that Cunha's goals-to-xG ratio this year violates the null hypothesis, suggesting that this season has been significantly remarkable for him. On the other hand, the t-test indicates that there is not sufficient evidence that Maddison's $O_p$ this season is significantly worse than his $O_p$ in prior seasons.
+
+### Approach 1: Comparing with Other Players
+
+The next approach I'll present is not so statistically grounded, but may be how some think about unlikeliness.
+
+1.  Calculate the proportional difference between the pre-target and target season outperformance ratios--$O_{p,\text{target}'}$ and $O_{p,\text{target}'}$ respectively--for all players $P$.
+
+$$
+\delta O_p = \frac{O_{p,\text{target}} - O_{p,\text{target}'}}{O_{p,\text{target}'}}
+$$
+
+2.  Weight $\delta O^w_p$ by the player's $xG_p$ accumulated in prior seasons.[^4]
+
+[^4]: The weighting here is to reflect the intuition that players who have taken a lot of shots in the past and have an uncharacteristic season are shown as more unlikely than a player with only one prior season of shots, who happens to have a very different goals-to-expected goals ratio in the latter season.
+
+$$
+\delta O^w_p = \delta O_p * xG_p
+$$
+
+3.  Calculate the the unlikelihood of the outcome $U_p$ as a percentile rank of $\delta O^w_p$.
+
+To quantify the "underperforming" unlikelihood $U^-_p$, we sort $\delta O^w_p$ in ascending order--more negative $\delta O^w_p$ values correspond to lower percentile $U^-_p$, which represent more unlikely outcomes where a players underperformed relative to prior seasons. In code, this looks as follows.
+
+```{r}
+#| label: uu_approach1
+#| include: true
+#| code-fold: true
+#| code-summary: "Approach 1"
+## `uu` for "underperforming unlikelihood"
+uu_approach1 <- all_players_to_evaluate |> 
+  dplyr::transmute(
+    player_id,
+    player,
+    prior_o,
+    target_o,
+    prior_xg,
+    weighted_delta_o = prior_xg * (target_o - prior_o) / prior_o,
+    uu_rank = dplyr::row_number(weighted_delta_o),
+    uu = dplyr::percent_rank(weighted_delta_o)
+  ) |> 
+  dplyr::arrange(uu_rank)
+```
+
+```{r}
+#| label: select_uu_approach1
+#| include: true
+#| code-fold: show
+#| code-summary: "Approach 1 output for Maddison"
+uu_approach1 |> 
+  dplyr::filter(player == 'James Maddison') |> 
+  dplyr::select(player, prior_o, target_o, prior_xg, weighted_delta_o, uu_rank, uu)
+#> # A tibble: 1 × 7
+#>   player         prior_o target_o prior_xg weighted_delta_o uu_rank     uu
+#>   <chr>            <dbl>    <dbl>    <dbl>            <dbl>   <int>  <dbl>
+#> 1 James Maddison    1.38    0.847     29.8            -11.5      37 0.0608
+```
+
+So, among the 593 player's evaluated, Maddison's 2023/24 $O_p$ ranks as the 37th most unlikely. In terms of $U^-_p$, Maddison's 2023/24 goals-to-xG ratio ranks as a 6th percentile outcome.
+
+For "overperforming" unlikelihood $U^+_p$, we sort $\delta O_p$ in descending order.
+
+```{r}
+#| label: ou_approach1
+#| include: true
+#| code-fold: true
+#| code-summary: "Output of approach 1 for Maddison"
+## `ou` for overperforming unlikeliness.
+ou_approach1 <- uu_approach1 |> 
+  dplyr::transmute(
+    player_id,
+    player,
+    prior_o,
+    target_o,
+    prior_xg,
+    weighted_delta_o,
+    ou_rank = dplyr::row_number(-weighted_delta_o),
+    ou = dplyr::percent_rank(-weighted_delta_o)
+  )
+```
+
+This methodology shows that Cunha's 2023/24 $O_p$ ranks as the 70th most unlikely in terms of overperformance, or a 12th percentile outcome.
+
+```{r}
+#| label: select_ou_approach1
+#| include: true
+#| code-fold: show
+#| code-summary: "Approach 1 output for Cunha"
+ou_approach1 |> 
+  dplyr::filter(player == 'Matheus Cunha') |> 
+  dplyr::select(player, prior_o, target_o, prior_xg, weighted_delta_o, ou_rank, ou)
+#> # A tibble: 1 × 7
+#>   player        prior_o target_o prior_xg weighted_delta_o ou_rank    ou
+#>   <chr>           <dbl>    <dbl>    <dbl>            <dbl>   <int> <dbl>
+#> 1 Matheus Cunha   0.772     1.16     25.9             13.2      70 0.117
+```
+
+#### Discussion
+
+These results feel fairly reasonable, although the rankings are sensitive to the pool of players with which a given player is compared. If a large majority of players in a given season happened to score more than their xG would imply, then a player scoring at a neutral pace would be penalized by this approach. Of course, such an outcome is unlikely, but speaks to the role that selection bias might have with influencing results with this methodology.
+
+One other thing--we're implicitly assuming that the distribution of unlikeliness should be uniform across all players in a given season. In other words, we're assuming that there has to be 1% of players with a 1st percentile underperforming outcome, 17% of players with 17th percentile underperforming outcome, etc. I think this assumption makes sense in the long run, but in any given individual season, there may not be a single player who shots terribly enough to really deserve that "worst of the worst", 1st percentile outcome.
+
+### Approach 2: Resampling from Prior History of Shots
+
+There's only so much you can do with player-season level data. We need to dive into shot-level data if we want to more robustly understand uncertainty of outcomes.
+
+Here's a more sophisticated approach to quantifying the unlikeliness of a target season's $G / xG$ ratio:
+
+1.  Sample $N_{p,\text{target}}$ shots (with replacement[^5]) from a player's past shots $S_{p,\text{target}'}$. Repeat this for $R$ resamples.[^6]
+2.  To quantify unlikeliness of a given player underperforming in the target season $U^-_p$, count the number of resamples $r^-$ in which the outperformance ratio $\hat{O}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $O_{p,\text{target}}$ in the target season for the player.[^7] The proportion $\frac{r^-}{R}$ represents the unlikeness of a given player's observed $O_{p,\text{target}}$ in the target season.
+
+[^5]: One could argue that without replacement is also reasonable. However, some players wouldn't have enough shots from prior seasons to match their volume of shots in 2023/24.
+
+[^6]: (Change nothing about the shot's xG and goal outcomes.) $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $M$ should be set to some fairly large number, so as to achieve stability in the results.
+
+[^7]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $r^+$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $\U^+ = \frac{r^+}{r}$.
+
+Here's how that looks in code.
+
+```{r}
+#| label: uu_approach2
+#| include: true
+#| code-fold: true
+#| code-summary: "Approach 2"
 resample_player_shots <- function(
     shots, 
     n_shots_to_sample, 
@@ -358,20 +484,27 @@ resample_player_shots <- function(
   )
 }
 
+resample_one_player_o <- function(shots, target_season_end_year) {
+  target_shots <- shots |>
+    dplyr::filter(season_end_year == target_season_end_year)
+  
+  prior_shots <- shots |>
+    dplyr::filter(season_end_year < target_season_end_year)
+  
+  prior_shots |> 
+    resample_player_shots(
+      n_shots_to_sample = nrow(target_shots)
+    )
+}
+
 resample_player_o <- function(shots, players, target_season_end_year) {
   purrr::imap_dfr(
     players,
     \(.player, .player_id) {
-      player_shots <- shots |> 
-        dplyr::filter(player_id == .player_id)
-      
-      target_shots <- player_shots |>
-        dplyr::filter(season_end_year == target_season_end_year)
-      
-      player_shots |>
-        dplyr::filter(season_end_year < target_season_end_year) |> 
-        resample_player_shots(
-          n_shots_to_sample = nrow(target_shots)
+      shots |> 
+        dplyr::filter(player_id == .player_id) |> 
+        resample_one_player_o(
+          target_season_end_year = target_season_end_year
         ) |> 
         dplyr::mutate(
           player_id = .player_id,
@@ -397,10 +530,11 @@ select_resampled_o <- np_shots |>
   ) |> 
   dplyr::arrange(player, player_id)
 
-select_resampled_props <- select_resampled_o |>
+uu_approach2 <- select_resampled_o |>
   dplyr::summarize(
     .by = c(player_id, player, prior_o, target_o),
-    prop_lte = sum(o <= target_o) / n()
+    uu = sum(o <= target_o) / n(),
+    ou = sum(o >= target_o) / n()
   ) |> 
   dplyr::arrange(player)
 ```
@@ -409,25 +543,23 @@ select_resampled_props <- select_resampled_o |>
 #| label: select_resampled_props-show
 #| include: true
 #| code-fold: show
-#| code-summary: "Output from Approach 1"
-select_resampled_props
+#| code-summary: "Approach 1 output"
+uu_approach2 |> dplyr::select(player, prior_o, target_o, uu, ou)
 #> # A tibble: 2 × 5
-#>   player_id player         prior_o target_o prop_lte
-#>   <chr>     <chr>            <dbl>    <dbl>    <dbl>
-#> 1 ee38d9c5  James Maddison   1.38     0.847    0.163
-#> 2 dc62b55d  Matheus Cunha    0.772    1.16     0.898
+#>   player         prior_o target_o    uu    ou
+#>   <chr>            <dbl>    <dbl> <dbl> <dbl>
+#> 1 James Maddison   1.38     0.847 0.163 0.837
+#> 2 Matheus Cunha    0.772    1.16  0.898 0.103
 ```
 
-These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.847 (or worse) occurs in 16.3% of simulations (`prop_lte`), and that Cunha's 2023/24 $O$ ratio of 1.16 (or better) occurs in 10.3% of simulations (`1 - prop_lte`).[^5] Honestly, these numbers feel fairly reasonable, but perhaps a bit too opinionated.
+These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.847 (or worse) occurs in 16.3% of simulations (`uu`), and that Cunha's 2023/24 $O$ ratio of 1.16 (or better) occurs in 10.3% of simulations (`1 - uu`).[^8] Honestly, these numbers feel fairly reasonable, but perhaps a bit too opinionated.
 
-[^5]: Put more in layman's terms, we might expect Maddison to have a season-long $O$ ratio like his 2023/24 ratio in 1 of every 6 seasons. Likewise, Cunha's 2023/24 outcome is a 1 in 10 season occurrence, given his shot history.
+[^8]: Put more in layman's terms, we might expect Maddison to have a season-long $O$ ratio like his 2023/24 ratio in 1 of every 6 seasons. Likewise, Cunha's 2023/24 outcome is a 1 in 10 season occurrence, given his shot history.
 
 This approach is fairly simplistic and elegant--we just sample shots from a player's history and count up the outcomes with respect to a target threshold. The plot below should provide a bit of visual intuition as to what's going on.
 
 ```{r}
-#| label: plot-maddison-sims
-#| code-fold: true
-#| code-summary: "Plotting Maddison's resampled shots"
+#| label: maddison_resampled_o_plot
 library(ggplot2)
 library(sysfonts)
 library(showtext)
@@ -491,7 +623,7 @@ maddison_resampled_o <- select_resampled_o |>
     group = ifelse(o <= target_o, 'lte', 'other')
   )
 
-maddison_resampled_o_plot <- maddison_resampled_o |> 
+maddison_uu_approach2_plot <- maddison_resampled_o |> 
   ggplot2::ggplot() +
   ggplot2::aes(
     x = o
@@ -506,7 +638,7 @@ maddison_resampled_o_plot <- maddison_resampled_o |>
     values = group_palette
   ) +
   ggplot2::geom_vline(
-    data = select_resampled_props |> 
+    data = uu_approach2 |> 
       dplyr::filter(player == 'James Maddison'),
     ggplot2::aes(xintercept = target_o),
     linetype = 2,
@@ -590,14 +722,14 @@ maddison_resampled_o_plot <- maddison_resampled_o |>
   )
 
 ggplot2::ggsave(
-  maddison_resampled_o_plot,
-  filename = file.path(PROJ_DIR, 'maddison-resampled-o.png'),
+  maddison_uu_approach2_plot,
+  filename = file.path(PROJ_DIR, 'maddison_uu_approach2.png'),
   width = 8,
   height = 8 / 1.5
 )
 ```
 
-![](maddison-resampled-o.png)
+![](maddison_uu_approach2.png)
 
 #### Discussion
 
@@ -608,32 +740,16 @@ So is this good enough? Maybe. There are some caveats I can think of:
 
 These things don't necessarily mean that this methodology is bad--it just has its caveats. On the other hand, one notable advantage of this approach is that it is "non-parametric"--we don't assume anything about the underlying distribution of a player's $O_p$; we simply let the power of resampling shape the distribution of outcomes, which should look different for a striker that only takes shots near the goal and a defender that only launches shots from outside the box.
 
-#### Calibration
-
-One way to check on the robustness of this approach is to see what the distribution of unlikeness $\Pi^-$ looks like across all players $P$. We should expect a distribution that looks relatively uniform--in other words, about 10% of players should have a 90th percentile unlikely outcomes (i.e. very likely), 10% of players should have a 10th percentile unlikely outcome (i.e. very unlikely), and so on.
+One way to check on the robustness of this approach is to see what the distribution of underperforming unlikeness $U^-_p$ looks like across all players $P$. We should expect a distribution that looks relatively uniform--in other words, about 10% of players should have a 90th percentile unlikely outcomes (i.e. very likely), 10% of players should have a 10th percentile unlikely outcome (i.e. very unlikely), and so on.
 
 ```{r}
-#| label: all-resamples
+#| label: all_uu_approach2
+#| include: true
 #| code-fold: true
-#| code-summary: "Approach 1, but with all players (meeting some baseline criteria)"
-all_players_to_resample <- wide_player_np_shots |> 
-  tidyr::drop_na(prior_o, target_o) |> 
-  dplyr::filter(
-    prior_shots >= 50,
-    target_shots >= 10,
-    prior_g > 0, 
-    target_g > 0
-  ) |> 
-  dplyr::select(
-    player_id,
-    player,
-    prior_o,
-    target_o
-  )
-
+#| code-summary: "Approach 2, but with all players (meeting some baseline criteria)"
 all_players <- rlang::set_names(
-  all_players_to_resample$player,
-  all_players_to_resample$player_id,
+  all_players_to_evaluate$player,
+  all_players_to_evaluate$player_id,
 )
 
 all_resampled_o <- np_shots |> 
@@ -654,12 +770,12 @@ all_resampled_o <- np_shots |>
   ) |> 
   dplyr::arrange(player, player_id)
 
-all_resampled_props <- all_resampled_o |>
+all_uu_approach2 <- all_resampled_o |>
   dplyr::summarize(
     .by = c(player, prior_o, target_o, prior_shots, target_shots),
-    prop_lte = sum(o <= target_o) / n()
+    uu = sum(o <= target_o) / n()
   ) |> 
-  dplyr::arrange(prop_lte)
+  dplyr::arrange(uu)
 ```
 
 ```{r}
@@ -675,17 +791,16 @@ all_resampled_o <- qs::qread(file.path(PROJ_DIR, 'all_resampled_shots.qs'))
 ```
 
 ```{r}
-#| label: plot-maddison-sims
-#| code-fold: true
-#| code-summary: "Plotting unlikeliness of all players"
-all_resampled_props_plot <- all_resampled_props |> 
+#| label: all_uu_approach2_plot
+all_uu_approach2_plot <- all_uu_approach2 |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = prop_lte
+    x = uu
   ) +
   ggplot2::geom_histogram(
-    fill = WHITISH_FOREGROUND_COLOR,
+    fill = group_palette[['other']],
     binwidth = 0.1,
+    color = BLACKISH_BACKGROUND_COLOR,
     boundary = 0,
     show.legend = FALSE
   ) +
@@ -726,24 +841,24 @@ all_resampled_props_plot <- all_resampled_props |>
     plot.subtitle = ggtext::element_markdown(size = 12)
   ) +
   ggplot2::labs(
-    title = '% Unlikelihood of 2023/24 Outperformance Ratio (G / xG)',
+    title = 'Underperformance Unlikelihood % of 2023/24 G / xG',
     subtitle = 'Calculated via a Resampling Approach',
     y = 'Count of Players',
-    x = '% Unlikelihood',
+    x = 'Underperformance Unlikelihood %',
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
-all_resampled_props_plot
+all_uu_approach2_plot
 
 ggplot2::ggsave(
-  all_resampled_props_plot,
-  filename = file.path(PROJ_DIR, 'all-resamples-props.png'),
+  all_uu_approach2_plot,
+  filename = file.path(PROJ_DIR, 'all_uu_approach2.png'),
   width = 8,
   height = 8 / 1.5
 )
 ```
 
-![](all-resamples-props.png)
+![](all_uu_approach2.png)
 
 Indeed, the histogram below follows a fairly uniform distribution, with a bit of irregularity at the very edges.
 
@@ -752,24 +867,24 @@ Who exactly is in the edges of the spectrum?
 Well, notably, [Manchester City's striker Erling Haaland](https://archive.is/https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/) shows up as having the most unlikely outcome for the 2023/24 season using this methodology.
 
 ```{r}
-#| label: all_resampled_props
+#| label: all_uu_approach2-show
 #| include: true
 #| code-fold: show
-#| code-summary: "All output from Approach 1"
-all_resampled_props
+#| code-summary: "Approach 2 output for all players"
+all_uu_approach2 |> dplyr::select(player, prior_o, target_o, prior_shots, target_shots, uu)
 #> # A tibble: 593 × 6
-#>    player              prior_o target_o prior_shots target_shots prop_lte
-#>    <chr>                 <dbl>    <dbl>       <int>        <int>    <dbl>
-#>  1 Erling Haaland         1.26    0.791         313           98    0.004
-#>  2 Amine Harit            1.27    0.262         107           33    0.01 
-#>  3 Pierre-Emerick Aub…    1.07    0.606         405           91    0.01 
-#>  4 Téji Savanier          1.42    0.282         276           72    0.01 
-#>  5 Antonio Sanabria       1.05    0.386         269           47    0.014
-#>  6 Alex Baena             1.54    0.348          61           57    0.016
-#>  7 Elye Wahi              1.38    0.753         114           47    0.017
-#>  8 Kevin Behrens          1.39    0.673          51           52    0.019
-#>  9 Ciro Immobile          1.23    0.383         635           41    0.02 
-#> 10 Ansu Fati              1.31    0.430         125           34    0.024
+#>    player                    prior_o target_o prior_shots target_shots    uu
+#>    <chr>                       <dbl>    <dbl>       <int>        <int> <dbl>
+#>  1 Erling Haaland               1.26    0.791         313           98 0.004
+#>  2 Amine Harit                  1.27    0.262         107           33 0.01 
+#>  3 Pierre-Emerick Aubameyang    1.07    0.606         405           91 0.01 
+#>  4 Téji Savanier                1.42    0.282         276           72 0.01 
+#>  5 Antonio Sanabria             1.05    0.386         269           47 0.014
+#>  6 Alex Baena                   1.54    0.348          61           57 0.016
+#>  7 Elye Wahi                    1.38    0.753         114           47 0.017
+#>  8 Kevin Behrens                1.39    0.673          51           52 0.019
+#>  9 Ciro Immobile                1.23    0.383         635           41 0.02 
+#> 10 Ansu Fati                    1.31    0.430         125           34 0.024
 #> # ℹ 583 more rows
 #> # ℹ Use `print(n = ...)` to see more rows
 ```
@@ -778,80 +893,33 @@ Haaland's peculiar season has been noted among fans and the media, and it's inte
 
 Let's see if we can improve on things with another approach.
 
-### Approach 2: Sampling from a Gamma Distribution
+### Approach 3: Sampling from an Estimated Distribution
 
-If we assume that $O_p$ ratios come from a [Gamma data-generating process](https://en.wikipedia.org/wiki/Gamma_process), then we can leverage the properties of a player-level Gamma distribution to assess the unlikelihood of an observed $O_p$ ratio. Specifically, this approach allows us to determine the probability that a player's $O_p$ ratio falls at or below a certain quantile of the distribution, providing a robust metric for evaluating player performance against expected outcomes.
+If we assume that $O_p$ ratios come from a [Gamma data-generating process](https://en.wikipedia.org/wiki/Gamma_process), then we can leverage the properties of a player-level [Gamma distribution](https://en.wikipedia.org/wiki/Gamma_distribution) to assess the unlikelihood of a players $G / xG$ ratio.
 
-For estimating the unlikeliness of observed outcomes for the 2023/24 "target" season, we proceed in the following manner:
+To estimate the underperforming unlikeliness $U^-_p$:
 
-1.  **Estimate a Player-Specific Gamma Distribution**: Estimate a Gamma distribution $\Gamma_{p,\text{target}'}$ to model a player's true outperformance ratio $O_{p}$ across all shots, excluding those in the target season--$\hat{O}_{p,\text{target}'}$.
-2.  **Assess the Probability of the Target Season's Outcome**: Calculate the probability that $\hat{O}_{p,\text{target}'}$ is less than or equal to the player's observed $O_{p,\text{target}}$ in the target season.
+1.  Estimate a Gamma distribution $\Gamma_{p,\text{target}'}$ to model a player's true outperformance ratio $O_{p}$ across all shots, excluding those in the target season--$\hat{O}_{p,\text{target}'}$.
+2.  Calculate the probability that $\hat{O}_{p,\text{target}'}$ is less than or equal to the player's observed $O_{p,\text{target}}$ in the target season using the Gamma distribution's cumulative distribution function (CDF).
 
-The code that follows shares similarities to [my prior analysis on Empirical Bayes (EB) shrinkage of $O_p$](/posts/xg-empirical-bayes). However, a key difference is that we now estimate the parameters of the prior distribution separately for each player, tailoring the analysis to individual performance variations. Further, we don't focus on any posterior distribution, although we could here if we wanted to answer the question: "What is the likelihood of a player achieving their 2023/24 $G / xG$ ratio again (in a future season)?"
+The same process applies for estimating overperforming unlikeliness $U^+_p$, except that we'd calculate the probability that $\hat{O}_{p,\text{target}'}$ is greter than or equal to the player's observed $O_{p,\text{target}}$ in the latter step.
 
 ```{r}
-#| label: select_gamma_props
+#| label: uu_approach3
 #| include: true
 #| code-fold: true
-#| code-summary: "Approach 2"
-## Similar to my code in /posts/xg-empirical-bayes
+#| code-summary: "Approach 3"
 N_SIMS <- 10000
 
-## We need to choose "bounds" sometimes to help MASS::fidistr estimate parameter values.
-##   In practice, I found that MASS::fidistr + dgamma needed a vector of length 5
-##   before `lower` and `upper` need not be specified. But we can't gaurantee that we'll
-##   always have a vector of at least 5 values to pass to it, so we must guide it
-##   by intelligently choosing lower and upper bounds.
-## At 500 shots, we feel like we can set pretty strong lower and upper bounds
-##   for the prior parameters to estimate. Around 50 shots is when we feel like we can
-##   start moving up our bounds from (1, 1)
-choose_prior_bound <- function(x, to, from = c(100, 500)) {
-  dplyr::case_when(
-    x < from[1] ~ to[1],
-    x >= from[2] ~ to[2],
-    TRUE ~ scales::rescale(x, from = from, to = to)
-  )
-}
-
-choose_prior_lower_bound <- function(x) {
-  choose_prior_bound(
-    x = x,
-    to = c(1, 10)
-  )
-}
-
-choose_prior_upper_bound <- function(x) {
-  choose_prior_bound(
-    x = x,
-    to = c(10, 50)
-  )
-}
-
-## By default:
-## 1. `lower`: Don't return values less than 1 (too weak of a prior)
-## 2. `upper`: Dont' return values greater than 25 (too strong of a prior)
-estimate_gamma_prior_distr_params <- function(x, lower = 1, upper = 25) {
-  prior_distr <- MASS::fitdistr(
-    x + 1e-6, ## fudge factor to prevent 0s,
-    dgamma,
-    start = list(shape = 1, rate = 1),
-    lower = lower,
-    upper = upper
-  )
-  
-  list(
-    shape = unname(prior_distr$estimate[1]),
-    rate = unname(prior_distr$estimate[2])
-  )
-}
-
+SHOT_TO_SHAPE_MAPPING <- list(
+  'from' = c(50, 750),
+  'to' = c(1, 25)
+)
 estimate_one_gamma_distributed_o <- function(
     shots,
-    player_id, 
     target_season_end_year
-  ) {
+) {
   player_np_shots <- shots |> 
-    dplyr::filter(player_id == .env$player_id) |> 
     dplyr::mutate(is_target = season_end_year == target_season_end_year)
   
   prior_player_np_shots <- player_np_shots |> 
@@ -860,40 +928,7 @@ estimate_one_gamma_distributed_o <- function(
   target_player_np_shots <- player_np_shots |> 
     dplyr::filter(is_target)
   
-  n_prior_shots <- nrow(prior_player_np_shots)
-  n_prior_seasons <- length(unique(prior_player_np_shots$season_end_year))
-  
-  ## For the purpose of estimating a prior, keep the number of non-target seasons
-  ##   fixed and spread the non-target season shots evently across those seasons.
-  ##   This is to help with choosing a set of Gamma distribution parameters.
-  ## An alternative approach might be to  split the player's non-target season shots
-  ##   into equally sized intervals (`fold`) that are approximately equal to (but usually
-  ##   smaller than) their target season shot volume. Assuming a player tends to
-  ##   shoot a similar number of shots per season, the number of `folds` will equal
-  ##   the number of seasons in which they appear in the data set, and this process
-  ##   would simply be splitting their shots evenly across those seasons.
-  ##   However, this approach requires "peeking" at the target season data, relying
-  ##   on the number of target season shots being known.
-  shots_in_each_fold <- floor(n_prior_shots / n_prior_seasons)
-  n_folds <- floor(n_prior_shots / shots_in_each_fold)
-  
-  numbered_player_np_shots <- prior_player_np_shots |> 
-    dplyr::arrange(match_date, minute) |> 
-    dplyr::mutate(
-      rn = dplyr::row_number(),
-      fold = 1L + ((rn - 1L) %/% shots_in_each_fold),
-      ## add any leftover to the last fold
-      fold = ifelse(fold > n_folds, n_folds, fold)
-    )
-  
-  prior_distr_shots <- numbered_player_np_shots |> 
-    dplyr::summarize(
-      .by = c(fold),
-      shots = dplyr::n(),
-      dplyr::across(c(g, xg), \(.x) sum(.x))
-    ) |> 
-    dplyr::mutate(o = g / xg)
-  
+
   agg_player_np_shots <- player_np_shots |>
     dplyr::summarize(
       .by = c(is_target),
@@ -907,11 +942,19 @@ estimate_one_gamma_distributed_o <- function(
   
   agg_target_player_np_shots <- agg_player_np_shots |> 
     dplyr::filter(is_target)
-  
-  estimate_gamma_prior_distr_params(
-    prior_distr_shots$o,
-    lower = 1, # choose_prior_lower_bound(agg_prior_player_np_shots$shots),
-    upper = choose_prior_upper_bound(agg_prior_player_np_shots$shots)
+
+  shape <- dplyr::case_when(
+    agg_prior_player_np_shots$shots < SHOT_TO_SHAPE_MAPPING$from[1] ~ SHOT_TO_SHAPE_MAPPING$to[2],
+    agg_prior_player_np_shots$shots > SHOT_TO_SHAPE_MAPPING$from[2] ~ SHOT_TO_SHAPE_MAPPING$to[2],
+    TRUE ~ scales::rescale(
+      agg_prior_player_np_shots$shots, 
+      from = SHOT_TO_SHAPE_MAPPING$from, 
+      to = SHOT_TO_SHAPE_MAPPING$to
+    )
+  )
+  list(
+    'shape' = shape,
+    'rate' = shape / agg_prior_player_np_shots$o
   )
 }
 
@@ -924,12 +967,11 @@ estimate_gamma_distributed_o <- function(
   purrr::imap_dfr(
     players,
     \(.player, .player_id) {
-      message(sprintf('%s - %s', .player_id, .player))
-      params <- estimate_one_gamma_distributed_o(
-        shots = shots,
-        player_id = .player_id,
-        target_season_end_year = target_season_end_year
-      )
+      params <- shots |> 
+        dplyr::filter(player_id == .player_id) |> 
+        estimate_one_gamma_distributed_o(
+          target_season_end_year = target_season_end_year
+        )
       
       list(
         'player_id' = .player_id,
@@ -956,10 +998,9 @@ select_gamma_o <- np_shots |>
   ) |> 
   dplyr::arrange(player, player_id)
 
-
-select_gamma_props <- select_gamma_o |> 
+uu_approach3 <- select_gamma_o |> 
   dplyr::mutate(
-    prop_lte = purrr::map2_dbl(
+    uu = purrr::map2_dbl(
       target_o,
       params,
       \(.target_o, .params) {
@@ -970,34 +1011,31 @@ select_gamma_props <- select_gamma_o |>
           lower.tail = TRUE
         )
       }
-    )
+    ),
+    ou = 1 - uu
   ) |> 
   tidyr::unnest_wider(params)
 ```
 
 ```{r}
-#| label: select_gamma_props-show
+#| label: uu_approach3-show
 #| include: true
 #| code-fold: show
-#| code-summary: "Output from Approach 2"
-select_gamma_props |> 
-  dplyr::select(player, prior_o, target_o, prop_lte)
-#> # A tibble: 2 × 4
-#>   player         prior_o target_o prop_lte
-#>   <chr>            <dbl>    <dbl>    <dbl>
-#> 1 James Maddison   1.38     0.847    0.267
-#> 2 Matheus Cunha    0.772    1.16     0.845
+#| code-summary: "Approach 3 output"
+uu_approach3 |> dplyr::select(player, prior_o, target_o, uu, ou)
+#> # A tibble: 2 × 5
+#>   player         prior_o target_o     uu     ou
+#>   <chr>            <dbl>    <dbl>  <dbl>  <dbl>
+#> 1 James Maddison   1.38     0.847 0.0679 0.932 
+#> 2 Matheus Cunha    0.772    1.16  0.903  0.0965
 ```
 
-We see that Maddison's 2023/24 $G / xG$ ratio of 0.847 (or worse) was about 26.7% unlikely given his prior shot history (`prior_prop_lte`). Using the same line of reasoning, we can say that Cunha's 2023/24 $O$ ratio of 1.16 was a 15.5% percentile outcome (`1 - prior_prop_lte`), so an outcome expected for him once every 6 to 7 seasons.
+We see that Maddison's 2023/24 $O_\{p,\text{target}}$ ratio of 0.847 (or worse) was about 7% unlikely given his prior shot history (`uu`), and that Cunha's 2023/24 $O_{p,\text{target}}$ ratio of 1.16 was a 10th percentile outcome (`ou`).
 
 To gain some intuition around this approach, we can plot out the Gamma distributed estimate of Maddison's $O_p$. The result is a histogram that looks not all that dissimilar to the one from before with resampled shots, just much smoother (since this is a "parametric" approach).
 
 ```{r}
-#| label: maddison_gamma_samples
-#| include: true
-#| code-fold: show
-#| code-summary: "Plotting Maddison's Gamma distribution for G / xG"
+#| label: maddison_uu_approach3_plot
 sample_from_gamma_o <- function(
     shape,
     rate,
@@ -1014,20 +1052,22 @@ sample_from_gamma_o <- function(
   )
 }
 
-maddison_gamma_samples <- select_gamma_props |>
+maddison_uu_approach3_samples <- uu_approach3 |>
   dplyr::filter(player == 'James Maddison')|> 
   dplyr::select(
     player,
-    params,
+    shape,
+    rate,
     target_o
   ) |> 
   dplyr::mutate(
-    o = purrr::map(
-      params,
-      \(.params) {
+    o = purrr::map2(
+      shape,
+      rate,
+      \(.shape, .rate) {
         sample_from_gamma_o(
-          shape = .params$shape,
-          rate = .params$rate
+          shape = .shape,
+          rate = .rate
         )
       }
     ),
@@ -1038,7 +1078,7 @@ maddison_gamma_samples <- select_gamma_props |>
     group = ifelse(o < target_o, 'lte', 'other')
   )
 
-maddison_gamma_o_plot <- maddison_gamma_samples |> 
+maddison_uu_approach3_plot <- maddison_uu_approach3_samples |> 
   ggplot2::ggplot() +
   ggplot2::aes(
     x = o
@@ -1053,7 +1093,7 @@ maddison_gamma_o_plot <- maddison_gamma_samples |>
     values = group_palette
   ) +
   ggplot2::geom_vline(
-    data = select_gamma_props |> 
+    data = uu_approach3 |> 
       dplyr::filter(player == 'James Maddison'),
     ggplot2::aes(xintercept = target_o),
     linetype = 2,
@@ -1110,7 +1150,7 @@ maddison_gamma_o_plot <- maddison_gamma_samples |>
     x = 1.55,
     y = 600,
     xend = 0.85,
-    yend = 175,
+    yend = 220,
     arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
     linewidth = 0.5,
     curvature = 0.25,
@@ -1137,27 +1177,27 @@ maddison_gamma_o_plot <- maddison_gamma_samples |>
   )
 
 ggplot2::ggsave(
-  maddison_gamma_o_plot,
-  filename = file.path(PROJ_DIR, 'maddison-gamma-o.png'),
+  maddison_uu_approach3_plot,
+  filename = file.path(PROJ_DIR, 'maddison_uu_approach3.png'),
   width = 8,
   height = 8 / 1.5
 )
 ```
 
-![](maddison-gamma-o.png)
+![](maddison_uu_approach3.png)
 
-#### Calibration
+#### Discussion
+
+As with approach 2, we should check to see what the distribution of underperforming unlikeliness looks like--we should expect to see a somewhat uniform distribution.
 
 ```{r}
-#| label: all_gamma_props
+#| label: all_uu_approach3
 #| include: true
 #| code-fold: true
-#| code-summary: "Approach 2 for all players"
-debugonce(estimate_one_gamma_distributed_o)
+#| code-summary: "Approach 3 for all players"
 all_gamma_o <- np_shots |> 
   estimate_gamma_distributed_o(
-    # players = all_players,
-    players = all_players[['2a7d27c1']],
+    players = all_players,
     target_season_end_year = TARGET_SEASON_END_YEAR
   ) |> 
   dplyr::inner_join(
@@ -1165,15 +1205,21 @@ all_gamma_o <- np_shots |>
       dplyr::select(
         player_id,
         prior_o,
-        target_o
+        target_o,
+        prior_shots,
+        target_shots,
+        prior_g,
+        target_g,
+        prior_xg,
+        target_xg
       ),
     by = dplyr::join_by(player_id)
   ) |> 
   dplyr::arrange(player, player_id)
 
-all_gamma_props <- all_gamma_o |> 
+all_uu_approach3 <- all_gamma_o |> 
   dplyr::mutate(
-    prop_lte = purrr::map2_dbl(
+    uu = purrr::map2_dbl(
       target_o,
       params,
       \(.target_o, .params) {
@@ -1184,8 +1230,81 @@ all_gamma_props <- all_gamma_o |>
           lower.tail = TRUE
         )
       }
-    )
-  )
+    ),
+    ou = 1 - uu
+  ) |> 
+  tidyr::unnest_wider(params) |> 
+  dplyr::arrange(uu)
 ```
+
+```{r}
+#| label: all_uu_approach3_plot
+all_uu_approach3_plot <- all_uu_approach3 |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = uu
+  ) +
+  ggplot2::geom_histogram(
+    fill = group_palette[['other']],
+    binwidth = 0.1,
+    color = BLACKISH_BACKGROUND_COLOR,
+    boundary = 0,
+    show.legend = FALSE
+  ) +
+  ggplot2::annotate(
+    geom = 'text',
+    x = 0.09,
+    y = 70,
+    hjust = 0,
+    vjust = 0,
+    label = "Maddison's 2023/24 G / xG ratio was\nin the 9.65th percentile of\nunlikely outcomes.",
+    color = group_palette[['lte']],
+    fontface = 'bold',
+    family = FONT,
+    size = 12 / .pt
+  ) +
+  ggplot2::annotate(
+    geom = 'curve',
+    x = 0.24,
+    y = 70,
+    xend = 0.16,
+    yend = 50,
+    arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
+    linewidth = 0.5,
+    curvature = 0.25,
+    color = group_palette[['lte']]
+  ) +
+  ggplot2::coord_cartesian(
+    # expand = FALSE,
+    clip = 'off'
+  ) +
+  ggplot2::scale_x_continuous(
+    labels = scales::percent,
+    breaks = seq(0, 1, by = 0.1)
+  ) +
+  ggplot2::theme(
+    panel.grid.major.x = ggplot2::element_blank(),
+    plot.title = ggtext::element_markdown(size = 16),
+    plot.subtitle = ggtext::element_markdown(size = 12)
+  ) +
+  ggplot2::labs(
+    title = 'Underperformance Unlikelihood % of 2023/24 G / xG',
+    subtitle = 'Calculated via a Parametric Approach',
+    y = 'Count of Players',
+    x = 'Underperformance Unlikelihood %',
+    caption = CAPTION_LABEL,
+    tag = TAG_LABEL
+  )
+all_uu_approach3_plot
+
+ggplot2::ggsave(
+  all_uu_approach3_plot,
+  filename = file.path(PROJ_DIR, 'all_uu_approach3.png'),
+  width = 8,
+  height = 8 / 1.5
+)
+```
+
+![](all_uu_approach3.png)
 
 # Conclusion

@@ -113,7 +113,7 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 
 <meta name="twitter:title" content="Tony’s Blog - Shooting Performance Likeliness">
 <meta name="twitter:description" content="Quantifying how unlikely a player’s season-long shooting performance was">
-<meta name="twitter:image" content="https://tonyelhabr.rbind.io/drafts/xg-likelihood/maddison-resampled-o.png">
+<meta name="twitter:image" content="https://tonyelhabr.rbind.io/drafts/xg-likelihood/maddison_uu_approach3.png">
 <meta name="twitter:site" content="@TonyElHabr">
 <meta name="twitter:image-height" content="1600">
 <meta name="twitter:image-width" content="2400">
@@ -190,17 +190,23 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
   <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a>
   <ul>
   <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a></li>
-  <li><a href="#analysis" id="toc-analysis" class="nav-link" data-scroll-target="#analysis">Analysis</a>
+  <li><a href="#methods-and-analysis" id="toc-methods-and-analysis" class="nav-link" data-scroll-target="#methods-and-analysis">Methods and Analysis</a>
   <ul class="collapse">
-  <li><a href="#approach-0-t-test" id="toc-approach-0-t-test" class="nav-link" data-scroll-target="#approach-0-t-test">Approach 0: <span class="math inline">\(t\)</span>-test</a></li>
-  <li><a href="#approach-1-resampling-from-prior-history-of-shots" id="toc-approach-1-resampling-from-prior-history-of-shots" class="nav-link" data-scroll-target="#approach-1-resampling-from-prior-history-of-shots">Approach 1: Resampling from Prior History of Shots</a>
+  <li><a href="#approach-0-t-test" id="toc-approach-0-t-test" class="nav-link" data-scroll-target="#approach-0-t-test">Approach 0: <span class="math inline">\(t\)</span>-test</a>
   <ul class="collapse">
   <li><a href="#discussion" id="toc-discussion" class="nav-link" data-scroll-target="#discussion">Discussion</a></li>
-  <li><a href="#calibration" id="toc-calibration" class="nav-link" data-scroll-target="#calibration">Calibration</a></li>
   </ul></li>
-  <li><a href="#approach-2-sampling-from-a-gamma-distribution" id="toc-approach-2-sampling-from-a-gamma-distribution" class="nav-link" data-scroll-target="#approach-2-sampling-from-a-gamma-distribution">Approach 2: Sampling from a Gamma Distribution</a>
+  <li><a href="#approach-1-comparing-with-other-players" id="toc-approach-1-comparing-with-other-players" class="nav-link" data-scroll-target="#approach-1-comparing-with-other-players">Approach 1: Comparing with Other Players</a>
   <ul class="collapse">
-  <li><a href="#calibration-1" id="toc-calibration-1" class="nav-link" data-scroll-target="#calibration-1">Calibration</a></li>
+  <li><a href="#discussion-1" id="toc-discussion-1" class="nav-link" data-scroll-target="#discussion-1">Discussion</a></li>
+  </ul></li>
+  <li><a href="#approach-2-resampling-from-prior-history-of-shots" id="toc-approach-2-resampling-from-prior-history-of-shots" class="nav-link" data-scroll-target="#approach-2-resampling-from-prior-history-of-shots">Approach 2: Resampling from Prior History of Shots</a>
+  <ul class="collapse">
+  <li><a href="#discussion-2" id="toc-discussion-2" class="nav-link" data-scroll-target="#discussion-2">Discussion</a></li>
+  </ul></li>
+  <li><a href="#approach-3-sampling-from-an-estimated-distribution" id="toc-approach-3-sampling-from-an-estimated-distribution" class="nav-link" data-scroll-target="#approach-3-sampling-from-an-estimated-distribution">Approach 3: Sampling from an Estimated Distribution</a>
+  <ul class="collapse">
+  <li><a href="#discussion-3" id="toc-discussion-3" class="nav-link" data-scroll-target="#discussion-3">Discussion</a></li>
   </ul></li>
   </ul></li>
   </ul></li>
@@ -246,426 +252,656 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 <section id="introduction" class="level1">
 <h1>Introduction</h1>
 <p>Towards the end of each soccer season, we naturally start to look back at player performances, often looking to seems to have improved the most compared to their past seasons. Or, on the other end of the spectrum, who disappointed the most. We may have different motivations for doing so–e.g.&nbsp;we may be trying to attribute team over- and under-performance to individuals, we may be hypothesizing who is likely to be transferred or resigned, etc.</p>
-<p>The question “How unexpected (or”unlikely”) was player X’s shooting performance this season?” is often posed when observing a large difference in a player’s goals scored and <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a>. For instance, if a striker only scored 8 goals in a given season on 12 xG, their “underperformance” of 4 goals is certainly notable, as its about 50% lower than expected (i.e.&nbsp;<code>(8 - 12) / 12</code>).</p>
+<p>The question “How unexpected (or”unlikely”) was player X’s shooting performance this season?” is often posed when observing a large difference in a player’s goals scored and <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a>. For instance, if a striker only scores 9 goals on 12 xG in a given season, their “underperformance” of 3 goals is certainly notable, as its about 25% lower than expected (i.e.&nbsp;<code>(9 - 12) / 12</code>).</p>
 <p>The <a href="../../posts/xg-ratio-empirical-bayes/">“Outperformance” (<span class="math inline">\(O_p\)</span>) ratio</a>–the ratio of a player <span class="math inline">\(p\)</span>’s (non-penalty) goals <span class="math inline">\(G_p\)</span> to expected goals <span class="math inline">\(xG_p\)</span>–is perhaps the most common way of evaluating a player’s shooting performance.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
-<p><span id="eq-o"><span class="math display">\[
+<p><span class="math display">\[
 O_p = \frac{G_p}{xG_p}
-\tag{1}\]</span></span></p>
-<p>Intuitively, an <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with an <span class="math inline">\(O_p\)</span> ratio of 0.67 (i.e.&nbsp;<span class="math inline">\(O_p = \frac{8}{12} = 0.75\)</span>).</p>
-<p>In most cases, we have prior seasons of data to use when evaluating a player’s <span class="math inline">\(O_p\)</span> ratio for a given season. For example, let’s say our hypothetical player scored 12 goals on 10 xG (<span class="math inline">\(O_p = 1.2\)</span>) in the season prior, and 11 goals on 10 xG (<span class="math inline">\(O_p = 1.1\)</span>) before that. Putting things in perspective, an <span class="math inline">\(O_p = 0.75\)</span> after those performances seems unlikely, especially compared to an “average” player who theoretically achieves <span class="math inline">\(O = 1\)</span> ratio every year.</p>
-<p>So how do we put a number on the unlikeliness of that <span class="math inline">\(O = 0.75\)</span> for our hypothetical player, accounting for their prior season-long performances?</p>
+\]</span></p>
+<p>An <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with <span class="math inline">\(O_p = \frac{8}{12} = 0.67\)</span>.</p>
+<p>In most cases, we have prior seasons of data to use when evaluating a player’s <span class="math inline">\(O_p\)</span> ratio for a given season. For example, let’s say our hypothetical player scored 12 goals on 10 xG (<span class="math inline">\(O_p = 1.2\)</span>) in the season prior, and 11 goals on 10 xG (<span class="math inline">\(O_p = 1.1\)</span>) before that. Putting things in perspective, an <span class="math inline">\(O_p = 0.75\)</span> after those performances seems fairly unlikely, especially compared to an “average” player who theoretically achieves <span class="math inline">\(O_p = 1\)</span> ratio every year.</p>
+<p>So how do we put a number on the unlikeliness of that <span class="math inline">\(O_p = 0.75\)</span> for our hypothetical player, accounting for their prior season-long performances?</p>
 <section id="data" class="level3">
 <h3 class="anchored" data-anchor-id="data">Data</h3>
-<p>For this post, I’ll be using public data from <a href="https://fbref.com/">FBref</a> for the 2018/19 - 2023/24 seasons of the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big 5 European soccer leagues</a>. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.</p>
-<p>We’ll focus on one player in particular–<a href="https://fbref.com/en/players/ee38d9c5/James-Maddison">James Maddison</a> and <a href="https://fbref.com/en/players/dc62b55d/Matheus-Cunha">Matheus Cunha</a>. Maddison has had a sub-par 2023/2024 season for his own standards, underperforming his xG for the first time in since he started playing in the Premier League in 2018/19. On the other hand, Cunha–who has bounced around teams across the Bundesliga, La Liga, and most recently the Premier League–has overperformed his xG for the first time this season.</p>
+<p>I’ll be using public data from <a href="https://fbref.com/">FBref</a> for the 2018/19 - 2023/24 seasons of the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big 5 European soccer leagues</a>, updated through April 26. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.</p>
+<div class="cell">
+<details>
+<summary>Get shot data</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>raw_shots <span class="ot">&lt;-</span> worldfootballR<span class="sc">::</span><span class="fu">load_fb_match_shooting</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">country =</span> COUNTRIES,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">tier =</span> TIERS,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">gender =</span> GENDERS,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">season_end_year =</span> SEASON_END_YEARS</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; → Data last updated 2024-04-25 17:52:47 UTC</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>np_shots <span class="ot">&lt;-</span> raw_shots <span class="sc">|&gt;</span> </span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Drop penalties</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="sc">!</span>dplyr<span class="sc">::</span><span class="fu">coalesce</span>((Distance <span class="sc">==</span> <span class="st">'13'</span> <span class="sc">&amp;</span> <span class="fu">round</span>(<span class="fu">as.double</span>(xG), <span class="dv">2</span>) <span class="sc">==</span> <span class="fl">0.79</span>), <span class="cn">FALSE</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">season_end_year =</span> Season_End_Year,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">player_id =</span> Player_Href <span class="sc">|&gt;</span> <span class="fu">dirname</span>() <span class="sc">|&gt;</span> <span class="fu">basename</span>(),</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">player =</span> Player,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">match_date =</span> lubridate<span class="sc">::</span><span class="fu">ymd</span>(Date),</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">match_id =</span> MatchURL <span class="sc">|&gt;</span> <span class="fu">dirname</span>() <span class="sc">|&gt;</span> <span class="fu">basename</span>(),</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">minute =</span> Minute,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">g =</span> <span class="fu">as.integer</span>(Outcome <span class="sc">==</span> <span class="st">'Goal'</span>),</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">xg =</span> <span class="fu">as.double</span>(xG)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="do">## A handful of scored shots with empty xG</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(xg)) <span class="sc">|&gt;</span> </span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(season_end_year, player_id, match_date, minute)</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="do">## Use the more commonly used name when a player ID is mapped to multiple names</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="do">##   (This "bug" happens because worldfootballR doesn't go back and re-scrape data</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="do">##   when fbref makes a name update.)</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>player_name_mapping <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">count</span>(player_id, player) <span class="sc">|&gt;</span> </span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(player_id) <span class="sc">|&gt;</span> </span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">slice_max</span>(n, <span class="at">n =</span> <span class="dv">1</span>, <span class="at">with_ties =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">distinct</span>(player_id, player)</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>player_season_np_shots <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(player_id, season_end_year), </span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">shots =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(),</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">across</span>(<span class="fu">c</span>(g, xg), sum)</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>    <span class="at">o =</span> g <span class="sc">/</span> xg</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">left_join</span>(</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>    player_name_mapping,</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player_id)</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">relocate</span>(player, <span class="at">.after =</span> player_id) <span class="sc">|&gt;</span> </span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player_id, season_end_year)</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>player_season_np_shots</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 15,317 × 7</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player_id player          season_end_year shots     g    xg     o</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;     &lt;chr&gt;                     &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 0000acda  Marco Benassi              2018    70     5  4.01 1.25 </span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 0000acda  Marco Benassi              2019    59     7  5.61 1.25 </span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 0000acda  Marco Benassi              2020    20     1  1.01 0.990</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 0000acda  Marco Benassi              2022    10     0  0.99 0    </span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 0000acda  Marco Benassi              2023    19     0  1.35 0    </span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 000b3da6  Manuel Iturra              2018     2     0  0.41 0    </span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 00242715  Moussa Niakhate            2018    16     0  1.43 0    </span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 00242715  Moussa Niakhate            2019    10     1  1.5  0.667</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 00242715  Moussa Niakhate            2020    11     1  1.02 0.980</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 00242715  Moussa Niakhate            2021     9     2  1.56 1.28 </span></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 15,307 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>We’ll focus on two players in particular–<a href="https://fbref.com/en/players/ee38d9c5/James-Maddison">James Maddison</a> and <a href="https://fbref.com/en/players/dc62b55d/Matheus-Cunha">Matheus Cunha</a>. Maddison has had a sub-par 2023/2024 season for his own standards, underperforming his xG for the first time in since he started playing in the Premier League in 2018/19. On the other hand, Cunha–who has bounced around teams across the Bundesliga, La Liga, and most recently the Premier League–has overperformed his xG for the first time this season.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
+<div class="cell">
+<details open="">
+<summary>Players to highlight throughout this post</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>SELECT_PLAYERS <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">'ee38d9c5'</span> <span class="ot">=</span> <span class="st">'James Maddison'</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">'dc62b55d'</span> <span class="ot">=</span> <span class="st">'Matheus Cunha'</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>select_player_season_np_shots <span class="ot">&lt;-</span> player_season_np_shots <span class="sc">|&gt;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(player_id <span class="sc">%in%</span> <span class="fu">names</span>(SELECT_PLAYERS))</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>select_player_season_np_shots</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 12 × 7</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player_id player         season_end_year shots     g    xg     o</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;     &lt;chr&gt;                    &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 dc62b55d  Matheus Cunha             2019    34     2  4.16 0.481</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 dc62b55d  Matheus Cunha             2020    51     5  5.34 0.936</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 dc62b55d  Matheus Cunha             2021    68     5  6.91 0.724</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 dc62b55d  Matheus Cunha             2022    39     6  6.06 0.990</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 dc62b55d  Matheus Cunha             2023    38     2  3.44 0.581</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 dc62b55d  Matheus Cunha             2024    71    10  8.59 1.16 </span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 ee38d9c5  James Maddison            2019    81     6  5.85 1.03 </span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 ee38d9c5  James Maddison            2020    74     6  5.36 1.12 </span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 ee38d9c5  James Maddison            2021    75     8  3.86 2.07 </span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 ee38d9c5  James Maddison            2022    72    12  7.56 1.59 </span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 11 ee38d9c5  James Maddison            2023    83     9  7.12 1.26 </span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 12 ee38d9c5  James Maddison            2024    49     4  4.72 0.847</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>More variables useful for the rest of the post</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>TARGET_SEASON_END_YEAR <span class="ot">&lt;-</span> <span class="dv">2024</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>player_np_shots <span class="ot">&lt;-</span> player_season_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">is_target =</span> season_end_year <span class="sc">==</span> TARGET_SEASON_END_YEAR</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(is_target, player_id, player),</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">across</span>(</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">c</span>(shots, g, xg),</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>      \(.x) <span class="fu">sum</span>(.x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">o =</span> g <span class="sc">/</span> xg) <span class="sc">|&gt;</span> </span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player, player_id, is_target)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>wide_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    player_id, </span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    player,</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">which =</span> <span class="fu">ifelse</span>(is_target, <span class="st">'target'</span>, <span class="st">'prior'</span>), </span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    shots, g, xg, o</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">pivot_wider</span>(</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_from =</span> which, </span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">values_from =</span> <span class="fu">c</span>(shots, g, xg, o), </span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_glue =</span> <span class="st">'{which}_{.value}'</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>all_players_to_evaluate <span class="ot">&lt;-</span> wide_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">drop_na</span>(prior_o, target_o) <span class="sc">|&gt;</span> </span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>    prior_shots <span class="sc">&gt;=</span> <span class="dv">50</span>,</span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>    target_shots <span class="sc">&gt;=</span> <span class="dv">10</span>,</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>    prior_g <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>    target_g <span class="sc">&gt;</span> <span class="dv">0</span></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
 </section>
-<section id="analysis" class="level2">
-<h2 class="anchored" data-anchor-id="analysis">Analysis</h2>
+<section id="methods-and-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="methods-and-analysis">Methods and Analysis</h2>
 <section id="approach-0-t-test" class="level3">
 <h3 class="anchored" data-anchor-id="approach-0-t-test">Approach 0: <span class="math inline">\(t\)</span>-test</h3>
-<p>If you have some background in statistics, perhaps the first approach that comes to mind is a <a href="https://en.wikipedia.org/wiki/Student%27s_t-test"><span class="math inline">\(t\)</span>-test</a> (using shot-weighted averages and standard deviations).</p>
+<p>If you have some background in statistics, perhaps the first approach that comes to mind is a <a href="https://en.wikipedia.org/wiki/Student%27s_t-test"><span class="math inline">\(t\)</span>-test</a> (using shot-weighted averages and standard deviations).<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></p>
 <div class="cell">
 <details>
 <summary>Approach 0</summary>
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>TARGET_SEASON_END_YEAR <span class="ot">&lt;-</span> <span class="dv">2024</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>select_t_test <span class="ot">&lt;-</span> select_np_season_shooting <span class="sc">|&gt;</span> </span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(season_end_year <span class="sc">&lt;</span> TARGET_SEASON_END_YEAR) <span class="sc">|&gt;</span> </span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarise</span>(</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(player_id, player),</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean =</span> <span class="fu">weighted.mean</span>(o, <span class="at">w =</span> shots),</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="do">## could also use a function like Hmisc::wtd.var for weighted variance</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd =</span> <span class="fu">sqrt</span>(<span class="fu">sum</span>(shots <span class="sc">*</span> (o <span class="sc">-</span> <span class="fu">weighted.mean</span>(o, <span class="at">w =</span> shots))<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> <span class="fu">sum</span>(shots))</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    select_np_season_shooting <span class="sc">|&gt;</span> </span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">filter</span>(season_end_year <span class="sc">==</span> TARGET_SEASON_END_YEAR) <span class="sc">|&gt;</span> </span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(player_id, <span class="at">target_o =</span> o),</span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player_id)</span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">z_score =</span> (target_o <span class="sc">-</span> mean) <span class="sc">/</span> sd,</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_value =</span> <span class="dv">2</span> <span class="sc">*</span> <span class="fu">pnorm</span>(<span class="sc">-</span><span class="fu">abs</span>(z_score))</span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="do">## The actual t-test</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>approach0 <span class="ot">&lt;-</span> select_player_season_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(season_end_year <span class="sc">&lt;</span> TARGET_SEASON_END_YEAR) <span class="sc">|&gt;</span> </span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarise</span>(</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(player),</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean =</span> <span class="fu">weighted.mean</span>(o, <span class="at">w =</span> shots),</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="do">## could also use a function like Hmisc::wtd.var for weighted variance</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd =</span> <span class="fu">sqrt</span>(<span class="fu">sum</span>(shots <span class="sc">*</span> (o <span class="sc">-</span> <span class="fu">weighted.mean</span>(o, <span class="at">w =</span> shots))<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> <span class="fu">sum</span>(shots))</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    wide_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o),</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">z_score =</span> (target_o <span class="sc">-</span> mean) <span class="sc">/</span> sd,</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> <span class="fu">pnorm</span>(<span class="sc">-</span><span class="fu">abs</span>(z_score)),</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">ou =</span> <span class="fu">pnorm</span>(<span class="fu">abs</span>(z_score))</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span><span class="fu">c</span>(mean, sd)) <span class="sc">|&gt;</span> </span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
 <details open="">
-<summary>Output from Approach 0</summary>
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>select_t_test</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 7</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player_id player          mean    sd target_o z_score p_value</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;     &lt;chr&gt;          &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 ee38d9c5  James Maddison 1.40  0.378    0.847   -1.47  0.141 </span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 dc62b55d  Matheus Cunha  0.757 0.182    1.16     2.24  0.0250</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<summary>Approach 0 output</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>approach0 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu, ou)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 5</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o     uu    ou</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison   1.38     0.847 0.0707 0.929</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 Matheus Cunha    0.772    1.16  0.0125 0.988</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
+<section id="discussion" class="level4">
+<h4 class="anchored" data-anchor-id="discussion">Discussion</h4>
 <p>In reality, this isn’t giving us a percentage of likelihood of the outcome. Rather, the p-value measures the probability of obtaining an outperformance as extreme as the one observed in 2023/24 (or more extreme) if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player’s actual outperformance ratio in the 2023/24 “target” season and the distribution of outperformance ratios observed in previous seasons.</p>
 <p>The t-test indicates that Cunha’s goals-to-xG ratio this year violates the null hypothesis, suggesting that this season has been significantly remarkable for him. On the other hand, the t-test indicates that there is not sufficient evidence that Maddison’s <span class="math inline">\(O_p\)</span> this season is significantly worse than his <span class="math inline">\(O_p\)</span> in prior seasons.</p>
 </section>
-<section id="approach-1-resampling-from-prior-history-of-shots" class="level3">
-<h3 class="anchored" data-anchor-id="approach-1-resampling-from-prior-history-of-shots">Approach 1: Resampling from Prior History of Shots</h3>
-<p>We’re not going to get very far just using a traditional approach, nor just by looking at the player-season level. We need to dive into shot-level data to more robustly understand uncertainty.</p>
-<p>Here’s a more sophisticated approach to quantifying the unlikeliness of a “target” season’s <span class="math inline">\(G / xG\)</span> ratio:</p>
+</section>
+<section id="approach-1-comparing-with-other-players" class="level3">
+<h3 class="anchored" data-anchor-id="approach-1-comparing-with-other-players">Approach 1: Comparing with Other Players</h3>
+<p>The next approach I’ll present is not so statistically grounded, but may be how some think about unlikeliness.</p>
 <ol type="1">
-<li>Sample <span class="math inline">\(N_{p,\text{target}}\)</span> shots (with replacement<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>) from a player’s past shots <span class="math inline">\(S_{p,\text{target}'}\)</span>. Repeat this for <span class="math inline">\(R\)</span> resamples.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></li>
-<li>Then, to quantify unlikeliness of an underperforming season, count the number of resamples <span class="math inline">\(r^-\)</span> in which the outperformance ratio <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> of the sampled shots is less than or equal to the observed <span class="math inline">\(O_{p,\text{target}}\)</span> ratio in the target season for the player.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> The proportion <span class="math inline">\(\Pi^- = \frac{r^-}{R}\)</span> represents the unlikeness of a given player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season.</li>
+<li>Calculate the proportional difference between the pre-target and target season outperformance ratios–<span class="math inline">\(O_{p,\text{target}'}\)</span> and <span class="math inline">\(O_{p,\text{target}'}\)</span> respectively–for all players <span class="math inline">\(P\)</span>.</li>
+</ol>
+<p><span class="math display">\[
+\delta O_p = \frac{O_{p,\text{target}} - O_{p,\text{target}'}}{O_{p,\text{target}'}}
+\]</span></p>
+<ol start="2" type="1">
+<li>Weight <span class="math inline">\(\delta O^w_p\)</span> by the player’s <span class="math inline">\(xG_p\)</span> accumulated in prior seasons.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></li>
+</ol>
+<p><span class="math display">\[
+\delta O^w_p = \delta O_p * xG_p
+\]</span></p>
+<ol start="3" type="1">
+<li>Calculate the the unlikelihood of the outcome <span class="math inline">\(U_p\)</span> as a percentile rank of <span class="math inline">\(\delta O^w_p\)</span>.</li>
+</ol>
+<p>To quantify the “underperforming” unlikelihood <span class="math inline">\(U^-_p\)</span>, we sort <span class="math inline">\(\delta O^w_p\)</span> in ascending order–more negative <span class="math inline">\(\delta O^w_p\)</span> values correspond to lower percentile <span class="math inline">\(U^-_p\)</span>, which represent more unlikely outcomes where a players underperformed relative to prior seasons. In code, this looks as follows.</p>
+<div class="cell">
+<details>
+<summary>Approach 1</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="do">## `uu` for "underperforming unlikelihood"</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>uu_approach1 <span class="ot">&lt;-</span> all_players_to_evaluate <span class="sc">|&gt;</span> </span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    player_id,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    player,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    prior_o,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    target_o,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    prior_xg,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">weighted_delta_o =</span> prior_xg <span class="sc">*</span> (target_o <span class="sc">-</span> prior_o) <span class="sc">/</span> prior_o,</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu_rank =</span> dplyr<span class="sc">::</span><span class="fu">row_number</span>(weighted_delta_o),</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> dplyr<span class="sc">::</span><span class="fu">percent_rank</span>(weighted_delta_o)</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(uu_rank)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details open="">
+<summary>Approach 1 output for Maddison</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>uu_approach1 <span class="sc">|&gt;</span> </span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(player <span class="sc">==</span> <span class="st">'James Maddison'</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, prior_xg, weighted_delta_o, uu_rank, uu)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 7</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o prior_xg weighted_delta_o uu_rank     uu</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;            &lt;dbl&gt;   &lt;int&gt;  &lt;dbl&gt;</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison    1.38    0.847     29.8            -11.5      37 0.0608</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>So, among the 593 player’s evaluated, Maddison’s 2023/24 <span class="math inline">\(O_p\)</span> ranks as the 37th most unlikely. In terms of <span class="math inline">\(U^-_p\)</span>, Maddison’s 2023/24 goals-to-xG ratio ranks as a 6th percentile outcome.</p>
+<p>For “overperforming” unlikelihood <span class="math inline">\(U^+_p\)</span>, we sort <span class="math inline">\(\delta O_p\)</span> in descending order.</p>
+<div class="cell">
+<details>
+<summary>Output of approach 1 for Maddison</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="do">## `ou` for overperforming unlikeliness.</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>ou_approach1 <span class="ot">&lt;-</span> uu_approach1 <span class="sc">|&gt;</span> </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    player_id,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    player,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    prior_o,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    target_o,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    prior_xg,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    weighted_delta_o,</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">ou_rank =</span> dplyr<span class="sc">::</span><span class="fu">row_number</span>(<span class="sc">-</span>weighted_delta_o),</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">ou =</span> dplyr<span class="sc">::</span><span class="fu">percent_rank</span>(<span class="sc">-</span>weighted_delta_o)</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>This methodology shows that Cunha’s 2023/24 <span class="math inline">\(O_p\)</span> ranks as the 70th most unlikely in terms of overperformance, or a 12th percentile outcome.</p>
+<div class="cell">
+<details open="">
+<summary>Approach 1 output for Cunha</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>ou_approach1 <span class="sc">|&gt;</span> </span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(player <span class="sc">==</span> <span class="st">'Matheus Cunha'</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, prior_xg, weighted_delta_o, ou_rank, ou)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 7</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player        prior_o target_o prior_xg weighted_delta_o ou_rank    ou</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;           &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;            &lt;dbl&gt;   &lt;int&gt; &lt;dbl&gt;</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 Matheus Cunha   0.772     1.16     25.9             13.2      70 0.117</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<section id="discussion-1" class="level4">
+<h4 class="anchored" data-anchor-id="discussion-1">Discussion</h4>
+<p>These results feel fairly reasonable, although the rankings are sensitive to the pool of players with which a given player is compared. If a large majority of players in a given season happened to score more than their xG would imply, then a player scoring at a neutral pace would be penalized by this approach. Of course, such an outcome is unlikely, but speaks to the role that selection bias might have with influencing results with this methodology.</p>
+<p>One other thing–we’re implicitly assuming that the distribution of unlikeliness should be uniform across all players in a given season. In other words, we’re assuming that there has to be 1% of players with a 1st percentile underperforming outcome, 17% of players with 17th percentile underperforming outcome, etc. I think this assumption makes sense in the long run, but in any given individual season, there may not be a single player who shots terribly enough to really deserve that “worst of the worst”, 1st percentile outcome.</p>
+</section>
+</section>
+<section id="approach-2-resampling-from-prior-history-of-shots" class="level3">
+<h3 class="anchored" data-anchor-id="approach-2-resampling-from-prior-history-of-shots">Approach 2: Resampling from Prior History of Shots</h3>
+<p>There’s only so much you can do with player-season level data. We need to dive into shot-level data if we want to more robustly understand uncertainty of outcomes.</p>
+<p>Here’s a more sophisticated approach to quantifying the unlikeliness of a target season’s <span class="math inline">\(G / xG\)</span> ratio:</p>
+<ol type="1">
+<li>Sample <span class="math inline">\(N_{p,\text{target}}\)</span> shots (with replacement<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>) from a player’s past shots <span class="math inline">\(S_{p,\text{target}'}\)</span>. Repeat this for <span class="math inline">\(R\)</span> resamples.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></li>
+<li>To quantify unlikeliness of a given player underperforming in the target season <span class="math inline">\(U^-_p\)</span>, count the number of resamples <span class="math inline">\(r^-\)</span> in which the outperformance ratio <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> of the sampled shots is less than or equal to the observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season for the player.<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a> The proportion <span class="math inline">\(\frac{r^-}{R}\)</span> represents the unlikeness of a given player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season.</li>
 </ol>
 <p>Here’s how that looks in code.</p>
 <div class="cell">
 <details>
-<summary>Approach 1</summary>
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="do">## To have a variable to reference for player-level target and aggregate prior stats</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>player_np_shots <span class="ot">&lt;-</span> player_season_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">is_target =</span> season_end_year <span class="sc">==</span> TARGET_SEASON_END_YEAR</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(is_target, player_id, player),</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">across</span>(</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>      <span class="fu">c</span>(shots, g, xg),</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>      \(.x) <span class="fu">sum</span>(.x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">o =</span> g <span class="sc">/</span> xg) <span class="sc">|&gt;</span> </span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player, player_id, is_target)</span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>wide_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span></span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    player_id, </span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    player,</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">which =</span> <span class="fu">ifelse</span>(is_target, <span class="st">'target'</span>, <span class="st">'prior'</span>), </span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    shots, g, xg, o</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">pivot_wider</span>(</span>
-<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_from =</span> which, </span>
-<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">values_from =</span> <span class="fu">c</span>(shots, g, xg, o), </span>
-<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_glue =</span> <span class="st">'{which}_{.value}'</span></span>
-<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>resample_player_shots <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
-<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>    shots, </span>
-<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>    n_shots_to_sample, </span>
-<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">n_sims =</span> <span class="dv">1000</span>,</span>
-<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">replace =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">seed =</span> <span class="dv">42</span></span>
-<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>) {</span>
-<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>  withr<span class="sc">::</span><span class="fu">local_seed</span>(seed)</span>
-<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>  purrr<span class="sc">::</span><span class="fu">map_dfr</span>(</span>
-<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>    <span class="dv">1</span><span class="sc">:</span>n_sims,</span>
-<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>    \(.sim) {</span>
-<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>      sampled_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
-<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>        <span class="fu">slice_sample</span>(<span class="at">n =</span> n_shots_to_sample, <span class="at">replace =</span> replace)</span>
-<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>      <span class="fu">list</span>(</span>
-<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>        <span class="at">sim =</span> .sim,</span>
-<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>        <span class="at">xg =</span> <span class="fu">sum</span>(sampled_shots<span class="sc">$</span>xg),</span>
-<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>        <span class="at">g =</span> <span class="fu">sum</span>(sampled_shots<span class="sc">$</span>g),</span>
-<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a>        <span class="at">o =</span> <span class="fu">sum</span>(sampled_shots<span class="sc">$</span>g) <span class="sc">/</span> <span class="fu">sum</span>(sampled_shots<span class="sc">$</span>xg)</span>
-<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a>      )</span>
-<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a>resample_player_o <span class="ot">&lt;-</span> <span class="cf">function</span>(shots, players, target_season_end_year) {</span>
-<span id="cb3-55"><a href="#cb3-55" aria-hidden="true" tabindex="-1"></a>  purrr<span class="sc">::</span><span class="fu">imap_dfr</span>(</span>
-<span id="cb3-56"><a href="#cb3-56" aria-hidden="true" tabindex="-1"></a>    players,</span>
-<span id="cb3-57"><a href="#cb3-57" aria-hidden="true" tabindex="-1"></a>    \(.player, .player_id) {</span>
-<span id="cb3-58"><a href="#cb3-58" aria-hidden="true" tabindex="-1"></a>      player_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
-<span id="cb3-59"><a href="#cb3-59" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(player_id <span class="sc">==</span> .player_id)</span>
-<span id="cb3-60"><a href="#cb3-60" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb3-61"><a href="#cb3-61" aria-hidden="true" tabindex="-1"></a>      target_shots <span class="ot">&lt;-</span> player_shots <span class="sc">|&gt;</span></span>
-<span id="cb3-62"><a href="#cb3-62" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(season_end_year <span class="sc">==</span> target_season_end_year)</span>
-<span id="cb3-63"><a href="#cb3-63" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb3-64"><a href="#cb3-64" aria-hidden="true" tabindex="-1"></a>      player_shots <span class="sc">|&gt;</span></span>
-<span id="cb3-65"><a href="#cb3-65" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(season_end_year <span class="sc">&lt;</span> target_season_end_year) <span class="sc">|&gt;</span> </span>
-<span id="cb3-66"><a href="#cb3-66" aria-hidden="true" tabindex="-1"></a>        <span class="fu">resample_player_shots</span>(</span>
-<span id="cb3-67"><a href="#cb3-67" aria-hidden="true" tabindex="-1"></a>          <span class="at">n_shots_to_sample =</span> <span class="fu">nrow</span>(target_shots)</span>
-<span id="cb3-68"><a href="#cb3-68" aria-hidden="true" tabindex="-1"></a>        ) <span class="sc">|&gt;</span> </span>
-<span id="cb3-69"><a href="#cb3-69" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb3-70"><a href="#cb3-70" aria-hidden="true" tabindex="-1"></a>          <span class="at">player_id =</span> .player_id,</span>
-<span id="cb3-71"><a href="#cb3-71" aria-hidden="true" tabindex="-1"></a>          <span class="at">player =</span> .player</span>
-<span id="cb3-72"><a href="#cb3-72" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb3-73"><a href="#cb3-73" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb3-74"><a href="#cb3-74" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb3-75"><a href="#cb3-75" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb3-76"><a href="#cb3-76" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-77"><a href="#cb3-77" aria-hidden="true" tabindex="-1"></a>select_resampled_o <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb3-78"><a href="#cb3-78" aria-hidden="true" tabindex="-1"></a>  <span class="fu">resample_player_o</span>(</span>
-<span id="cb3-79"><a href="#cb3-79" aria-hidden="true" tabindex="-1"></a>    <span class="at">players =</span> SELECT_PLAYERS,</span>
-<span id="cb3-80"><a href="#cb3-80" aria-hidden="true" tabindex="-1"></a>    <span class="at">target_season_end_year =</span> TARGET_SEASON_END_YEAR</span>
-<span id="cb3-81"><a href="#cb3-81" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb3-82"><a href="#cb3-82" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
-<span id="cb3-83"><a href="#cb3-83" aria-hidden="true" tabindex="-1"></a>    wide_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb3-84"><a href="#cb3-84" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
-<span id="cb3-85"><a href="#cb3-85" aria-hidden="true" tabindex="-1"></a>        player_id,</span>
-<span id="cb3-86"><a href="#cb3-86" aria-hidden="true" tabindex="-1"></a>        prior_o,</span>
-<span id="cb3-87"><a href="#cb3-87" aria-hidden="true" tabindex="-1"></a>        target_o</span>
-<span id="cb3-88"><a href="#cb3-88" aria-hidden="true" tabindex="-1"></a>      ),</span>
-<span id="cb3-89"><a href="#cb3-89" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player_id)</span>
-<span id="cb3-90"><a href="#cb3-90" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb3-91"><a href="#cb3-91" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player, player_id)</span>
-<span id="cb3-92"><a href="#cb3-92" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-93"><a href="#cb3-93" aria-hidden="true" tabindex="-1"></a>select_resampled_props <span class="ot">&lt;-</span> select_resampled_o <span class="sc">|&gt;</span></span>
-<span id="cb3-94"><a href="#cb3-94" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
-<span id="cb3-95"><a href="#cb3-95" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(player_id, player, prior_o, target_o),</span>
-<span id="cb3-96"><a href="#cb3-96" aria-hidden="true" tabindex="-1"></a>    <span class="at">prop_lte =</span> <span class="fu">sum</span>(o <span class="sc">&lt;=</span> target_o) <span class="sc">/</span> <span class="fu">n</span>()</span>
-<span id="cb3-97"><a href="#cb3-97" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb3-98"><a href="#cb3-98" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<summary>Approach 2</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>resample_player_shots <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    shots, </span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    n_shots_to_sample, </span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">n_sims =</span> <span class="dv">1000</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">replace =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">seed =</span> <span class="dv">42</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  withr<span class="sc">::</span><span class="fu">local_seed</span>(seed)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  purrr<span class="sc">::</span><span class="fu">map_dfr</span>(</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    <span class="dv">1</span><span class="sc">:</span>n_sims,</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    \(.sim) {</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>      sampled_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>        <span class="fu">slice_sample</span>(<span class="at">n =</span> n_shots_to_sample, <span class="at">replace =</span> replace)</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">list</span>(</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>        <span class="at">sim =</span> .sim,</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">xg =</span> <span class="fu">sum</span>(sampled_shots<span class="sc">$</span>xg),</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>        <span class="at">g =</span> <span class="fu">sum</span>(sampled_shots<span class="sc">$</span>g),</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>        <span class="at">o =</span> <span class="fu">sum</span>(sampled_shots<span class="sc">$</span>g) <span class="sc">/</span> <span class="fu">sum</span>(sampled_shots<span class="sc">$</span>xg)</span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>resample_one_player_o <span class="ot">&lt;-</span> <span class="cf">function</span>(shots, target_season_end_year) {</span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>  target_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span></span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(season_end_year <span class="sc">==</span> target_season_end_year)</span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>  prior_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span></span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(season_end_year <span class="sc">&lt;</span> target_season_end_year)</span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>  prior_shots <span class="sc">|&gt;</span> </span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">resample_player_shots</span>(</span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>      <span class="at">n_shots_to_sample =</span> <span class="fu">nrow</span>(target_shots)</span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-39"><a href="#cb10-39" aria-hidden="true" tabindex="-1"></a>resample_player_o <span class="ot">&lt;-</span> <span class="cf">function</span>(shots, players, target_season_end_year) {</span>
+<span id="cb10-40"><a href="#cb10-40" aria-hidden="true" tabindex="-1"></a>  purrr<span class="sc">::</span><span class="fu">imap_dfr</span>(</span>
+<span id="cb10-41"><a href="#cb10-41" aria-hidden="true" tabindex="-1"></a>    players,</span>
+<span id="cb10-42"><a href="#cb10-42" aria-hidden="true" tabindex="-1"></a>    \(.player, .player_id) {</span>
+<span id="cb10-43"><a href="#cb10-43" aria-hidden="true" tabindex="-1"></a>      shots <span class="sc">|&gt;</span> </span>
+<span id="cb10-44"><a href="#cb10-44" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(player_id <span class="sc">==</span> .player_id) <span class="sc">|&gt;</span> </span>
+<span id="cb10-45"><a href="#cb10-45" aria-hidden="true" tabindex="-1"></a>        <span class="fu">resample_one_player_o</span>(</span>
+<span id="cb10-46"><a href="#cb10-46" aria-hidden="true" tabindex="-1"></a>          <span class="at">target_season_end_year =</span> target_season_end_year</span>
+<span id="cb10-47"><a href="#cb10-47" aria-hidden="true" tabindex="-1"></a>        ) <span class="sc">|&gt;</span> </span>
+<span id="cb10-48"><a href="#cb10-48" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb10-49"><a href="#cb10-49" aria-hidden="true" tabindex="-1"></a>          <span class="at">player_id =</span> .player_id,</span>
+<span id="cb10-50"><a href="#cb10-50" aria-hidden="true" tabindex="-1"></a>          <span class="at">player =</span> .player</span>
+<span id="cb10-51"><a href="#cb10-51" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb10-52"><a href="#cb10-52" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb10-53"><a href="#cb10-53" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb10-54"><a href="#cb10-54" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-55"><a href="#cb10-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-56"><a href="#cb10-56" aria-hidden="true" tabindex="-1"></a>select_resampled_o <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb10-57"><a href="#cb10-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">resample_player_o</span>(</span>
+<span id="cb10-58"><a href="#cb10-58" aria-hidden="true" tabindex="-1"></a>    <span class="at">players =</span> SELECT_PLAYERS,</span>
+<span id="cb10-59"><a href="#cb10-59" aria-hidden="true" tabindex="-1"></a>    <span class="at">target_season_end_year =</span> TARGET_SEASON_END_YEAR</span>
+<span id="cb10-60"><a href="#cb10-60" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb10-61"><a href="#cb10-61" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
+<span id="cb10-62"><a href="#cb10-62" aria-hidden="true" tabindex="-1"></a>    wide_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb10-63"><a href="#cb10-63" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
+<span id="cb10-64"><a href="#cb10-64" aria-hidden="true" tabindex="-1"></a>        player_id,</span>
+<span id="cb10-65"><a href="#cb10-65" aria-hidden="true" tabindex="-1"></a>        prior_o,</span>
+<span id="cb10-66"><a href="#cb10-66" aria-hidden="true" tabindex="-1"></a>        target_o</span>
+<span id="cb10-67"><a href="#cb10-67" aria-hidden="true" tabindex="-1"></a>      ),</span>
+<span id="cb10-68"><a href="#cb10-68" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player_id)</span>
+<span id="cb10-69"><a href="#cb10-69" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb10-70"><a href="#cb10-70" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player, player_id)</span>
+<span id="cb10-71"><a href="#cb10-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-72"><a href="#cb10-72" aria-hidden="true" tabindex="-1"></a>uu_approach2 <span class="ot">&lt;-</span> select_resampled_o <span class="sc">|&gt;</span></span>
+<span id="cb10-73"><a href="#cb10-73" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
+<span id="cb10-74"><a href="#cb10-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(player_id, player, prior_o, target_o),</span>
+<span id="cb10-75"><a href="#cb10-75" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> <span class="fu">sum</span>(o <span class="sc">&lt;=</span> target_o) <span class="sc">/</span> <span class="fu">n</span>(),</span>
+<span id="cb10-76"><a href="#cb10-76" aria-hidden="true" tabindex="-1"></a>    <span class="at">ou =</span> <span class="fu">sum</span>(o <span class="sc">&gt;=</span> target_o) <span class="sc">/</span> <span class="fu">n</span>()</span>
+<span id="cb10-77"><a href="#cb10-77" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb10-78"><a href="#cb10-78" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
 <details open="">
-<summary>Output from Approach 1</summary>
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>select_resampled_props</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 5</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player_id player         prior_o target_o prop_lte</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;     &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 ee38d9c5  James Maddison   1.38     0.847    0.163</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 dc62b55d  Matheus Cunha    0.772    1.16     0.898</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<summary>Approach 1 output</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>uu_approach2 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu, ou)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 5</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o    uu    ou</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison   1.38     0.847 0.163 0.837</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 Matheus Cunha    0.772    1.16  0.898 0.103</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>These results imply that Maddison’s 2023/24 <span class="math inline">\(G / xG\)</span> ratio of 0.847 (or worse) occurs in 16.3% of simulations (<code>prop_lte</code>), and that Cunha’s 2023/24 <span class="math inline">\(O\)</span> ratio of 1.16 (or better) occurs in 10.3% of simulations (<code>1 - prop_lte</code>).<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a> Honestly, these numbers feel fairly reasonable, but perhaps a bit too opinionated.</p>
+<p>These results imply that Maddison’s 2023/24 <span class="math inline">\(G / xG\)</span> ratio of 0.847 (or worse) occurs in 16.3% of simulations (<code>uu</code>), and that Cunha’s 2023/24 <span class="math inline">\(O\)</span> ratio of 1.16 (or better) occurs in 10.3% of simulations (<code>1 - uu</code>).<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> Honestly, these numbers feel fairly reasonable, but perhaps a bit too opinionated.</p>
 <p>This approach is fairly simplistic and elegant–we just sample shots from a player’s history and count up the outcomes with respect to a target threshold. The plot below should provide a bit of visual intuition as to what’s going on.</p>
-<p><img src="maddison-resampled-o.png" class="img-fluid"></p>
-<section id="discussion" class="level4">
-<h4 class="anchored" data-anchor-id="discussion">Discussion</h4>
+<p><img src="maddison_uu_approach2.png" class="img-fluid"></p>
+<section id="discussion-2" class="level4">
+<h4 class="anchored" data-anchor-id="discussion-2">Discussion</h4>
 <p>So is this good enough? Maybe. There are some caveats I can think of:</p>
 <ol type="1">
 <li>We’re implicitly making an assumption that a player’s past shot profile is representative of their future shot profile.</li>
 <li>We’re effectively treating each player’s <span class="math inline">\(G / xG\)</span> ratio as constant and only trying to understand the uncertainty around it.</li>
 </ol>
 <p>These things don’t necessarily mean that this methodology is bad–it just has its caveats. On the other hand, one notable advantage of this approach is that it is “non-parametric”–we don’t assume anything about the underlying distribution of a player’s <span class="math inline">\(O_p\)</span>; we simply let the power of resampling shape the distribution of outcomes, which should look different for a striker that only takes shots near the goal and a defender that only launches shots from outside the box.</p>
-</section>
-<section id="calibration" class="level4">
-<h4 class="anchored" data-anchor-id="calibration">Calibration</h4>
-<p>One way to check on the robustness of this approach is to see what the distribution of unlikeness <span class="math inline">\(\Pi^-\)</span> looks like across all players <span class="math inline">\(P\)</span>. We should expect a distribution that looks relatively uniform–in other words, about 10% of players should have a 90th percentile unlikely outcomes (i.e.&nbsp;very likely), 10% of players should have a 10th percentile unlikely outcome (i.e.&nbsp;very unlikely), and so on.</p>
-<p>HISTOGRAM HERE</p>
+<p>One way to check on the robustness of this approach is to see what the distribution of underperforming unlikeness <span class="math inline">\(U^-_p\)</span> looks like across all players <span class="math inline">\(P\)</span>. We should expect a distribution that looks relatively uniform–in other words, about 10% of players should have a 90th percentile unlikely outcomes (i.e.&nbsp;very likely), 10% of players should have a 10th percentile unlikely outcome (i.e.&nbsp;very unlikely), and so on.</p>
+<div class="cell">
+<details>
+<summary>Approach 2, but with all players (meeting some baseline criteria)</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>all_players <span class="ot">&lt;-</span> rlang<span class="sc">::</span><span class="fu">set_names</span>(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  all_players_to_evaluate<span class="sc">$</span>player,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  all_players_to_evaluate<span class="sc">$</span>player_id,</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>all_resampled_o <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">resample_player_o</span>(</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">players =</span> all_players,</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">target_season_end_year =</span> TARGET_SEASON_END_YEAR</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    wide_player_o <span class="sc">|&gt;</span> </span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>        player_id,</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>        prior_o,</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>        target_o,</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>        prior_shots,</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>        target_shots</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>      ),</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player_id)</span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player, player_id)</span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>all_uu_approach2 <span class="ot">&lt;-</span> all_resampled_o <span class="sc">|&gt;</span></span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(player, prior_o, target_o, prior_shots, target_shots),</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> <span class="fu">sum</span>(o <span class="sc">&lt;=</span> target_o) <span class="sc">/</span> <span class="fu">n</span>()</span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(uu)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><img src="all_uu_approach2.png" class="img-fluid"></p>
 <p>Indeed, the histogram below follows a fairly uniform distribution, with a bit of irregularity at the very edges.</p>
 <p>Who exactly is in the edges of the spectrum?</p>
 <p>Well, notably, <a href="https://archive.is/https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/">Manchester City’s striker Erling Haaland</a> shows up as having the most unlikely outcome for the 2023/24 season using this methodology.</p>
 <div class="cell">
 <details open="">
-<summary>All output from Approach 1</summary>
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>all_resampled_props</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 593 × 6</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player              prior_o target_o prior_shots target_shots prop_lte</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;                 &lt;dbl&gt;    &lt;dbl&gt;       &lt;int&gt;        &lt;int&gt;    &lt;dbl&gt;</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Erling Haaland         1.26    0.791         313           98    0.004</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Amine Harit            1.27    0.262         107           33    0.01 </span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 Pierre-Emerick Aub…    1.07    0.606         405           91    0.01 </span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 Téji Savanier          1.42    0.282         276           72    0.01 </span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 Antonio Sanabria       1.05    0.386         269           47    0.014</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 Alex Baena             1.54    0.348          61           57    0.016</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 Elye Wahi              1.38    0.753         114           47    0.017</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 Kevin Behrens          1.39    0.673          51           52    0.019</span></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 Ciro Immobile          1.23    0.383         635           41    0.02 </span></span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Ansu Fati              1.31    0.430         125           34    0.024</span></span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 583 more rows</span></span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ Use `print(n = ...)` to see more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<summary>Approach 2 output for all players</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>all_uu_approach2 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, prior_shots, target_shots, uu)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 593 × 6</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player                    prior_o target_o prior_shots target_shots    uu</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;                       &lt;dbl&gt;    &lt;dbl&gt;       &lt;int&gt;        &lt;int&gt; &lt;dbl&gt;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Erling Haaland               1.26    0.791         313           98 0.004</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Amine Harit                  1.27    0.262         107           33 0.01 </span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  3 Pierre-Emerick Aubameyang    1.07    0.606         405           91 0.01 </span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  4 Téji Savanier                1.42    0.282         276           72 0.01 </span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  5 Antonio Sanabria             1.05    0.386         269           47 0.014</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  6 Alex Baena                   1.54    0.348          61           57 0.016</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  7 Elye Wahi                    1.38    0.753         114           47 0.017</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  8 Kevin Behrens                1.39    0.673          51           52 0.019</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  9 Ciro Immobile                1.23    0.383         635           41 0.02 </span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Ansu Fati                    1.31    0.430         125           34 0.024</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 583 more rows</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ Use `print(n = ...)` to see more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>Haaland’s peculiar season has been noted among fans and the media, and it’s interesting to see that this methodology has put the odds of such an outcome at just 0.4%. Perhaps that’s right, but I honestly think that’s just a little too extreme.</p>
+<p>Haaland’s peculiar season has been noted among fans and the media, and it’s interesting to see that this methodology has put the odds of such an outcome as a 0.4th percentile outcome. Perhaps that’s right, but I honestly think that’s just a little too extreme.</p>
 <p>Let’s see if we can improve on things with another approach.</p>
 </section>
 </section>
-<section id="approach-2-sampling-from-a-gamma-distribution" class="level3">
-<h3 class="anchored" data-anchor-id="approach-2-sampling-from-a-gamma-distribution">Approach 2: Sampling from a Gamma Distribution</h3>
-<p>If we assume that <span class="math inline">\(O_p\)</span> ratios come from a <a href="https://en.wikipedia.org/wiki/Gamma_process">Gamma data-generating process</a>, then we can leverage the properties of a player-level Gamma distribution to assess the unlikelihood of an observed <span class="math inline">\(O_p\)</span> ratio. Specifically, this approach allows us to determine the probability that a player’s <span class="math inline">\(O_p\)</span> ratio falls at or below a certain quantile of the distribution, providing a robust metric for evaluating player performance against expected outcomes.</p>
-<p>For estimating the unlikeliness of observed outcomes for the 2023/24 “target” season, we proceed in the following manner:</p>
+<section id="approach-3-sampling-from-an-estimated-distribution" class="level3">
+<h3 class="anchored" data-anchor-id="approach-3-sampling-from-an-estimated-distribution">Approach 3: Sampling from an Estimated Distribution</h3>
+<p>If we assume that <span class="math inline">\(O_p\)</span> ratios come from a <a href="https://en.wikipedia.org/wiki/Gamma_process">Gamma data-generating process</a>, then we can leverage the properties of a player-level <a href="https://en.wikipedia.org/wiki/Gamma_distribution">Gamma distribution</a> to assess the unlikelihood of a players <span class="math inline">\(G / xG\)</span> ratio.</p>
+<p>To estimate the underperforming unlikeliness <span class="math inline">\(U^-_p\)</span>:</p>
 <ol type="1">
-<li><strong>Estimate a Player-Specific Gamma Distribution</strong>: Estimate a Gamma distribution <span class="math inline">\(\Gamma_{p,\text{target}'}\)</span> to model a player’s true outperformance ratio <span class="math inline">\(O_{p}\)</span> across all shots, excluding those in the target season–<span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span>.</li>
-<li><strong>Assess the Probability of the Target Season’s Outcome</strong>: Calculate the probability that <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> is less than or equal to the player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season.</li>
+<li>Estimate a Gamma distribution <span class="math inline">\(\Gamma_{p,\text{target}'}\)</span> to model a player’s true outperformance ratio <span class="math inline">\(O_{p}\)</span> across all shots, excluding those in the target season–<span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span>.</li>
+<li>Calculate the probability that <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> is less than or equal to the player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season using the Gamma distribution’s cumulative distribution function (CDF).</li>
 </ol>
-<p>The code that follows shares similarities to <a href="../../posts/xg-empirical-bayes">my prior analysis on Empirical Bayes (EB) shrinkage of <span class="math inline">\(O_p\)</span></a>. However, a key difference is that we now estimate the parameters of the prior distribution separately for each player, tailoring the analysis to individual performance variations. Further, we don’t focus on any posterior distribution, although we could here if we wanted to answer the question: “What is the likelihood of a player achieving their 2023/24 <span class="math inline">\(G / xG\)</span> ratio again (in a future season)?”</p>
+<p>The same process applies for estimating overperforming unlikeliness <span class="math inline">\(U^+_p\)</span>, except that we’d calculate the probability that <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> is greter than or equal to the player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the latter step.</p>
 <div class="cell">
 <details>
-<summary>Approach 2</summary>
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="do">## Similar to my code in /posts/xg-empirical-bayes</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>N_SIMS <span class="ot">&lt;-</span> <span class="dv">10000</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="do">## We need to choose "bounds" sometimes to help MASS::fidistr estimate parameter values.</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="do">##   In practice, I found that MASS::fidistr + dgamma needed a vector of length 5</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="do">##   before `lower` and `upper` need not be specified. But we can't gaurantee that we'll</span></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="do">##   always have a vector of at least 5 values to pass to it, so we must guide it</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="do">##   by intelligently choosing lower and upper bounds.</span></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="do">## At 500 shots, we feel like we can set pretty strong lower and upper bounds</span></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="do">##   for the prior parameters to estimate. Around 50 shots is when we feel like we can</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="do">##   start moving up our bounds from (1, 1)</span></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>choose_prior_bound <span class="ot">&lt;-</span> <span class="cf">function</span>(x, to, <span class="at">from =</span> <span class="fu">c</span>(<span class="dv">50</span>, <span class="dv">500</span>)) {</span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">case_when</span>(</span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    x <span class="sc">&lt;</span> from[<span class="dv">1</span>] <span class="sc">~</span> to[<span class="dv">1</span>],</span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    x <span class="sc">&gt;=</span> from[<span class="dv">2</span>] <span class="sc">~</span> to[<span class="dv">2</span>],</span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="cn">TRUE</span> <span class="sc">~</span> scales<span class="sc">::</span><span class="fu">rescale</span>(x, <span class="at">from =</span> from, <span class="at">to =</span> to)</span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>choose_prior_lower_bound <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">choose_prior_bound</span>(</span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> x,</span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">to =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">25</span>)</span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>choose_prior_upper_bound <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
-<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">choose_prior_bound</span>(</span>
-<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> x,</span>
-<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">to =</span> <span class="fu">c</span>(<span class="dv">10</span>, <span class="dv">50</span>)</span>
-<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a><span class="do">## By default:</span></span>
-<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a><span class="do">## 1. `lower`: Don't return values less than 1 (too weak of a prior)</span></span>
-<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a><span class="do">## 2. `upper`: Dont' return values greater than 25 (too strong of a prior)</span></span>
-<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>estimate_gamma_prior_distr_params <span class="ot">&lt;-</span> <span class="cf">function</span>(x, <span class="at">lower =</span> <span class="dv">1</span>, <span class="at">upper =</span> <span class="dv">25</span>) {</span>
-<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  prior_distr <span class="ot">&lt;-</span> MASS<span class="sc">::</span><span class="fu">fitdistr</span>(</span>
-<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>    x <span class="sc">+</span> <span class="fl">1e-6</span>, <span class="do">## fudge factor to prevent 0s,</span></span>
-<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>    dgamma,</span>
-<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">start =</span> <span class="fu">list</span>(<span class="at">shape =</span> <span class="dv">1</span>, <span class="at">rate =</span> <span class="dv">1</span>),</span>
-<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">lower =</span> lower,</span>
-<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>    <span class="at">upper =</span> upper</span>
-<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(</span>
-<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>    <span class="at">shape =</span> <span class="fu">unname</span>(prior_distr<span class="sc">$</span>estimate[<span class="dv">1</span>]),</span>
-<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>    <span class="at">rate =</span> <span class="fu">unname</span>(prior_distr<span class="sc">$</span>estimate[<span class="dv">2</span>])</span>
-<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>estimate_gamma_distributed_o <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
-<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>    shots,</span>
-<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a>    players,</span>
-<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a>    target_season_end_year</span>
-<span id="cb6-56"><a href="#cb6-56" aria-hidden="true" tabindex="-1"></a>) {</span>
-<span id="cb6-57"><a href="#cb6-57" aria-hidden="true" tabindex="-1"></a>  select_gamma_o <span class="ot">&lt;-</span> purrr<span class="sc">::</span><span class="fu">imap_dfr</span>(</span>
-<span id="cb6-58"><a href="#cb6-58" aria-hidden="true" tabindex="-1"></a>    players,</span>
-<span id="cb6-59"><a href="#cb6-59" aria-hidden="true" tabindex="-1"></a>    \(.player, .player_id) {</span>
-<span id="cb6-60"><a href="#cb6-60" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-61"><a href="#cb6-61" aria-hidden="true" tabindex="-1"></a>      player_np_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-62"><a href="#cb6-62" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(player_id <span class="sc">==</span> .player_id) <span class="sc">|&gt;</span> </span>
-<span id="cb6-63"><a href="#cb6-63" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">is_target =</span> season_end_year <span class="sc">==</span> target_season_end_year)</span>
-<span id="cb6-64"><a href="#cb6-64" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-65"><a href="#cb6-65" aria-hidden="true" tabindex="-1"></a>      prior_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-66"><a href="#cb6-66" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>is_target)</span>
-<span id="cb6-67"><a href="#cb6-67" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-68"><a href="#cb6-68" aria-hidden="true" tabindex="-1"></a>      target_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-69"><a href="#cb6-69" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(is_target)</span>
-<span id="cb6-70"><a href="#cb6-70" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-71"><a href="#cb6-71" aria-hidden="true" tabindex="-1"></a>      n_prior_shots <span class="ot">&lt;-</span> <span class="fu">nrow</span>(prior_player_np_shots)</span>
-<span id="cb6-72"><a href="#cb6-72" aria-hidden="true" tabindex="-1"></a>      n_prior_seasons <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(prior_player_np_shots))</span>
-<span id="cb6-73"><a href="#cb6-73" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-74"><a href="#cb6-74" aria-hidden="true" tabindex="-1"></a>      <span class="do">## For the purpose of estimating a prior, keep the number of non-target seasons</span></span>
-<span id="cb6-75"><a href="#cb6-75" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   fixed and spread the non-target season shots evently across those seasons.</span></span>
-<span id="cb6-76"><a href="#cb6-76" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   This is to help with choosing a set of Gamma distribution parameters.</span></span>
-<span id="cb6-77"><a href="#cb6-77" aria-hidden="true" tabindex="-1"></a>      <span class="do">## An alternative approach might be to  split the player's non-target season shots</span></span>
-<span id="cb6-78"><a href="#cb6-78" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   into equally sized intervals (`fold`) that are approximately equal to (but usually</span></span>
-<span id="cb6-79"><a href="#cb6-79" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   smaller than) their target season shot volume. Assuming a player tends to</span></span>
-<span id="cb6-80"><a href="#cb6-80" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   shoot a similar number of shots per season, the number of `folds` will equal</span></span>
-<span id="cb6-81"><a href="#cb6-81" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   the number of seasons in which they appear in the data set, and this process</span></span>
-<span id="cb6-82"><a href="#cb6-82" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   would simply be splitting their shots evenly across those seasons.</span></span>
-<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   However, this approach requires "peeking" at the target season data, relying</span></span>
-<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>      <span class="do">##   on the number of target season shots being known.</span></span>
-<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>      n_folds <span class="ot">&lt;-</span> (n_prior_shots <span class="sc">%/%</span> n_prior_seasons) <span class="sc">+</span> 1L</span>
-<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a>      shots_in_each_fold <span class="ot">&lt;-</span> n_prior_shots <span class="sc">%/%</span> n_folds</span>
-<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>      numbered_player_np_shots <span class="ot">&lt;-</span> prior_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-89"><a href="#cb6-89" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">arrange</span>(match_date, minute) <span class="sc">|&gt;</span> </span>
-<span id="cb6-90"><a href="#cb6-90" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb6-91"><a href="#cb6-91" aria-hidden="true" tabindex="-1"></a>          <span class="at">rn =</span> dplyr<span class="sc">::</span><span class="fu">row_number</span>(),</span>
-<span id="cb6-92"><a href="#cb6-92" aria-hidden="true" tabindex="-1"></a>          <span class="at">fold =</span> 1L <span class="sc">+</span> ((rn <span class="sc">-</span> 1L) <span class="sc">%/%</span> shots_in_each_fold),</span>
-<span id="cb6-93"><a href="#cb6-93" aria-hidden="true" tabindex="-1"></a>          <span class="do">## add any leftover to the last fold</span></span>
-<span id="cb6-94"><a href="#cb6-94" aria-hidden="true" tabindex="-1"></a>          <span class="at">fold =</span> <span class="fu">ifelse</span>(fold <span class="sc">&gt;</span> n_folds, n_folds, fold)</span>
-<span id="cb6-95"><a href="#cb6-95" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-97"><a href="#cb6-97" aria-hidden="true" tabindex="-1"></a>      prior_distr_shots <span class="ot">&lt;-</span> numbered_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-98"><a href="#cb6-98" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
-<span id="cb6-99"><a href="#cb6-99" aria-hidden="true" tabindex="-1"></a>          <span class="at">.by =</span> <span class="fu">c</span>(fold),</span>
-<span id="cb6-100"><a href="#cb6-100" aria-hidden="true" tabindex="-1"></a>          <span class="at">shots =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(),</span>
-<span id="cb6-101"><a href="#cb6-101" aria-hidden="true" tabindex="-1"></a>          dplyr<span class="sc">::</span><span class="fu">across</span>(<span class="fu">c</span>(g, xg), \(.x) <span class="fu">sum</span>(.x))</span>
-<span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>        ) <span class="sc">|&gt;</span> </span>
-<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">o =</span> g <span class="sc">/</span> xg)</span>
-<span id="cb6-104"><a href="#cb6-104" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-105"><a href="#cb6-105" aria-hidden="true" tabindex="-1"></a>      agg_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span></span>
-<span id="cb6-106"><a href="#cb6-106" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
-<span id="cb6-107"><a href="#cb6-107" aria-hidden="true" tabindex="-1"></a>          <span class="at">.by =</span> <span class="fu">c</span>(is_target),</span>
-<span id="cb6-108"><a href="#cb6-108" aria-hidden="true" tabindex="-1"></a>          <span class="at">shots =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(),</span>
-<span id="cb6-109"><a href="#cb6-109" aria-hidden="true" tabindex="-1"></a>          dplyr<span class="sc">::</span><span class="fu">across</span>(<span class="fu">c</span>(g, xg), \(.x) <span class="fu">sum</span>(.x))</span>
-<span id="cb6-110"><a href="#cb6-110" aria-hidden="true" tabindex="-1"></a>        ) <span class="sc">|&gt;</span> </span>
-<span id="cb6-111"><a href="#cb6-111" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">o =</span> g <span class="sc">/</span> xg)</span>
-<span id="cb6-112"><a href="#cb6-112" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-113"><a href="#cb6-113" aria-hidden="true" tabindex="-1"></a>      agg_prior_player_np_shots <span class="ot">&lt;-</span> agg_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-114"><a href="#cb6-114" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>is_target)</span>
-<span id="cb6-115"><a href="#cb6-115" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-116"><a href="#cb6-116" aria-hidden="true" tabindex="-1"></a>      agg_target_player_np_shots <span class="ot">&lt;-</span> agg_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-117"><a href="#cb6-117" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(is_target)</span>
-<span id="cb6-118"><a href="#cb6-118" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-119"><a href="#cb6-119" aria-hidden="true" tabindex="-1"></a>      params <span class="ot">&lt;-</span> <span class="fu">estimate_gamma_prior_distr_params</span>(</span>
-<span id="cb6-120"><a href="#cb6-120" aria-hidden="true" tabindex="-1"></a>        prior_distr_shots<span class="sc">$</span>o,</span>
-<span id="cb6-121"><a href="#cb6-121" aria-hidden="true" tabindex="-1"></a>        <span class="at">lower =</span> <span class="fu">choose_prior_lower_bound</span>(agg_prior_player_np_shots<span class="sc">$</span>shots),</span>
-<span id="cb6-122"><a href="#cb6-122" aria-hidden="true" tabindex="-1"></a>        <span class="at">upper =</span> <span class="fu">choose_prior_upper_bound</span>(agg_prior_player_np_shots<span class="sc">$</span>shots)</span>
-<span id="cb6-123"><a href="#cb6-123" aria-hidden="true" tabindex="-1"></a>      )</span>
-<span id="cb6-124"><a href="#cb6-124" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb6-125"><a href="#cb6-125" aria-hidden="true" tabindex="-1"></a>      <span class="fu">list</span>(</span>
-<span id="cb6-126"><a href="#cb6-126" aria-hidden="true" tabindex="-1"></a>        <span class="st">'player_id'</span> <span class="ot">=</span> .player_id,</span>
-<span id="cb6-127"><a href="#cb6-127" aria-hidden="true" tabindex="-1"></a>        <span class="st">'player'</span> <span class="ot">=</span> .player,</span>
-<span id="cb6-128"><a href="#cb6-128" aria-hidden="true" tabindex="-1"></a>        <span class="st">'params'</span> <span class="ot">=</span> <span class="fu">list</span>(params)</span>
-<span id="cb6-129"><a href="#cb6-129" aria-hidden="true" tabindex="-1"></a>      )</span>
-<span id="cb6-130"><a href="#cb6-130" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb6-131"><a href="#cb6-131" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb6-132"><a href="#cb6-132" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-133"><a href="#cb6-133" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-134"><a href="#cb6-134" aria-hidden="true" tabindex="-1"></a>select_gamma_o <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-135"><a href="#cb6-135" aria-hidden="true" tabindex="-1"></a>  <span class="fu">estimate_gamma_distributed_o</span>(</span>
-<span id="cb6-136"><a href="#cb6-136" aria-hidden="true" tabindex="-1"></a>    <span class="at">players =</span> SELECT_PLAYERS,</span>
-<span id="cb6-137"><a href="#cb6-137" aria-hidden="true" tabindex="-1"></a>    <span class="at">target_season_end_year =</span> TARGET_SEASON_END_YEAR</span>
-<span id="cb6-138"><a href="#cb6-138" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb6-139"><a href="#cb6-139" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
-<span id="cb6-140"><a href="#cb6-140" aria-hidden="true" tabindex="-1"></a>    wide_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb6-141"><a href="#cb6-141" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
-<span id="cb6-142"><a href="#cb6-142" aria-hidden="true" tabindex="-1"></a>        player_id,</span>
-<span id="cb6-143"><a href="#cb6-143" aria-hidden="true" tabindex="-1"></a>        prior_o,</span>
-<span id="cb6-144"><a href="#cb6-144" aria-hidden="true" tabindex="-1"></a>        target_o</span>
-<span id="cb6-145"><a href="#cb6-145" aria-hidden="true" tabindex="-1"></a>      ),</span>
-<span id="cb6-146"><a href="#cb6-146" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player_id)</span>
-<span id="cb6-147"><a href="#cb6-147" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb6-148"><a href="#cb6-148" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player, player_id)</span>
-<span id="cb6-149"><a href="#cb6-149" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-150"><a href="#cb6-150" aria-hidden="true" tabindex="-1"></a>select_gamma_props <span class="ot">&lt;-</span> select_gamma_o <span class="sc">|&gt;</span> </span>
-<span id="cb6-151"><a href="#cb6-151" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb6-152"><a href="#cb6-152" aria-hidden="true" tabindex="-1"></a>    <span class="at">prop_lte =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
-<span id="cb6-153"><a href="#cb6-153" aria-hidden="true" tabindex="-1"></a>      target_o,</span>
-<span id="cb6-154"><a href="#cb6-154" aria-hidden="true" tabindex="-1"></a>      params,</span>
-<span id="cb6-155"><a href="#cb6-155" aria-hidden="true" tabindex="-1"></a>      \(.target_o, .params) {</span>
-<span id="cb6-156"><a href="#cb6-156" aria-hidden="true" tabindex="-1"></a>        <span class="fu">pgamma</span>(</span>
-<span id="cb6-157"><a href="#cb6-157" aria-hidden="true" tabindex="-1"></a>          .target_o, </span>
-<span id="cb6-158"><a href="#cb6-158" aria-hidden="true" tabindex="-1"></a>          <span class="at">shape =</span> .params<span class="sc">$</span>shape, </span>
-<span id="cb6-159"><a href="#cb6-159" aria-hidden="true" tabindex="-1"></a>          <span class="at">rate =</span> .params<span class="sc">$</span>rate,</span>
-<span id="cb6-160"><a href="#cb6-160" aria-hidden="true" tabindex="-1"></a>          <span class="at">lower.tail =</span> <span class="cn">TRUE</span></span>
-<span id="cb6-161"><a href="#cb6-161" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb6-162"><a href="#cb6-162" aria-hidden="true" tabindex="-1"></a>      }</span>
-<span id="cb6-163"><a href="#cb6-163" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb6-164"><a href="#cb6-164" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<summary>Approach 3</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>N_SIMS <span class="ot">&lt;-</span> <span class="dv">10000</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>SHOT_TO_SHAPE_MAPPING <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">'from'</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">50</span>, <span class="dv">750</span>),</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">'to'</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">25</span>)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>estimate_one_gamma_distributed_o <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>    shots,</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    target_season_end_year</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  player_np_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">is_target =</span> season_end_year <span class="sc">==</span> target_season_end_year)</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>  prior_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>is_target)</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>  target_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(is_target)</span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>  agg_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>      <span class="at">.by =</span> <span class="fu">c</span>(is_target),</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>      <span class="at">shots =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(),</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">across</span>(<span class="fu">c</span>(g, xg), \(.x) <span class="fu">sum</span>(.x))</span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">o =</span> g <span class="sc">/</span> xg)</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>  agg_prior_player_np_shots <span class="ot">&lt;-</span> agg_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>is_target)</span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>  agg_target_player_np_shots <span class="ot">&lt;-</span> agg_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(is_target)</span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a>  shape <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">case_when</span>(</span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>    agg_prior_player_np_shots<span class="sc">$</span>shots <span class="sc">&lt;</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from[<span class="dv">1</span>] <span class="sc">~</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to[<span class="dv">2</span>],</span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a>    agg_prior_player_np_shots<span class="sc">$</span>shots <span class="sc">&gt;</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from[<span class="dv">2</span>] <span class="sc">~</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to[<span class="dv">2</span>],</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a>    <span class="cn">TRUE</span> <span class="sc">~</span> scales<span class="sc">::</span><span class="fu">rescale</span>(</span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a>      agg_prior_player_np_shots<span class="sc">$</span>shots, </span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a>      <span class="at">from =</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from, </span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a>      <span class="at">to =</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to</span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb14-43"><a href="#cb14-43" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb14-44"><a href="#cb14-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(</span>
+<span id="cb14-45"><a href="#cb14-45" aria-hidden="true" tabindex="-1"></a>    <span class="st">'shape'</span> <span class="ot">=</span> shape,</span>
+<span id="cb14-46"><a href="#cb14-46" aria-hidden="true" tabindex="-1"></a>    <span class="st">'rate'</span> <span class="ot">=</span> shape <span class="sc">/</span> agg_prior_player_np_shots<span class="sc">$</span>o</span>
+<span id="cb14-47"><a href="#cb14-47" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb14-48"><a href="#cb14-48" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb14-49"><a href="#cb14-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-50"><a href="#cb14-50" aria-hidden="true" tabindex="-1"></a>estimate_gamma_distributed_o <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb14-51"><a href="#cb14-51" aria-hidden="true" tabindex="-1"></a>    shots,</span>
+<span id="cb14-52"><a href="#cb14-52" aria-hidden="true" tabindex="-1"></a>    players,</span>
+<span id="cb14-53"><a href="#cb14-53" aria-hidden="true" tabindex="-1"></a>    target_season_end_year</span>
+<span id="cb14-54"><a href="#cb14-54" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb14-55"><a href="#cb14-55" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-56"><a href="#cb14-56" aria-hidden="true" tabindex="-1"></a>  purrr<span class="sc">::</span><span class="fu">imap_dfr</span>(</span>
+<span id="cb14-57"><a href="#cb14-57" aria-hidden="true" tabindex="-1"></a>    players,</span>
+<span id="cb14-58"><a href="#cb14-58" aria-hidden="true" tabindex="-1"></a>    \(.player, .player_id) {</span>
+<span id="cb14-59"><a href="#cb14-59" aria-hidden="true" tabindex="-1"></a>      params <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
+<span id="cb14-60"><a href="#cb14-60" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(player_id <span class="sc">==</span> .player_id) <span class="sc">|&gt;</span> </span>
+<span id="cb14-61"><a href="#cb14-61" aria-hidden="true" tabindex="-1"></a>        <span class="fu">estimate_one_gamma_distributed_o</span>(</span>
+<span id="cb14-62"><a href="#cb14-62" aria-hidden="true" tabindex="-1"></a>          <span class="at">target_season_end_year =</span> target_season_end_year</span>
+<span id="cb14-63"><a href="#cb14-63" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb14-64"><a href="#cb14-64" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb14-65"><a href="#cb14-65" aria-hidden="true" tabindex="-1"></a>      <span class="fu">list</span>(</span>
+<span id="cb14-66"><a href="#cb14-66" aria-hidden="true" tabindex="-1"></a>        <span class="st">'player_id'</span> <span class="ot">=</span> .player_id,</span>
+<span id="cb14-67"><a href="#cb14-67" aria-hidden="true" tabindex="-1"></a>        <span class="st">'player'</span> <span class="ot">=</span> .player,</span>
+<span id="cb14-68"><a href="#cb14-68" aria-hidden="true" tabindex="-1"></a>        <span class="st">'params'</span> <span class="ot">=</span> <span class="fu">list</span>(params)</span>
+<span id="cb14-69"><a href="#cb14-69" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb14-70"><a href="#cb14-70" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb14-71"><a href="#cb14-71" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb14-72"><a href="#cb14-72" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb14-73"><a href="#cb14-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-74"><a href="#cb14-74" aria-hidden="true" tabindex="-1"></a>select_gamma_o <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb14-75"><a href="#cb14-75" aria-hidden="true" tabindex="-1"></a>  <span class="fu">estimate_gamma_distributed_o</span>(</span>
+<span id="cb14-76"><a href="#cb14-76" aria-hidden="true" tabindex="-1"></a>    <span class="at">players =</span> SELECT_PLAYERS,</span>
+<span id="cb14-77"><a href="#cb14-77" aria-hidden="true" tabindex="-1"></a>    <span class="at">target_season_end_year =</span> TARGET_SEASON_END_YEAR</span>
+<span id="cb14-78"><a href="#cb14-78" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb14-79"><a href="#cb14-79" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
+<span id="cb14-80"><a href="#cb14-80" aria-hidden="true" tabindex="-1"></a>    wide_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb14-81"><a href="#cb14-81" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
+<span id="cb14-82"><a href="#cb14-82" aria-hidden="true" tabindex="-1"></a>        player_id,</span>
+<span id="cb14-83"><a href="#cb14-83" aria-hidden="true" tabindex="-1"></a>        prior_o,</span>
+<span id="cb14-84"><a href="#cb14-84" aria-hidden="true" tabindex="-1"></a>        target_o</span>
+<span id="cb14-85"><a href="#cb14-85" aria-hidden="true" tabindex="-1"></a>      ),</span>
+<span id="cb14-86"><a href="#cb14-86" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player_id)</span>
+<span id="cb14-87"><a href="#cb14-87" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb14-88"><a href="#cb14-88" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player, player_id)</span>
+<span id="cb14-89"><a href="#cb14-89" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-90"><a href="#cb14-90" aria-hidden="true" tabindex="-1"></a>uu_approach3 <span class="ot">&lt;-</span> select_gamma_o <span class="sc">|&gt;</span> </span>
+<span id="cb14-91"><a href="#cb14-91" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb14-92"><a href="#cb14-92" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
+<span id="cb14-93"><a href="#cb14-93" aria-hidden="true" tabindex="-1"></a>      target_o,</span>
+<span id="cb14-94"><a href="#cb14-94" aria-hidden="true" tabindex="-1"></a>      params,</span>
+<span id="cb14-95"><a href="#cb14-95" aria-hidden="true" tabindex="-1"></a>      \(.target_o, .params) {</span>
+<span id="cb14-96"><a href="#cb14-96" aria-hidden="true" tabindex="-1"></a>        <span class="fu">pgamma</span>(</span>
+<span id="cb14-97"><a href="#cb14-97" aria-hidden="true" tabindex="-1"></a>          .target_o, </span>
+<span id="cb14-98"><a href="#cb14-98" aria-hidden="true" tabindex="-1"></a>          <span class="at">shape =</span> .params<span class="sc">$</span>shape, </span>
+<span id="cb14-99"><a href="#cb14-99" aria-hidden="true" tabindex="-1"></a>          <span class="at">rate =</span> .params<span class="sc">$</span>rate,</span>
+<span id="cb14-100"><a href="#cb14-100" aria-hidden="true" tabindex="-1"></a>          <span class="at">lower.tail =</span> <span class="cn">TRUE</span></span>
+<span id="cb14-101"><a href="#cb14-101" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb14-102"><a href="#cb14-102" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb14-103"><a href="#cb14-103" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb14-104"><a href="#cb14-104" aria-hidden="true" tabindex="-1"></a>    <span class="at">ou =</span> <span class="dv">1</span> <span class="sc">-</span> uu</span>
+<span id="cb14-105"><a href="#cb14-105" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb14-106"><a href="#cb14-106" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(params)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
 <details open="">
-<summary>Output from Approach 2</summary>
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>select_gamma_props <span class="sc">|&gt;</span> </span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, prop_lte)</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 4</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o prop_lte</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison   1.38     0.847    0.267</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 Matheus Cunha    0.772    1.16     0.845</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<summary>Approach 3 output</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>uu_approach3 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu, ou)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 5</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o     uu     ou</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison   1.38     0.847 0.0679 0.932 </span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 2 Matheus Cunha    0.772    1.16  0.903  0.0965</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>We see that Maddison’s 2023/24 <span class="math inline">\(G / xG\)</span> ratio of 0.847 (or worse) was about 26.7% unlikely given his prior shot history (<code>prior_prop_lte</code>). Using the same line of reasoning, we can say that Cunha’s 2023/24 <span class="math inline">\(O\)</span> ratio of 1.16 was a 15.5% percentile outcome (<code>1 - prior_prop_lte</code>), so an outcome expected for him once every 6 to 7 seasons.</p>
+<p>We see that Maddison’s 2023/24 <span class="math inline">\(O_\{p,\text{target}}\)</span> ratio of 0.847 (or worse) was about 7% unlikely given his prior shot history (<code>uu</code>), and that Cunha’s 2023/24 <span class="math inline">\(O_{p,\text{target}}\)</span> ratio of 1.16 was a 10th percentile outcome (<code>ou</code>).</p>
 <p>To gain some intuition around this approach, we can plot out the Gamma distributed estimate of Maddison’s <span class="math inline">\(O_p\)</span>. The result is a histogram that looks not all that dissimilar to the one from before with resampled shots, just much smoother (since this is a “parametric” approach).</p>
-<p>MADDISON PLOT HERE</p>
-<section id="calibration-1" class="level4">
-<h4 class="anchored" data-anchor-id="calibration-1">Calibration</h4>
+<p><img src="maddison_uu_approach3.png" class="img-fluid"></p>
+<section id="discussion-3" class="level4">
+<h4 class="anchored" data-anchor-id="discussion-3">Discussion</h4>
+<p>As with approach 2, we should check to see what the distribution of underperforming unlikeliness looks like–we should expect to see a somewhat uniform distribution.</p>
+<div class="cell">
+<details>
+<summary>Approach 3 for all players</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>all_gamma_o <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">estimate_gamma_distributed_o</span>(</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">players =</span> all_players,</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">target_season_end_year =</span> TARGET_SEASON_END_YEAR</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    wide_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>        player_id,</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>        prior_o,</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>        target_o,</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>        prior_shots,</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>        target_shots,</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>        prior_g,</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>        target_g,</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>        prior_xg,</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>        target_xg</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>      ),</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player_id)</span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player, player_id)</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>all_uu_approach3 <span class="ot">&lt;-</span> all_gamma_o <span class="sc">|&gt;</span> </span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a>      target_o,</span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a>      params,</span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a>      \(.target_o, .params) {</span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a>        <span class="fu">pgamma</span>(</span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a>          .target_o, </span>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a>          <span class="at">shape =</span> .params<span class="sc">$</span>shape, </span>
+<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a>          <span class="at">rate =</span> .params<span class="sc">$</span>rate,</span>
+<span id="cb16-33"><a href="#cb16-33" aria-hidden="true" tabindex="-1"></a>          <span class="at">lower.tail =</span> <span class="cn">TRUE</span></span>
+<span id="cb16-34"><a href="#cb16-34" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb16-35"><a href="#cb16-35" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb16-36"><a href="#cb16-36" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb16-37"><a href="#cb16-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">ou =</span> <span class="dv">1</span> <span class="sc">-</span> uu</span>
+<span id="cb16-38"><a href="#cb16-38" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb16-39"><a href="#cb16-39" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(params) <span class="sc">|&gt;</span> </span>
+<span id="cb16-40"><a href="#cb16-40" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(uu)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><img src="all_uu_approach3.png" class="img-fluid"></p>
 </section>
 </section>
 </section>
@@ -681,10 +917,13 @@ O_p = \frac{G_p}{xG_p}
 
 <ol>
 <li id="fn1"><p>The raw difference between goals and xG is another reasonable measure of shooting performance, but it can “hide” shot volume. Is it fair to compare a player who take 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. But <span class="math inline">\(O\)</span> would be 1.2 and 3 respectively, hinting at the former player’s small sample size (since no one can reasonably expect to sustain an <span class="math inline">\(O\)</span> greater than 1.5 or 2 over many shots).<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>One could argue that without replacement is also reasonable. However, some players wouldn’t have enough shots from prior seasons to match their volume of shots in 2023/24.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn3"><p>(Change nothing about the shot’s xG and goal outcomes.) <span class="math inline">\(N_p\)</span> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <span class="math inline">\(M\)</span> should be set to some fairly large number, so as to achieve stability in the results.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <span class="math inline">\(r^+\)</span> the outperformance ratio of the resampled shots is greater than <span class="math inline">\(O_{p,\text{target}}\)</span> and calculate the proportion <span class="math inline">\(\Pi^+ = \frac{r^+}{r}\)</span>.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn5"><p>Put more in layman’s terms, we might expect Maddison to have a season-long <span class="math inline">\(O\)</span> ratio like his 2023/24 ratio in 1 of every 6 seasons. Likewise, Cunha’s 2023/24 outcome is a 1 in 10 season occurrence, given his shot history.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>If you look at Cunha’s FBref page, it will show partial seasons where he has been transferred and has overperformed either before or after being transferred. But when combining the partial seasons into a whole seasons, he had never managed to have an <span class="math inline">\(O_p\)</span> greater than 1 until 2023/24.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>This is a two-sided test<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>The weighting here is to reflect the intuition that players who have taken a lot of shots in the past and have an uncharacteristic season are shown as more unlikely than a player with only one prior season of shots, who happens to have a very different goals-to-expected goals ratio in the latter season.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>One could argue that without replacement is also reasonable. However, some players wouldn’t have enough shots from prior seasons to match their volume of shots in 2023/24.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>(Change nothing about the shot’s xG and goal outcomes.) <span class="math inline">\(N_p\)</span> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <span class="math inline">\(M\)</span> should be set to some fairly large number, so as to achieve stability in the results.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <span class="math inline">\(r^+\)</span> the outperformance ratio of the resampled shots is greater than <span class="math inline">\(O_{p,\text{target}}\)</span> and calculate the proportion <span class="math inline">\(\U^+ = \frac{r^+}{r}\)</span>.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>Put more in layman’s terms, we might expect Maddison to have a season-long <span class="math inline">\(O\)</span> ratio like his 2023/24 ratio in 1 of every 6 seasons. Likewise, Cunha’s 2023/24 outcome is a 1 in 10 season occurrence, given his shot history.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
