@@ -713,7 +713,7 @@ maddison_uu_approach2_plot <- maddison_resampled_o |>
     plot.subtitle = ggtext::element_markdown(size = 12)
   ) +
   ggplot2::labs(
-    title = 'Resampled Shooting Outperformance Ratio (G / xG) for James Maddison',
+    title = 'Resampled G / xG Ratio for James Maddison',
     subtitle = "Shots Sampled From Maddison's 2018/19 - 2022/2023 Seasons",
     x = 'Outperformance Ratio (G / xG)',
     y = 'Count of Simulations',
@@ -841,7 +841,7 @@ all_uu_approach2_plot <- all_uu_approach2 |>
     plot.subtitle = ggtext::element_markdown(size = 12)
   ) +
   ggplot2::labs(
-    title = 'Underperformance Unlikelihood % of 2023/24 G / xG',
+    title = 'Underperformance Unlikelihood % of 2023/24 Player G / xG Ratios',
     subtitle = 'Calculated via a Resampling Approach',
     y = 'Count of Players',
     x = 'Underperformance Unlikelihood %',
@@ -1030,7 +1030,7 @@ uu_approach3 |> dplyr::select(player, prior_o, target_o, uu, ou)
 #> 2 Matheus Cunha    0.772    1.16  0.903  0.0965
 ```
 
-We see that Maddison's 2023/24 $O_\{p,\text{target}}$ ratio of 0.847 (or worse) was about 7% unlikely given his prior shot history (`uu`), and that Cunha's 2023/24 $O_{p,\text{target}}$ ratio of 1.16 was a 10th percentile outcome (`ou`).
+We see that Maddison's 2023/24 $O_{p,\text{target}}$ ratio of 0.847 (or worse) was about 7% unlikely given his prior shot history (`uu`), and that Cunha's 2023/24 $O_{p,\text{target}}$ ratio of 1.16 was a 10th percentile outcome (`ou`).
 
 To gain some intuition around this approach, we can plot out the Gamma distributed estimate of Maddison's $O_p$. The result is a histogram that looks not all that dissimilar to the one from before with resampled shots, just much smoother (since this is a "parametric" approach).
 
@@ -1135,7 +1135,7 @@ maddison_uu_approach3_plot <- maddison_uu_approach3_samples |>
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = 1.7,
+    x = 1.6,
     y = 625,
     hjust = 0,
     vjust = 1,
@@ -1253,11 +1253,11 @@ all_uu_approach3_plot <- all_uu_approach3 |>
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = 0.09,
+    x = 0.24,
     y = 70,
     hjust = 0,
     vjust = 0,
-    label = "Maddison's 2023/24 G / xG ratio was\nin the 9.65th percentile of\nunlikely outcomes.",
+    label = "Maddison's 2023/24 G / xG ratio is\nin the 9.65th percentile of\nunlikely underperformances.",
     color = group_palette[['lte']],
     fontface = 'bold',
     family = FONT,
@@ -1265,10 +1265,10 @@ all_uu_approach3_plot <- all_uu_approach3 |>
   ) +
   ggplot2::annotate(
     geom = 'curve',
-    x = 0.24,
+    x = 0.2,
     y = 70,
-    xend = 0.16,
-    yend = 50,
+    xend = 0.08,
+    yend = 55,
     arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
     linewidth = 0.5,
     curvature = 0.25,
@@ -1288,7 +1288,7 @@ all_uu_approach3_plot <- all_uu_approach3 |>
     plot.subtitle = ggtext::element_markdown(size = 12)
   ) +
   ggplot2::labs(
-    title = 'Underperformance Unlikelihood % of 2023/24 G / xG',
+    title = 'Underperformance Unlikelihood % of 2023/24 Player G / xG Ratios',
     subtitle = 'Calculated via a Parametric Approach',
     y = 'Count of Players',
     x = 'Underperformance Unlikelihood %',
