@@ -96,8 +96,8 @@ raw_o_plot <- all_players_to_evaluate |>
       hjust = c(1, 0),
       group = c('2023/24 ("target")', '2018/19 - 2023/24 ("prior")'),
       label = c(
-        scales::number(maddison_uu_approach1$target_o, accuracy = 0.001),
-        scales::number(maddison_uu_approach1$prior_o, accuracy = 0.01)
+        scales::number(maddison_u_approach1$target_o, accuracy = 0.001),
+        scales::number(maddison_u_approach1$prior_o, accuracy = 0.01)
       )
     ),
     ggplot2::aes(
@@ -161,16 +161,16 @@ ggplot2::ggsave(
   height = 8 / 1.5
 )
 
-## maddison_uu_approach2_plot ----
+## maddison_u_approach2_plot ----
 maddison_resampled_o <- all_resampled_o |>
   dplyr::filter(player == 'James Maddison') |> 
   dplyr::mutate(
     group = ifelse(o <= target_o, 'highlight', 'base')
   )
-maddison_uu_approach2 <- all_uu_approach2 |> 
+maddison_u_approach2 <- all_u_approach2 |> 
   dplyr::filter(player == 'James Maddison')
 
-maddison_uu_approach2_plot <- maddison_resampled_o |> 
+maddison_u_approach2_plot <- maddison_resampled_o |> 
   ggplot2::ggplot() +
   ggplot2::aes(
     x = o
@@ -185,20 +185,20 @@ maddison_uu_approach2_plot <- maddison_resampled_o |>
     values = group_palette
   ) +
   ggplot2::geom_vline(
-    data = maddison_uu_approach2,
+    data = maddison_u_approach2,
     ggplot2::aes(xintercept = target_o),
     linetype = 2,
     color = 'white'
   ) +
   ggplot2::geom_vline(
-    data = maddison_uu_approach2,
+    data = maddison_u_approach2,
     ggplot2::aes(xintercept = prior_o),
     linetype = 2,
     color = 'white'
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = maddison_uu_approach2$target_o - 0.05,
+    x = maddison_u_approach2$target_o - 0.05,
     y = 45,
     hjust = 1,
     label = "Maddison's 2023/24\nG / xG ratio",
@@ -209,7 +209,7 @@ maddison_uu_approach2_plot <- maddison_resampled_o |>
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = maddison_uu_approach2$prior_o + 0.05,
+    x = maddison_u_approach2$prior_o + 0.05,
     y = 45,
     hjust = 0,
     label = "Maddison's pre-2023/24\nG / xG ratio",
@@ -236,7 +236,7 @@ maddison_uu_approach2_plot <- maddison_resampled_o |>
     y = 40,
     hjust = 0,
     vjust = 1,
-    label = glue::glue("An outperformance ratio of {scales::number(maddison_uu_approach2$target_o, accuracy = 0.001)}\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_uu_approach2$uu, accuracy = 1)} of {scales::number(R, scale = 1e-3, suffix = 'k')}\nsimulations."),
+    label = glue::glue("An outperformance ratio of {scales::number(maddison_u_approach2$target_o, accuracy = 0.001)}\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_u_approach2$u, accuracy = 1)} of {scales::number(R, scale = 1e-3, suffix = 'k')}\nsimulations."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -275,17 +275,17 @@ maddison_uu_approach2_plot <- maddison_resampled_o |>
   )
 
 ggplot2::ggsave(
-  maddison_uu_approach2_plot,
-  filename = file.path(PROJ_DIR, 'maddison_uu_approach2.png'),
+  maddison_u_approach2_plot,
+  filename = file.path(PROJ_DIR, 'maddison_u_approach2.png'),
   width = 8,
   height = 8 / 1.5
 )
 
-## all_uu_approach2_plot ----
-all_uu_approach2_plot <- all_uu_approach2 |> 
+## all_u_approach2_plot ----
+all_u_approach2_plot <- all_u_approach2 |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = uu
+    x = u
   ) +
   ggplot2::geom_histogram(
     fill = group_palette[['base']],
@@ -300,7 +300,7 @@ all_uu_approach2_plot <- all_uu_approach2 |>
     y = 70,
     hjust = 0,
     vjust = 0,
-    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_uu_approach2$uu * 100)} percentile of\nunlikely outcomes."),
+    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_u_approach2$u * 100)} percentile of\nunlikely outcomes."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -345,16 +345,16 @@ all_uu_approach2_plot <- all_uu_approach2 |>
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
-all_uu_approach2_plot
+all_u_approach2_plot
 
 ggplot2::ggsave(
-  all_uu_approach2_plot,
-  filename = file.path(PROJ_DIR, 'all_uu_approach2.png'),
+  all_u_approach2_plot,
+  filename = file.path(PROJ_DIR, 'all_u_approach2.png'),
   width = 8,
   height = 8 / 1.5
 )
 
-## maddison_uu_approach3_plot ----
+## maddison_u_approach3_plot ----
 sample_from_gamma_o <- function(
     shape,
     rate,
@@ -371,7 +371,7 @@ sample_from_gamma_o <- function(
   )
 }
 
-maddison_uu_approach3_samples <- maddison_uu_approach3 |>
+maddison_u_approach3_samples <- maddison_u_approach3 |>
   dplyr::select(
     player,
     shape,
@@ -396,7 +396,7 @@ maddison_uu_approach3_samples <- maddison_uu_approach3 |>
     group = ifelse(o < target_o, 'highlight', 'base')
   )
 
-maddison_uu_approach3_plot <- maddison_uu_approach3_samples |> 
+maddison_u_approach3_plot <- maddison_u_approach3_samples |> 
   ggplot2::ggplot() +
   ggplot2::aes(
     x = o
@@ -411,20 +411,20 @@ maddison_uu_approach3_plot <- maddison_uu_approach3_samples |>
     values = group_palette
   ) +
   ggplot2::geom_vline(
-    data = maddison_uu_approach3,
+    data = maddison_u_approach3,
     ggplot2::aes(xintercept = target_o),
     linetype = 2,
     color = 'white'
   ) +
   ggplot2::geom_vline(
-    data = maddison_uu_approach3,
+    data = maddison_u_approach3,
     ggplot2::aes(xintercept = prior_o),
     linetype = 2,
     color = 'white'
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = maddison_uu_approach3$target_o - 0.05,
+    x = maddison_u_approach3$target_o - 0.05,
     y = 650,
     hjust = 1,
     label = "Maddison's 2023/24\nG / xG ratio",
@@ -435,7 +435,7 @@ maddison_uu_approach3_plot <- maddison_uu_approach3_samples |>
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = maddison_uu_approach3$prior_o + 0.05,
+    x = maddison_u_approach3$prior_o + 0.05,
     y = 650,
     hjust = 0,
     label = "Maddison's pre-2023/24\nG / xG ratio",
@@ -462,7 +462,7 @@ maddison_uu_approach3_plot <- maddison_uu_approach3_samples |>
     y = 600,
     hjust = 0,
     vjust = 1,
-    label = glue::glue("An outperformance ratio of {scales::number(maddison_uu_approach3$prior_o, accuracy = 0.001)}\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_uu_approach3$uu, accuracy = 1)} of {scales::number(N_SIMS, scale = 1e-3, suffix = 'k')}\ndraws."),
+    label = glue::glue("An outperformance ratio of {scales::number(maddison_u_approach3$prior_o, accuracy = 0.001)}\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_u_approach3$u, accuracy = 1)} of {scales::number(N_SIMS, scale = 1e-3, suffix = 'k')}\ndraws."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -501,17 +501,17 @@ maddison_uu_approach3_plot <- maddison_uu_approach3_samples |>
   )
 
 ggplot2::ggsave(
-  maddison_uu_approach3_plot,
-  filename = file.path(PROJ_DIR, 'maddison_uu_approach3.png'),
+  maddison_u_approach3_plot,
+  filename = file.path(PROJ_DIR, 'maddison_u_approach3.png'),
   width = 8,
   height = 8 / 1.5
 )
 
-## all_uu_approach3_plot ----
-all_uu_approach3_plot <- all_uu_approach3 |> 
+## all_u_approach3_plot ----
+all_u_approach3_plot <- all_u_approach3 |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = uu
+    x = u
   ) +
   ggplot2::geom_histogram(
     fill = group_palette[['base']],
@@ -526,7 +526,7 @@ all_uu_approach3_plot <- all_uu_approach3 |>
     y = 70,
     hjust = 0,
     vjust = 0,
-    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_uu_approach3$uu * 100)} percentile of\nunlikely outcomes."),
+    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_u_approach3$u * 100)} percentile of\nunlikely outcomes."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -571,21 +571,21 @@ all_uu_approach3_plot <- all_uu_approach3 |>
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
-all_uu_approach3_plot
+all_u_approach3_plot
 
 ggplot2::ggsave(
-  all_uu_approach3_plot,
-  filename = file.path(PROJ_DIR, 'all_uu_approach3.png'),
+  all_u_approach3_plot,
+  filename = file.path(PROJ_DIR, 'all_u_approach3.png'),
   width = 8,
   height = 8 / 1.5
 )
 
 ## scatters ----
-all_uus <- dplyr::left_join(
-  all_uu_approach3 |> dplyr::select(player, uu_approach3 = uu),
+all_u <- dplyr::left_join(
+  all_u_approach3 |> dplyr::select(player, u_approach3 = u),
   dplyr::bind_rows(
-    all_uu_approach1 |> dplyr::transmute(player, approach = 'Approach 1 (Percentile Ranking)', uu),
-    all_uu_approach2 |> dplyr::transmute(player, approach = 'Approach 2 (Resampling)', uu)
+    all_u_approach1 |> dplyr::transmute(player, approach = 'Approach 1 (Percentile Ranking)', u),
+    all_u_approach2 |> dplyr::transmute(player, approach = 'Approach 2 (Resampling)', u)
   ),
   by = dplyr::join_by(player)
 ) |> 
@@ -594,11 +594,11 @@ all_uus <- dplyr::left_join(
     by = dplyr::join_by(player)
   )
 
-all_uus_plot <- all_uus |> 
+all_u_plot <- all_u |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = uu,
-    y = uu_approach3
+    x = u,
+    y = u_approach3
   ) +
   ggplot2::geom_abline(
     ggplot2::aes(
@@ -610,7 +610,7 @@ all_uus_plot <- all_uus |>
     color = WHITISH_FOREGROUND_COLOR
   ) +
   ggplot2::geom_point(
-    data = all_uus |> dplyr::filter(player != 'James Maddison'),
+    data = all_u |> dplyr::filter(player != 'James Maddison'),
     ggplot2::aes(
       size = prior_shots
     ),
@@ -620,7 +620,7 @@ all_uus_plot <- all_uus |>
     fill = group_palette[['base']]
   ) +
   ggplot2::geom_point(
-    data = all_uus |> dplyr::filter(player == 'James Maddison'),
+    data = all_u |> dplyr::filter(player == 'James Maddison'),
     size = 4,
     shape = 21,
     color = 'white',
@@ -635,8 +635,8 @@ all_uus_plot <- all_uus |>
       label = glue::glue(
         "
         **Maddison's unlikeliness**<br/>
-        Approach 1: {scales::ordinal(maddison_uu_approach1$uu * 100)} percentile<br/>
-        Approach 3: {scales::ordinal(maddison_uu_approach3$uu * 100)} percentile
+        Approach 1: {scales::ordinal(maddison_u_approach1$u * 100)} percentile<br/>
+        Approach 3: {scales::ordinal(maddison_u_approach3$u * 100)} percentile
          "
       )
     ),
@@ -658,8 +658,8 @@ all_uus_plot <- all_uus |>
       label = glue::glue(
         "
         **Maddison's unlikeliness**<br/>
-        Approach 2: {scales::ordinal(maddison_uu_approach2$uu * 100)} percentile<br/>
-        Approach 3: {scales::ordinal(maddison_uu_approach3$uu * 100)} percentile
+        Approach 2: {scales::ordinal(maddison_u_approach2$u * 100)} percentile<br/>
+        Approach 3: {scales::ordinal(maddison_u_approach3$u * 100)} percentile
          "
       )
     ),
@@ -710,11 +710,11 @@ all_uus_plot <- all_uus |>
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
-all_uus_plot
+all_u_plot
 
 ggplot2::ggsave(
-  all_uus_plot,
-  filename = file.path(PROJ_DIR, 'all_uus.png'),
+  all_u_plot,
+  filename = file.path(PROJ_DIR, 'all_u.png'),
   width = 8,
   height = 8 / 1.5
 )

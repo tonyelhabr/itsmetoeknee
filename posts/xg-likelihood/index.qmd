@@ -7,7 +7,7 @@ toc-expand: true
 categories:
   - r
   - soccer
-image: maddison_uu_approach3.png
+image: maddison_u_approach3.png
 execute: 
   code-fold: show
   eval: false
@@ -21,7 +21,7 @@ Towards the end of each soccer season, we naturally start to look back at player
 
 It's not uncommon to ask "How unlikely was their shooting performance this season?" when looking at a player who has scored less than goals than expected.[^1] For instance, if a striker only scores 9 goals on 12 [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/), their "underperformance" of 3 goals jumps off the page.
 
-[^1]: I'll only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.
+[^1]: I only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.
 
 The ["Outperformance" ($O_p$) ratio](/posts/xg-ratio-empirical-bayes/)--the ratio of a player $p$'s goals $G_p$ to expected goals $xG_p$--is a common way of evaluating a player's shooting performance.[^2]
 
@@ -39,7 +39,7 @@ So how do we put a number on the unlikeliness of that $O_p = 0.75$ for our hypot
 
 ### Data
 
-I'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 2023/24 seasons of the [the Big 5 European soccer leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), updated through April 25. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.
+I'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 2023/24 seasons of the [the Big Five European soccer leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), updated through April 25. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.
 
 ```{r}
 #| label: setup
@@ -255,14 +255,13 @@ $$
 This is pretty straightforward to calculate once you've got the data prepared in the right format.
 
 ```{r}
-#| label: uu_approach1
+#| label: u_approach1
 #| include: true
 #| code-fold: true
 #| code-summary: "Approach 1 implementation"
 ## `u` for "underperforming unlikelihood"
-all_uu_approach1 <- all_players_to_evaluate |> 
+all_u_approach1 <- all_players_to_evaluate |> 
   dplyr::transmute(
-    player_id,
     player,
     prior_o,
     target_o,
@@ -272,16 +271,16 @@ all_uu_approach1 <- all_players_to_evaluate |>
   ) |> 
   dplyr::arrange(u)
 
-maddison_uu_approach1 <- all_uu_approach1 |> 
+maddison_u_approach1 <- all_u_approach1 |> 
   dplyr::filter(player == 'James Maddison')
 ```
 
 ```{r}
-#| label: uu_approach1-show
+#| label: u_approach1-show
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 1 output for Maddison"
-maddison_uu_approach1 |> dplyr::select(player, prior_o, target_o, u)
+maddison_u_approach1 |> dplyr::select(player, prior_o, target_o, u)
 #> # A tibble: 1 × 4
 #>   player         prior_o target_o      u
 #>   <chr>            <dbl>    <dbl>  <dbl>
@@ -293,11 +292,11 @@ This approach finds Maddison's 2023/24 $O_p$ of 0.847 to be about a 3rd percenti
 For context, here's a look at the top 10 most unlikely outcomes for the 2023/24 season.
 
 ```{r}
-#| label: uu_approach1-show-all
+#| label: u_approach1-show-all
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 1 output, top 10 underperforming players"
-all_uu_approach1 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
+all_u_approach1 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
 #> # A tibble: 10 × 4
 #>    player             prior_o target_o       u
 #>    <chr>                <dbl>    <dbl>   <dbl>
@@ -332,14 +331,14 @@ Here's a "resampling" approach to quantify the underperforming unlikeliness $U^-
 
 [^6]: Sampling without replacement is also reasonable. However, some players wouldn't have enough shots from prior seasons to match their volume of shots in 2023/24.
 
-[^7]: $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $M$ should be set to some fairly large number, so as to achieve stability in the results. I set it to 1,000.
+[^7]: $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $R$ should be set to some fairly large number, so as to achieve stability in the results.
 
 [^8]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $r^+$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $U^+_p = \frac{r^+}{R}$.
 
 Here's how that looks in code.
 
 ```{r}
-#| label: uu_approach2
+#| label: u_approach2
 #| include: true
 #| code-fold: true
 #| code-summary: "Approach 2 implementation"
@@ -413,7 +412,7 @@ maddison_resampled_o <- np_shots |>
   ) |> 
   dplyr::arrange(player)
 
-maddison_uu_approach2 <- maddison_resampled_o |>
+maddison_u_approach2 <- maddison_resampled_o |>
   dplyr::summarize(
     .by = c(player, prior_o, target_o),
     u = sum(o <= target_o) / n()
@@ -422,11 +421,11 @@ maddison_uu_approach2 <- maddison_resampled_o |>
 ```
 
 ```{r}
-#| label: uu_approach2-show
+#| label: u_approach2-show
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 2 output for Maddison"
-maddison_uu_approach2 |> dplyr::select(player, prior_o, target_o, u)
+maddison_u_approach2 |> dplyr::select(player, prior_o, target_o, u)
 #> # A tibble: 1 × 4
 #>   player         prior_o target_o     u
 #>   <chr>            <dbl>    <dbl> <dbl>
@@ -435,7 +434,7 @@ maddison_uu_approach2 |> dplyr::select(player, prior_o, target_o, u)
 
 The plot below should provide a bit of visual intuition as to what's going on.
 
-![](maddison_uu_approach2.png)
+![](maddison_u_approach2.png)
 
 These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.847 (or worse) occurs in 16.3% of simulations, i.e. a 16th percentile outcome. That's a bit higher than what the first approach showed.
 
@@ -444,7 +443,7 @@ How can we feel more confident about this approach? Well, in the first approach,
 The plot below shows a histogram of the underperforming unlikelihood across all players, where each player's estimated unlikelihood is grouped into a decile.
 
 ```{r}
-#| label: all_uu_approach2
+#| label: all_u_approach2
 #| include: true
 #| code-fold: true
 #| code-summary: "Approach 2 implementation for all players"
@@ -467,7 +466,7 @@ all_resampled_o <- np_shots |>
   ) |> 
   dplyr::arrange(player, player)
 
-all_uu_approach2 <- all_resampled_o |>
+all_u_approach2 <- all_resampled_o |>
   dplyr::summarize(
     .by = c(player, prior_o, target_o, prior_shots, target_shots),
     u = sum(o <= target_o) / n()
@@ -487,19 +486,19 @@ qs::qsave(all_resampled_o, file.path(PROJ_DIR, 'all_resampled_shots.qs'))
 all_resampled_o <- qs::qread(file.path(PROJ_DIR, 'all_resampled_shots.qs'))
 ```
 
-![](all_uu_approach2.png)
+![](all_u_approach2.png)
 
 Indeed, the histogram shows a fairly uniform distribution, with a bit of irregularity at the very edges.
 
 Looking at who is in the lower end of the leftmost decile, we see some of the same names--Immobile and [Savanier](https://fbref.com/en/players/6bde367b/Teji-Savanier)--among the ten underperformers. (Withholding judgment on the superiority of any methodology, we can find some solace in seeing some of the same names among the most unlikely underperformers here as we did with approach 1.)
 
 ```{r}
-#| label: all_uu_approach2-show
+#| label: all_u_approach2-show
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 2 output, top 10 underperforming players"
-all_uu_approach2 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
-#> # A tibble: 593 × 4
+all_u_approach2 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
+#> # A tibble: 10 × 4
 #>    player                    prior_o target_o     u
 #>    <chr>                       <dbl>    <dbl> <dbl>
 #>  1 Erling Haaland               1.26    0.791 0.004
@@ -534,7 +533,7 @@ To calculate the underperforming unlikeliness $U^-_p$:
 While that may sound daunting, I promise that it's not (well, aside from a bit of "magic" in estimating a reasonable Gamma distribution per player).
 
 ```{r}
-#| label: uu_approach3
+#| label: u_approach3
 #| include: true
 #| code-fold: true
 #| code-summary: "Approach 3 implementation"
@@ -626,7 +625,7 @@ select_gamma_o <- np_shots |>
   ) |> 
   dplyr::arrange(player)
 
-maddison_uu_approach3 <- select_gamma_o |> 
+maddison_u_approach3 <- select_gamma_o |> 
   dplyr::mutate(
     u = purrr::map2_dbl(
       target_o,
@@ -646,11 +645,11 @@ maddison_uu_approach3 <- select_gamma_o |>
 ```
 
 ```{r}
-#| label: uu_approach3-show
+#| label: u_approach3-show
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 3 output for Maddison"
-maddison_uu_approach3 |> dplyr::select(player, prior_o, target_o, u)
+maddison_u_approach3 |> dplyr::select(player, prior_o, target_o, u)
 #> # A tibble: 1 × 4
 #>   player         prior_o target_o     u
 #>   <chr>            <dbl>    <dbl>  <dbl>
@@ -661,12 +660,12 @@ We see that Maddison's 2023/24 $O_{p,\text{target}}$ ratio of 0.847 (or worse) i
 
 To gain some intuition around this approach, we can plot out the Gamma distributed estimate of Maddison's $O_p$. The result is a histogram that looks not all that dissimilar to the one from before with resampled shots, just much smoother (since this is a "parametric" approach).
 
-![](maddison_uu_approach3.png)
+![](maddison_u_approach3.png)
 
 As with approach 2, we should check to see what the distribution of underperforming unlikeliness looks like--we should expect to see a somewhat uniform distribution.
 
 ```{r}
-#| label: all_uu_approach3
+#| label: all_u_approach3
 #| include: true
 #| code-fold: true
 #| code-summary: "Approach 3 for all players"
@@ -689,7 +688,7 @@ all_gamma_o <- np_shots |>
   ) |> 
   dplyr::arrange(player)
 
-all_uu_approach3 <- all_gamma_o |> 
+all_u_approach3 <- all_gamma_o |> 
   dplyr::mutate(
     u = purrr::map2_dbl(
       target_o,
@@ -708,18 +707,18 @@ all_uu_approach3 <- all_gamma_o |>
   dplyr::arrange(u)
 ```
 
-![](all_uu_approach3.png)
+![](all_u_approach3.png)
 
 This histogram has a bit more distortion than our resampling approach, so perhaps it's a little less calibrated.
 
 Looking at the top 10 strongest underperformers, 3 of the names here--Immobile, Savanier, and [Sanabria](https://fbref.com/en/players/0a447501/Antonio-Sanabria)--are shared with approach 2's top 10, and 7 are shared with approach 1's top 10.
 
 ```{r}
-#| label: all_uu_approach3-show
+#| label: all_u_approach3-show
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 3 output, top 10 underperforming players"
-all_uu_approach3 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
+all_u_approach3 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
 #> # A tibble: 10 × 4
 #>    player           prior_o target_o         u
 #>    <chr>              <dbl>    <dbl>      <dbl>
@@ -737,7 +736,7 @@ all_uu_approach3 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
 
 We can visually check the consistency of the results from this method with the prior two with scatter plots of the estimated underperforming unlikeliness from each.
 
-![](all_uus.png)
+![](all_u.png)
 
 If two of the approaches were perfectly in agreement, then each point, representing one of the 593 evaluated players, would fall along the 45-degree slope 1 line.
 
@@ -751,13 +750,13 @@ Stepping back from the results, what can we say about the principles of the meth
 
 # Conclusion
 
-Here's a summary of the pros and cons of each approach, along with the result for Maddison.
+Here's a summary of the biggest pros and cons of each approach, along with the result for Maddison.
 
-| Approach | Description                            | Pros           | Cons                                               | Maddison 2023/24 Underperformance Unlikeliness |
-|----------|----------------------------------------|----------------|----------------------------------------------------|------------------------------------------------|
-| 1        | Percentile Ranking                     | customizable   | subjective, sensitive to the choice of player pool | 3rd percentile                                 |
-| 2        | Resampling                             | non-parametric | (relatively) computationally intensive             | 16th percentile                                |
-| 3        | Cumulative Distribution Function (CDF) | flexible       | sensitive to choice of distribution parameters     | 7th percentile                                 |
+| Approach | Description                            | Biggest Pro    | Biggest Con                                    | Maddison 2023/24 Underperformance Unlikeliness |
+|----------|----------------------------------------|----------------|------------------------------------------------|------------------------------------------------|
+| 1        | Percentile Ranking                     | customizable   | sensitive to the choice of players to evaluate | 3rd percentile                                 |
+| 2        | Resampling                             | non-parametric | limited by player's shot history               | 16th percentile                                |
+| 3        | Cumulative Distribution Function (CDF) | flexible       | sensitive to choice of distribution parameters | 7th percentile                                 |
 
 I personally prefer either the second or third approach. In practice, perhaps the best thing to do is take an ensemble average of each approach, as they each have their pros and cons.
 
@@ -772,7 +771,7 @@ If you have some background in statistics, applying a [$t$-test](https://en.wiki
 #| include: true
 #| code-fold: true
 #| code-summary: "Approach 0"
-uu_approach0 <- player_season_np_shots |> 
+u_approach0 <- player_season_np_shots |> 
   dplyr::semi_join(
     all_players_to_evaluate |> dplyr::select(player_id),
     by = dplyr::join_by(player_id)
@@ -803,7 +802,7 @@ uu_approach0 <- player_season_np_shots |>
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 0 output"
-uu_approach0 |> 
+u_approach0 |> 
   dplyr::filter(player == 'James Maddison') |> 
   dplyr::select(player, prior_o, target_o, u) 
 #> # A tibble: 1 × 4
