@@ -248,9 +248,11 @@ $$
 \delta O^w_p = \delta O_p * xG_p
 $$
 
-3.  Calculate the the underperforming unlikeliness $U^-_p$ as a percentile rank of ascending $\delta O^w_p$, i.e. more negative $\delta O^w_p$ values correspond to a lower $U^-_p$ percentile.[^5]
+3.  Calculate the the underperforming unlikeliness $U^-_p$ as a percentile rank of ascending $\delta O^w_p$, i.e. more negative $\delta O^w_p$ values correspond to a lower $U^-_p$ percentile.[^5][^6]
 
 [^5]: An overperforming unlikelihood $U^+_p$ could be calculated by sorting $\delta O^w_p$ in descending order instead.
+
+[^6]: Percentiles greater than 50% generally correspond with players who have overperformed, so really the bottom 50% are the players we're looking at when we're considering underperformance unlikeliness.
 
 This is pretty straightforward to calculate once you've got the data prepared in the right format.
 
@@ -326,14 +328,14 @@ There's only so much you can do with player-season-level data. We need to dive i
 
 Here's a "resampling" approach to quantify the underperforming unlikeliness $U^-_p$ of a player in the target season:
 
-1.  Sample $N_{p,\text{target}}$ shots (with replacement[^6]) from a player's past shots $S_{p,\text{target}'}$. Repeat this for $R$ resamples.[^7]
-2.  Count the number of resamples $r^-$ in which the outperformance ratio $\hat{O}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $O_{p,\text{target}}$ in the target season for the player.[^8] The proportion $U^-_p = \frac{r^-}{R}$ represents the unlikeness of a given player's observed $O_{p,\text{target}}$ (or worse) in the target season.
+1.  Sample $N_{p,\text{target}}$ shots (with replacement[^7]) from a player's past shots $S_{p,\text{target}'}$. Repeat this for $R$ resamples.[^8]
+2.  Count the number of resamples $r^-$ in which the outperformance ratio $\hat{O}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $O_{p,\text{target}}$ in the target season for the player.[^9] The proportion $U^-_p = \frac{r^-}{R}$ represents the unlikeness of a given player's observed $O_{p,\text{target}}$ (or worse) in the target season.
 
-[^6]: Sampling without replacement is also reasonable. However, some players wouldn't have enough shots from prior seasons to match their volume of shots in 2023/24.
+[^7]: Sampling without replacement is also reasonable. However, some players wouldn't have enough shots from prior seasons to match their volume of shots in 2023/24.
 
-[^7]: $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $R$ should be set to some fairly large number, so as to achieve stability in the results.
+[^8]: $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $R$ should be set to some fairly large number, so as to achieve stability in the results.
 
-[^8]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $r^+$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $U^+_p = \frac{r^+}{R}$.
+[^9]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $r^+$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $U^+_p = \frac{r^+}{R}$.
 
 Here's how that looks in code.
 

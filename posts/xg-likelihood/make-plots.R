@@ -115,7 +115,7 @@ raw_o_plot <- all_players_to_evaluate |>
   ggplot2::geom_curve(
     data = tibble::tibble(
       x = c(0.57, 1.53),
-      xend = c(0.83, 1.35),
+      xend = c(0.83, 1.39),
       y = c(78, 60),
       yend = c(65, 40),
       group = c('2023/24 ("target")', '2018/19 - 2023/24 ("prior")')

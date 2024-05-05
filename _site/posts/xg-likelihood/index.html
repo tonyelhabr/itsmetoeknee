@@ -443,7 +443,7 @@ O_p = \frac{G_p}{xG_p}
 \delta O^w_p = \delta O_p * xG_p
 \]</span></p>
 <ol start="3" type="1">
-<li>Calculate the the underperforming unlikeliness <span class="math inline">\(U^-_p\)</span> as a percentile rank of ascending <span class="math inline">\(\delta O^w_p\)</span>, i.e.&nbsp;more negative <span class="math inline">\(\delta O^w_p\)</span> values correspond to a lower <span class="math inline">\(U^-_p\)</span> percentile.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></li>
+<li>Calculate the the underperforming unlikeliness <span class="math inline">\(U^-_p\)</span> as a percentile rank of ascending <span class="math inline">\(\delta O^w_p\)</span>, i.e.&nbsp;more negative <span class="math inline">\(\delta O^w_p\)</span> values correspond to a lower <span class="math inline">\(U^-_p\)</span> percentile.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a><a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></li>
 </ol>
 <p>This is pretty straightforward to calculate once you’ve got the data prepared in the right format.</p>
 <div class="cell">
@@ -452,18 +452,17 @@ O_p = \frac{G_p}{xG_p}
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="do">## `u` for "underperforming unlikelihood"</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>all_u_approach1 <span class="ot">&lt;-</span> all_players_to_evaluate <span class="sc">|&gt;</span> </span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    player_id,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    player,</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    prior_o,</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    target_o,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    prior_xg,</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">weighted_delta_o =</span> prior_shots <span class="sc">*</span> (target_o <span class="sc">-</span> prior_o) <span class="sc">/</span> prior_o,</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">u =</span> dplyr<span class="sc">::</span><span class="fu">percent_rank</span>(weighted_delta_o)</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(u)</span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>maddison_u_approach1 <span class="ot">&lt;-</span> all_u_approach1 <span class="sc">|&gt;</span> </span>
-<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(player <span class="sc">==</span> <span class="st">'James Maddison'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    player,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    prior_o,</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    target_o,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    prior_xg,</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">weighted_delta_o =</span> prior_shots <span class="sc">*</span> (target_o <span class="sc">-</span> prior_o) <span class="sc">/</span> prior_o,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">u =</span> dplyr<span class="sc">::</span><span class="fu">percent_rank</span>(weighted_delta_o)</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(u)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>maddison_u_approach1 <span class="ot">&lt;-</span> all_u_approach1 <span class="sc">|&gt;</span> </span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(player <span class="sc">==</span> <span class="st">'James Maddison'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -510,8 +509,8 @@ O_p = \frac{G_p}{xG_p}
 <p>There’s only so much you can do with player-season-level data. We need to dive into shot-level data if we want to more robustly understand the uncertainty of outcomes.</p>
 <p>Here’s a “resampling” approach to quantify the underperforming unlikeliness <span class="math inline">\(U^-_p\)</span> of a player in the target season:</p>
 <ol type="1">
-<li>Sample <span class="math inline">\(N_{p,\text{target}}\)</span> shots (with replacement<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>) from a player’s past shots <span class="math inline">\(S_{p,\text{target}'}\)</span>. Repeat this for <span class="math inline">\(R\)</span> resamples.<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></li>
-<li>Count the number of resamples <span class="math inline">\(r^-\)</span> in which the outperformance ratio <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> of the sampled shots is less than or equal to the observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season for the player.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> The proportion <span class="math inline">\(U^-_p = \frac{r^-}{R}\)</span> represents the unlikeness of a given player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> (or worse) in the target season.</li>
+<li>Sample <span class="math inline">\(N_{p,\text{target}}\)</span> shots (with replacement<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a>) from a player’s past shots <span class="math inline">\(S_{p,\text{target}'}\)</span>. Repeat this for <span class="math inline">\(R\)</span> resamples.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></li>
+<li>Count the number of resamples <span class="math inline">\(r^-\)</span> in which the outperformance ratio <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> of the sampled shots is less than or equal to the observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season for the player.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a> The proportion <span class="math inline">\(U^-_p = \frac{r^-}{R}\)</span> represents the unlikeness of a given player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> (or worse) in the target season.</li>
 </ol>
 <p>Here’s how that looks in code.</p>
 <div class="cell">
@@ -881,21 +880,21 @@ O_p = \frac{G_p}{xG_p}
 </section>
 <section id="conclusion" class="level1">
 <h1>Conclusion</h1>
-<p>Here’s a summary of the pros and cons of each approach, along with the result for Maddison.</p>
+<p>Here’s a summary of the biggest pros and cons of each approach, along with the result for Maddison.</p>
 <table class="table">
 <colgroup>
 <col style="width: 6%">
 <col style="width: 24%">
 <col style="width: 9%">
-<col style="width: 31%">
-<col style="width: 28%">
+<col style="width: 29%">
+<col style="width: 29%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Approach</th>
 <th>Description</th>
-<th>Pros</th>
-<th>Cons</th>
+<th>Biggest Pro</th>
+<th>Biggest Con</th>
 <th>Maddison 2023/24 Underperformance Unlikeliness</th>
 </tr>
 </thead>
@@ -904,14 +903,14 @@ O_p = \frac{G_p}{xG_p}
 <td>1</td>
 <td>Percentile Ranking</td>
 <td>customizable</td>
-<td>subjective, sensitive to the choice of player pool</td>
+<td>sensitive to the choice of players to evaluate</td>
 <td>3rd percentile</td>
 </tr>
 <tr class="even">
 <td>2</td>
 <td>Resampling</td>
 <td>non-parametric</td>
-<td>(relatively) computationally intensive</td>
+<td>limited by player’s shot history</td>
 <td>16th percentile</td>
 </tr>
 <tr class="odd">
@@ -989,14 +988,15 @@ No matching items
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>I’ll only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn1"><p>I only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn2"><p>The raw difference between goals and xG is a reasonable measure of shooting performance, but it can “hide” shot volume. Is it fair to compare a player who takes 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. But <span class="math inline">\(O_p\)</span>, as defined here, would be 1.2 and 3 respectively, hinting at the former player’s small sample size.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn3"><p>While I focus on underperformance in this post, “overperformance” could be quantified in a similar (i.e.&nbsp;symmetrical) manner with each technique.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn4"><p>The weighting here is to reflect the intuition that players who have taken a lot of shots in the past and have an uncharacteristic season are shown as more unlikely than a player with only one prior season of shots, who happens to have a very different goals-to-expected goals ratio in the latter season.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>An overperforming unlikelihood <span class="math inline">\(U^+_p\)</span> could be calculated by sorting <span class="math inline">\(\delta O^w_p\)</span> in descending order instead.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>Sampling without replacement is also reasonable. However, some players wouldn’t have enough shots from prior seasons to match their volume of shots in 2023/24.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn7"><p><span class="math inline">\(N_p\)</span> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <span class="math inline">\(M\)</span> should be set to some fairly large number, so as to achieve stability in the results. I set it to 1,000.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn8"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <span class="math inline">\(r^+\)</span> the outperformance ratio of the resampled shots is greater than <span class="math inline">\(O_{p,\text{target}}\)</span> and calculate the proportion <span class="math inline">\(U^+_p = \frac{r^+}{R}\)</span>.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>Percentiles greater than 50% generally correspond with players who have overperformed, so really the bottom 50% are the players we’re looking at when we’re considering underperformance unlikeliness.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>Sampling without replacement is also reasonable. However, some players wouldn’t have enough shots from prior seasons to match their volume of shots in 2023/24.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p><span class="math inline">\(N_p\)</span> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <span class="math inline">\(R\)</span> should be set to some fairly large number, so as to achieve stability in the results.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <span class="math inline">\(r^+\)</span> the outperformance ratio of the resampled shots is greater than <span class="math inline">\(O_{p,\text{target}}\)</span> and calculate the proportion <span class="math inline">\(U^+_p = \frac{r^+}{R}\)</span>.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

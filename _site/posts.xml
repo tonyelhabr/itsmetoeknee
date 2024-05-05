@@ -575,7 +575,7 @@ font-style: inherit;">0</span></span>
 </ol>
 <p><img src="https://latex.codecogs.com/png.latex?%0A%5Cdelta%20O%5Ew_p%20=%20%5Cdelta%20O_p%20*%20xG_p%0A"></p>
 <ol start="3" type="1">
-<li>Calculate the the underperforming unlikeliness <img src="https://latex.codecogs.com/png.latex?U%5E-_p"> as a percentile rank of ascending <img src="https://latex.codecogs.com/png.latex?%5Cdelta%20O%5Ew_p">, i.e.&nbsp;more negative <img src="https://latex.codecogs.com/png.latex?%5Cdelta%20O%5Ew_p"> values correspond to a lower <img src="https://latex.codecogs.com/png.latex?U%5E-_p"> percentile.<sup>5</sup></li>
+<li>Calculate the the underperforming unlikeliness <img src="https://latex.codecogs.com/png.latex?U%5E-_p"> as a percentile rank of ascending <img src="https://latex.codecogs.com/png.latex?%5Cdelta%20O%5Ew_p">, i.e.&nbsp;more negative <img src="https://latex.codecogs.com/png.latex?%5Cdelta%20O%5Ew_p"> values correspond to a lower <img src="https://latex.codecogs.com/png.latex?U%5E-_p"> percentile.<sup>5</sup><sup>6</sup></li>
 </ol>
 <p>This is pretty straightforward to calculate once you’ve got the data prepared in the right format.</p>
 <div class="cell">
@@ -594,12 +594,11 @@ background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">transmute</span>(</span>
-<span id="cb4-4">    player_id,</span>
-<span id="cb4-5">    player,</span>
-<span id="cb4-6">    prior_o,</span>
-<span id="cb4-7">    target_o,</span>
-<span id="cb4-8">    prior_xg,</span>
-<span id="cb4-9">    <span class="at" style="color: #657422;
+<span id="cb4-4">    player,</span>
+<span id="cb4-5">    prior_o,</span>
+<span id="cb4-6">    target_o,</span>
+<span id="cb4-7">    prior_xg,</span>
+<span id="cb4-8">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">weighted_delta_o =</span> prior_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -608,28 +607,28 @@ background-color: null;
 font-style: inherit;">-</span> prior_o) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">/</span> prior_o,</span>
-<span id="cb4-10">    <span class="at" style="color: #657422;
+<span id="cb4-9">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">u =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">percent_rank</span>(weighted_delta_o)</span>
-<span id="cb4-11">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb4-10">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb4-12">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb4-11">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">arrange</span>(u)</span>
-<span id="cb4-13"></span>
-<span id="cb4-14">maddison_u_approach1 <span class="ot" style="color: #003B4F;
+<span id="cb4-12"></span>
+<span id="cb4-13">maddison_u_approach1 <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> all_u_approach1 <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb4-15">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb4-14">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -736,8 +735,8 @@ font-style: inherit;">#&gt; 10 Robert Lewandowski   1.01     0.759 0.0152 </span
 <p>There’s only so much you can do with player-season-level data. We need to dive into shot-level data if we want to more robustly understand the uncertainty of outcomes.</p>
 <p>Here’s a “resampling” approach to quantify the underperforming unlikeliness <img src="https://latex.codecogs.com/png.latex?U%5E-_p"> of a player in the target season:</p>
 <ol type="1">
-<li>Sample <img src="https://latex.codecogs.com/png.latex?N_%7Bp,%5Ctext%7Btarget%7D%7D"> shots (with replacement<sup>6</sup>) from a player’s past shots <img src="https://latex.codecogs.com/png.latex?S_%7Bp,%5Ctext%7Btarget%7D'%7D">. Repeat this for <img src="https://latex.codecogs.com/png.latex?R"> resamples.<sup>7</sup></li>
-<li>Count the number of resamples <img src="https://latex.codecogs.com/png.latex?r%5E-"> in which the outperformance ratio <img src="https://latex.codecogs.com/png.latex?%5Chat%7BO%7D_%7Bp,%5Ctext%7Btarget%7D'%7D"> of the sampled shots is less than or equal to the observed <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> in the target season for the player.<sup>8</sup> The proportion <img src="https://latex.codecogs.com/png.latex?U%5E-_p%20=%20%5Cfrac%7Br%5E-%7D%7BR%7D"> represents the unlikeness of a given player’s observed <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> (or worse) in the target season.</li>
+<li>Sample <img src="https://latex.codecogs.com/png.latex?N_%7Bp,%5Ctext%7Btarget%7D%7D"> shots (with replacement<sup>7</sup>) from a player’s past shots <img src="https://latex.codecogs.com/png.latex?S_%7Bp,%5Ctext%7Btarget%7D'%7D">. Repeat this for <img src="https://latex.codecogs.com/png.latex?R"> resamples.<sup>8</sup></li>
+<li>Count the number of resamples <img src="https://latex.codecogs.com/png.latex?r%5E-"> in which the outperformance ratio <img src="https://latex.codecogs.com/png.latex?%5Chat%7BO%7D_%7Bp,%5Ctext%7Btarget%7D'%7D"> of the sampled shots is less than or equal to the observed <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> in the target season for the player.<sup>9</sup> The proportion <img src="https://latex.codecogs.com/png.latex?U%5E-_p%20=%20%5Cfrac%7Br%5E-%7D%7BR%7D"> represents the unlikeness of a given player’s observed <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> (or worse) in the target season.</li>
 </ol>
 <p>Here’s how that looks in code.</p>
 <div class="cell">
@@ -1859,21 +1858,21 @@ font-style: inherit;">#&gt; 10 Nicolò Barella      1.11    0.417 0.0138</span><
 </section>
 <section id="conclusion" class="level1">
 <h1>Conclusion</h1>
-<p>Here’s a summary of the pros and cons of each approach, along with the result for Maddison.</p>
+<p>Here’s a summary of the biggest pros and cons of each approach, along with the result for Maddison.</p>
 <table class="table">
 <colgroup>
 <col style="width: 6%">
 <col style="width: 24%">
 <col style="width: 9%">
-<col style="width: 31%">
-<col style="width: 28%">
+<col style="width: 29%">
+<col style="width: 29%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Approach</th>
 <th>Description</th>
-<th>Pros</th>
-<th>Cons</th>
+<th>Biggest Pro</th>
+<th>Biggest Con</th>
 <th>Maddison 2023/24 Underperformance Unlikeliness</th>
 </tr>
 </thead>
@@ -1882,14 +1881,14 @@ font-style: inherit;">#&gt; 10 Nicolò Barella      1.11    0.417 0.0138</span><
 <td>1</td>
 <td>Percentile Ranking</td>
 <td>customizable</td>
-<td>subjective, sensitive to the choice of player pool</td>
+<td>sensitive to the choice of players to evaluate</td>
 <td>3rd percentile</td>
 </tr>
 <tr class="even">
 <td>2</td>
 <td>Resampling</td>
 <td>non-parametric</td>
-<td>(relatively) computationally intensive</td>
+<td>limited by player’s shot history</td>
 <td>16th percentile</td>
 </tr>
 <tr class="odd">
@@ -2115,14 +2114,15 @@ No matching items
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>I’ll only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.↩︎</p></li>
+<li id="fn1"><p>I only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.↩︎</p></li>
 <li id="fn2"><p>The raw difference between goals and xG is a reasonable measure of shooting performance, but it can “hide” shot volume. Is it fair to compare a player who takes 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. But <img src="https://latex.codecogs.com/png.latex?O_p">, as defined here, would be 1.2 and 3 respectively, hinting at the former player’s small sample size.↩︎</p></li>
 <li id="fn3"><p>While I focus on underperformance in this post, “overperformance” could be quantified in a similar (i.e.&nbsp;symmetrical) manner with each technique.↩︎</p></li>
 <li id="fn4"><p>The weighting here is to reflect the intuition that players who have taken a lot of shots in the past and have an uncharacteristic season are shown as more unlikely than a player with only one prior season of shots, who happens to have a very different goals-to-expected goals ratio in the latter season.↩︎</p></li>
 <li id="fn5"><p>An overperforming unlikelihood <img src="https://latex.codecogs.com/png.latex?U%5E+_p"> could be calculated by sorting <img src="https://latex.codecogs.com/png.latex?%5Cdelta%20O%5Ew_p"> in descending order instead.↩︎</p></li>
-<li id="fn6"><p>Sampling without replacement is also reasonable. However, some players wouldn’t have enough shots from prior seasons to match their volume of shots in 2023/24.↩︎</p></li>
-<li id="fn7"><p><img src="https://latex.codecogs.com/png.latex?N_p"> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <img src="https://latex.codecogs.com/png.latex?M"> should be set to some fairly large number, so as to achieve stability in the results. I set it to 1,000.↩︎</p></li>
-<li id="fn8"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <img src="https://latex.codecogs.com/png.latex?r%5E+"> the outperformance ratio of the resampled shots is greater than <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> and calculate the proportion <img src="https://latex.codecogs.com/png.latex?U%5E+_p%20=%20%5Cfrac%7Br%5E+%7D%7BR%7D">.↩︎</p></li>
+<li id="fn6"><p>Percentiles greater than 50% generally correspond with players who have overperformed, so really the bottom 50% are the players we’re looking at when we’re considering underperformance unlikeliness.↩︎</p></li>
+<li id="fn7"><p>Sampling without replacement is also reasonable. However, some players wouldn’t have enough shots from prior seasons to match their volume of shots in 2023/24.↩︎</p></li>
+<li id="fn8"><p><img src="https://latex.codecogs.com/png.latex?N_p"> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <img src="https://latex.codecogs.com/png.latex?R"> should be set to some fairly large number, so as to achieve stability in the results.↩︎</p></li>
+<li id="fn9"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <img src="https://latex.codecogs.com/png.latex?r%5E+"> the outperformance ratio of the resampled shots is greater than <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> and calculate the proportion <img src="https://latex.codecogs.com/png.latex?U%5E+_p%20=%20%5Cfrac%7Br%5E+%7D%7BR%7D">.↩︎</p></li>
 </ol>
 </section></div> ]]></description>
   <category>r</category>
