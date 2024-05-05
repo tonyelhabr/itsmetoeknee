@@ -54,15 +54,13 @@ group_palette <- c(
   'base' = '#6E7275'
 )
 
-## target_o ----
-labels <- c(seq(0.1, 2, by = 0.1), '>=2')
-labels[seq.int(1, 19, by = 2)] <- ''
+## raw_o ----
 raw_o_plot <- all_players_to_evaluate |> 
   # dplyr::filter(prior_shots >= 100) |> 
   dplyr::select(
     player,
     `2023/24 ("target")` = target_o,
-    `2018/19-2023/24 ("prior")` = prior_o
+    `2018/19 - 2023/24 ("prior")` = prior_o
   ) |> 
   tidyr::pivot_longer(
     -c(player),
@@ -94,9 +92,9 @@ raw_o_plot <- all_players_to_evaluate |>
   ggplot2::geom_text(
     data = tibble::tibble(
       x = c(0.55, 1.55),
-      y = c(75, 60),
+      y = c(78, 60),
       hjust = c(1, 0),
-      group = c('2023/24 ("target")', '2018/19-2023/24 ("prior")'),
+      group = c('2023/24 ("target")', '2018/19 - 2023/24 ("prior")'),
       label = c(
         scales::number(maddison_uu_approach1$target_o, accuracy = 0.001),
         scales::number(maddison_uu_approach1$prior_o, accuracy = 0.01)
@@ -106,10 +104,11 @@ raw_o_plot <- all_players_to_evaluate |>
       x = x,
       y = y,
       hjust = hjust,
-      label = paste0('Maddison: ', label)
+      label = paste0('James Maddison: ', label)
     ),
     vjust = 0,
     family = FONT,
+    fontface = 'bold',
     color = group_palette[['highlight']],
     size = 12 / .pt
   ) +
@@ -117,9 +116,9 @@ raw_o_plot <- all_players_to_evaluate |>
     data = tibble::tibble(
       x = c(0.57, 1.53),
       xend = c(0.83, 1.35),
-      y = c(77, 60),
+      y = c(78, 60),
       yend = c(65, 40),
-      group = c('2023/24 ("target")', '2018/19-2023/24 ("prior")')
+      group = c('2023/24 ("target")', '2018/19 - 2023/24 ("prior")')
     ),
     ggplot2::aes(
       x = x,
@@ -146,7 +145,7 @@ raw_o_plot <- all_players_to_evaluate |>
     expand = FALSE
   ) +
   ggplot2::labs(
-    title = 'Distribution of G / xG ratios',
+    title = 'Distribution of G / xG ratios of Big Five Players',
     subtitle = 'Only including players with >100 shots prior to 2023/24',
     y = 'Count of Players',
     x = 'Outperformance (G / xG)',
@@ -263,7 +262,8 @@ maddison_uu_approach2_plot <- maddison_resampled_o |>
   ) +
   ggplot2::theme(
     plot.title = ggtext::element_markdown(size = 16),
-    plot.subtitle = ggtext::element_markdown(size = 12)
+    plot.subtitle = ggtext::element_markdown(size = 12),
+    panel.grid.major.x = ggplot2::element_blank()
   ) +
   ggplot2::labs(
     title = 'Resampled G / xG Ratio for James Maddison',
@@ -300,7 +300,7 @@ all_uu_approach2_plot <- all_uu_approach2 |>
     y = 70,
     hjust = 0,
     vjust = 0,
-    label = glue::glue("Maddison's 2023/24 G / xG ratio was\nin the {scales::ordinal(maddison_uu_approach2$uu * 100)} percentile of\nunlikely outcomes."),
+    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_uu_approach2$uu * 100)} percentile of\nunlikely outcomes."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -488,7 +488,8 @@ maddison_uu_approach3_plot <- maddison_uu_approach3_samples |>
   ) +
   ggplot2::theme(
     plot.title = ggtext::element_markdown(size = 16),
-    plot.subtitle = ggtext::element_markdown(size = 12)
+    plot.subtitle = ggtext::element_markdown(size = 12),
+    panel.grid.major.x = ggplot2::element_blank()
   ) +
   ggplot2::labs(
     title = 'Estimated Distribution of G / xG Ratio for James Maddison',
@@ -525,7 +526,7 @@ all_uu_approach3_plot <- all_uu_approach3 |>
     y = 70,
     hjust = 0,
     vjust = 0,
-    label = glue::glue("Maddison's 2023/24 G / xG ratio was\nin the {scales::ordinal(maddison_uu_approach3$uu * 100)} percentile of\nunlikely outcomes."),
+    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_uu_approach3$uu * 100)} percentile of\nunlikely outcomes."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Tony ElHabr">
-<meta name="dcterms.date" content="2024-05-04">
+<meta name="dcterms.date" content="2024-05-05">
 <meta name="description" content="Quantifying how unlikely a player’s season-long shooting performance is, factoring in their prior shot history">
 
 <title>Tony’s Blog - Estimating Shooting Performance Unlikeliness</title>
@@ -267,7 +267,7 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">May 4, 2024</p>
+      <p class="date">May 5, 2024</p>
     </div>
   </div>
   
@@ -363,7 +363,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # ℹ 15,307 more rows</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>For illustrative purposes, we’ll focus on one player in particular–<a href="https://fbref.com/en/players/ee38d9c5/James-Maddison">James Maddison</a>. Maddison has had a sub-par 2023/2024 season for his own standards, underperforming his xG for the first time in since he started playing in the <a href="https://fbref.com/en/comps/9/Premier-League-Stats">Premier League</a> in 2018/19.</p>
+<p>For illustrative purposes, we’ll focus on one player in particular–<a href="https://fbref.com/en/players/ee38d9c5/James-Maddison">James Maddison</a>. Maddison has had a sub-par 2023/2024 season by his own standards, underperforming his xG for the first time since he started playing in the <a href="https://fbref.com/en/comps/9/Premier-League-Stats">Premier League</a> in 2018/19.</p>
 <div class="cell">
 <details open="">
 <summary>Maddison’s season-by-season data</summary>
@@ -429,7 +429,7 @@ O_p = \frac{G_p}{xG_p}
 <p>I’ll discuss some of the strengths and weaknesses of each approach as we go along, then summarize the findings in the end.</p>
 <section id="approach-1-weighted-percentile-rank" class="level3">
 <h3 class="anchored" data-anchor-id="approach-1-weighted-percentile-rank">Approach 1: Weighted Percentile Rank</h3>
-<p>The first approach I’ll present is sort of a handcrafted “ranking” method.</p>
+<p>The first approach I’ll present is a handcrafted “ranking” method.</p>
 <ol type="1">
 <li>Calculate the proportional difference between the pre-target and target season outperformance ratios–<span class="math inline">\(O_{p,\text{target}'}\)</span> and <span class="math inline">\(O_{p,\text{target}'}\)</span> respectively–for all players <span class="math inline">\(P\)</span>.</li>
 </ol>
@@ -449,7 +449,7 @@ O_p = \frac{G_p}{xG_p}
 <div class="cell">
 <details>
 <summary>Approach 1 implementation</summary>
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="do">## `uu` for "underperforming unlikelihood"</span></span>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="do">## `u` for "underperforming unlikelihood"</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>all_uu_approach1 <span class="ot">&lt;-</span> all_players_to_evaluate <span class="sc">|&gt;</span> </span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    player_id,</span>
@@ -458,9 +458,9 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    target_o,</span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    prior_xg,</span>
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">weighted_delta_o =</span> prior_shots <span class="sc">*</span> (target_o <span class="sc">-</span> prior_o) <span class="sc">/</span> prior_o,</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> dplyr<span class="sc">::</span><span class="fu">percent_rank</span>(weighted_delta_o)</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">u =</span> dplyr<span class="sc">::</span><span class="fu">percent_rank</span>(weighted_delta_o)</span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(uu)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(u)</span>
 <span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach1 <span class="ot">&lt;-</span> all_uu_approach1 <span class="sc">|&gt;</span> </span>
 <span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(player <span class="sc">==</span> <span class="st">'James Maddison'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -469,21 +469,21 @@ O_p = \frac{G_p}{xG_p}
 <div class="cell">
 <details open="">
 <summary>Approach 1 output for Maddison</summary>
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach1 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu)</span>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach1 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, u)</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 4</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o     uu</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o      u</span></span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;</span></span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison    1.38    0.847 0.0321</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>This approach finds Maddison’s 2023/24 <span class="math inline">\(O_p\)</span> of 0.847 to be about a 3rd percentile outcome. Among the 593 player’s evaluated, Maddison’s 2023/24 <span class="math inline">\(O_p\)</span> ranks as the 20th most unlikely.</p>
+<p>This approach finds Maddison’s 2023/24 <span class="math inline">\(O_p\)</span> of 0.847 to be about a 3rd percentile outcome. Among the 593 players evaluated, Maddison’s 2023/24 <span class="math inline">\(O_p\)</span> ranks as the 20th most unlikely.</p>
 <p>For context, here’s a look at the top 10 most unlikely outcomes for the 2023/24 season.</p>
 <div class="cell">
 <details open="">
 <summary>Approach 1 output, top 10 underperforming players</summary>
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>all_uu_approach1 <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">10</span>) <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu)</span>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>all_uu_approach1 <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">10</span>) <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, u)</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 10 × 4</span></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player             prior_o target_o      uu</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player             prior_o target_o       u</span></span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;                &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;</span></span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Ciro Immobile        1.23     0.383 0      </span></span>
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Giovanni Simeone     1.03     0.306 0.00169</span></span>
@@ -498,17 +498,16 @@ O_p = \frac{G_p}{xG_p}
 </details>
 </div>
 <p><a href="https://fbref.com/en/players/4431aed2/Ciro-Immobile">Ciro Immobile</a> tops the list, with several other notable attacking players who had less than stellar seasons.</p>
-<p>Overall, I’d say that this methodology seems to generate fairly reasonable results, but it’s hard to pinpoint why exactly this approach is defensible other than it may lead to intuitive results.</p>
-<p>A couple of notes about this methodology:</p>
+<p>Overall, I’d say that this methodology seems to generate fairly reasonable results, but it’s hard to pinpoint why exactly this approach is defensible other than it may lead to intuitive results. Despite the intuitively appealing outcomes, it’s important to scrutinize key factors affecting this methodology’s robustness and validity.</p>
 <ul>
-<li><strong>The weighting choice (pre-2023/24 xG) is subjective.</strong> An alternative choice of weighting could easily shuffle the result set. Nonetheless, some sort of weighting should be applied. If none is applied, then players who shoot very few shots will appear as the most unlikely, and that simply does not match intuition.</li>
-<li>The unlikelihood percentile is <strong>sensitive to the pool of players with which a given player is compared.</strong> If we decide to compare a striker with a pool of defenders, then our results would be susceptible to the noisy goals-to-expected goals ratio that defenders tend to have. Further, if a large majority of players in a given season happened to score more than their xG would imply, then a player scoring at a neutral pace would be penalized by this approach. Of course, such an outcome is unlikely, but speaks to the role that selection bias might have with influencing results with this methodology.</li>
-<li>We assume that <strong>the distribution of unlikeliness is uniform</strong> across all players in a given season. In other words, we’re assuming that there has to be 1% of players with a 1st percentile underperforming outcome, 17% of players with 17th percentile underperforming outcome, etc. I think this assumption makes sense in the long run, but in any given individual season, there may not be a single player who shots terribly enough to really deserve that “worst of the worst”, 1st percentile outcome.</li>
+<li><strong>Subjectivity in Weighting</strong>: The choice to weight the difference in performance ratios by pre-2023/24 xG is inherently subjective. While it’s important to have some form of weighting so as to avoid disproportionately emphasizing players with minimal shooting opportunities, lternative weighting strategies could lead to significantly different rankings.</li>
+<li><strong>Sensitivity to Player Pool</strong>: The percentile ranking of a player’s <span class="math inline">\(O_{p,\text{target}}\)</span> unlikeliness is highly sensitive to the comparison group. For instance, comparing forwards to defenders could skew results due to generally higher variability in defenders’ goal-to-expected goals ratios. Moreover, if a season unusually favors players outperforming their expected goals, even average performers might appear as outliers. This potential for selection bias underlines the importance of carefully choosing the comparison pool.</li>
+<li><strong>Assumption of Uniform Distribution</strong>: The methodology assumes a uniform distribution of performance unlikeliness across players. We presume that there must be, for example, 1% of players at the 1st percentile of underperformance. Although this assumption may hold over many seasons, it could misrepresent individual seasons where extremes are less pronounced or absent.</li>
 </ul>
 </section>
 <section id="approach-2-resampling-from-prior-history-of-shots" class="level3">
 <h3 class="anchored" data-anchor-id="approach-2-resampling-from-prior-history-of-shots">Approach 2: Resampling from Prior History of Shots</h3>
-<p>There’s only so much you can do with player-season level data. We need to dive into shot-level data if we want to more robustly understand uncertainty of outcomes.</p>
+<p>There’s only so much you can do with player-season-level data. We need to dive into shot-level data if we want to more robustly understand the uncertainty of outcomes.</p>
 <p>Here’s a “resampling” approach to quantify the underperforming unlikeliness <span class="math inline">\(U^-_p\)</span> of a player in the target season:</p>
 <ol type="1">
 <li>Sample <span class="math inline">\(N_{p,\text{target}}\)</span> shots (with replacement<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>) from a player’s past shots <span class="math inline">\(S_{p,\text{target}'}\)</span>. Repeat this for <span class="math inline">\(R\)</span> resamples.<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></li>
@@ -591,7 +590,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb7-71"><a href="#cb7-71" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach2 <span class="ot">&lt;-</span> maddison_resampled_o <span class="sc">|&gt;</span></span>
 <span id="cb7-72"><a href="#cb7-72" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
 <span id="cb7-73"><a href="#cb7-73" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(player, prior_o, target_o),</span>
-<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> <span class="fu">sum</span>(o <span class="sc">&lt;=</span> target_o) <span class="sc">/</span> <span class="fu">n</span>()</span>
+<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a>    <span class="at">u =</span> <span class="fu">sum</span>(o <span class="sc">&lt;=</span> target_o) <span class="sc">/</span> <span class="fu">n</span>()</span>
 <span id="cb7-75"><a href="#cb7-75" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb7-76"><a href="#cb7-76" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -599,9 +598,9 @@ O_p = \frac{G_p}{xG_p}
 <div class="cell">
 <details open="">
 <summary>Approach 2 output for Maddison</summary>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach2 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu)</span>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach2 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, u)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 4</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o    uu</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o     u</span></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;</span></span>
 <span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison    1.38    0.847 0.163</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -609,7 +608,7 @@ O_p = \frac{G_p}{xG_p}
 <p>The plot below should provide a bit of visual intuition as to what’s going on.</p>
 <p><img src="maddison_uu_approach2.png" class="img-fluid"></p>
 <p>These results imply that Maddison’s 2023/24 <span class="math inline">\(G / xG\)</span> ratio of 0.847 (or worse) occurs in 16.3% of simulations, i.e.&nbsp;a 16th percentile outcome. That’s a bit higher than what the first approach showed.</p>
-<p>How can we feel more confident about this approach? Well, in the first approach, we made the assumption that the underperforming unlikelihood percentages should be uniform across all players, hence the percentile ranking. I think that’s a good assumption, so we should see if the same bears out with this second approach.</p>
+<p>How can we feel more confident about this approach? Well, in the first approach, we assumed that the underperforming unlikelihood percentages should be uniform across all players, hence the percentile ranking. I think that’s a good assumption, so we should see if the same bears out with this second approach.</p>
 <p>The plot below shows a histogram of the underperforming unlikelihood across all players, where each player’s estimated unlikelihood is grouped into a decile.</p>
 <div class="cell">
 <details>
@@ -636,20 +635,20 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>all_uu_approach2 <span class="ot">&lt;-</span> all_resampled_o <span class="sc">|&gt;</span></span>
 <span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
 <span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">.by =</span> <span class="fu">c</span>(player, prior_o, target_o, prior_shots, target_shots),</span>
-<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> <span class="fu">sum</span>(o <span class="sc">&lt;=</span> target_o) <span class="sc">/</span> <span class="fu">n</span>()</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">u =</span> <span class="fu">sum</span>(o <span class="sc">&lt;=</span> target_o) <span class="sc">/</span> <span class="fu">n</span>()</span>
 <span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(uu)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(u)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <p><img src="all_uu_approach2.png" class="img-fluid"></p>
 <p>Indeed, the histogram shows a fairly uniform distribution, with a bit of irregularity at the very edges.</p>
-<p>Looking at who is in the lower end of the leftmost decile, we see some of the same names–Immobile and <a href="https://fbref.com/en/players/6bde367b/Teji-Savanier">Savanier</a>–among the ten underperformers. (Withholding judgement on the superiority of any methodology, we can find some solace in seeing some of the same names among the most unlikely underperformers here as we did with approach 1.)</p>
+<p>Looking at who is in the lower end of the leftmost decile, we see some of the same names–Immobile and <a href="https://fbref.com/en/players/6bde367b/Teji-Savanier">Savanier</a>–among the ten underperformers. (Withholding judgment on the superiority of any methodology, we can find some solace in seeing some of the same names among the most unlikely underperformers here as we did with approach 1.)</p>
 <div class="cell">
 <details open="">
 <summary>Approach 2 output, top 10 underperforming players</summary>
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>all_uu_approach2 <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">10</span>) <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu)</span>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>all_uu_approach2 <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">10</span>) <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, u)</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 593 × 4</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player                    prior_o target_o    uu</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player                    prior_o target_o     u</span></span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;                       &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;</span></span>
 <span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Erling Haaland               1.26    0.791 0.004</span></span>
 <span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Amine Harit                  1.27    0.262 0.01 </span></span>
@@ -663,12 +662,12 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 Ansu Fati                    1.31    0.430 0.024</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>One familiar face in the print out above is <a href="https://fbref.com/en/players/1f44ac21/Erling-Haaland">Manchester City’s striker Erling Haaland</a>, whose underperformance this season has been called among <a href="https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/">fans and the media</a>. His sub-par performance this year ranked as a 7th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds.</p>
+<p>One familiar face in the printout above is <a href="https://fbref.com/en/players/1f44ac21/Erling-Haaland">Manchester City’s striker Erling Haaland</a>, whose underperformance this season has been called among <a href="https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/">fans and the media</a>. His sub-par performance this year ranked as a 7th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds.</p>
 <p>Here are some parting thoughts on this methodology before we look at another:</p>
 <ul>
-<li><strong>We’re making an assumption that a player’s past shot profile is representative of their future shot profile.</strong> This is reasonable in many cases, but has exceptions for a player who has just changed roles and/or teams, who has been recovering from injuries, etc.</li>
-<li>This approach is <strong>“non-parametric”</strong>. We don’t assume anything about the underlying distribution of a player’s <span class="math inline">\(O_p\)</span> other than that it is stable between the prior and target seasons. (See note above.) We let the power of resampling shape the distribution of outcomes, which should look different for a striker that only takes shots near the goal and a defender that only launches shots from outside the box.</li>
-<li>This approach is <strong>computationally intensive</strong> (relative to the other approaches). Running this approach with just <span class="math inline">\(R = 1000\)</span> can take several minutes across all players (without palatalization).</li>
+<li><strong>Assumption of Shot Profile Consistency</strong>: We assume that a player’s past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. Deviations in these contexts need to be considered when applying this methodology.</li>
+<li><strong>Non-Parametric Nature</strong>: This method does not assume any specific distribution for a player’s performance ratios; instead, it relies on the stability of a player’s performance over time. The resampling process itself shapes the outcome distribution, which can vary significantly between players with different shooting behaviors, such as a forward versus a defender.</li>
+<li><strong>Computational Demands</strong>: The resampling approach requires relatively more computational resources than the prior approach, especially without parallel processing. Even a relatively small number of resamples, such as <span class="math inline">\(R=1000\)</span>, can take a few second per player to compute.</li>
 </ul>
 </section>
 <section id="approach-3-evaluating-a-player-specific-cumulative-distribution-function-cdf" class="level3">
@@ -773,7 +772,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb11-88"><a href="#cb11-88" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb11-89"><a href="#cb11-89" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach3 <span class="ot">&lt;-</span> select_gamma_o <span class="sc">|&gt;</span> </span>
 <span id="cb11-90"><a href="#cb11-90" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb11-91"><a href="#cb11-91" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
+<span id="cb11-91"><a href="#cb11-91" aria-hidden="true" tabindex="-1"></a>    <span class="at">u =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
 <span id="cb11-92"><a href="#cb11-92" aria-hidden="true" tabindex="-1"></a>      target_o,</span>
 <span id="cb11-93"><a href="#cb11-93" aria-hidden="true" tabindex="-1"></a>      params,</span>
 <span id="cb11-94"><a href="#cb11-94" aria-hidden="true" tabindex="-1"></a>      \(.target_o, .params) {</span>
@@ -785,7 +784,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb11-100"><a href="#cb11-100" aria-hidden="true" tabindex="-1"></a>        )</span>
 <span id="cb11-101"><a href="#cb11-101" aria-hidden="true" tabindex="-1"></a>      }</span>
 <span id="cb11-102"><a href="#cb11-102" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb11-103"><a href="#cb11-103" aria-hidden="true" tabindex="-1"></a>    <span class="at">ou =</span> <span class="dv">1</span> <span class="sc">-</span> uu</span>
+<span id="cb11-103"><a href="#cb11-103" aria-hidden="true" tabindex="-1"></a>    <span class="at">ou =</span> <span class="dv">1</span> <span class="sc">-</span> u</span>
 <span id="cb11-104"><a href="#cb11-104" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb11-105"><a href="#cb11-105" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(params)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -793,9 +792,9 @@ O_p = \frac{G_p}{xG_p}
 <div class="cell">
 <details open="">
 <summary>Approach 3 output for Maddison</summary>
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach3 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu)</span>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>maddison_uu_approach3 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, u)</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 4</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o     uu</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o     u</span></span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;</span></span>
 <span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison    1.38    0.847 0.0679</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -828,7 +827,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>all_uu_approach3 <span class="ot">&lt;-</span> all_gamma_o <span class="sc">|&gt;</span> </span>
 <span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">u =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
 <span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>      target_o,</span>
 <span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>      params,</span>
 <span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>      \(.target_o, .params) {</span>
@@ -842,18 +841,18 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a>    )</span>
 <span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(params) <span class="sc">|&gt;</span> </span>
-<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(uu)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(u)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <p><img src="all_uu_approach3.png" class="img-fluid"></p>
-<p>This histogram has a bit more distortion–more players in the highest decile then our resampling approach–so perhaps it’s a little less calibrated.</p>
+<p>This histogram has a bit more distortion than our resampling approach, so perhaps it’s a little less calibrated.</p>
 <p>Looking at the top 10 strongest underperformers, 3 of the names here–Immobile, Savanier, and <a href="https://fbref.com/en/players/0a447501/Antonio-Sanabria">Sanabria</a>–are shared with approach 2’s top 10, and 7 are shared with approach 1’s top 10.</p>
 <div class="cell">
 <details open="">
 <summary>Approach 3 output, top 10 underperforming players</summary>
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>all_uu_approach3 <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">10</span>) <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu)</span>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>all_uu_approach3 <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">10</span>) <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, u)</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 10 × 4</span></span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player           prior_o target_o         uu</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    player           prior_o target_o         u</span></span>
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;    &lt;chr&gt;              &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;</span></span>
 <span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  1 Ciro Immobile       1.23    0.383 0.00000533</span></span>
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  2 Téji Savanier       1.42    0.282 0.000127  </span></span>
@@ -870,11 +869,12 @@ O_p = \frac{G_p}{xG_p}
 <p>We can visually check the consistency of the results from this method with the prior two with scatter plots of the estimated underperforming unlikeliness from each.</p>
 <p><img src="all_uus.png" class="img-fluid"></p>
 <p>If two of the approaches were perfectly in agreement, then each point, representing one of the 593 evaluated players, would fall along the 45-degree slope 1 line.</p>
-<p>With that in mind, we can see that approach 3 is slightly more <strong>precise</strong> in relation to approach 1, but approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approach 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.</p>
+<p>With that in mind, we can see that approach 3 is slightly more <strong>precise</strong> in relation to approach 1, but approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.</p>
 <p>Stepping back from the results, what can we say about the principles of the methodology?</p>
 <ul>
-<li>This <strong>parametric</strong> approach is fixated on using a Gamma distribution. While a Gamma distribution is probably the best choice of any family of distribution–since its used to model continuous random variables that are positive and skewed–the reliance on a distribution in the first place can feel like a limiting factor.</li>
-<li>While I don’t showcase it, the results can be <strong>very sensitive to the choice of parameters</strong> used to define each player’s Gamma distribution. Increasing the shape and/or rate parameters by a few integer values (say, from 10 to 15) tighten the distribution and make tail probabilities appear more extreme (i.e.&nbsp;a 12th percentile outcome would become a 2nd percentile outcome). On the other hand, the Gamma distribution is fairly <strong>flexible</strong>, so the freedom to choose parameters allows one to tune uncertainty to one’s desire.</li>
+<li><strong>Parametric Nature</strong>: The reliance on a Gamma distribution for modeling a player’s performance is both a strength and a limitation. The Gamma distribution is apt for positive, skewed continuous variables, making it suitable for modeling goals-to-xG ratios. However, the dependency on a single distribution type may restrict the scope of analysis.</li>
+<li><strong>Sensitivity to Distribution Parameters</strong>: The outcomes of this methodology are highly sensitive to the parameters defining each player’s Gamma distribution. Small adjustments in shape or rate parameters can significantly alter the distribution, causing substantial shifts in the percentile outcomes of player performances. This sensitivity underscores the need for careful parameter selection and calibration.</li>
+<li><strong>Flexibility of the Model</strong>: Despite its sensitivity, the Gamma distribution offers considerable flexibility. It allows for fine-tuning of the model to better fit the data, which can be advantageous for capturing the nuances of different players’ shot profiles.</li>
 </ul>
 </section>
 </section>
@@ -884,11 +884,11 @@ O_p = \frac{G_p}{xG_p}
 <p>Here’s a summary of the pros and cons of each approach, along with the result for Maddison.</p>
 <table class="table">
 <colgroup>
-<col style="width: 4%">
-<col style="width: 17%">
-<col style="width: 29%">
-<col style="width: 29%">
-<col style="width: 20%">
+<col style="width: 6%">
+<col style="width: 24%">
+<col style="width: 9%">
+<col style="width: 31%">
+<col style="width: 28%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -904,20 +904,20 @@ O_p = \frac{G_p}{xG_p}
 <td>1</td>
 <td>Percentile Ranking</td>
 <td>customizable</td>
-<td>weighting scheme is subjective, sensitive to choice of player pool</td>
+<td>subjective, sensitive to the choice of player pool</td>
 <td>3rd percentile</td>
 </tr>
 <tr class="even">
 <td>2</td>
 <td>Resampling</td>
 <td>non-parametric</td>
-<td>can be computationally intensive</td>
+<td>(relatively) computationally intensive</td>
 <td>16th percentile</td>
 </tr>
 <tr class="odd">
 <td>3</td>
 <td>Cumulative Distribution Function (CDF)</td>
-<td>flexible (to the extent that a Gamma distribution can be flexible)</td>
+<td>flexible</td>
 <td>sensitive to choice of distribution parameters</td>
 <td>7th percentile</td>
 </tr>
@@ -953,7 +953,7 @@ O_p = \frac{G_p}{xG_p}
 <span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
 <span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">z_score =</span> (target_o <span class="sc">-</span> mean) <span class="sc">/</span> sd,</span>
 <span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>    <span class="do">## multiply by 2 for a two-sided t-test</span></span>
-<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">uu =</span> <span class="fu">pnorm</span>(<span class="sc">-</span><span class="fu">abs</span>(z_score))</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">u =</span> <span class="fu">pnorm</span>(<span class="sc">-</span><span class="fu">abs</span>(z_score))</span>
 <span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="sc">-</span><span class="fu">c</span>(mean, sd)) <span class="sc">|&gt;</span> </span>
 <span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -964,14 +964,14 @@ O_p = \frac{G_p}{xG_p}
 <summary>Approach 0 output</summary>
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>uu_approach0 <span class="sc">|&gt;</span> </span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(player <span class="sc">==</span> <span class="st">'James Maddison'</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, uu) </span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_o, target_o, u) </span>
 <span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 4</span></span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o     uu</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_o target_o      u</span></span>
 <span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;</span></span>
 <span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison    1.38    0.847 0.0707</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>In reality, this isn’t giving us a percentage of unlikelihood of the outcome. Rather, the p-value measures the probability of obtaining an underformance as extreme as the one observed in 2023/24 (or more extreme) if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player’s actual <span class="math inline">\(O_p\)</span> ratio in the 2023/24 season and the distribution of outperformance ratios observed in previous seasons.</p>
+<p>In reality, this isn’t giving us a percentage of unlikelihood of the outcome. Rather, the p-value measures the probability of underformance as extreme as the underperformance observed in 2023/24 if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player’s actual <span class="math inline">\(O_p\)</span> ratio in the 2023/24 season and the distribution of outperformance ratios observed in previous seasons.</p>
 
 
 
@@ -990,7 +990,7 @@ No matching items
 
 <ol>
 <li id="fn1"><p>I’ll only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>The raw difference between goals and xG is a reasonable measure of shooting performance, but it can “hide” shot volume. Is it fair to compare a player who take 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. But <span class="math inline">\(O_p\)</span>, as defined here, would be 1.2 and 3 respectively, hinting at the former player’s small sample size.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>The raw difference between goals and xG is a reasonable measure of shooting performance, but it can “hide” shot volume. Is it fair to compare a player who takes 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. But <span class="math inline">\(O_p\)</span>, as defined here, would be 1.2 and 3 respectively, hinting at the former player’s small sample size.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn3"><p>While I focus on underperformance in this post, “overperformance” could be quantified in a similar (i.e.&nbsp;symmetrical) manner with each technique.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn4"><p>The weighting here is to reflect the intuition that players who have taken a lot of shots in the past and have an uncharacteristic season are shown as more unlikely than a player with only one prior season of shots, who happens to have a very different goals-to-expected goals ratio in the latter season.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>An overperforming unlikelihood <span class="math inline">\(U^+_p\)</span> could be calculated by sorting <span class="math inline">\(\delta O^w_p\)</span> in descending order instead.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
