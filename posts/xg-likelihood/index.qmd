@@ -2,12 +2,13 @@
 title: Estimating Shooting Performance Unlikeliness
 description: "Quantifying how unlikely a player's season-long shooting performance is, factoring in their prior shot history"
 date: 2024-05-05
+date-modified: 2024-05-08
 toc-depth: 4
 toc-expand: true
 categories:
   - r
   - soccer
-image: maddison_u_approach3.png
+image: maddison_u_approach2.png
 execute: 
   code-fold: show
   eval: false
@@ -82,7 +83,7 @@ raw_shots <- worldfootballR::load_fb_match_shooting(
   gender = GENDERS,
   season_end_year = SEASON_END_YEARS
 )
-#> → Data last updated 2024-04-25 17:52:47 UTC
+#> → Data last updated 2024-05-07 17:52:59 UTC
 
 np_shots <- raw_shots |> 
   ## Drop penalties
@@ -91,6 +92,7 @@ np_shots <- raw_shots |>
   ) |> 
   dplyr::transmute(
     season_end_year = Season_End_Year,
+    team = Squad,
     player_id = Player_Href |> dirname() |> basename(),
     player = Player,
     match_date = lubridate::ymd(Date),
@@ -129,7 +131,7 @@ player_season_np_shots <- np_shots |>
   dplyr::relocate(player, .after = player_id) |> 
   dplyr::arrange(player_id, season_end_year)
 player_season_np_shots
-#> # A tibble: 15,317 × 7
+#> # A tibble: 15,327 × 7
 #>    player_id player          season_end_year shots     g    xg     o
 #>    <chr>     <chr>                     <int> <int> <int> <dbl> <dbl>
 #>  1 0000acda  Marco Benassi              2018    70     5  4.01 1.25 
@@ -173,7 +175,7 @@ player_season_np_shots |> dplyr::filter(player == 'James Maddison')
 #> 3 ee38d9c5  James Maddison            2021    75     8  3.86 2.07 
 #> 4 ee38d9c5  James Maddison            2022    72    12  7.56 1.59 
 #> 5 ee38d9c5  James Maddison            2023    83     9  7.12 1.26 
-#> 6 ee38d9c5  James Maddison            2024    49     4  4.72 0.847
+#> 6 ee38d9c5  James Maddison            2024    55     4  5.02 0.797
 ```
 
 ```{r}
@@ -282,14 +284,14 @@ maddison_u_approach1 <- all_u_approach1 |>
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 1 output for Maddison"
-maddison_u_approach1 |> dplyr::select(player, prior_o, target_o, u)
+maddison_u_approach1 |> dplyr::select(player, prior_o, target_o, u) |> 
 #> # A tibble: 1 × 4
 #>   player         prior_o target_o      u
 #>   <chr>            <dbl>    <dbl>  <dbl>
-#> 1 James Maddison    1.38    0.847 0.0321
+#> 1 James Maddison    1.38    0.797 0.0233
 ```
 
-This approach finds Maddison's 2023/24 $O_p$ of 0.847 to be about a 3rd percentile outcome. Among the 593 players evaluated, Maddison's 2023/24 $O_p$ ranks as the 20th most unlikely.
+This approach finds Maddison's 2023/24 $O_p$ of 0.797 to be about a 2nd percentile outcome. Among the 602 players evaluated, Maddison's 2023/24 $O_p$ ranks as the 15th most unlikely.
 
 For context, here's a look at the top 10 most unlikely outcomes for the 2023/24 season.
 
@@ -300,18 +302,18 @@ For context, here's a look at the top 10 most unlikely outcomes for the 2023/24 
 #| code-summary: "Approach 1 output, top 10 underperforming players"
 all_u_approach1 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
 #> # A tibble: 10 × 4
-#>    player             prior_o target_o       u
-#>    <chr>                <dbl>    <dbl>   <dbl>
-#>  1 Ciro Immobile        1.23     0.383 0      
-#>  2 Giovanni Simeone     1.03     0.306 0.00169
-#>  3 Nabil Fekir          1.14     0.5   0.00338
-#>  4 Wahbi Khazri         1.11     0.322 0.00507
-#>  5 Téji Savanier        1.42     0.282 0.00676
-#>  6 Adrien Thomasson     1.18     0.282 0.00845
-#>  7 Timo Werner          0.951    0.543 0.0101 
-#>  8 Gaëtan Laborde       1.02     0.546 0.0118 
-#>  9 Kevin Volland        1.18     0.450 0.0135 
-#> 10 Robert Lewandowski   1.01     0.759 0.0152 
+#>    player              prior_o target_o       u
+#>    <chr>                 <dbl>    <dbl>   <dbl>
+#>  1 Ciro Immobile         1.23     0.503 0      
+#>  2 Giovanni Simeone      1.03     0.306 0.00166
+#>  3 Nabil Fekir           1.14     0.490 0.00333
+#>  4 Wahbi Khazri          1.11     0.322 0.00499
+#>  5 Kevin Volland         1.18     0.388 0.00666
+#>  6 Adrien Thomasson      1.18     0.282 0.00832
+#>  7 Timo Werner           0.951    0.543 0.00998
+#>  8 Gaëtan Laborde        1.02     0.546 0.0116 
+#>  9 Fabián Ruiz Peña      1.67     0.510 0.0133 
+#> 10 Benjamin Bourigeaud   1.12     0.503 0.0150
 ```
 
 [Ciro Immobile](https://fbref.com/en/players/4431aed2/Ciro-Immobile) tops the list, with several other notable attacking players who had less than stellar seasons.
@@ -431,14 +433,14 @@ maddison_u_approach2 |> dplyr::select(player, prior_o, target_o, u)
 #> # A tibble: 1 × 4
 #>   player         prior_o target_o     u
 #>   <chr>            <dbl>    <dbl> <dbl>
-#> 1 James Maddison    1.38    0.847 0.163
+#> 1 James Maddison    1.38    0.797 0.109
 ```
 
 The plot below should provide a bit of visual intuition as to what's going on.
 
 ![](maddison_u_approach2.png)
 
-These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.847 (or worse) occurs in 16.3% of simulations, i.e. a 16th percentile outcome. That's a bit higher than what the first approach showed.
+These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.797 (or worse) occurs in 10.9% of simulations, i.e. a 11th percentile outcome. That's a bit higher than what the first approach showed.
 
 How can we feel more confident about this approach? Well, in the first approach, we assumed that the underperforming unlikelihood percentages should be uniform across all players, hence the percentile ranking. I think that's a good assumption, so we should see if the same bears out with this second approach.
 
@@ -503,19 +505,19 @@ all_u_approach2 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
 #> # A tibble: 10 × 4
 #>    player                    prior_o target_o     u
 #>    <chr>                       <dbl>    <dbl> <dbl>
-#>  1 Erling Haaland               1.26    0.791 0.004
-#>  2 Amine Harit                  1.27    0.262 0.01 
-#>  3 Pierre-Emerick Aubameyang    1.07    0.606 0.01 
-#>  4 Téji Savanier                1.42    0.282 0.01 
-#>  5 Antonio Sanabria             1.05    0.386 0.014
-#>  6 Alex Baena                   1.54    0.348 0.016
-#>  7 Elye Wahi                    1.38    0.753 0.017
-#>  8 Kevin Behrens                1.39    0.673 0.019
-#>  9 Ciro Immobile                1.23    0.383 0.02 
-#> 10 Ansu Fati                    1.31    0.430 0.024
+#>  1 Pierre-Emerick Aubameyang    1.07    0.636 0.009
+#>  2 Alex Baena                   1.54    0.326 0.01 
+#>  3 Amine Harit                  1.27    0.262 0.01 
+#>  4 Erling Haaland               1.26    0.897 0.013
+#>  5 Kevin Volland                1.18    0.388 0.015
+#>  6 Antonio Sanabria             1.05    0.380 0.018
+#>  7 Kevin Behrens                1.39    0.673 0.019
+#>  8 Elye Wahi                    1.38    0.770 0.021
+#>  9 Ansu Fati                    1.31    0.430 0.024
+#> 10 M'Bala Nzola                 1.10    0.274 0.025
 ```
 
-One familiar face in the printout above is [Manchester City's striker Erling Haaland](https://fbref.com/en/players/1f44ac21/Erling-Haaland), whose underperformance this season has been called among [fans and the media](https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/). His sub-par performance this year ranked as a 7th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds.
+One familiar face in the printout above is [Manchester City's striker Erling Haaland](https://fbref.com/en/players/1f44ac21/Erling-Haaland), whose underperformance this season has been called among [fans and the media](https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/). His sub-par performance this year ranked as a 9th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds.
 
 Here are some parting thoughts on this methodology before we look at another:
 
@@ -651,14 +653,14 @@ maddison_u_approach3 <- select_gamma_o |>
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 3 output for Maddison"
-maddison_u_approach3 |> dplyr::select(player, prior_o, target_o, u)
+maddison_u_approach3 |> dplyr::select(player, prior_o, target_o, u) |> reprex_print()
 #> # A tibble: 1 × 4
-#>   player         prior_o target_o     u
+#>   player         prior_o target_o      u
 #>   <chr>            <dbl>    <dbl>  <dbl>
-#> 1 James Maddison    1.38    0.847 0.0679
+#> 1 James Maddison    1.38    0.797 0.0469
 ```
 
-We see that Maddison's 2023/24 $O_{p,\text{target}}$ ratio of 0.847 (or worse) is about a 7th percentile outcome given his prior shot history. The 7th percentile outcome estimated is about not far from the 3rd percentile outcome estimated with approach 1.
+We see that Maddison's 2023/24 $O_{p,\text{target}}$ ratio of 0.797 (or worse) is about a 5th percentile outcome given his prior shot history.
 
 To gain some intuition around this approach, we can plot out the Gamma distributed estimate of Maddison's $O_p$. The result is a histogram that looks not all that dissimilar to the one from before with resampled shots, just much smoother (since this is a "parametric" approach).
 
@@ -713,36 +715,36 @@ all_u_approach3 <- all_gamma_o |>
 
 This histogram has a bit more distortion than our resampling approach, so perhaps it's a little less calibrated.
 
-Looking at the top 10 strongest underperformers, 3 of the names here--Immobile, Savanier, and [Sanabria](https://fbref.com/en/players/0a447501/Antonio-Sanabria)--are shared with approach 2's top 10, and 7 are shared with approach 1's top 10.
+Looking at the top 10 strongest underperformers, 2 of the names here--[Volland](https://fbref.com/en/players/64f69877/Kevin-Volland) [Sanabria](https://fbref.com/en/players/0a447501/Antonio-Sanabria)--are shared with approach 2's top 10, and 7 are shared with approach 1's top 10.
 
 ```{r}
 #| label: all_u_approach3-show
 #| include: true
 #| code-fold: show
 #| code-summary: "Approach 3 output, top 10 underperforming players"
-all_u_approach3 |> head(10) |> dplyr::select(player, prior_o, target_o, u)
+all_u_approach3 |> head(10) |> dplyr::select(player, prior_o, target_o, u) |> reprex_print()
 #> # A tibble: 10 × 4
-#>    player           prior_o target_o         u
-#>    <chr>              <dbl>    <dbl>      <dbl>
-#>  1 Ciro Immobile       1.23    0.383 0.00000533
-#>  2 Téji Savanier       1.42    0.282 0.000127  
-#>  3 Giovanni Simeone    1.03    0.306 0.000248  
-#>  4 Adrien Thomasson    1.18    0.282 0.000346  
-#>  5 Wahbi Khazri        1.11    0.322 0.000604  
-#>  6 Fabián Ruiz Peña    1.67    0.510 0.00271   
-#>  7 Nabil Fekir         1.14    0.5   0.00308   
-#>  8 Kevin Volland       1.18    0.450 0.00408   
-#>  9 Antonio Sanabria    1.05    0.386 0.00877   
-#> 10 Nicolò Barella      1.11    0.417 0.0138
+#>    player           prior_o target_o        u
+#>    <chr>              <dbl>    <dbl>    <dbl>
+#>  1 Ciro Immobile       1.23    0.503 0.000238
+#>  2 Giovanni Simeone    1.03    0.306 0.000248
+#>  3 Adrien Thomasson    1.18    0.282 0.000346
+#>  4 Wahbi Khazri        1.11    0.322 0.000604
+#>  5 Kevin Volland       1.18    0.388 0.00132 
+#>  6 Nabil Fekir         1.14    0.490 0.00256 
+#>  7 Fabián Ruiz Peña    1.67    0.510 0.00271 
+#>  8 Antonio Sanabria    1.05    0.380 0.00796 
+#>  9 Téji Savanier       1.42    0.548 0.0103  
+#> 10 Jordan Veretout     1.16    0.360 0.0105
 ```
 
 We can visually check the consistency of the results from this method with the prior two with scatter plots of the estimated underperforming unlikeliness from each.
 
 ![](all_u.png)
 
-If two of the approaches were perfectly in agreement, then each point, representing one of the 593 evaluated players, would fall along the 45-degree slope 1 line.
+If two of the approaches were perfectly in agreement, then each point, representing one of the 602 evaluated players, would fall along the 45-degree slope 1 line.
 
-With that in mind, we can see that approach 3 is slightly more **precise** in relation to approach 1, but approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.
+With that in mind, we can see that approach 3 is more **precise** agrees with approach 1, although approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.
 
 Stepping back from the results, what can we say about the principles of the methodology?
 
@@ -754,13 +756,17 @@ Stepping back from the results, what can we say about the principles of the meth
 
 Here's a summary of the biggest pros and cons of each approach, along with the result for Maddison.
 
-| Approach | Description                            | Biggest Pro    | Biggest Con                                    | Maddison 2023/24 Underperformance Unlikeliness |
-|----------|----------------------------------------|----------------|------------------------------------------------|------------------------------------------------|
-| 1        | Percentile Ranking                     | customizable   | sensitive to the choice of players to evaluate | 3rd percentile                                 |
-| 2        | Resampling                             | non-parametric | limited by player's shot history               | 16th percentile                                |
-| 3        | Cumulative Distribution Function (CDF) | flexible       | sensitive to choice of distribution parameters | 7th percentile                                 |
+| Approach | Description                            | Biggest Pro      | Biggest Con                                    | Maddison 2023/24 Underperformance Unlikeliness |
+|----------|----------------------------------------|------------------|------------------------------------------------|------------------------------------------------|
+| 1        | Percentile Ranking                     | customizable     | sensitive to the choice of players to evaluate | 2nd percentile                                 |
+| 2        | Resampling                             | non-parametric   | limited by player's shot history               | 11th percentile                                |
+| 3        | Cumulative Distribution Function (CDF) | flexibility[^10] | sensitive to choice of distribution parameters | 5th percentile                                 |
+
+[^10]: Well, it's "flexible" to the extent that a statistical distribution can be flexible.
 
 I personally prefer either the second or third approach. In practice, perhaps the best thing to do is take an ensemble average of each approach, as they each have their pros and cons.
+
+Can these approaches be applied to teams or managers to understand the unlikeliness of their season-long outcomes? I'd say "yes" for the resampling approach--the non-parametric nature of resampling makes it easy to translate to other "levels of aggregation", i.e. a set of players under a manager or playing as a team.
 
 # Appendix
 
@@ -810,7 +816,7 @@ u_approach0 |>
 #> # A tibble: 1 × 4
 #>   player         prior_o target_o      u
 #>   <chr>            <dbl>    <dbl>  <dbl>
-#> 1 James Maddison    1.38    0.847 0.0707
+#> 1 James Maddison    1.38    0.797 0.0707
 ```
 
 In reality, this isn't giving us a percentage of unlikelihood of the outcome. Rather, the p-value measures the probability of underformance as extreme as the underperformance observed in 2023/24 if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player's actual $O_p$ ratio in the 2023/24 season and the distribution of outperformance ratios observed in previous seasons.

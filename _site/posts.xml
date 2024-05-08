@@ -56,7 +56,7 @@ font-style: inherit;">season_end_year =</span> SEASON_END_YEARS</span>
 <span id="cb1-6">)</span>
 <span id="cb1-7"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; → Data last updated 2024-04-25 17:52:47 UTC</span></span>
+font-style: inherit;">#&gt; → Data last updated 2024-05-07 17:52:59 UTC</span></span>
 <span id="cb1-8"></span>
 <span id="cb1-9">np_shots <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -109,6 +109,9 @@ background-color: null;
 font-style: inherit;">season_end_year =</span> Season_End_Year,</span>
 <span id="cb1-16">    <span class="at" style="color: #657422;
 background-color: null;
+font-style: inherit;">team =</span> Squad,</span>
+<span id="cb1-17">    <span class="at" style="color: #657422;
+background-color: null;
 font-style: inherit;">player_id =</span> Player_Href <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
@@ -118,17 +121,17 @@ background-color: null;
 font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">basename</span>(),</span>
-<span id="cb1-17">    <span class="at" style="color: #657422;
+<span id="cb1-18">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">player =</span> Player,</span>
-<span id="cb1-18">    <span class="at" style="color: #657422;
+<span id="cb1-19">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">match_date =</span> lubridate<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ymd</span>(Date),</span>
-<span id="cb1-19">    <span class="at" style="color: #657422;
+<span id="cb1-20">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">match_id =</span> MatchURL <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -139,10 +142,10 @@ background-color: null;
 font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">basename</span>(),</span>
-<span id="cb1-20">    <span class="at" style="color: #657422;
+<span id="cb1-21">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">minute =</span> Minute,</span>
-<span id="cb1-21">    <span class="at" style="color: #657422;
+<span id="cb1-22">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">g =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -151,18 +154,18 @@ background-color: null;
 font-style: inherit;">==</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'Goal'</span>),</span>
-<span id="cb1-22">    <span class="at" style="color: #657422;
+<span id="cb1-23">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">xg =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">as.double</span>(xG)</span>
-<span id="cb1-23">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb1-24">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-24">  <span class="do" style="color: #5E5E5E;
+<span id="cb1-25">  <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## A handful of scored shots with empty xG</span></span>
-<span id="cb1-25">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-26">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -173,41 +176,41 @@ background-color: null;
 font-style: inherit;">is.na</span>(xg)) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-26">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-27">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">arrange</span>(season_end_year, player_id, match_date, minute)</span>
-<span id="cb1-27"></span>
-<span id="cb1-28"><span class="do" style="color: #5E5E5E;
-background-color: null;
-font-style: italic;">## Use the more commonly used name when a player ID is mapped to multiple names</span></span>
+<span id="cb1-28"></span>
 <span id="cb1-29"><span class="do" style="color: #5E5E5E;
 background-color: null;
-font-style: italic;">##   (This "bug" happens because worldfootballR doesn't go back and re-scrape data</span></span>
+font-style: italic;">## Use the more commonly used name when a player ID is mapped to multiple names</span></span>
 <span id="cb1-30"><span class="do" style="color: #5E5E5E;
 background-color: null;
+font-style: italic;">##   (This "bug" happens because worldfootballR doesn't go back and re-scrape data</span></span>
+<span id="cb1-31"><span class="do" style="color: #5E5E5E;
+background-color: null;
 font-style: italic;">##   when fbref makes a name update.)</span></span>
-<span id="cb1-31">player_name_mapping <span class="ot" style="color: #003B4F;
+<span id="cb1-32">player_name_mapping <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> np_shots <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-32">  dplyr<span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
-background-color: null;
-font-style: inherit;">count</span>(player_id, player) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
 <span id="cb1-33">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">group_by</span>(player_id) <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">count</span>(player_id, player) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
 <span id="cb1-34">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">group_by</span>(player_id) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
+<span id="cb1-35">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -222,81 +225,81 @@ background-color: null;
 font-style: inherit;">FALSE</span>) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-35">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-36">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ungroup</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-36">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-37">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">distinct</span>(player_id, player)</span>
-<span id="cb1-37"></span>
-<span id="cb1-38">player_season_np_shots <span class="ot" style="color: #003B4F;
+<span id="cb1-38"></span>
+<span id="cb1-39">player_season_np_shots <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> np_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-39">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-40">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">summarize</span>(</span>
-<span id="cb1-40">    <span class="at" style="color: #657422;
+<span id="cb1-41">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">.by =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">c</span>(player_id, season_end_year), </span>
-<span id="cb1-41">    <span class="at" style="color: #657422;
+<span id="cb1-42">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">shots =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">n</span>(),</span>
-<span id="cb1-42">    dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-43">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">across</span>(<span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">c</span>(g, xg), sum)</span>
-<span id="cb1-43">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb1-44">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-44">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-45">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(</span>
-<span id="cb1-45">    <span class="at" style="color: #657422;
+<span id="cb1-46">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">o =</span> g <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">/</span> xg</span>
-<span id="cb1-46">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb1-47">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-47">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-48">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">left_join</span>(</span>
-<span id="cb1-48">    player_name_mapping,</span>
-<span id="cb1-49">    <span class="at" style="color: #657422;
+<span id="cb1-49">    player_name_mapping,</span>
+<span id="cb1-50">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">by =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">join_by</span>(player_id)</span>
-<span id="cb1-50">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb1-51">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-51">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-52">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -305,52 +308,52 @@ background-color: null;
 font-style: inherit;">.after =</span> player_id) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> </span>
-<span id="cb1-52">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb1-53">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">arrange</span>(player_id, season_end_year)</span>
-<span id="cb1-53">player_season_np_shots</span>
-<span id="cb1-54"><span class="co" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">#&gt; # A tibble: 15,317 × 7</span></span>
+<span id="cb1-54">player_season_np_shots</span>
 <span id="cb1-55"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;    player_id player          season_end_year shots     g    xg     o</span></span>
+font-style: inherit;">#&gt; # A tibble: 15,327 × 7</span></span>
 <span id="cb1-56"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;    &lt;chr&gt;     &lt;chr&gt;                     &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
+font-style: inherit;">#&gt;    player_id player          season_end_year shots     g    xg     o</span></span>
 <span id="cb1-57"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  1 0000acda  Marco Benassi              2018    70     5  4.01 1.25 </span></span>
+font-style: inherit;">#&gt;    &lt;chr&gt;     &lt;chr&gt;                     &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;</span></span>
 <span id="cb1-58"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  2 0000acda  Marco Benassi              2019    59     7  5.61 1.25 </span></span>
+font-style: inherit;">#&gt;  1 0000acda  Marco Benassi              2018    70     5  4.01 1.25 </span></span>
 <span id="cb1-59"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  3 0000acda  Marco Benassi              2020    20     1  1.01 0.990</span></span>
+font-style: inherit;">#&gt;  2 0000acda  Marco Benassi              2019    59     7  5.61 1.25 </span></span>
 <span id="cb1-60"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  4 0000acda  Marco Benassi              2022    10     0  0.99 0    </span></span>
+font-style: inherit;">#&gt;  3 0000acda  Marco Benassi              2020    20     1  1.01 0.990</span></span>
 <span id="cb1-61"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  5 0000acda  Marco Benassi              2023    19     0  1.35 0    </span></span>
+font-style: inherit;">#&gt;  4 0000acda  Marco Benassi              2022    10     0  0.99 0    </span></span>
 <span id="cb1-62"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  6 000b3da6  Manuel Iturra              2018     2     0  0.41 0    </span></span>
+font-style: inherit;">#&gt;  5 0000acda  Marco Benassi              2023    19     0  1.35 0    </span></span>
 <span id="cb1-63"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  7 00242715  Moussa Niakhate            2018    16     0  1.43 0    </span></span>
+font-style: inherit;">#&gt;  6 000b3da6  Manuel Iturra              2018     2     0  0.41 0    </span></span>
 <span id="cb1-64"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  8 00242715  Moussa Niakhate            2019    10     1  1.5  0.667</span></span>
+font-style: inherit;">#&gt;  7 00242715  Moussa Niakhate            2018    16     0  1.43 0    </span></span>
 <span id="cb1-65"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  9 00242715  Moussa Niakhate            2020    11     1  1.02 0.980</span></span>
+font-style: inherit;">#&gt;  8 00242715  Moussa Niakhate            2019    10     1  1.5  0.667</span></span>
 <span id="cb1-66"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 10 00242715  Moussa Niakhate            2021     9     2  1.56 1.28 </span></span>
+font-style: inherit;">#&gt;  9 00242715  Moussa Niakhate            2020    11     1  1.02 0.980</span></span>
 <span id="cb1-67"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">#&gt; 10 00242715  Moussa Niakhate            2021     9     2  1.56 1.28 </span></span>
+<span id="cb1-68"><span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">#&gt; # ℹ 15,307 more rows</span></span></code></pre></div>
 </details>
@@ -396,7 +399,7 @@ background-color: null;
 font-style: inherit;">#&gt; 5 ee38d9c5  James Maddison            2023    83     9  7.12 1.26 </span></span>
 <span id="cb2-10"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 6 ee38d9c5  James Maddison            2024    49     4  4.72 0.847</span></span></code></pre></div>
+font-style: inherit;">#&gt; 6 ee38d9c5  James Maddison            2024    55     4  5.02 0.797</span></span></code></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -648,7 +651,9 @@ font-style: inherit;">|&gt;</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">select</span>(player, prior_o, target_o, u)</span>
+font-style: inherit;">select</span>(player, prior_o, target_o, u) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> </span>
 <span id="cb5-2"><span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">#&gt; # A tibble: 1 × 4</span></span>
@@ -660,10 +665,10 @@ background-color: null;
 font-style: inherit;">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;</span></span>
 <span id="cb5-5"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 1 James Maddison    1.38    0.847 0.0321</span></span></code></pre></div>
+font-style: inherit;">#&gt; 1 James Maddison    1.38    0.797 0.0233</span></span></code></pre></div>
 </details>
 </div>
-<p>This approach finds Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?O_p"> of 0.847 to be about a 3rd percentile outcome. Among the 593 players evaluated, Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?O_p"> ranks as the 20th most unlikely.</p>
+<p>This approach finds Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?O_p"> of 0.797 to be about a 2nd percentile outcome. Among the 602 players evaluated, Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?O_p"> ranks as the 15th most unlikely.</p>
 <p>For context, here’s a look at the top 10 most unlikely outcomes for the 2023/24 season.</p>
 <div class="cell">
 <details open="">
@@ -686,40 +691,40 @@ background-color: null;
 font-style: inherit;">#&gt; # A tibble: 10 × 4</span></span>
 <span id="cb6-3"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;    player             prior_o target_o       u</span></span>
+font-style: inherit;">#&gt;    player              prior_o target_o       u</span></span>
 <span id="cb6-4"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;    &lt;chr&gt;                &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;</span></span>
+font-style: inherit;">#&gt;    &lt;chr&gt;                 &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;</span></span>
 <span id="cb6-5"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  1 Ciro Immobile        1.23     0.383 0      </span></span>
+font-style: inherit;">#&gt;  1 Ciro Immobile         1.23     0.503 0      </span></span>
 <span id="cb6-6"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  2 Giovanni Simeone     1.03     0.306 0.00169</span></span>
+font-style: inherit;">#&gt;  2 Giovanni Simeone      1.03     0.306 0.00166</span></span>
 <span id="cb6-7"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  3 Nabil Fekir          1.14     0.5   0.00338</span></span>
+font-style: inherit;">#&gt;  3 Nabil Fekir           1.14     0.490 0.00333</span></span>
 <span id="cb6-8"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  4 Wahbi Khazri         1.11     0.322 0.00507</span></span>
+font-style: inherit;">#&gt;  4 Wahbi Khazri          1.11     0.322 0.00499</span></span>
 <span id="cb6-9"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  5 Téji Savanier        1.42     0.282 0.00676</span></span>
+font-style: inherit;">#&gt;  5 Kevin Volland         1.18     0.388 0.00666</span></span>
 <span id="cb6-10"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  6 Adrien Thomasson     1.18     0.282 0.00845</span></span>
+font-style: inherit;">#&gt;  6 Adrien Thomasson      1.18     0.282 0.00832</span></span>
 <span id="cb6-11"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  7 Timo Werner          0.951    0.543 0.0101 </span></span>
+font-style: inherit;">#&gt;  7 Timo Werner           0.951    0.543 0.00998</span></span>
 <span id="cb6-12"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  8 Gaëtan Laborde       1.02     0.546 0.0118 </span></span>
+font-style: inherit;">#&gt;  8 Gaëtan Laborde        1.02     0.546 0.0116 </span></span>
 <span id="cb6-13"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  9 Kevin Volland        1.18     0.450 0.0135 </span></span>
+font-style: inherit;">#&gt;  9 Fabián Ruiz Peña      1.67     0.510 0.0133 </span></span>
 <span id="cb6-14"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 10 Robert Lewandowski   1.01     0.759 0.0152 </span></span></code></pre></div>
+font-style: inherit;">#&gt; 10 Benjamin Bourigeaud   1.12     0.503 0.0150</span></span></code></pre></div>
 </details>
 </div>
 <p><a href="https://fbref.com/en/players/4431aed2/Ciro-Immobile">Ciro Immobile</a> tops the list, with several other notable attacking players who had less than stellar seasons.</p>
@@ -1035,12 +1040,12 @@ background-color: null;
 font-style: inherit;">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;</span></span>
 <span id="cb8-5"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 1 James Maddison    1.38    0.847 0.163</span></span></code></pre></div>
+font-style: inherit;">#&gt; 1 James Maddison    1.38    0.797 0.109</span></span></code></pre></div>
 </details>
 </div>
 <p>The plot below should provide a bit of visual intuition as to what’s going on.</p>
 <p><img src="https://tonyelhabr.rbind.io/posts/xg-likelihood/maddison_u_approach2.png" class="img-fluid"></p>
-<p>These results imply that Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?G%20/%20xG"> ratio of 0.847 (or worse) occurs in 16.3% of simulations, i.e.&nbsp;a 16th percentile outcome. That’s a bit higher than what the first approach showed.</p>
+<p>These results imply that Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?G%20/%20xG"> ratio of 0.797 (or worse) occurs in 10.9% of simulations, i.e.&nbsp;a 11th percentile outcome. That’s a bit higher than what the first approach showed.</p>
 <p>How can we feel more confident about this approach? Well, in the first approach, we assumed that the underperforming unlikelihood percentages should be uniform across all players, hence the percentile ranking. I think that’s a good assumption, so we should see if the same bears out with this second approach.</p>
 <p>The plot below shows a histogram of the underperforming unlikelihood across all players, where each player’s estimated unlikelihood is grouped into a decile.</p>
 <div class="cell">
@@ -1177,37 +1182,37 @@ background-color: null;
 font-style: inherit;">#&gt;    &lt;chr&gt;                       &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt;</span></span>
 <span id="cb10-5"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  1 Erling Haaland               1.26    0.791 0.004</span></span>
+font-style: inherit;">#&gt;  1 Pierre-Emerick Aubameyang    1.07    0.636 0.009</span></span>
 <span id="cb10-6"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  2 Amine Harit                  1.27    0.262 0.01 </span></span>
+font-style: inherit;">#&gt;  2 Alex Baena                   1.54    0.326 0.01 </span></span>
 <span id="cb10-7"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  3 Pierre-Emerick Aubameyang    1.07    0.606 0.01 </span></span>
+font-style: inherit;">#&gt;  3 Amine Harit                  1.27    0.262 0.01 </span></span>
 <span id="cb10-8"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  4 Téji Savanier                1.42    0.282 0.01 </span></span>
+font-style: inherit;">#&gt;  4 Erling Haaland               1.26    0.897 0.013</span></span>
 <span id="cb10-9"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  5 Antonio Sanabria             1.05    0.386 0.014</span></span>
+font-style: inherit;">#&gt;  5 Kevin Volland                1.18    0.388 0.015</span></span>
 <span id="cb10-10"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  6 Alex Baena                   1.54    0.348 0.016</span></span>
+font-style: inherit;">#&gt;  6 Antonio Sanabria             1.05    0.380 0.018</span></span>
 <span id="cb10-11"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  7 Elye Wahi                    1.38    0.753 0.017</span></span>
+font-style: inherit;">#&gt;  7 Kevin Behrens                1.39    0.673 0.019</span></span>
 <span id="cb10-12"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  8 Kevin Behrens                1.39    0.673 0.019</span></span>
+font-style: inherit;">#&gt;  8 Elye Wahi                    1.38    0.770 0.021</span></span>
 <span id="cb10-13"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  9 Ciro Immobile                1.23    0.383 0.02 </span></span>
+font-style: inherit;">#&gt;  9 Ansu Fati                    1.31    0.430 0.024</span></span>
 <span id="cb10-14"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 10 Ansu Fati                    1.31    0.430 0.024</span></span></code></pre></div>
+font-style: inherit;">#&gt; 10 M'Bala Nzola                 1.10    0.274 0.025</span></span></code></pre></div>
 </details>
 </div>
-<p>One familiar face in the printout above is <a href="https://fbref.com/en/players/1f44ac21/Erling-Haaland">Manchester City’s striker Erling Haaland</a>, whose underperformance this season has been called among <a href="https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/">fans and the media</a>. His sub-par performance this year ranked as a 7th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds.</p>
+<p>One familiar face in the printout above is <a href="https://fbref.com/en/players/1f44ac21/Erling-Haaland">Manchester City’s striker Erling Haaland</a>, whose underperformance this season has been called among <a href="https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/">fans and the media</a>. His sub-par performance this year ranked as a 9th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds.</p>
 <p>Here are some parting thoughts on this methodology before we look at another:</p>
 <ul>
 <li><strong>Assumption of Shot Profile Consistency</strong>: We assume that a player’s past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. Deviations in these contexts need to be considered when applying this methodology.</li>
@@ -1637,22 +1642,26 @@ font-style: inherit;">|&gt;</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">select</span>(player, prior_o, target_o, u)</span>
+font-style: inherit;">select</span>(player, prior_o, target_o, u) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reprex_print</span>()</span>
 <span id="cb12-2"><span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">#&gt; # A tibble: 1 × 4</span></span>
 <span id="cb12-3"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;   player         prior_o target_o     u</span></span>
+font-style: inherit;">#&gt;   player         prior_o target_o      u</span></span>
 <span id="cb12-4"><span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;</span></span>
 <span id="cb12-5"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 1 James Maddison    1.38    0.847 0.0679</span></span></code></pre></div>
+font-style: inherit;">#&gt; 1 James Maddison    1.38    0.797 0.0469</span></span></code></pre></div>
 </details>
 </div>
-<p>We see that Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> ratio of 0.847 (or worse) is about a 7th percentile outcome given his prior shot history. The 7th percentile outcome estimated is about not far from the 3rd percentile outcome estimated with approach 1.</p>
+<p>We see that Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> ratio of 0.797 (or worse) is about a 5th percentile outcome given his prior shot history.</p>
 <p>To gain some intuition around this approach, we can plot out the Gamma distributed estimate of Maddison’s <img src="https://latex.codecogs.com/png.latex?O_p">. The result is a histogram that looks not all that dissimilar to the one from before with resampled shots, just much smoother (since this is a “parametric” approach).</p>
 <p><img src="https://tonyelhabr.rbind.io/posts/xg-likelihood/maddison_u_approach3.png" class="img-fluid"></p>
 <p>As with approach 2, we should check to see what the distribution of underperforming unlikeliness looks like–we should expect to see a somewhat uniform distribution.</p>
@@ -1785,7 +1794,7 @@ font-style: inherit;">arrange</span>(u)</span></code></pre></div>
 </div>
 <p><img src="https://tonyelhabr.rbind.io/posts/xg-likelihood/all_u_approach3.png" class="img-fluid"></p>
 <p>This histogram has a bit more distortion than our resampling approach, so perhaps it’s a little less calibrated.</p>
-<p>Looking at the top 10 strongest underperformers, 3 of the names here–Immobile, Savanier, and <a href="https://fbref.com/en/players/0a447501/Antonio-Sanabria">Sanabria</a>–are shared with approach 2’s top 10, and 7 are shared with approach 1’s top 10.</p>
+<p>Looking at the top 10 strongest underperformers, 2 of the names here–<a href="https://fbref.com/en/players/64f69877/Kevin-Volland">Volland</a> <a href="https://fbref.com/en/players/0a447501/Antonio-Sanabria">Sanabria</a>–are shared with approach 2’s top 10, and 7 are shared with approach 1’s top 10.</p>
 <div class="cell">
 <details open="">
 <summary>Approach 3 output, top 10 underperforming players</summary>
@@ -1801,52 +1810,56 @@ font-style: inherit;">|&gt;</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">select</span>(player, prior_o, target_o, u)</span>
+font-style: inherit;">select</span>(player, prior_o, target_o, u) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">reprex_print</span>()</span>
 <span id="cb14-2"><span class="co" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">#&gt; # A tibble: 10 × 4</span></span>
 <span id="cb14-3"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;    player           prior_o target_o         u</span></span>
+font-style: inherit;">#&gt;    player           prior_o target_o        u</span></span>
 <span id="cb14-4"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;    &lt;chr&gt;              &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;</span></span>
+font-style: inherit;">#&gt;    &lt;chr&gt;              &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;</span></span>
 <span id="cb14-5"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  1 Ciro Immobile       1.23    0.383 0.00000533</span></span>
+font-style: inherit;">#&gt;  1 Ciro Immobile       1.23    0.503 0.000238</span></span>
 <span id="cb14-6"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  2 Téji Savanier       1.42    0.282 0.000127  </span></span>
+font-style: inherit;">#&gt;  2 Giovanni Simeone    1.03    0.306 0.000248</span></span>
 <span id="cb14-7"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  3 Giovanni Simeone    1.03    0.306 0.000248  </span></span>
+font-style: inherit;">#&gt;  3 Adrien Thomasson    1.18    0.282 0.000346</span></span>
 <span id="cb14-8"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  4 Adrien Thomasson    1.18    0.282 0.000346  </span></span>
+font-style: inherit;">#&gt;  4 Wahbi Khazri        1.11    0.322 0.000604</span></span>
 <span id="cb14-9"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  5 Wahbi Khazri        1.11    0.322 0.000604  </span></span>
+font-style: inherit;">#&gt;  5 Kevin Volland       1.18    0.388 0.00132 </span></span>
 <span id="cb14-10"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  6 Fabián Ruiz Peña    1.67    0.510 0.00271   </span></span>
+font-style: inherit;">#&gt;  6 Nabil Fekir         1.14    0.490 0.00256 </span></span>
 <span id="cb14-11"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  7 Nabil Fekir         1.14    0.5   0.00308   </span></span>
+font-style: inherit;">#&gt;  7 Fabián Ruiz Peña    1.67    0.510 0.00271 </span></span>
 <span id="cb14-12"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  8 Kevin Volland       1.18    0.450 0.00408   </span></span>
+font-style: inherit;">#&gt;  8 Antonio Sanabria    1.05    0.380 0.00796 </span></span>
 <span id="cb14-13"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt;  9 Antonio Sanabria    1.05    0.386 0.00877   </span></span>
+font-style: inherit;">#&gt;  9 Téji Savanier       1.42    0.548 0.0103  </span></span>
 <span id="cb14-14"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 10 Nicolò Barella      1.11    0.417 0.0138</span></span></code></pre></div>
+font-style: inherit;">#&gt; 10 Jordan Veretout     1.16    0.360 0.0105</span></span></code></pre></div>
 </details>
 </div>
 <p>We can visually check the consistency of the results from this method with the prior two with scatter plots of the estimated underperforming unlikeliness from each.</p>
 <p><img src="https://tonyelhabr.rbind.io/posts/xg-likelihood/all_u.png" class="img-fluid"></p>
-<p>If two of the approaches were perfectly in agreement, then each point, representing one of the 593 evaluated players, would fall along the 45-degree slope 1 line.</p>
-<p>With that in mind, we can see that approach 3 is slightly more <strong>precise</strong> in relation to approach 1, but approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.</p>
+<p>If two of the approaches were perfectly in agreement, then each point, representing one of the 602 evaluated players, would fall along the 45-degree slope 1 line.</p>
+<p>With that in mind, we can see that approach 3 is more <strong>precise</strong> agrees with approach 1, although approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.</p>
 <p>Stepping back from the results, what can we say about the principles of the methodology?</p>
 <ul>
 <li><strong>Parametric Nature</strong>: The reliance on a Gamma distribution for modeling a player’s performance is both a strength and a limitation. The Gamma distribution is apt for positive, skewed continuous variables, making it suitable for modeling goals-to-xG ratios. However, the dependency on a single distribution type may restrict the scope of analysis.</li>
@@ -1863,7 +1876,7 @@ font-style: inherit;">#&gt; 10 Nicolò Barella      1.11    0.417 0.0138</span><
 <colgroup>
 <col style="width: 6%">
 <col style="width: 24%">
-<col style="width: 9%">
+<col style="width: 10%">
 <col style="width: 29%">
 <col style="width: 29%">
 </colgroup>
@@ -1882,25 +1895,26 @@ font-style: inherit;">#&gt; 10 Nicolò Barella      1.11    0.417 0.0138</span><
 <td>Percentile Ranking</td>
 <td>customizable</td>
 <td>sensitive to the choice of players to evaluate</td>
-<td>3rd percentile</td>
+<td>2nd percentile</td>
 </tr>
 <tr class="even">
 <td>2</td>
 <td>Resampling</td>
 <td>non-parametric</td>
 <td>limited by player’s shot history</td>
-<td>16th percentile</td>
+<td>11th percentile</td>
 </tr>
 <tr class="odd">
 <td>3</td>
 <td>Cumulative Distribution Function (CDF)</td>
-<td>flexible</td>
+<td>flexibility<sup>10</sup></td>
 <td>sensitive to choice of distribution parameters</td>
-<td>7th percentile</td>
+<td>5th percentile</td>
 </tr>
 </tbody>
 </table>
 <p>I personally prefer either the second or third approach. In practice, perhaps the best thing to do is take an ensemble average of each approach, as they each have their pros and cons.</p>
+<p>Can these approaches be applied to teams or managers to understand the unlikeliness of their season-long outcomes? I’d say “yes” for the resampling approach–the non-parametric nature of resampling makes it easy to translate to other “levels of aggregation”, i.e.&nbsp;a set of players under a manager or playing as a team.</p>
 </section>
 <section id="appendix" class="level1">
 <h1>Appendix</h1>
@@ -2093,7 +2107,7 @@ background-color: null;
 font-style: inherit;">#&gt;   &lt;chr&gt;            &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;</span></span>
 <span id="cb16-7"><span class="co" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">#&gt; 1 James Maddison    1.38    0.847 0.0707</span></span></code></pre></div>
+font-style: inherit;">#&gt; 1 James Maddison    1.38    0.797 0.0707</span></span></code></pre></div>
 </details>
 </div>
 <p>In reality, this isn’t giving us a percentage of unlikelihood of the outcome. Rather, the p-value measures the probability of underformance as extreme as the underperformance observed in 2023/24 if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player’s actual <img src="https://latex.codecogs.com/png.latex?O_p"> ratio in the 2023/24 season and the distribution of outperformance ratios observed in previous seasons.</p>
@@ -2123,13 +2137,14 @@ No matching items
 <li id="fn7"><p>Sampling without replacement is also reasonable. However, some players wouldn’t have enough shots from prior seasons to match their volume of shots in 2023/24.↩︎</p></li>
 <li id="fn8"><p><img src="https://latex.codecogs.com/png.latex?N_p"> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <img src="https://latex.codecogs.com/png.latex?R"> should be set to some fairly large number, so as to achieve stability in the results.↩︎</p></li>
 <li id="fn9"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <img src="https://latex.codecogs.com/png.latex?r%5E+"> the outperformance ratio of the resampled shots is greater than <img src="https://latex.codecogs.com/png.latex?O_%7Bp,%5Ctext%7Btarget%7D%7D"> and calculate the proportion <img src="https://latex.codecogs.com/png.latex?U%5E+_p%20=%20%5Cfrac%7Br%5E+%7D%7BR%7D">.↩︎</p></li>
+<li id="fn10"><p>Well, it’s “flexible” to the extent that a statistical distribution can be flexible.↩︎</p></li>
 </ol>
 </section></div> ]]></description>
   <category>r</category>
   <category>soccer</category>
   <guid>https://tonyelhabr.rbind.io/posts/xg-likelihood/index.html</guid>
   <pubDate>Sun, 05 May 2024 05:00:00 GMT</pubDate>
-  <media:content url="https://tonyelhabr.rbind.io/posts/xg-likelihood/maddison_u_approach3.png" medium="image" type="image/png" height="96" width="144"/>
+  <media:content url="https://tonyelhabr.rbind.io/posts/xg-likelihood/maddison_u_approach2.png" medium="image" type="image/png" height="96" width="144"/>
 </item>
 <item>
   <title>Ball Progression is All You Need</title>

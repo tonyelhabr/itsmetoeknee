@@ -8,7 +8,7 @@ TAG_LABEL <- htmltools::tagList(
   htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
   htmltools::tags$span("@TonyElHabr"),
 )
-CAPTION_LABEL <- '**Data**: Opta via fbref. Updated through 2024-04-25.'
+CAPTION_LABEL <- '**Data**: Opta via fbref. Updated through 2024-05-07.'
 # SUBTITLE_LABEL <- 'Big 5 Leagues, 2017/18 - 2022/23'
 PLOT_RESOLUTION <- 300
 WHITISH_FOREGROUND_COLOR <- 'white'
@@ -115,9 +115,9 @@ raw_o_plot <- all_players_to_evaluate |>
   ggplot2::geom_curve(
     data = tibble::tibble(
       x = c(0.57, 1.53),
-      xend = c(0.83, 1.39),
+      xend = c(0.78, 1.39),
       y = c(78, 60),
-      yend = c(65, 40),
+      yend = c(55, 40),
       group = c('2023/24 ("target")', '2018/19 - 2023/24 ("prior")')
     ),
     ggplot2::aes(
@@ -246,8 +246,8 @@ maddison_u_approach2_plot <- maddison_resampled_o |>
     geom = 'curve',
     x = 2.4,
     y = 35,
-    xend = 0.8,
-    yend = 29,
+    xend = 0.75,
+    yend = 25,
     arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
     linewidth = 0.5,
     curvature = 0.25,
@@ -317,8 +317,8 @@ all_u_approach2_plot <- all_u_approach2 |>
     geom = 'curve',
     x = 0.24,
     y = 70,
-    xend = 0.16,
-    yend = 50,
+    xend = 0.11,
+    yend = 55,
     arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
     linewidth = 0.5,
     curvature = 0.25,
@@ -472,8 +472,8 @@ maddison_u_approach3_plot <- maddison_u_approach3_samples |>
     geom = 'curve',
     x = 1.55,
     y = 550,
-    xend = 0.83,
-    yend = 240,
+    xend = 0.75,
+    yend = 180,
     arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
     linewidth = 0.5,
     curvature = 0.25,
@@ -536,7 +536,7 @@ all_u_approach3_plot <- all_u_approach3 |>
     geom = 'curve',
     x = 0.18,
     y = 70,
-    xend = 0.08,
+    xend = 0.05,
     yend = 55,
     arrow = grid::arrow(length = grid::unit(3, 'pt'), type = 'closed'),
     linewidth = 0.5,
