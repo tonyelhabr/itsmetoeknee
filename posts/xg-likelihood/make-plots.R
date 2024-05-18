@@ -236,7 +236,7 @@ maddison_u_approach2_plot <- maddison_resampled_o |>
     y = 40,
     hjust = 0,
     vjust = 1,
-    label = glue::glue("An outperformance ratio of {scales::number(maddison_u_approach2$target_o, accuracy = 0.001)}\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_u_approach2$u, accuracy = 1)} of {scales::number(R, scale = 1e-3, suffix = 'k')}\nsimulations."),
+    label = glue::glue("An outperformance ratio of 0.797\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_u_approach2$u, accuracy = 1)} of {scales::number(R, scale = 1e-3, suffix = 'k')}\nsimulations."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
