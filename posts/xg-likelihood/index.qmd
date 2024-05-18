@@ -18,29 +18,29 @@ execute:
 
 # Introduction
 
-Towards the end of each soccer season, we naturally start to look back at player stats, often looking to see who has performed worse compared to their past seasons. We may have different motivations for doing so--e.g. we may be trying to attribute team under-performance to individuals, we may be hypothesizing who is likely to be transferred or resigned, etc.
+Towards the end of each soccer season, we naturally start to look back at player stats, often looking to see who has performed worse compared to their past seasons. We may have different motivations for doing so--we may be trying to attribute team under-performance to individuals, we may be hypothesizing who is likely to be transferred, etc.
 
-It's not uncommon to ask "How unlikely was their shooting performance this season?" when looking at a player who has scored less than goals than expected.[^1] For instance, if a striker only scores 9 goals on 12 [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/), their "underperformance" of 3 goals jumps off the page.
+It's not uncommon to ask "How unlikely was their shooting performance this season?" when looking at a player who has scored fewer goals than expected.[^1] For instance, if a striker only scores 8 goals on 12 [expected goals (xG)](https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/), their "underperformance" of 4 goals is stark, especially if they had scored more goals than their xG in prior seasons.
 
 [^1]: I only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.
 
 The ["Outperformance" ($O_p$) ratio](/posts/xg-ratio-empirical-bayes/)--the ratio of a player $p$'s goals $G_p$ to expected goals $xG_p$--is a common way of evaluating a player's shooting performance.[^2]
 
-[^2]: The raw difference between goals and xG is a reasonable measure of shooting performance, but it can "hide" shot volume. Is it fair to compare a player who takes 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. But $O_p$, as defined here, would be 1.2 and 3 respectively, hinting at the former player's small sample size.
+[^2]: The raw difference between goals and xG is a reasonable measure of shooting performance, but it can "hide" shot volume. Is it fair to compare a player who takes 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. However, their $O_p$ would be 1.2 and 3 respectively, hinting at the former player's small sample size.
 
 $$
 O_p = \frac{G_p}{xG_p}
 $$
 
-An $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with $O_p = \frac{8}{12} = 0.67$.
+An $O_p$ ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates overperformance; and a ratio less than 1 indicates underperformance Our hypothetical player underperformed with $O_p = \frac{8}{12} = 0.67$.
 
-In most cases, we have prior seasons of data to use when evaluating a player's $O_p$ ratio for a given season. For example, let's say our hypothetical player scored 14 goals on 10 xG ($O_p = 1.4$) in the season prior, and 12 goals on 8 xG ($O_p = 1.5$) before that. A $O_p = 0.75$ after those seasons seems fairly unlikely, especially compared to an "average" player who theoretically achieves $O_p = 1$ ratio every year.
+In most cases, we have prior seasons of data to use when evaluating a player's $O_p$ ratio for a given season. For example, let's say our hypothetical player scored 14 goals on 10 xG ($O_p = 1.4$) in the season prior, and 12 goals on 8 xG ($O_p = 1.5$) before that. A $O_p = 0.67$ after those seasons seems fairly unlikely, especially compared to an "average" player who theoretically achieves $O_p = 1$ ratio every year.
 
-So how do we put a number on the unlikeliness of that $O_p = 0.75$ for our hypothetical player, accounting for their prior season-long performances?
+So how do we put a number on the unlikeliness of that $O_p = 0.67$ for our hypothetical player, accounting for their prior season-long performances?
 
 ### Data
 
-I'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 2023/24 seasons of the [the Big Five European soccer leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), updated through April 25. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.
+I'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 2023/24 seasons of the [the Big Five European soccer leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), updated through May 7. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.
 
 ```{r}
 #| label: setup
@@ -230,8 +230,6 @@ I'll present 3 approaches to quantifying the "unlikelihood" of a player "underpe
 
 ![](raw_o.png)
 
-I'll discuss some of the strengths and weaknesses of each approach as we go along, then summarize the findings in the end.
-
 ### Approach 1: Weighted Percentile Rank
 
 The first approach I'll present is a handcrafted "ranking" method.
@@ -244,7 +242,7 @@ $$
 
 2.  Weight $\delta O^w_p$ by the player's $xG_p$ accumulated in prior seasons.[^4]
 
-[^4]: The weighting here is to reflect the intuition that players who have taken a lot of shots in the past and have an uncharacteristic season are shown as more unlikely than a player with only one prior season of shots, who happens to have a very different goals-to-expected goals ratio in the latter season.
+[^4]: The weighting emphasizes scenarios where a veteran player, typically overperforming or at worst neutral, suddenly underperforms, as opposed to a second-year player experiencing similar downturns.
 
 $$
 \delta O^w_p = \delta O_p * xG_p
@@ -330,14 +328,12 @@ There's only so much you can do with player-season-level data. We need to dive i
 
 Here's a "resampling" approach to quantify the underperforming unlikeliness $U^-_p$ of a player in the target season:
 
-1.  Sample $N_{p,\text{target}}$ shots (with replacement[^7]) from a player's past shots $S_{p,\text{target}'}$. Repeat this for $R$ resamples.[^8]
-2.  Count the number of resamples $r^-$ in which the outperformance ratio $\hat{O}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $O_{p,\text{target}}$ in the target season for the player.[^9] The proportion $U^-_p = \frac{r^-}{R}$ represents the unlikeness of a given player's observed $O_{p,\text{target}}$ (or worse) in the target season.
+1.  Sample $N_{p,\text{target}}$ shots from a player's past shots $S_{p,\text{target}'}$. Repeat this for $R$ resamples.[^7]
+2.  Count the number of resamples $r^-$ in which the outperformance ratio $\hat{O}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $O_{p,\text{target}}$ in the target season for the player.[^8] The proportion $U^-_p = \frac{r^-}{R}$ represents the unlikeness of a given player's observed $O_{p,\text{target}}$ (or worse) in the target season.
 
-[^7]: Sampling without replacement is also reasonable. However, some players wouldn't have enough shots from prior seasons to match their volume of shots in 2023/24.
+[^7]: $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $R$ should be set to some fairly large number, so as to achieve stability in the results.
 
-[^8]: $N_p$ should be set equal to the number of shots a player has taken in the target season, i.e. 2023/24 here. $R$ should be set to some fairly large number, so as to achieve stability in the results.
-
-[^9]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $r^+$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $U^+_p = \frac{r^+}{R}$.
+[^8]: Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations $r^+$ the outperformance ratio of the resampled shots is greater than $O_{p,\text{target}}$ and calculate the proportion $U^+_p = \frac{r^+}{R}$.
 
 Here's how that looks in code.
 
@@ -442,7 +438,7 @@ The plot below should provide a bit of visual intuition as to what's going on.
 
 These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.797 (or worse) occurs in 10.9% of simulations, i.e. a 11th percentile outcome. That's a bit higher than what the first approach showed.
 
-How can we feel more confident about this approach? Well, in the first approach, we assumed that the underperforming unlikelihood percentages should be uniform across all players, hence the percentile ranking. I think that's a good assumption, so we should see if the same bears out with this second approach.
+How can we feel confident about this approach? Well, in the first approach, we assumed that the underperforming unlikelihood percentages should be uniform across all players, hence the percentile ranking. I think that's a good assumption, so we should see if the same bears out with this second approach.
 
 The plot below shows a histogram of the underperforming unlikelihood across all players, where each player's estimated unlikelihood is grouped into a decile.
 
@@ -521,7 +517,7 @@ One familiar face in the printout above is [Manchester City's striker Erling Haa
 
 Here are some parting thoughts on this methodology before we look at another:
 
--   **Assumption of Shot Profile Consistency**: We assume that a player's past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. Deviations in these contexts need to be considered when applying this methodology.
+-   **Assumption of Shot Profile Consistency**: We assume that a player's past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. But there are other exceptions as well. For example, Haaland has taken a lot more headed shots this season, despite playing effectively the same role on mostly the same team from last season The change in Haaland's shot profile this year conflicts with the assumption of a consistent shot profile, perhaps explaining why this resampling approach finds Haaland's shooting performance to be more unlikely the percentile ranking approach.
 -   **Non-Parametric Nature**: This method does not assume any specific distribution for a player’s performance ratios; instead, it relies on the stability of a player's performance over time. The resampling process itself shapes the outcome distribution, which can vary significantly between players with different shooting behaviors, such as a forward versus a defender.
 -   **Computational Demands**: The resampling approach requires relatively more computational resources than the prior approach, especially without parallel processing. Even a relatively small number of resamples, such as $R=1000$, can take a few second per player to compute.
 
@@ -756,17 +752,27 @@ Stepping back from the results, what can we say about the principles of the meth
 
 Here's a summary of the biggest pros and cons of each approach, along with the result for Maddison.
 
-| Approach | Description                            | Biggest Pro      | Biggest Con                                    | Maddison 2023/24 Underperformance Unlikeliness |
-|----------|----------------------------------------|------------------|------------------------------------------------|------------------------------------------------|
-| 1        | Percentile Ranking                     | customizable     | sensitive to the choice of players to evaluate | 2nd percentile                                 |
-| 2        | Resampling                             | non-parametric   | limited by player's shot history               | 11th percentile                                |
-| 3        | Cumulative Distribution Function (CDF) | flexibility[^10] | sensitive to choice of distribution parameters | 5th percentile                                 |
+| Approach | Description                            | Biggest Pro     | Biggest Con                                    | Maddison 2023/24 Underperformance Unlikeliness |
+|----------|----------------------------------------|-----------------|------------------------------------------------|------------------------------------------------|
+| 1        | Percentile Ranking                     | customizable    | sensitive to the choice of players to evaluate | 2nd percentile                                 |
+| 2        | Resampling                             | non-parametric  | limited by player's shot history               | 11th percentile                                |
+| 3        | Cumulative Distribution Function (CDF) | flexibility[^9] | sensitive to choice of distribution parameters | 5th percentile                                 |
 
-[^10]: Well, it's "flexible" to the extent that a statistical distribution can be flexible.
+[^9]: Well, it's "flexible" to the extent that a statistical distribution can be flexible.
 
 I personally prefer either the second or third approach. In practice, perhaps the best thing to do is take an ensemble average of each approach, as they each have their pros and cons.
 
-Can these approaches be applied to teams or managers to understand the unlikeliness of their season-long outcomes? I'd say "yes" for the resampling approach--the non-parametric nature of resampling makes it easy to translate to other "levels of aggregation", i.e. a set of players under a manager or playing as a team.
+## Potential Future Research
+
+1.  **Can these approaches be applied to teams or managers to understand the unlikeliness of their season-long outcomes?**
+
+I think the answer is "yes", for the resampling approach. The non-parametric nature of resampling makes it easy to translate to other "levels of aggregation", i.e. a set of players under a manager or playing as a team.
+
+2.  **Can we accurately attribute a percentage of underperformance to skill and luck?**
+
+Eh, I don't know about "accurately", especially at the player-level.The [R-squared](https://en.wikipedia.org/wiki/Coefficient_of_determination) of [year-over-year player-level G / xG ratios is nearly zero](https://www.americansocceranalysis.com/home/2023/8/28/the-replication-project-measuring-shooting-overperformance). If we equate "skill" to "percent of variance explained in year-over-year correlations of a measure (i.e. G / xG)", then I suppose the answer is that basically 0% of seasonal over- or under-performance is due to innate factors; rather, we'd attribute all variation to "luck" (assuming that their "skill" and "luck" are the only factors that can explain residuals). That's not all that compelling, although it may be the reality.
+
+[My prior work on "meta-metrics" for soccer](/posts/soccer-meta-analytics/) perhaps has a more compelling answer. The "stability" measure defined in that post for $G / xG$ comes out to about 70% (out of 100%).
 
 # Appendix
 

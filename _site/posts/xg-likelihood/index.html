@@ -224,7 +224,10 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
   <li><a href="#approach-3-evaluating-a-player-specific-cumulative-distribution-function-cdf" id="toc-approach-3-evaluating-a-player-specific-cumulative-distribution-function-cdf" class="nav-link" data-scroll-target="#approach-3-evaluating-a-player-specific-cumulative-distribution-function-cdf">Approach 3: Evaluating a Player-Specific Cumulative Distribution Function (CDF)</a></li>
   </ul></li>
   </ul></li>
-  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a>
+  <ul>
+  <li><a href="#potential-future-research" id="toc-potential-future-research" class="nav-link" data-scroll-target="#potential-future-research">Potential Future Research</a></li>
+  </ul></li>
   <li><a href="#appendix" id="toc-appendix" class="nav-link" data-scroll-target="#appendix">Appendix</a>
   <ul>
   <li><a href="#approach-0-t-test" id="toc-approach-0-t-test" class="nav-link" data-scroll-target="#approach-0-t-test">Approach 0: <span class="math inline">\(t\)</span>-test</a></li>
@@ -285,18 +288,18 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 
 <section id="introduction" class="level1">
 <h1>Introduction</h1>
-<p>Towards the end of each soccer season, we naturally start to look back at player stats, often looking to see who has performed worse compared to their past seasons. We may have different motivations for doing so–e.g.&nbsp;we may be trying to attribute team under-performance to individuals, we may be hypothesizing who is likely to be transferred or resigned, etc.</p>
-<p>It’s not uncommon to ask “How unlikely was their shooting performance this season?” when looking at a player who has scored less than goals than expected.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> For instance, if a striker only scores 9 goals on 12 <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a>, their “underperformance” of 3 goals jumps off the page.</p>
+<p>Towards the end of each soccer season, we naturally start to look back at player stats, often looking to see who has performed worse compared to their past seasons. We may have different motivations for doing so–we may be trying to attribute team under-performance to individuals, we may be hypothesizing who is likely to be transferred, etc.</p>
+<p>It’s not uncommon to ask “How unlikely was their shooting performance this season?” when looking at a player who has scored fewer goals than expected.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> For instance, if a striker only scores 8 goals on 12 <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a>, their “underperformance” of 4 goals is stark, especially if they had scored more goals than their xG in prior seasons.</p>
 <p>The <a href="../../posts/xg-ratio-empirical-bayes/">“Outperformance” (<span class="math inline">\(O_p\)</span>) ratio</a>–the ratio of a player <span class="math inline">\(p\)</span>’s goals <span class="math inline">\(G_p\)</span> to expected goals <span class="math inline">\(xG_p\)</span>–is a common way of evaluating a player’s shooting performance.<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a></p>
 <p><span class="math display">\[
 O_p = \frac{G_p}{xG_p}
 \]</span></p>
-<p>An <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates underperformance; and a ratio less than 1 indicates overperformance. Our hypothetical player underperformed with <span class="math inline">\(O_p = \frac{8}{12} = 0.67\)</span>.</p>
-<p>In most cases, we have prior seasons of data to use when evaluating a player’s <span class="math inline">\(O_p\)</span> ratio for a given season. For example, let’s say our hypothetical player scored 14 goals on 10 xG (<span class="math inline">\(O_p = 1.4\)</span>) in the season prior, and 12 goals on 8 xG (<span class="math inline">\(O_p = 1.5\)</span>) before that. A <span class="math inline">\(O_p = 0.75\)</span> after those seasons seems fairly unlikely, especially compared to an “average” player who theoretically achieves <span class="math inline">\(O_p = 1\)</span> ratio every year.</p>
-<p>So how do we put a number on the unlikeliness of that <span class="math inline">\(O_p = 0.75\)</span> for our hypothetical player, accounting for their prior season-long performances?</p>
+<p>An <span class="math inline">\(O_p\)</span> ratio of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates overperformance; and a ratio less than 1 indicates underperformance Our hypothetical player underperformed with <span class="math inline">\(O_p = \frac{8}{12} = 0.67\)</span>.</p>
+<p>In most cases, we have prior seasons of data to use when evaluating a player’s <span class="math inline">\(O_p\)</span> ratio for a given season. For example, let’s say our hypothetical player scored 14 goals on 10 xG (<span class="math inline">\(O_p = 1.4\)</span>) in the season prior, and 12 goals on 8 xG (<span class="math inline">\(O_p = 1.5\)</span>) before that. A <span class="math inline">\(O_p = 0.67\)</span> after those seasons seems fairly unlikely, especially compared to an “average” player who theoretically achieves <span class="math inline">\(O_p = 1\)</span> ratio every year.</p>
+<p>So how do we put a number on the unlikeliness of that <span class="math inline">\(O_p = 0.67\)</span> for our hypothetical player, accounting for their prior season-long performances?</p>
 <section id="data" class="level3">
 <h3 class="anchored" data-anchor-id="data">Data</h3>
-<p>I’ll be using public data from <a href="https://fbref.com/">FBref</a> for the 2018/19 - 2023/24 seasons of the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big Five European soccer leagues</a>, updated through April 25. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.</p>
+<p>I’ll be using public data from <a href="https://fbref.com/">FBref</a> for the 2018/19 - 2023/24 seasons of the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big Five European soccer leagues</a>, updated through May 7. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.</p>
 <div class="cell">
 <details>
 <summary>Get shot data</summary>
@@ -433,7 +436,6 @@ O_p = \frac{G_p}{xG_p}
 <h2 class="anchored" data-anchor-id="methods-and-analysis">Methods and Analysis</h2>
 <p>I’ll present 3 approaches to quantifying the “unlikelihood” of a player “underperforming” relative to their prior <span class="math inline">\(O_p\)</span> history.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> I use “prior” to refer to an aggregate of pre-2023/24 statistics, and “target” to refer to 2023/24.</p>
 <p><img src="raw_o.png" class="img-fluid"></p>
-<p>I’ll discuss some of the strengths and weaknesses of each approach as we go along, then summarize the findings in the end.</p>
 <section id="approach-1-weighted-percentile-rank" class="level3">
 <h3 class="anchored" data-anchor-id="approach-1-weighted-percentile-rank">Approach 1: Weighted Percentile Rank</h3>
 <p>The first approach I’ll present is a handcrafted “ranking” method.</p>
@@ -516,8 +518,8 @@ O_p = \frac{G_p}{xG_p}
 <p>There’s only so much you can do with player-season-level data. We need to dive into shot-level data if we want to more robustly understand the uncertainty of outcomes.</p>
 <p>Here’s a “resampling” approach to quantify the underperforming unlikeliness <span class="math inline">\(U^-_p\)</span> of a player in the target season:</p>
 <ol type="1">
-<li>Sample <span class="math inline">\(N_{p,\text{target}}\)</span> shots (with replacement<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a>) from a player’s past shots <span class="math inline">\(S_{p,\text{target}'}\)</span>. Repeat this for <span class="math inline">\(R\)</span> resamples.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></li>
-<li>Count the number of resamples <span class="math inline">\(r^-\)</span> in which the outperformance ratio <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> of the sampled shots is less than or equal to the observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season for the player.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a> The proportion <span class="math inline">\(U^-_p = \frac{r^-}{R}\)</span> represents the unlikeness of a given player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> (or worse) in the target season.</li>
+<li>Sample <span class="math inline">\(N_{p,\text{target}}\)</span> shots from a player’s past shots <span class="math inline">\(S_{p,\text{target}'}\)</span>. Repeat this for <span class="math inline">\(R\)</span> resamples.<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a></li>
+<li>Count the number of resamples <span class="math inline">\(r^-\)</span> in which the outperformance ratio <span class="math inline">\(\hat{O}_{p,\text{target}'}\)</span> of the sampled shots is less than or equal to the observed <span class="math inline">\(O_{p,\text{target}}\)</span> in the target season for the player.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a> The proportion <span class="math inline">\(U^-_p = \frac{r^-}{R}\)</span> represents the unlikeness of a given player’s observed <span class="math inline">\(O_{p,\text{target}}\)</span> (or worse) in the target season.</li>
 </ol>
 <p>Here’s how that looks in code.</p>
 <div class="cell">
@@ -614,7 +616,7 @@ O_p = \frac{G_p}{xG_p}
 <p>The plot below should provide a bit of visual intuition as to what’s going on.</p>
 <p><img src="maddison_u_approach2.png" class="img-fluid"></p>
 <p>These results imply that Maddison’s 2023/24 <span class="math inline">\(G / xG\)</span> ratio of 0.797 (or worse) occurs in 10.9% of simulations, i.e.&nbsp;a 11th percentile outcome. That’s a bit higher than what the first approach showed.</p>
-<p>How can we feel more confident about this approach? Well, in the first approach, we assumed that the underperforming unlikelihood percentages should be uniform across all players, hence the percentile ranking. I think that’s a good assumption, so we should see if the same bears out with this second approach.</p>
+<p>How can we feel confident about this approach? Well, in the first approach, we assumed that the underperforming unlikelihood percentages should be uniform across all players, hence the percentile ranking. I think that’s a good assumption, so we should see if the same bears out with this second approach.</p>
 <p>The plot below shows a histogram of the underperforming unlikelihood across all players, where each player’s estimated unlikelihood is grouped into a decile.</p>
 <div class="cell">
 <details>
@@ -671,7 +673,7 @@ O_p = \frac{G_p}{xG_p}
 <p>One familiar face in the printout above is <a href="https://fbref.com/en/players/1f44ac21/Erling-Haaland">Manchester City’s striker Erling Haaland</a>, whose underperformance this season has been called among <a href="https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/">fans and the media</a>. His sub-par performance this year ranked as a 9th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds.</p>
 <p>Here are some parting thoughts on this methodology before we look at another:</p>
 <ul>
-<li><strong>Assumption of Shot Profile Consistency</strong>: We assume that a player’s past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. Deviations in these contexts need to be considered when applying this methodology.</li>
+<li><strong>Assumption of Shot Profile Consistency</strong>: We assume that a player’s past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. But there are other exceptions as well. For example, Haaland has taken a lot more headed shots this season, despite playing effectively the same role on mostly the same team from last season The change in Haaland’s shot profile this year conflicts with the assumption of a consistent shot profile, perhaps explaining why this resampling approach finds Haaland’s shooting performance to be more unlikely the percentile ranking approach.</li>
 <li><strong>Non-Parametric Nature</strong>: This method does not assume any specific distribution for a player’s performance ratios; instead, it relies on the stability of a player’s performance over time. The resampling process itself shapes the outcome distribution, which can vary significantly between players with different shooting behaviors, such as a forward versus a defender.</li>
 <li><strong>Computational Demands</strong>: The resampling approach requires relatively more computational resources than the prior approach, especially without parallel processing. Even a relatively small number of resamples, such as <span class="math inline">\(R=1000\)</span>, can take a few second per player to compute.</li>
 </ul>
@@ -923,14 +925,25 @@ O_p = \frac{G_p}{xG_p}
 <tr class="odd">
 <td>3</td>
 <td>Cumulative Distribution Function (CDF)</td>
-<td>flexibility<a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a></td>
+<td>flexibility<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a></td>
 <td>sensitive to choice of distribution parameters</td>
 <td>5th percentile</td>
 </tr>
 </tbody>
 </table>
 <p>I personally prefer either the second or third approach. In practice, perhaps the best thing to do is take an ensemble average of each approach, as they each have their pros and cons.</p>
-<p>Can these approaches be applied to teams or managers to understand the unlikeliness of their season-long outcomes? I’d say “yes” for the resampling approach–the non-parametric nature of resampling makes it easy to translate to other “levels of aggregation”, i.e.&nbsp;a set of players under a manager or playing as a team.</p>
+<section id="potential-future-research" class="level2">
+<h2 class="anchored" data-anchor-id="potential-future-research">Potential Future Research</h2>
+<ol type="1">
+<li><strong>Can these approaches be applied to teams or managers to understand the unlikeliness of their season-long outcomes?</strong></li>
+</ol>
+<p>I think the answer is “yes”, for the resampling approach. The non-parametric nature of resampling makes it easy to translate to other “levels of aggregation”, i.e.&nbsp;a set of players under a manager or playing as a team.</p>
+<ol start="2" type="1">
+<li><strong>Can we accurately attribute a percentage of underperformance to skill and luck?</strong></li>
+</ol>
+<p>Eh, I don’t know about “accurately”, especially at the player-level.The <a href="https://en.wikipedia.org/wiki/Coefficient_of_determination">R-squared</a> of <a href="https://www.americansocceranalysis.com/home/2023/8/28/the-replication-project-measuring-shooting-overperformance">year-over-year player-level G / xG ratios is nearly zero</a>. If we equate “skill” to “percent of variance explained in year-over-year correlations of a measure (i.e.&nbsp;G / xG)”, then I suppose the answer is that basically 0% of seasonal over- or under-performance is due to innate factors; rather, we’d attribute all variation to “luck” (assuming that their “skill” and “luck” are the only factors that can explain residuals). That’s not all that compelling, although it may be the reality.</p>
+<p><a href="../../posts/soccer-meta-analytics/">My prior work on “meta-metrics” for soccer</a> perhaps has a more compelling answer. The “stability” measure defined in that post for <span class="math inline">\(G / xG\)</span> comes out to about 70% (out of 100%).</p>
+</section>
 </section>
 <section id="appendix" class="level1">
 <h1>Appendix</h1>
@@ -997,15 +1010,14 @@ No matching items
 
 <ol>
 <li id="fn1"><p>I only consider non-penalty xG and goals for this post. The ability to score penalties at a high success rate is generally seen as a different skill set than the ability to score goals in open play.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>The raw difference between goals and xG is a reasonable measure of shooting performance, but it can “hide” shot volume. Is it fair to compare a player who takes 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. But <span class="math inline">\(O_p\)</span>, as defined here, would be 1.2 and 3 respectively, hinting at the former player’s small sample size.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>The raw difference between goals and xG is a reasonable measure of shooting performance, but it can “hide” shot volume. Is it fair to compare a player who takes 100 shots in a year and scores 12 goals on 10 xG with a player who takes 10 shots and scores 3 goals on 1 xG? The raw difference is +2 in both cases, indicating no difference in the shooting performance for the two players. However, their <span class="math inline">\(O_p\)</span> would be 1.2 and 3 respectively, hinting at the former player’s small sample size.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn3"><p>While I focus on underperformance in this post, “overperformance” could be quantified in a similar (i.e.&nbsp;symmetrical) manner with each technique.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn4"><p>The weighting here is to reflect the intuition that players who have taken a lot of shots in the past and have an uncharacteristic season are shown as more unlikely than a player with only one prior season of shots, who happens to have a very different goals-to-expected goals ratio in the latter season.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>The weighting emphasizes scenarios where a veteran player, typically overperforming or at worst neutral, suddenly underperforms, as opposed to a second-year player experiencing similar downturns.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>An overperforming unlikelihood <span class="math inline">\(U^+_p\)</span> could be calculated by sorting <span class="math inline">\(\delta O^w_p\)</span> in descending order instead.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn6"><p>Percentiles greater than 50% generally correspond with players who have overperformed, so really the bottom 50% are the players we’re looking at when we’re considering underperformance unlikeliness.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn7"><p>Sampling without replacement is also reasonable. However, some players wouldn’t have enough shots from prior seasons to match their volume of shots in 2023/24.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn8"><p><span class="math inline">\(N_p\)</span> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <span class="math inline">\(R\)</span> should be set to some fairly large number, so as to achieve stability in the results.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn9"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <span class="math inline">\(r^+\)</span> the outperformance ratio of the resampled shots is greater than <span class="math inline">\(O_{p,\text{target}}\)</span> and calculate the proportion <span class="math inline">\(U^+_p = \frac{r^+}{R}\)</span>.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn10"><p>Well, it’s “flexible” to the extent that a statistical distribution can be flexible.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p><span class="math inline">\(N_p\)</span> should be set equal to the number of shots a player has taken in the target season, i.e.&nbsp;2023/24 here. <span class="math inline">\(R\)</span> should be set to some fairly large number, so as to achieve stability in the results.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>Similarly, to estimate the unlikeness of an overperforming season, count up in how many simulations <span class="math inline">\(r^+\)</span> the outperformance ratio of the resampled shots is greater than <span class="math inline">\(O_{p,\text{target}}\)</span> and calculate the proportion <span class="math inline">\(U^+_p = \frac{r^+}{R}\)</span>.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>Well, it’s “flexible” to the extent that a statistical distribution can be flexible.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
