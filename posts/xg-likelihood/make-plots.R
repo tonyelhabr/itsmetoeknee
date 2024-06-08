@@ -54,25 +54,25 @@ group_palette <- c(
   'base' = '#6E7275'
 )
 
-## raw_o ----
-raw_o_plot <- all_players_to_evaluate |> 
+## raw_pr ----
+raw_pr_plot <- all_players_to_evaluate |> 
   # dplyr::filter(prior_shots >= 100) |> 
   dplyr::select(
     player,
-    `2023/24 ("target")` = target_o,
-    `2018/19 - 2023/24 ("prior")` = prior_o
+    `2023/24 ("target")` = target_pr,
+    `2018/19 - 2023/24 ("prior")` = prior_pr
   ) |> 
   tidyr::pivot_longer(
     -c(player),
     names_to = 'group',
-    values_to = 'o'
+    values_to = 'pr'
   ) |> 
   dplyr::mutate(
-    o = ifelse(o > 2, 2.05, o)
+    pr = ifelse(pr > 2, 2.05, pr)
   ) |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = o
+    x = pr
   ) +
   ggplot2::geom_histogram(
     fill = group_palette[['base']],
@@ -96,8 +96,8 @@ raw_o_plot <- all_players_to_evaluate |>
       hjust = c(1, 0),
       group = c('2023/24 ("target")', '2018/19 - 2023/24 ("prior")'),
       label = c(
-        scales::number(maddison_u_approach1$target_o, accuracy = 0.001),
-        scales::number(maddison_u_approach1$prior_o, accuracy = 0.01)
+        scales::number(maddison_prp_approach1$target_pr, accuracy = 0.001),
+        scales::number(maddison_prp_approach1$prior_pr, accuracy = 0.01)
       )
     ),
     ggplot2::aes(
@@ -148,32 +148,32 @@ raw_o_plot <- all_players_to_evaluate |>
     title = 'Distribution of G / xG ratios of Big Five Players',
     subtitle = 'Only including players with >100 shots prior to 2023/24',
     y = 'Count of Players',
-    x = 'Outperformance (G / xG)',
+    x = 'Performance Ratio (G / xG)',
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
-raw_o_plot
+raw_pr_plot
 
 ggplot2::ggsave(
-  raw_o_plot,
-  filename = file.path(PROJ_DIR, 'raw_o.png'),
+  raw_pr_plot,
+  filename = file.path(PROJ_DIR, 'raw_pr.png'),
   width = 8,
   height = 8 / 1.5
 )
 
-## maddison_u_approach2_plot ----
-maddison_resampled_o <- all_resampled_o |>
+## maddison_prp_approach2_plot ----
+maddison_resampled_pr <- all_resampled_pr |>
   dplyr::filter(player == 'James Maddison') |> 
   dplyr::mutate(
-    group = ifelse(o <= target_o, 'highlight', 'base')
+    group = ifelse(pr <= target_pr, 'highlight', 'base')
   )
-maddison_u_approach2 <- all_u_approach2 |> 
+maddison_prp_approach2 <- all_prp_approach2 |> 
   dplyr::filter(player == 'James Maddison')
 
-maddison_u_approach2_plot <- maddison_resampled_o |> 
+maddison_prp_approach2_plot <- maddison_resampled_pr |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = o
+    x = pr
   ) +
   ggplot2::geom_histogram(
     ggplot2::aes(fill = group),
@@ -185,20 +185,20 @@ maddison_u_approach2_plot <- maddison_resampled_o |>
     values = group_palette
   ) +
   ggplot2::geom_vline(
-    data = maddison_u_approach2,
-    ggplot2::aes(xintercept = target_o),
+    data = maddison_prp_approach2,
+    ggplot2::aes(xintercept = target_pr),
     linetype = 2,
     color = 'white'
   ) +
   ggplot2::geom_vline(
-    data = maddison_u_approach2,
-    ggplot2::aes(xintercept = prior_o),
+    data = maddison_prp_approach2,
+    ggplot2::aes(xintercept = prior_pr),
     linetype = 2,
     color = 'white'
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = maddison_u_approach2$target_o - 0.05,
+    x = maddison_prp_approach2$target_pr - 0.05,
     y = 45,
     hjust = 1,
     label = "Maddison's 2023/24\nG / xG ratio",
@@ -209,7 +209,7 @@ maddison_u_approach2_plot <- maddison_resampled_o |>
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = maddison_u_approach2$prior_o + 0.05,
+    x = maddison_prp_approach2$prior_pr + 0.05,
     y = 45,
     hjust = 0,
     label = "Maddison's pre-2023/24\nG / xG ratio",
@@ -236,7 +236,7 @@ maddison_u_approach2_plot <- maddison_resampled_o |>
     y = 40,
     hjust = 0,
     vjust = 1,
-    label = glue::glue("An outperformance ratio of 0.797\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_u_approach2$u, accuracy = 1)} of {scales::number(R, scale = 1e-3, suffix = 'k')}\nsimulations."),
+    label = glue::glue("A performance ratio of 0.797\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_prp_approach2$prp, accuracy = 1)} of {scales::number(R, scale = 1e-3, suffix = 'k')}\nsimulations."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -268,24 +268,25 @@ maddison_u_approach2_plot <- maddison_resampled_o |>
   ggplot2::labs(
     title = 'Resampled G / xG Ratio for James Maddison',
     subtitle = "Shots Sampled from Maddison's 2018/19 - 2022/2023 Seasons",
-    x = 'Outperformance (G / xG)',
+    x = 'Performance Ratio (G / xG)',
     y = 'Count of Simulations',
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
+maddison_prp_approach2_plot
 
 ggplot2::ggsave(
-  maddison_u_approach2_plot,
-  filename = file.path(PROJ_DIR, 'maddison_u_approach2.png'),
+  maddison_prp_approach2_plot,
+  filename = file.path(PROJ_DIR, 'maddison_prp_approach2.png'),
   width = 8,
   height = 8 / 1.5
 )
 
-## all_u_approach2_plot ----
-all_u_approach2_plot <- all_u_approach2 |> 
+## all_prp_approach2_plot ----
+all_prp_approach2_plot <- all_prp_approach2 |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = u
+    x = prp
   ) +
   ggplot2::geom_histogram(
     fill = group_palette[['base']],
@@ -300,7 +301,7 @@ all_u_approach2_plot <- all_u_approach2 |>
     y = 70,
     hjust = 0,
     vjust = 0,
-    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_u_approach2$u * 100)} percentile of\nunlikely outcomes."),
+    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_prp_approach2$prp * 100)} percentile of\nunlikely outcomes."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -338,24 +339,24 @@ all_u_approach2_plot <- all_u_approach2 |>
     plot.subtitle = ggtext::element_markdown(size = 12)
   ) +
   ggplot2::labs(
-    title = 'Underperformance Unlikeliness % of 2023/24 Player G / xG Ratios',
+    title = '2023/24 Player Performance Ratio Percentiles',
     subtitle = glue::glue('Calculated via a <b><span style="color:gold">Resampling Approach</span></b>'),
     y = 'Count of Players',
-    x = 'Underperformance Unlikeliness %',
+    x = 'Performance Ratio Percentile',
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
-all_u_approach2_plot
+all_prp_approach2_plot
 
 ggplot2::ggsave(
-  all_u_approach2_plot,
-  filename = file.path(PROJ_DIR, 'all_u_approach2.png'),
+  all_prp_approach2_plot,
+  filename = file.path(PROJ_DIR, 'all_prp_approach2.png'),
   width = 8,
   height = 8 / 1.5
 )
 
-## maddison_u_approach3_plot ----
-sample_from_gamma_o <- function(
+## maddison_prp_approach3_plot ----
+sample_from_gamma_pr <- function(
     shape,
     rate,
     min = 0, 
@@ -371,19 +372,19 @@ sample_from_gamma_o <- function(
   )
 }
 
-maddison_u_approach3_samples <- maddison_u_approach3 |>
+maddison_prp_approach3_samples <- maddison_prp_approach3 |>
   dplyr::select(
     player,
     shape,
     rate,
-    target_o
+    target_pr
   ) |> 
   dplyr::mutate(
-    o = purrr::map2(
+    pr = purrr::map2(
       shape,
       rate,
       \(.shape, .rate) {
-        sample_from_gamma_o(
+        sample_from_gamma_pr(
           shape = .shape,
           rate = .rate
         )
@@ -391,15 +392,15 @@ maddison_u_approach3_samples <- maddison_u_approach3 |>
     ),
     .keep = 'unused'
   ) |> 
-  tidyr::unnest_longer(o) |> 
+  tidyr::unnest_longer(pr) |> 
   dplyr::mutate(
-    group = ifelse(o < target_o, 'highlight', 'base')
+    group = ifelse(pr < target_pr, 'highlight', 'base')
   )
 
-maddison_u_approach3_plot <- maddison_u_approach3_samples |> 
+maddison_prp_approach3_plot <- maddison_prp_approach3_samples |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = o
+    x = pr
   ) +
   ggplot2::geom_histogram(
     ggplot2::aes(fill = group),
@@ -411,20 +412,20 @@ maddison_u_approach3_plot <- maddison_u_approach3_samples |>
     values = group_palette
   ) +
   ggplot2::geom_vline(
-    data = maddison_u_approach3,
-    ggplot2::aes(xintercept = target_o),
+    data = maddison_prp_approach3,
+    ggplot2::aes(xintercept = target_pr),
     linetype = 2,
     color = 'white'
   ) +
   ggplot2::geom_vline(
-    data = maddison_u_approach3,
-    ggplot2::aes(xintercept = prior_o),
+    data = maddison_prp_approach3,
+    ggplot2::aes(xintercept = prior_pr),
     linetype = 2,
     color = 'white'
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = maddison_u_approach3$target_o - 0.05,
+    x = maddison_prp_approach3$target_pr - 0.05,
     y = 650,
     hjust = 1,
     label = "Maddison's 2023/24\nG / xG ratio",
@@ -435,7 +436,7 @@ maddison_u_approach3_plot <- maddison_u_approach3_samples |>
   ) +
   ggplot2::annotate(
     geom = 'text',
-    x = maddison_u_approach3$prior_o + 0.05,
+    x = maddison_prp_approach3$prior_pr + 0.05,
     y = 650,
     hjust = 0,
     label = "Maddison's pre-2023/24\nG / xG ratio",
@@ -462,7 +463,7 @@ maddison_u_approach3_plot <- maddison_u_approach3_samples |>
     y = 600,
     hjust = 0,
     vjust = 1,
-    label = glue::glue("An outperformance ratio of {scales::number(maddison_u_approach3$target_o, accuracy = 0.001)}\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_u_approach3$u, accuracy = 1)} of {scales::number(N_SIMS, scale = 1e-3, suffix = 'k')}\ndraws."),
+    label = glue::glue("A performance ratio of {scales::number(maddison_prp_approach3$target_pr, accuracy = 0.001)}\n(Maddison's 2023/24 G / xG ratio)\nor worse occurs in {scales::percent(maddison_prp_approach3$prp, accuracy = 1)} of {scales::number(N_SIMS, scale = 1e-3, suffix = 'k')}\ndraws."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -494,24 +495,24 @@ maddison_u_approach3_plot <- maddison_u_approach3_samples |>
   ggplot2::labs(
     title = 'Estimated Distribution of G / xG Ratio for James Maddison',
     subtitle = "Fit Based on Maddison's 2018/19 - 2022/2023 Seasons",
-    x = 'Outperformance (G / xG)',
+    x = 'Performance Ratio (G / xG)',
     y = 'Count of Samples',
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
 
 ggplot2::ggsave(
-  maddison_u_approach3_plot,
-  filename = file.path(PROJ_DIR, 'maddison_u_approach3.png'),
+  maddison_prp_approach3_plot,
+  filename = file.path(PROJ_DIR, 'maddison_prp_approach3.png'),
   width = 8,
   height = 8 / 1.5
 )
 
-## all_u_approach3_plot ----
-all_u_approach3_plot <- all_u_approach3 |> 
+## all_prp_approach3_plot ----
+all_prp_approach3_plot <- all_prp_approach3 |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = u
+    x = prp
   ) +
   ggplot2::geom_histogram(
     fill = group_palette[['base']],
@@ -526,7 +527,7 @@ all_u_approach3_plot <- all_u_approach3 |>
     y = 70,
     hjust = 0,
     vjust = 0,
-    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_u_approach3$u * 100)} percentile of\nunlikely outcomes."),
+    label = glue::glue("Maddison's 2023/24 G / xG ratio is\nin the {scales::ordinal(maddison_prp_approach3$prp * 100)} percentile of\nunlikely outcomes."),
     color = group_palette[['highlight']],
     fontface = 'bold',
     family = FONT,
@@ -564,28 +565,28 @@ all_u_approach3_plot <- all_u_approach3 |>
     plot.subtitle = ggtext::element_markdown(size = 12)
   ) +
   ggplot2::labs(
-    title = 'Underperformance Unlikeliness % of 2023/24 Player G / xG Ratios',
+    title = '2023/24 Player Performance Ratio Percentiles',
     subtitle = 'Calculated via a <b><span style="color:gold">Cumulative Distribution Function</span></b>',
     y = 'Count of Players',
-    x = 'Underperformance Unlikeliness %',
+    x = 'Performance Ratio Percentile',
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
-all_u_approach3_plot
+all_prp_approach3_plot
 
 ggplot2::ggsave(
-  all_u_approach3_plot,
-  filename = file.path(PROJ_DIR, 'all_u_approach3.png'),
+  all_prp_approach3_plot,
+  filename = file.path(PROJ_DIR, 'all_prp_approach3.png'),
   width = 8,
   height = 8 / 1.5
 )
 
 ## scatters ----
-all_u <- dplyr::left_join(
-  all_u_approach3 |> dplyr::select(player, u_approach3 = u),
+all_prp <- dplyr::left_join(
+  all_prp_approach3 |> dplyr::select(player, prp_approach3 = prp),
   dplyr::bind_rows(
-    all_u_approach1 |> dplyr::transmute(player, approach = 'Approach 1 (Percentile Ranking)', u),
-    all_u_approach2 |> dplyr::transmute(player, approach = 'Approach 2 (Resampling)', u)
+    all_prp_approach1 |> dplyr::transmute(player, approach = 'Approach 1 (Percentile Ranking)', prp),
+    all_prp_approach2 |> dplyr::transmute(player, approach = 'Approach 2 (Resampling)', prp)
   ),
   by = dplyr::join_by(player)
 ) |> 
@@ -594,11 +595,11 @@ all_u <- dplyr::left_join(
     by = dplyr::join_by(player)
   )
 
-all_u_plot <- all_u |> 
+all_prp_plot <- all_prp |> 
   ggplot2::ggplot() +
   ggplot2::aes(
-    x = u,
-    y = u_approach3
+    x = prp,
+    y = prp_approach3
   ) +
   ggplot2::geom_abline(
     ggplot2::aes(
@@ -610,7 +611,7 @@ all_u_plot <- all_u |>
     color = WHITISH_FOREGROUND_COLOR
   ) +
   ggplot2::geom_point(
-    data = all_u |> dplyr::filter(player != 'James Maddison'),
+    data = all_prp |> dplyr::filter(player != 'James Maddison'),
     ggplot2::aes(
       size = prior_shots
     ),
@@ -620,7 +621,7 @@ all_u_plot <- all_u |>
     fill = group_palette[['base']]
   ) +
   ggplot2::geom_point(
-    data = all_u |> dplyr::filter(player == 'James Maddison'),
+    data = all_prp |> dplyr::filter(player == 'James Maddison'),
     size = 4,
     shape = 21,
     color = 'white',
@@ -635,8 +636,8 @@ all_u_plot <- all_u |>
       label = glue::glue(
         "
         **Maddison's unlikeliness**<br/>
-        Approach 1: {scales::ordinal(maddison_u_approach1$u * 100)} percentile<br/>
-        Approach 3: {scales::ordinal(maddison_u_approach3$u * 100)} percentile
+        Approach 1: {scales::ordinal(maddison_prp_approach1$prp * 100)} percentile<br/>
+        Approach 3: {scales::ordinal(maddison_prp_approach3$prp * 100)} percentile
          "
       )
     ),
@@ -658,8 +659,8 @@ all_u_plot <- all_u |>
       label = glue::glue(
         "
         **Maddison's unlikeliness**<br/>
-        Approach 2: {scales::ordinal(maddison_u_approach2$u * 100)} percentile<br/>
-        Approach 3: {scales::ordinal(maddison_u_approach3$u * 100)} percentile
+        Approach 2: {scales::ordinal(maddison_prp_approach2$prp * 100)} percentile<br/>
+        Approach 3: {scales::ordinal(maddison_prp_approach3$prp * 100)} percentile
          "
       )
     ),
@@ -703,18 +704,18 @@ all_u_plot <- all_u |>
     panel.background = ggplot2::element_rect(color = WHITISH_FOREGROUND_COLOR)
   ) +
   ggplot2::labs(
-    title = 'Approaches for Estimating Underperforming Unlikeliness',
+    title = 'Approaches for Estimating Player Performance Ratio Percentiles',
     subtitle = 'Each point represents one player',
     y = 'Approach 3 (CDF)',
     x = NULL,
     caption = CAPTION_LABEL,
     tag = TAG_LABEL
   )
-all_u_plot
+all_prp_plot
 
 ggplot2::ggsave(
-  all_u_plot,
-  filename = file.path(PROJ_DIR, 'all_u.png'),
+  all_prp_plot,
+  filename = file.path(PROJ_DIR, 'all_prp.png'),
   width = 8,
   height = 8 / 1.5
 )
