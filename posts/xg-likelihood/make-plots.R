@@ -635,7 +635,7 @@ all_prp_plot <- all_prp |>
       y = 0.8,
       label = glue::glue(
         "
-        **Maddison's unlikeliness**<br/>
+        **Maddison**<br/>
         Approach 1: {scales::ordinal(maddison_prp_approach1$prp * 100)} percentile<br/>
         Approach 3: {scales::ordinal(maddison_prp_approach3$prp * 100)} percentile
          "
@@ -658,7 +658,7 @@ all_prp_plot <- all_prp |>
       y = 0.8,
       label = glue::glue(
         "
-        **Maddison's unlikeliness**<br/>
+        **Maddison**<br/>
         Approach 2: {scales::ordinal(maddison_prp_approach2$prp * 100)} percentile<br/>
         Approach 3: {scales::ordinal(maddison_prp_approach3$prp * 100)} percentile
          "
