@@ -38,7 +38,7 @@ In most cases, we have prior seasons of data to use when evaluating a player's $
 
 So how do we put a number on the unlikeliness of the $PR_p = 0.67$ for our hypothetical player, accounting for their prior season-long performances?
 
-### Data
+## Data
 
 I'll be using public data from [FBref](https://fbref.com/) for the 2018/19 - 2023/24 seasons of the [the Big Five European soccer leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), updated through May 7. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.
 
@@ -224,9 +224,9 @@ all_players_to_evaluate <- wide_player_np_shots |>
 
 ## Methods and Analysis
 
-I'll present 3 approaches to contexutalizing the likelihood of a player underperforming relative to their prior $G / xG$ ratio, which I'll broadly call the "performance ratio percentile", $PRP_p$.
+I'll present 3 approaches to contextualizing the likelihood of a player underperforming relative to their prior $G / xG$ ratio, which I'll broadly call the "performance ratio percentile", $PRP_p$.
 
-1.  Weighted **percentile ranking**: Identify where a player's performance relative to their own past ranks among the whole spectrum of relative player performances.
+1.  Weighted **percentile ranking**: Identify where a player's performance relative to their own past ranks among the whole spectrum of player performances.
 2.  **Resampling** from prior shot history: Quantify the likelihood of the observed outcome for a given player by resampling shots from their past.
 3.  Evaluating a player-specific **cumulative distribution function (CDF)**: Fit a distribution to represent a player's past set of season-long outcomes, then identify where the target season's outcome lies on that distribution.
 
@@ -246,19 +246,19 @@ $$
 \delta PR_p = \frac{PR_{p,\text{target}} - PR_{p,\text{target}'}}{PR_{p,\text{target}'}}
 $$
 
-2.  Weight $\delta PR^w_p$ by the player's $xG_p$ accumulated in prior seasons.[^3]
+2.  Weight $\delta PR^w_p$ by the player's $xG_{p,\text{target}'}$ accumulated in prior seasons.[^3]
 
 [^3]: The weighting emphasizes scenarios where a veteran player, typically overperforming or at worst neutral, suddenly underperforms, as opposed to a second-year player experiencing similar downturns.
 
 $$
-\delta PR^w_p = \delta PR_p * xG_p
+\delta PR^w_p = \delta PR_p * xG_{p,\text{target}'}
 $$
 
 3.  Calculate the the performance percentile $PRP_p$ as a percentile rank of ascending $\delta PR^w_p$, i.e. more negative $\delta PR^w_p$ values correspond to a lower $PRP_p$ percentile.[^4]
 
 [^4]: Percentiles greater than 50% generally correspond with players who have overperformed, so really the bottom 50% are the players we're looking at when we're considering underperformance.
 
-This seems really straightforward, right? Indeed, with the data prepped in the correct manner, it is straightforward to calculate.
+With the data prepped in the correct manner, this is straightforward to calculate.
 
 ```{r}
 #| label: prp_approach1
@@ -272,8 +272,8 @@ all_prp_approach1 <- all_players_to_evaluate |>
     prior_pr,
     target_pr,
     prior_xg,
-    weighted_delta_o = prior_shots * (target_pr - prior_pr) / prior_pr,
-    prp = dplyr::percent_rank(weighted_delta_o)
+    weighted_delta_pr = prior_shots * (target_pr - prior_pr) / prior_pr,
+    prp = dplyr::percent_rank(weighted_delta_pr)
   ) |> 
   dplyr::arrange(prp)
 
@@ -295,7 +295,7 @@ maddison_prp_approach1 |> dplyr::select(player, prior_pr, target_pr, prp)
 
 This approach finds Maddison's 2023/24 $PR_p$ of 0.797 to be about a 2nd percentile outcome. Among the 602 players evaluated, Maddison's 2023/24 $PR_p$ ranks as the 15th lowest.
 
-For context, here's a look at the top 10 most unlikely outcomes for the 2023/24 season.
+For context, here's a look at the 10 players who underperformed the most in the 2023/24 season.
 
 ```{r}
 #| label: prp_approach1-show-all
@@ -322,10 +322,10 @@ all_prp_approach1 |> head(10) |> dplyr::select(player, prior_pr, target_pr, prp)
 
 #### Discussion
 
-Overall, I'd say that this methodology seems to generate fairly reasonable results, but certainly has its flaws.
+Overall, I'd say that this methodology is straightforward and seems to generate fairly reasonable results. However, it certainly has its flaws.
 
--   **Subjectivity in Weighting**: The choice to weight the difference in performance ratios by pre-2023/24 xG is inherently subjective. While it's important to have some form of weighting--so as to avoid disproportionately emphasizing players with a shorter history of past shots or who shoot relatively few shots in the target season--alternative weighting strategies could lead to significantly different rankings.
--   **Sensitivity to Player Pool**: The percentile ranking of a player's $PR_{p,\text{target}}$ unlikeliness is highly sensitive to the comparison group. For instance, comparing forwards to defenders could skew results due to generally higher variability in defenders' goal-to-expected goals ratios. Moreover, if we for some reason chose to evaluate a set of players from lower tier leagues who generally scores less goals than their expected goals, even players who can simply maintain a $PR_p = 1$ might appear more favorably than they would when compared to Big Five league players. This potential for selection bias underlines the importance of carefully choosing the comparison set of players.
+-   **Subjectivity in weighting**: The choice to weight the difference in performance ratios by pre-2023/24 xG is inherently subjective. While it's important to have some form of weighting--so as to avoid disproportionately emphasizing players with a shorter history of past shots or who shoot relatively few shots in the target season--alternative weighting strategies could lead to significantly different rankings.
+-   **Sensitivity to player pool**: The percentile ranking of a player's $PR_{p,\text{target}}$ is highly sensitive to the comparison group. For instance, comparing forwards to defenders could skew results due to generally higher variability in defenders' goal-to-expected goals ratios. Moreover, if we chose to evaluate a set of players from lower-tier leagues who generally score fewer goals than their expected goals, even players who can simply maintain a $PR_p = 1$ might appear more favorably than they would when compared to Big Five league players. This potential for selection bias underlines the importance of carefully choosing the comparison set of players.
 
 ### Approach 2: Resampling from Prior Shot History
 
@@ -335,7 +335,7 @@ Here's a "resampling" approach to quantify the performance ratio percentile $PRP
 
 1.  Sample $N_{p,\text{target}}$ shots from a player's past shots $S_{p,\text{target}'}$. Repeat this for $R$ resamples.[^5]
 
-2.  Count the number of resamples $r$ in which the outperformance ratio $\hat{PR}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $PR_{p,\text{target}}$ in the target season for the player. The proportion $PRP_p = \frac{r}{R}$ represents the unlikeness of a given player's observed $PR_{p,\text{target}}$ (or worse) in the target season.
+2.  Count the number of resamples $r$ in which the performance ratio $\hat{PR}_{p,\text{target}'}$ of the sampled shots is less than or equal to the observed $PR_{p,\text{target}}$ in the target season for the player. The proportion $PRP_p = \frac{r}{R}$ represents the unlikeness of a given player's observed $PR_{p,\text{target}}$ (or worse) in the target season.
 
 [^5]: $N_p$ should be set equal to the number of shots a player has taken in the target season. $R$ should be set to some fairly large number, so as to achieve stability in the results.
 
@@ -430,18 +430,21 @@ maddison_prp_approach2 <- maddison_resampled_pr |>
 #| code-fold: show
 #| code-summary: "Approach 2 output for Maddison"
 maddison_prp_approach2 |> dplyr::select(player, prior_pr, target_pr, prp)
-
+#> # A tibble: 1 × 4
+#>   player         prior_pr target_pr   prp
+#>   <chr>             <dbl>     <dbl> <dbl>
+#> 1 James Maddison     1.38     0.797 0.109
 ```
 
 The plot below should provide a bit of visual intuition as to what's going on.
 
 ![](maddison_prp_approach2.png)
 
-These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.797 (or worse) occurs in 10.9% of simulations, i.e. an 11th percentile outcome. That's a bit higher than what the first approach showed.
+These results imply that Maddison's 2023/24 $G / xG$ ratio of 0.797 (or worse) occurs in 11% of simulations, i.e. an 11th percentile outcome. That's a bit higher than what the first approach showed.
 
-How can we feel confident about this approach? Well, in the first approach, we sort of implicitly assumed that underperformance should be uniform across all players, hence the percentile ranking. We should see if the same bears out with this second approach.
+How can we feel confident about this approach? Well, in the first approach, we implicitly assumed that the performance ratio percentiles should be uniform across all players, hence the percentile ranking. We should see if the same bears out with this second approach.
 
-The plot below shows a histogram of the performance ratio percentile across all players, where each player's estimated unlikelihood is grouped into a decile.
+The plot below shows a histogram of the performance ratio percentile across all players, where each player's estimated performance ratio percentile is grouped into a decile.
 
 ```{r}
 #| label: all_prp_approach2
@@ -489,9 +492,9 @@ all_resampled_pr <- qs::qread(file.path(PROJ_DIR, 'all_resampled_pr.qs'))
 
 ![](all_prp_approach2.png)
 
-Indeed, the histogram shows a fairly uniform distribution, with a bit of irregularity at the very edges.
+Indeed, the histogram shows a fairly uniform distribution, with a bit of irregularity at the upper end.
 
-Looking at who is in the lower end of the leftmost decile, we see some of the same names--Immobile and [Savanier](https://fbref.com/en/players/6bde367b/Teji-Savanier)--among the ten underperformers. (Withholding judgment on the superiority of any methodology, we can find some solace in seeing some of the same names among the most unlikely underperformers here as we did with approach 1.)
+Looking at who is in the lower end of the leftmost decile, we see some of the same names--Immobile and [Savanier](https://fbref.com/en/players/6bde367b/Teji-Savanier)--among the ten underperformers. Withholding judgment on the superiority of any methodology, we can find some solace in seeing some of the same names among the most unlikely underperformers here as we did with approach 1.
 
 ```{r}
 #| label: all_prp_approach2-show
@@ -514,21 +517,21 @@ all_prp_approach2 |> head(10) |> dplyr::select(player, prior_pr, target_pr, prp)
 #> 10 M'Bala Nzola                  1.10     0.274 0.025
 ```
 
-One familiar face in the printout above is [Manchester City's striker Erling Haaland](https://fbref.com/en/players/1f44ac21/Erling-Haaland), whose underperformance this season has been called among [fans and the media](https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/). His sub-par performance this year ranked as a 9th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds (1st percentile).
+One familiar face in the printout above is [Manchester City's striker Erling Haaland](https://fbref.com/en/players/1f44ac21/Erling-Haaland), whose underperformance this season has been called out among [fans and the media](https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/). His sub-par performance this year ranked as a 9th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds (1st percentile).
 
 #### Discussion
 
--   **Assumption of Shot Profile Consistency**: We assume that a player's past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. But there are other exceptions as well. For example, Haaland has taken a lot more headed shots this season, despite playing effectively the same role on mostly the same team from last season The change in Haaland's shot profile this year conflicts with the assumption of a consistent shot profile, perhaps explaining why this resampling approach finds Haaland's shooting performance to be more unlikely the percentile ranking approach.
--   **Non-Parametric Nature**: This method does not assume any specific distribution for a player’s performance ratios; instead, it relies on the stability of a player's performance over time. The resampling process itself shapes the outcome distribution, which can vary significantly between players with different shooting behaviors, such as a forward versus a defender.
--   **Computational Demands**: The resampling approach requires relatively more computational resources than the prior approach, especially without parallel processing. Even a relatively small number of resamples, such as $R=1000$, can take a few second per player to compute.
+-   **Assumption of shot profile consistency**: We assume that a player's past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. But there are other exceptions as well. For example, Haaland has taken a lot more headed shots this season, despite playing effectively the same role on mostly the same team from last season The change in Haaland's shot profile this year conflicts with the assumption of a consistent shot profile, perhaps explaining why this resampling approach finds Haaland's shooting performance to be more unlikely the percentile ranking approach.
+-   **Non-parametric nature**: This method does not assume any specific distribution for a player’s performance ratios; instead, it relies on the stability of a player's performance over time. The resampling process itself shapes the outcome distribution, which can vary significantly between players with different shooting behaviors, such as a forward versus a defender.
+-   **Computational demands**: The resampling approach requires relatively more computational resources than the prior approach, especially without parallel processing. Even a relatively small number of resamples, such as $R=1000$, can take a few seconds per player to compute.
 
 ### Approach 3: Evaluating a Player-Specific Cumulative Distribution Function (CDF)
 
-If we assume that the set of goals-to-xG ratios come from a [Gamma data-generating process](https://en.wikipedia.org/wiki/Gamma_process), then we can leverage the properties of a player-level [Gamma distribution](https://en.wikipedia.org/wiki/Gamma_distribution) to assess the unlikelihood of a players $PR_p$ ratio.
+If we assume that the set of goals-to-xG ratios come from a [Gamma data-generating process](https://en.wikipedia.org/wiki/Gamma_process), then we can leverage the properties of a player-level [Gamma distribution](https://en.wikipedia.org/wiki/Gamma_distribution) to assess the likelihood of a player's observed goals-to-xG ratio.
 
-To calculate the underperforming unlikeliness $PRP_p$:
+To calculate the performance ratio percentile $PRP_p$:
 
-1.  Estimate a Gamma distribution $\Gamma_{p,\text{target}'}$ to model a player's true outperformance ratio $O_{p}$ across all prior shots, excluding those in the target season--$\hat{PR}_{p,\text{target}'}$.
+1.  Estimate a Gamma distribution $\Gamma_{p,\text{target}'}$ to model a player's true outperformance ratio $PR_{p,\text{target}'}$ across all prior shots, excluding those in the target season--$\hat{PR}_{p,\text{target}'}$.
 
 2.  Calculate the probability that $\hat{PR}_{p,\text{target}'}$ is less than or equal to the player's observed $PR_{p,\text{target}}$ in the target season using the Gamma distribution's [cumulative distribution function (CDF)](https://en.wikipedia.org/wiki/Cumulative_distribution_function).
 
@@ -539,8 +542,6 @@ While that may sound daunting, I promise that it's not.
 #| include: true
 #| code-fold: true
 #| code-summary: "Approach 3 implementation"
-N_SIMS <- 10000
-
 SHOT_TO_SHAPE_MAPPING <- list(
   'from' = c(50, 750),
   'to' = c(1, 25)
@@ -668,7 +669,7 @@ To gain some intuition around this approach, we can plot out the Gamma distribut
 
 ![](maddison_prp_approach3.png)
 
-As with approach 2, we should check to see what the distribution of underperforming unlikeliness looks like--we should expect to see a somewhat uniform distribution.
+As with approach 2, we should check to see what the distribution of performance ratio percentiles looks like--we should expect to see a somewhat uniform distribution.
 
 ```{r}
 #| label: all_prp_approach3
@@ -744,27 +745,24 @@ We can visually check the consistency of the results from this method with the p
 
 ![](all_prp.png)
 
-If two of the approaches were perfectly in agreement, then each point, representing one of the 602 evaluated players, would fall along the 45-degree slope 1 line.
+If two of the approaches were perfectly in agreement, then each point--representing one of the 602 evaluated players--would fall along the 45-degree slope 1 line.
 
-With that in mind, we can see that approach 3 is more **precise** agrees with approach 1, although approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.
+With that in mind, we can see that approach 3 more precisely agrees with approach 1, although approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.
 
 #### Discussion
 
--   **Parametric Nature**: The reliance on a Gamma distribution for modeling a player’s performance is both a strength and a limitation. The Gamma distribution is apt for positive, skewed continuous variables, making it suitable for modeling goals-to-xG ratios. However, the dependency on a single distribution type may restrict the scope of analysis.
--   **Sensitivity to Distribution Parameters**: The outcomes of this methodology are highly sensitive to the parameters defining each player's Gamma distribution. Small adjustments in shape or rate parameters can significantly alter the distribution, causing substantial shifts in the percentile outcomes of player performances. This sensitivity underscores the need for careful parameter selection and calibration.
--   **Flexibility of the Model**: Despite its sensitivity, the Gamma distribution offers considerable flexibility. It allows for fine-tuning of the model to better fit the data, which can be advantageous for capturing the nuances of different players’ shot profiles.
+-   **Parametric nature**: The reliance on a Gamma distribution for modeling a player’s performance is both a strength and a limitation. The Gamma distribution is apt for positive, skewed continuous variables, making it suitable for modeling goals-to-xG ratios. And we can leverage the properties of the distribution to calculate a likelihood percentile directly. However, the dependency on a distribution is sort of an "all-or-nothing" endeavor--if we don't estimate an appropriate distribution, then we can under- or over-estimate the likelihood of individual player outcomes.
+-   **Sensitivity to distribution parameters**: The outcomes of this methodology are highly sensitive to the parameters defining each player's Gamma distribution. Small adjustments in shape or rate parameters can significantly alter the distribution, causing substantial shifts in the percentile outcomes of player performances. This sensitivity underscores the need for careful parameter selection and calibration.
 
 # Conclusion
 
 Here's a summary of the biggest pros and cons of each approach, along with the result for Maddison.
 
-| Approach | Description                            | Biggest Pro     | Biggest Con                                    | Maddison 2023/24 Underperformance Unlikeliness |
-|----------|----------------------------------------|-----------------|------------------------------------------------|------------------------------------------------|
-| 1        | Percentile Ranking                     | customizable    | sensitive to the choice of players to evaluate | 2nd percentile                                 |
-| 2        | Resampling                             | non-parametric  | limited by player's shot history               | 11th percentile                                |
-| 3        | Cumulative Distribution Function (CDF) | flexibility[^6] | sensitive to choice of distribution parameters | 5th percentile                                 |
-
-[^6]: Well, it's "flexible" to the extent that a statistical distribution can be flexible.
+| Approach | Description                                                         | Pros                                                                                           | Cons                                                                        | James Maddison 2023/24 Performance Ratio Percentile |
+|----------|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|-----------------------------------------------------|
+| 1        | Weighted percentile ranking                                         | Easy to understand and implement                                                               | Sensitive to the weighting scheme and the set of evaluated players          | 2nd percentile                                      |
+| 2        | Resampling from prior shot history                                  | Non-parametric (no need to make a choices about weighting scheme, distribituion fitting, etc.) | Assumes a player's shot profile is static, can be computationally intensive | 11th percentile                                     |
+| 3        | Evaluating a player-specific cumulative distribution function (CDF) | Likelihood of an outcome can be calculated directly from the properties of the distribution    | Sensitive to choice of distribution parameters                              | 5th percentile                                      |
 
 I personally prefer either the second or third approach. In practice, perhaps the best thing to do is take an ensemble average of each approach, as they each have their pros and cons.
 
@@ -774,11 +772,11 @@ I personally prefer either the second or third approach. In practice, perhaps th
 
 I think the answer is "yes", for the resampling approach. The non-parametric nature of resampling makes it easy to translate to other "levels of aggregation", i.e. a set of players under a manager or playing as a team.
 
-2.  **Can we accurately attribute a percentage of underperformance to skill and luck?**
+2.  **Can we accurately attribute a percentage of the underperformance to skill and luck?**
 
-Eh, I don't know about "accurately", especially at the player-level.The [R-squared](https://en.wikipedia.org/wiki/Coefficient_of_determination) of [year-over-year player-level G / xG ratios is nearly zero](https://www.americansocceranalysis.com/home/2023/8/28/the-replication-project-measuring-shooting-overperformance). If we equate "skill" to "percent of variance explained in year-over-year correlations of a measure (i.e. G / xG)", then I suppose the answer is that basically 0% of seasonal over- or under-performance is due to innate factors; rather, we'd attribute all variation to "luck" (assuming that their "skill" and "luck" are the only factors that can explain residuals). That's not all that compelling, although it may be the reality.
+Eh, I don't know about "accurately", especially at the player level.The [R-squared](https://en.wikipedia.org/wiki/Coefficient_of_determination) of [year-over-year player-level G / xG ratios is nearly zero](https://www.americansocceranalysis.com/home/2023/8/28/the-replication-project-measuring-shooting-overperformance). If we equate "skill" to "percent of variance explained in year-over-year correlations of a measure (i.e. G / xG)", then I suppose the answer is that basically 0% of seasonal over- or under-performance is due to innate factors; rather, we'd attribute all variation to "luck" (assuming that their "skill" and "luck" are the only factors that can explain residuals). That's not all that compelling, although it may be the reality.
 
-[My prior work on "meta-metrics" for soccer](/posts/soccer-meta-analytics/) perhaps has a more compelling answer. The "stability" measure defined in that post for $G / xG$ comes out to about 70% (out of 100%).
+[My prior work on "meta-metrics" for soccer](/posts/soccer-meta-analytics/) perhaps has a more compelling answer. The "stability" measure defined in that post for $G / xG$ comes out to about 70% (out of 100%). If we say that "stability" is just another word for "skill", then we could attribute about 70% of a player's seasonal over- or under-performance to innate factors, on average.
 
 # Appendix
 
@@ -831,4 +829,4 @@ prp_approach0 |>
 #> 1 James Maddison     1.38     0.797 0.0543
 ```
 
-In reality, this isn't giving us a percentage of unlikelihood of the outcome. Rather, the p-value measures the probability of underformance as extreme as the underperformance observed in 2023/24 if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player's actual $PR_p$ in the 2023/24 season and the distribution of performance ratios observed in previous seasons.
+In reality, this isn't giving us a percentage of unlikelihood of the outcome. Rather, the p-value measures the probability of underperformance as extreme as the underperformance observed in 2023/24 if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player's actual $PR_p$ in the 2023/24 season and the distribution of performance ratios observed in previous seasons.

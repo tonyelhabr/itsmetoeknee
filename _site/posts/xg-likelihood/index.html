@@ -306,8 +306,8 @@ PR_p = \frac{G_p}{xG_p}
 <p>An <span class="math inline">\(PR_p\)</span> of 1 indicates that a player is scoring as many goals as expected; a ratio greater than 1 indicates overperformance; and a ratio less than 1 indicates underperformance. Our hypothetical player underperformed with <span class="math inline">\(PR_p = \frac{8}{12} = 0.67\)</span>.</p>
 <p>In most cases, we have prior seasons of data to use when evaluating a player’s <span class="math inline">\(PR_p\)</span> for a given season. For example, let’s say our hypothetical player scored 14 goals on 10 xG (<span class="math inline">\(PR_p = 1.4\)</span>) in the season prior, and 12 goals on 8 xG (<span class="math inline">\(PR_p = 1.5\)</span>) before that. A <span class="math inline">\(PR_p = 0.67\)</span> after those seasons seems fairly unlikely, especially compared to an “average” player who has a <span class="math inline">\(PR_p = 1\)</span> every year.</p>
 <p>So how do we put a number on the unlikeliness of the <span class="math inline">\(PR_p = 0.67\)</span> for our hypothetical player, accounting for their prior season-long performances?</p>
-<section id="data" class="level3">
-<h3 class="anchored" data-anchor-id="data">Data</h3>
+<section id="data" class="level2">
+<h2 class="anchored" data-anchor-id="data">Data</h2>
 <p>I’ll be using public data from <a href="https://fbref.com/">FBref</a> for the 2018/19 - 2023/24 seasons of the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big Five European soccer leagues</a>, updated through May 7. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.</p>
 <div class="cell">
 <details>
@@ -443,9 +443,9 @@ PR_p = \frac{G_p}{xG_p}
 </section>
 <section id="methods-and-analysis" class="level2">
 <h2 class="anchored" data-anchor-id="methods-and-analysis">Methods and Analysis</h2>
-<p>I’ll present 3 approaches to contexutalizing the likelihood of a player underperforming relative to their prior <span class="math inline">\(G / xG\)</span> ratio, which I’ll broadly call the “performance ratio percentile”, <span class="math inline">\(PRP_p\)</span>.</p>
+<p>I’ll present 3 approaches to contextualizing the likelihood of a player underperforming relative to their prior <span class="math inline">\(G / xG\)</span> ratio, which I’ll broadly call the “performance ratio percentile”, <span class="math inline">\(PRP_p\)</span>.</p>
 <ol type="1">
-<li>Weighted <strong>percentile ranking</strong>: Identify where a player’s performance relative to their own past ranks among the whole spectrum of relative player performances.</li>
+<li>Weighted <strong>percentile ranking</strong>: Identify where a player’s performance relative to their own past ranks among the whole spectrum of player performances.</li>
 <li><strong>Resampling</strong> from prior shot history: Quantify the likelihood of the observed outcome for a given player by resampling shots from their past.</li>
 <li>Evaluating a player-specific <strong>cumulative distribution function (CDF)</strong>: Fit a distribution to represent a player’s past set of season-long outcomes, then identify where the target season’s outcome lies on that distribution.</li>
 </ol>
@@ -462,15 +462,15 @@ PR_p = \frac{G_p}{xG_p}
 \delta PR_p = \frac{PR_{p,\text{target}} - PR_{p,\text{target}'}}{PR_{p,\text{target}'}}
 \]</span></p>
 <ol start="2" type="1">
-<li>Weight <span class="math inline">\(\delta PR^w_p\)</span> by the player’s <span class="math inline">\(xG_p\)</span> accumulated in prior seasons.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></li>
+<li>Weight <span class="math inline">\(\delta PR^w_p\)</span> by the player’s <span class="math inline">\(xG_{p,\text{target}'}\)</span> accumulated in prior seasons.<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a></li>
 </ol>
 <p><span class="math display">\[
-\delta PR^w_p = \delta PR_p * xG_p
+\delta PR^w_p = \delta PR_p * xG_{p,\text{target}'}
 \]</span></p>
 <ol start="3" type="1">
 <li>Calculate the the performance percentile <span class="math inline">\(PRP_p\)</span> as a percentile rank of ascending <span class="math inline">\(\delta PR^w_p\)</span>, i.e.&nbsp;more negative <span class="math inline">\(\delta PR^w_p\)</span> values correspond to a lower <span class="math inline">\(PRP_p\)</span> percentile.<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a></li>
 </ol>
-<p>This seems really straightforward, right? Indeed, with the data prepped in the correct manner, it is straightforward to calculate.</p>
+<p>With the data prepped in the correct manner, this is straightforward to calculate.</p>
 <div class="cell">
 <details>
 <summary>Approach 1 implementation</summary>
@@ -481,8 +481,8 @@ PR_p = \frac{G_p}{xG_p}
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    prior_pr,</span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    target_pr,</span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    prior_xg,</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">weighted_delta_o =</span> prior_shots <span class="sc">*</span> (target_pr <span class="sc">-</span> prior_pr) <span class="sc">/</span> prior_pr,</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">prp =</span> dplyr<span class="sc">::</span><span class="fu">percent_rank</span>(weighted_delta_o)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">weighted_delta_pr =</span> prior_shots <span class="sc">*</span> (target_pr <span class="sc">-</span> prior_pr) <span class="sc">/</span> prior_pr,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">prp =</span> dplyr<span class="sc">::</span><span class="fu">percent_rank</span>(weighted_delta_pr)</span>
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(prp)</span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
@@ -501,7 +501,7 @@ PR_p = \frac{G_p}{xG_p}
 </details>
 </div>
 <p>This approach finds Maddison’s 2023/24 <span class="math inline">\(PR_p\)</span> of 0.797 to be about a 2nd percentile outcome. Among the 602 players evaluated, Maddison’s 2023/24 <span class="math inline">\(PR_p\)</span> ranks as the 15th lowest.</p>
-<p>For context, here’s a look at the top 10 most unlikely outcomes for the 2023/24 season.</p>
+<p>For context, here’s a look at the 10 players who underperformed the most in the 2023/24 season.</p>
 <div class="cell">
 <details open="">
 <summary>Approach 1 output, top 10 underperforming players</summary>
@@ -524,10 +524,10 @@ PR_p = \frac{G_p}{xG_p}
 <p><a href="https://fbref.com/en/players/4431aed2/Ciro-Immobile">Ciro Immobile</a> tops the list, with several other notable attacking players who had less than stellar seasons.</p>
 <section id="discussion" class="level4">
 <h4 class="anchored" data-anchor-id="discussion">Discussion</h4>
-<p>Overall, I’d say that this methodology seems to generate fairly reasonable results, but certainly has its flaws.</p>
+<p>Overall, I’d say that this methodology is straightforward and seems to generate fairly reasonable results. However, it certainly has its flaws.</p>
 <ul>
-<li><strong>Subjectivity in Weighting</strong>: The choice to weight the difference in performance ratios by pre-2023/24 xG is inherently subjective. While it’s important to have some form of weighting–so as to avoid disproportionately emphasizing players with a shorter history of past shots or who shoot relatively few shots in the target season–alternative weighting strategies could lead to significantly different rankings.</li>
-<li><strong>Sensitivity to Player Pool</strong>: The percentile ranking of a player’s <span class="math inline">\(PR_{p,\text{target}}\)</span> unlikeliness is highly sensitive to the comparison group. For instance, comparing forwards to defenders could skew results due to generally higher variability in defenders’ goal-to-expected goals ratios. Moreover, if we for some reason chose to evaluate a set of players from lower tier leagues who generally scores less goals than their expected goals, even players who can simply maintain a <span class="math inline">\(PR_p = 1\)</span> might appear more favorably than they would when compared to Big Five league players. This potential for selection bias underlines the importance of carefully choosing the comparison set of players.</li>
+<li><strong>Subjectivity in weighting</strong>: The choice to weight the difference in performance ratios by pre-2023/24 xG is inherently subjective. While it’s important to have some form of weighting–so as to avoid disproportionately emphasizing players with a shorter history of past shots or who shoot relatively few shots in the target season–alternative weighting strategies could lead to significantly different rankings.</li>
+<li><strong>Sensitivity to player pool</strong>: The percentile ranking of a player’s <span class="math inline">\(PR_{p,\text{target}}\)</span> is highly sensitive to the comparison group. For instance, comparing forwards to defenders could skew results due to generally higher variability in defenders’ goal-to-expected goals ratios. Moreover, if we chose to evaluate a set of players from lower-tier leagues who generally score fewer goals than their expected goals, even players who can simply maintain a <span class="math inline">\(PR_p = 1\)</span> might appear more favorably than they would when compared to Big Five league players. This potential for selection bias underlines the importance of carefully choosing the comparison set of players.</li>
 </ul>
 </section>
 </section>
@@ -537,7 +537,7 @@ PR_p = \frac{G_p}{xG_p}
 <p>Here’s a “resampling” approach to quantify the performance ratio percentile <span class="math inline">\(PRP_p\)</span> of a player in the target season:</p>
 <ol type="1">
 <li><p>Sample <span class="math inline">\(N_{p,\text{target}}\)</span> shots from a player’s past shots <span class="math inline">\(S_{p,\text{target}'}\)</span>. Repeat this for <span class="math inline">\(R\)</span> resamples.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a></p></li>
-<li><p>Count the number of resamples <span class="math inline">\(r\)</span> in which the outperformance ratio <span class="math inline">\(\hat{PR}_{p,\text{target}'}\)</span> of the sampled shots is less than or equal to the observed <span class="math inline">\(PR_{p,\text{target}}\)</span> in the target season for the player. The proportion <span class="math inline">\(PRP_p = \frac{r}{R}\)</span> represents the unlikeness of a given player’s observed <span class="math inline">\(PR_{p,\text{target}}\)</span> (or worse) in the target season.</p></li>
+<li><p>Count the number of resamples <span class="math inline">\(r\)</span> in which the performance ratio <span class="math inline">\(\hat{PR}_{p,\text{target}'}\)</span> of the sampled shots is less than or equal to the observed <span class="math inline">\(PR_{p,\text{target}}\)</span> in the target season for the player. The proportion <span class="math inline">\(PRP_p = \frac{r}{R}\)</span> represents the unlikeness of a given player’s observed <span class="math inline">\(PR_{p,\text{target}}\)</span> (or worse) in the target season.</p></li>
 </ol>
 <p>Here’s how that looks in code.</p>
 <div class="cell">
@@ -624,14 +624,18 @@ PR_p = \frac{G_p}{xG_p}
 <div class="cell">
 <details open="">
 <summary>Approach 2 output for Maddison</summary>
-<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>maddison_prp_approach2 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_pr, target_pr, prp)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>maddison_prp_approach2 <span class="sc">|&gt;</span> dplyr<span class="sc">::</span><span class="fu">select</span>(player, prior_pr, target_pr, prp)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; # A tibble: 1 × 4</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   player         prior_pr target_pr   prp</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;             &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison     1.38     0.797 0.109</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <p>The plot below should provide a bit of visual intuition as to what’s going on.</p>
 <p><img src="maddison_prp_approach2.png" class="img-fluid"></p>
-<p>These results imply that Maddison’s 2023/24 <span class="math inline">\(G / xG\)</span> ratio of 0.797 (or worse) occurs in 10.9% of simulations, i.e.&nbsp;an 11th percentile outcome. That’s a bit higher than what the first approach showed.</p>
-<p>How can we feel confident about this approach? Well, in the first approach, we sort of implicitly assumed that underperformance should be uniform across all players, hence the percentile ranking. We should see if the same bears out with this second approach.</p>
-<p>The plot below shows a histogram of the performance ratio percentile across all players, where each player’s estimated unlikelihood is grouped into a decile.</p>
+<p>These results imply that Maddison’s 2023/24 <span class="math inline">\(G / xG\)</span> ratio of 0.797 (or worse) occurs in 11% of simulations, i.e.&nbsp;an 11th percentile outcome. That’s a bit higher than what the first approach showed.</p>
+<p>How can we feel confident about this approach? Well, in the first approach, we implicitly assumed that the performance ratio percentiles should be uniform across all players, hence the percentile ranking. We should see if the same bears out with this second approach.</p>
+<p>The plot below shows a histogram of the performance ratio percentile across all players, where each player’s estimated performance ratio percentile is grouped into a decile.</p>
 <div class="cell">
 <details>
 <summary>Approach 2 implementation for all players</summary>
@@ -663,8 +667,8 @@ PR_p = \frac{G_p}{xG_p}
 </details>
 </div>
 <p><img src="all_prp_approach2.png" class="img-fluid"></p>
-<p>Indeed, the histogram shows a fairly uniform distribution, with a bit of irregularity at the very edges.</p>
-<p>Looking at who is in the lower end of the leftmost decile, we see some of the same names–Immobile and <a href="https://fbref.com/en/players/6bde367b/Teji-Savanier">Savanier</a>–among the ten underperformers. (Withholding judgment on the superiority of any methodology, we can find some solace in seeing some of the same names among the most unlikely underperformers here as we did with approach 1.)</p>
+<p>Indeed, the histogram shows a fairly uniform distribution, with a bit of irregularity at the upper end.</p>
+<p>Looking at who is in the lower end of the leftmost decile, we see some of the same names–Immobile and <a href="https://fbref.com/en/players/6bde367b/Teji-Savanier">Savanier</a>–among the ten underperformers. Withholding judgment on the superiority of any methodology, we can find some solace in seeing some of the same names among the most unlikely underperformers here as we did with approach 1.</p>
 <div class="cell">
 <details open="">
 <summary>Approach 2 output, top 10 underperforming players</summary>
@@ -684,137 +688,135 @@ PR_p = \frac{G_p}{xG_p}
 <span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 10 M'Bala Nzola                  1.10     0.274 0.025</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>One familiar face in the printout above is <a href="https://fbref.com/en/players/1f44ac21/Erling-Haaland">Manchester City’s striker Erling Haaland</a>, whose underperformance this season has been called among <a href="https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/">fans and the media</a>. His sub-par performance this year ranked as a 9th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds (1st percentile).</p>
+<p>One familiar face in the printout above is <a href="https://fbref.com/en/players/1f44ac21/Erling-Haaland">Manchester City’s striker Erling Haaland</a>, whose underperformance this season has been called out among <a href="https://theathletic.com/5430355/2024/04/20/erling-haaland-manchester-city-human/">fans and the media</a>. His sub-par performance this year ranked as a 9th percentile outcome by approach 1, which is very low, but not quite as low as what this approach finds (1st percentile).</p>
 <section id="discussion-1" class="level4">
 <h4 class="anchored" data-anchor-id="discussion-1">Discussion</h4>
 <ul>
-<li><strong>Assumption of Shot Profile Consistency</strong>: We assume that a player’s past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. But there are other exceptions as well. For example, Haaland has taken a lot more headed shots this season, despite playing effectively the same role on mostly the same team from last season The change in Haaland’s shot profile this year conflicts with the assumption of a consistent shot profile, perhaps explaining why this resampling approach finds Haaland’s shooting performance to be more unlikely the percentile ranking approach.</li>
-<li><strong>Non-Parametric Nature</strong>: This method does not assume any specific distribution for a player’s performance ratios; instead, it relies on the stability of a player’s performance over time. The resampling process itself shapes the outcome distribution, which can vary significantly between players with different shooting behaviors, such as a forward versus a defender.</li>
-<li><strong>Computational Demands</strong>: The resampling approach requires relatively more computational resources than the prior approach, especially without parallel processing. Even a relatively small number of resamples, such as <span class="math inline">\(R=1000\)</span>, can take a few second per player to compute.</li>
+<li><strong>Assumption of shot profile consistency</strong>: We assume that a player’s past shot behavior accurately predicts their future performance. This generally holds unless a player changes their role or team, or is recovering from an injury. But there are other exceptions as well. For example, Haaland has taken a lot more headed shots this season, despite playing effectively the same role on mostly the same team from last season The change in Haaland’s shot profile this year conflicts with the assumption of a consistent shot profile, perhaps explaining why this resampling approach finds Haaland’s shooting performance to be more unlikely the percentile ranking approach.</li>
+<li><strong>Non-parametric nature</strong>: This method does not assume any specific distribution for a player’s performance ratios; instead, it relies on the stability of a player’s performance over time. The resampling process itself shapes the outcome distribution, which can vary significantly between players with different shooting behaviors, such as a forward versus a defender.</li>
+<li><strong>Computational demands</strong>: The resampling approach requires relatively more computational resources than the prior approach, especially without parallel processing. Even a relatively small number of resamples, such as <span class="math inline">\(R=1000\)</span>, can take a few seconds per player to compute.</li>
 </ul>
 </section>
 </section>
 <section id="approach-3-evaluating-a-player-specific-cumulative-distribution-function-cdf" class="level3">
 <h3 class="anchored" data-anchor-id="approach-3-evaluating-a-player-specific-cumulative-distribution-function-cdf">Approach 3: Evaluating a Player-Specific Cumulative Distribution Function (CDF)</h3>
-<p>If we assume that the set of goals-to-xG ratios come from a <a href="https://en.wikipedia.org/wiki/Gamma_process">Gamma data-generating process</a>, then we can leverage the properties of a player-level <a href="https://en.wikipedia.org/wiki/Gamma_distribution">Gamma distribution</a> to assess the unlikelihood of a players <span class="math inline">\(PR_p\)</span> ratio.</p>
-<p>To calculate the underperforming unlikeliness <span class="math inline">\(PRP_p\)</span>:</p>
+<p>If we assume that the set of goals-to-xG ratios come from a <a href="https://en.wikipedia.org/wiki/Gamma_process">Gamma data-generating process</a>, then we can leverage the properties of a player-level <a href="https://en.wikipedia.org/wiki/Gamma_distribution">Gamma distribution</a> to assess the likelihood of a player’s observed goals-to-xG ratio.</p>
+<p>To calculate the performance ratio percentile <span class="math inline">\(PRP_p\)</span>:</p>
 <ol type="1">
-<li><p>Estimate a Gamma distribution <span class="math inline">\(\Gamma_{p,\text{target}'}\)</span> to model a player’s true outperformance ratio <span class="math inline">\(O_{p}\)</span> across all prior shots, excluding those in the target season–<span class="math inline">\(\hat{PR}_{p,\text{target}'}\)</span>.</p></li>
+<li><p>Estimate a Gamma distribution <span class="math inline">\(\Gamma_{p,\text{target}'}\)</span> to model a player’s true outperformance ratio <span class="math inline">\(PR_{p,\text{target}'}\)</span> across all prior shots, excluding those in the target season–<span class="math inline">\(\hat{PR}_{p,\text{target}'}\)</span>.</p></li>
 <li><p>Calculate the probability that <span class="math inline">\(\hat{PR}_{p,\text{target}'}\)</span> is less than or equal to the player’s observed <span class="math inline">\(PR_{p,\text{target}}\)</span> in the target season using the Gamma distribution’s <a href="https://en.wikipedia.org/wiki/Cumulative_distribution_function">cumulative distribution function (CDF)</a>.</p></li>
 </ol>
 <p>While that may sound daunting, I promise that it’s not.</p>
 <div class="cell">
 <details>
 <summary>Approach 3 implementation</summary>
-<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>N_SIMS <span class="ot">&lt;-</span> <span class="dv">10000</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>SHOT_TO_SHAPE_MAPPING <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">'from'</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">50</span>, <span class="dv">750</span>),</span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">'to'</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">25</span>)</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="do">## Fix the gamma distribution's "median" to be shaped around the player's past</span></span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="do">##   historical G/xG ratio (with minimum shape value of 1, so as to prevent a </span></span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="do">##   monotonically decreasing distribution function).</span></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="do">## Fit larger shape and rate parameters when the player has a lot of prior shots, </span></span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="do">##   so as to create a tighter Gamma distibution.</span></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>estimate_one_gamma_distributed_pr  <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    shots,</span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    target_season_end_year</span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>) {</span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  player_np_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
-<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">is_target =</span> season_end_year <span class="sc">==</span> target_season_end_year)</span>
-<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>  prior_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>is_target)</span>
-<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  target_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(is_target)</span>
-<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>  agg_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span></span>
-<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
-<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>      <span class="at">.by =</span> <span class="fu">c</span>(is_target),</span>
-<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>      <span class="at">shots =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(),</span>
-<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">across</span>(<span class="fu">c</span>(g, xg), \(.x) <span class="fu">sum</span>(.x))</span>
-<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
-<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">pr =</span> g <span class="sc">/</span> xg)</span>
-<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a>  agg_prior_player_np_shots <span class="ot">&lt;-</span> agg_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>is_target)</span>
-<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb11-37"><a href="#cb11-37" aria-hidden="true" tabindex="-1"></a>  agg_target_player_np_shots <span class="ot">&lt;-</span> agg_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb11-38"><a href="#cb11-38" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(is_target)</span>
-<span id="cb11-39"><a href="#cb11-39" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-40"><a href="#cb11-40" aria-hidden="true" tabindex="-1"></a>  shape <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">case_when</span>(</span>
-<span id="cb11-41"><a href="#cb11-41" aria-hidden="true" tabindex="-1"></a>    agg_prior_player_np_shots<span class="sc">$</span>shots <span class="sc">&lt;</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from[<span class="dv">1</span>] <span class="sc">~</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to[<span class="dv">2</span>],</span>
-<span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a>    agg_prior_player_np_shots<span class="sc">$</span>shots <span class="sc">&gt;</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from[<span class="dv">2</span>] <span class="sc">~</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to[<span class="dv">2</span>],</span>
-<span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a>    <span class="cn">TRUE</span> <span class="sc">~</span> scales<span class="sc">::</span><span class="fu">rescale</span>(</span>
-<span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a>      agg_prior_player_np_shots<span class="sc">$</span>shots, </span>
-<span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a>      <span class="at">from =</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from, </span>
-<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a>      <span class="at">to =</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to</span>
-<span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb11-48"><a href="#cb11-48" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb11-49"><a href="#cb11-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(</span>
-<span id="cb11-50"><a href="#cb11-50" aria-hidden="true" tabindex="-1"></a>    <span class="st">'shape'</span> <span class="ot">=</span> shape,</span>
-<span id="cb11-51"><a href="#cb11-51" aria-hidden="true" tabindex="-1"></a>    <span class="st">'rate'</span> <span class="ot">=</span> shape <span class="sc">/</span> agg_prior_player_np_shots<span class="sc">$</span>pr</span>
-<span id="cb11-52"><a href="#cb11-52" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb11-53"><a href="#cb11-53" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb11-54"><a href="#cb11-54" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-55"><a href="#cb11-55" aria-hidden="true" tabindex="-1"></a>estimate_gamma_distributed_pr <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
-<span id="cb11-56"><a href="#cb11-56" aria-hidden="true" tabindex="-1"></a>    shots,</span>
-<span id="cb11-57"><a href="#cb11-57" aria-hidden="true" tabindex="-1"></a>    players,</span>
-<span id="cb11-58"><a href="#cb11-58" aria-hidden="true" tabindex="-1"></a>    target_season_end_year</span>
-<span id="cb11-59"><a href="#cb11-59" aria-hidden="true" tabindex="-1"></a>) {</span>
-<span id="cb11-60"><a href="#cb11-60" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb11-61"><a href="#cb11-61" aria-hidden="true" tabindex="-1"></a>  purrr<span class="sc">::</span><span class="fu">map_dfr</span>(</span>
-<span id="cb11-62"><a href="#cb11-62" aria-hidden="true" tabindex="-1"></a>    players,</span>
-<span id="cb11-63"><a href="#cb11-63" aria-hidden="true" tabindex="-1"></a>    \(.player) {</span>
-<span id="cb11-64"><a href="#cb11-64" aria-hidden="true" tabindex="-1"></a>      params <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
-<span id="cb11-65"><a href="#cb11-65" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(player <span class="sc">==</span> .player) <span class="sc">|&gt;</span> </span>
-<span id="cb11-66"><a href="#cb11-66" aria-hidden="true" tabindex="-1"></a>        <span class="fu">estimate_one_gamma_distributed_pr</span>(</span>
-<span id="cb11-67"><a href="#cb11-67" aria-hidden="true" tabindex="-1"></a>          <span class="at">target_season_end_year =</span> target_season_end_year</span>
-<span id="cb11-68"><a href="#cb11-68" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb11-69"><a href="#cb11-69" aria-hidden="true" tabindex="-1"></a>      </span>
-<span id="cb11-70"><a href="#cb11-70" aria-hidden="true" tabindex="-1"></a>      <span class="fu">list</span>(</span>
-<span id="cb11-71"><a href="#cb11-71" aria-hidden="true" tabindex="-1"></a>        <span class="st">'player'</span> <span class="ot">=</span> .player,</span>
-<span id="cb11-72"><a href="#cb11-72" aria-hidden="true" tabindex="-1"></a>        <span class="st">'params'</span> <span class="ot">=</span> <span class="fu">list</span>(params)</span>
-<span id="cb11-73"><a href="#cb11-73" aria-hidden="true" tabindex="-1"></a>      )</span>
-<span id="cb11-74"><a href="#cb11-74" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb11-75"><a href="#cb11-75" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb11-76"><a href="#cb11-76" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb11-77"><a href="#cb11-77" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-78"><a href="#cb11-78" aria-hidden="true" tabindex="-1"></a>maddison_gamma_pr <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb11-79"><a href="#cb11-79" aria-hidden="true" tabindex="-1"></a>  <span class="fu">estimate_gamma_distributed_pr</span>(</span>
-<span id="cb11-80"><a href="#cb11-80" aria-hidden="true" tabindex="-1"></a>    <span class="at">players =</span> <span class="st">'James Maddison'</span>,</span>
-<span id="cb11-81"><a href="#cb11-81" aria-hidden="true" tabindex="-1"></a>    <span class="at">target_season_end_year =</span> TARGET_SEASON_END_YEAR</span>
-<span id="cb11-82"><a href="#cb11-82" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb11-83"><a href="#cb11-83" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
-<span id="cb11-84"><a href="#cb11-84" aria-hidden="true" tabindex="-1"></a>    wide_player_np_shots <span class="sc">|&gt;</span> </span>
-<span id="cb11-85"><a href="#cb11-85" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
-<span id="cb11-86"><a href="#cb11-86" aria-hidden="true" tabindex="-1"></a>        player,</span>
-<span id="cb11-87"><a href="#cb11-87" aria-hidden="true" tabindex="-1"></a>        prior_pr,</span>
-<span id="cb11-88"><a href="#cb11-88" aria-hidden="true" tabindex="-1"></a>        target_pr</span>
-<span id="cb11-89"><a href="#cb11-89" aria-hidden="true" tabindex="-1"></a>      ),</span>
-<span id="cb11-90"><a href="#cb11-90" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player)</span>
-<span id="cb11-91"><a href="#cb11-91" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb11-92"><a href="#cb11-92" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player)</span>
-<span id="cb11-93"><a href="#cb11-93" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-94"><a href="#cb11-94" aria-hidden="true" tabindex="-1"></a>maddison_prp_approach3 <span class="ot">&lt;-</span> maddison_gamma_pr <span class="sc">|&gt;</span> </span>
-<span id="cb11-95"><a href="#cb11-95" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb11-96"><a href="#cb11-96" aria-hidden="true" tabindex="-1"></a>    <span class="at">prp =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
-<span id="cb11-97"><a href="#cb11-97" aria-hidden="true" tabindex="-1"></a>      target_pr,</span>
-<span id="cb11-98"><a href="#cb11-98" aria-hidden="true" tabindex="-1"></a>      params,</span>
-<span id="cb11-99"><a href="#cb11-99" aria-hidden="true" tabindex="-1"></a>      \(.target_pr, .params) {</span>
-<span id="cb11-100"><a href="#cb11-100" aria-hidden="true" tabindex="-1"></a>        <span class="fu">pgamma</span>(</span>
-<span id="cb11-101"><a href="#cb11-101" aria-hidden="true" tabindex="-1"></a>          .target_pr, </span>
-<span id="cb11-102"><a href="#cb11-102" aria-hidden="true" tabindex="-1"></a>          <span class="at">shape =</span> .params<span class="sc">$</span>shape, </span>
-<span id="cb11-103"><a href="#cb11-103" aria-hidden="true" tabindex="-1"></a>          <span class="at">rate =</span> .params<span class="sc">$</span>rate,</span>
-<span id="cb11-104"><a href="#cb11-104" aria-hidden="true" tabindex="-1"></a>          <span class="at">lower.tail =</span> <span class="cn">TRUE</span></span>
-<span id="cb11-105"><a href="#cb11-105" aria-hidden="true" tabindex="-1"></a>        )</span>
-<span id="cb11-106"><a href="#cb11-106" aria-hidden="true" tabindex="-1"></a>      }</span>
-<span id="cb11-107"><a href="#cb11-107" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb11-108"><a href="#cb11-108" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb11-109"><a href="#cb11-109" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(params)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>SHOT_TO_SHAPE_MAPPING <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">'from'</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">50</span>, <span class="dv">750</span>),</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">'to'</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">25</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="do">## Fix the gamma distribution's "median" to be shaped around the player's past</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="do">##   historical G/xG ratio (with minimum shape value of 1, so as to prevent a </span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="do">##   monotonically decreasing distribution function).</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="do">## Fit larger shape and rate parameters when the player has a lot of prior shots, </span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="do">##   so as to create a tighter Gamma distibution.</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>estimate_one_gamma_distributed_pr  <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    shots,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    target_season_end_year</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  player_np_shots <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">is_target =</span> season_end_year <span class="sc">==</span> target_season_end_year)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  prior_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>is_target)</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>  target_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(is_target)</span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>  agg_player_np_shots <span class="ot">&lt;-</span> player_np_shots <span class="sc">|&gt;</span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">summarize</span>(</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>      <span class="at">.by =</span> <span class="fu">c</span>(is_target),</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>      <span class="at">shots =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(),</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">across</span>(<span class="fu">c</span>(g, xg), \(.x) <span class="fu">sum</span>(.x))</span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">pr =</span> g <span class="sc">/</span> xg)</span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>  agg_prior_player_np_shots <span class="ot">&lt;-</span> agg_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>is_target)</span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a>  agg_target_player_np_shots <span class="ot">&lt;-</span> agg_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(is_target)</span>
+<span id="cb11-37"><a href="#cb11-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-38"><a href="#cb11-38" aria-hidden="true" tabindex="-1"></a>  shape <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">case_when</span>(</span>
+<span id="cb11-39"><a href="#cb11-39" aria-hidden="true" tabindex="-1"></a>    agg_prior_player_np_shots<span class="sc">$</span>shots <span class="sc">&lt;</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from[<span class="dv">1</span>] <span class="sc">~</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to[<span class="dv">2</span>],</span>
+<span id="cb11-40"><a href="#cb11-40" aria-hidden="true" tabindex="-1"></a>    agg_prior_player_np_shots<span class="sc">$</span>shots <span class="sc">&gt;</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from[<span class="dv">2</span>] <span class="sc">~</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to[<span class="dv">2</span>],</span>
+<span id="cb11-41"><a href="#cb11-41" aria-hidden="true" tabindex="-1"></a>    <span class="cn">TRUE</span> <span class="sc">~</span> scales<span class="sc">::</span><span class="fu">rescale</span>(</span>
+<span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a>      agg_prior_player_np_shots<span class="sc">$</span>shots, </span>
+<span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a>      <span class="at">from =</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>from, </span>
+<span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a>      <span class="at">to =</span> SHOT_TO_SHAPE_MAPPING<span class="sc">$</span>to</span>
+<span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(</span>
+<span id="cb11-48"><a href="#cb11-48" aria-hidden="true" tabindex="-1"></a>    <span class="st">'shape'</span> <span class="ot">=</span> shape,</span>
+<span id="cb11-49"><a href="#cb11-49" aria-hidden="true" tabindex="-1"></a>    <span class="st">'rate'</span> <span class="ot">=</span> shape <span class="sc">/</span> agg_prior_player_np_shots<span class="sc">$</span>pr</span>
+<span id="cb11-50"><a href="#cb11-50" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb11-51"><a href="#cb11-51" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-52"><a href="#cb11-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-53"><a href="#cb11-53" aria-hidden="true" tabindex="-1"></a>estimate_gamma_distributed_pr <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
+<span id="cb11-54"><a href="#cb11-54" aria-hidden="true" tabindex="-1"></a>    shots,</span>
+<span id="cb11-55"><a href="#cb11-55" aria-hidden="true" tabindex="-1"></a>    players,</span>
+<span id="cb11-56"><a href="#cb11-56" aria-hidden="true" tabindex="-1"></a>    target_season_end_year</span>
+<span id="cb11-57"><a href="#cb11-57" aria-hidden="true" tabindex="-1"></a>) {</span>
+<span id="cb11-58"><a href="#cb11-58" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-59"><a href="#cb11-59" aria-hidden="true" tabindex="-1"></a>  purrr<span class="sc">::</span><span class="fu">map_dfr</span>(</span>
+<span id="cb11-60"><a href="#cb11-60" aria-hidden="true" tabindex="-1"></a>    players,</span>
+<span id="cb11-61"><a href="#cb11-61" aria-hidden="true" tabindex="-1"></a>    \(.player) {</span>
+<span id="cb11-62"><a href="#cb11-62" aria-hidden="true" tabindex="-1"></a>      params <span class="ot">&lt;-</span> shots <span class="sc">|&gt;</span> </span>
+<span id="cb11-63"><a href="#cb11-63" aria-hidden="true" tabindex="-1"></a>        dplyr<span class="sc">::</span><span class="fu">filter</span>(player <span class="sc">==</span> .player) <span class="sc">|&gt;</span> </span>
+<span id="cb11-64"><a href="#cb11-64" aria-hidden="true" tabindex="-1"></a>        <span class="fu">estimate_one_gamma_distributed_pr</span>(</span>
+<span id="cb11-65"><a href="#cb11-65" aria-hidden="true" tabindex="-1"></a>          <span class="at">target_season_end_year =</span> target_season_end_year</span>
+<span id="cb11-66"><a href="#cb11-66" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb11-67"><a href="#cb11-67" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb11-68"><a href="#cb11-68" aria-hidden="true" tabindex="-1"></a>      <span class="fu">list</span>(</span>
+<span id="cb11-69"><a href="#cb11-69" aria-hidden="true" tabindex="-1"></a>        <span class="st">'player'</span> <span class="ot">=</span> .player,</span>
+<span id="cb11-70"><a href="#cb11-70" aria-hidden="true" tabindex="-1"></a>        <span class="st">'params'</span> <span class="ot">=</span> <span class="fu">list</span>(params)</span>
+<span id="cb11-71"><a href="#cb11-71" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb11-72"><a href="#cb11-72" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb11-73"><a href="#cb11-73" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb11-74"><a href="#cb11-74" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-75"><a href="#cb11-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-76"><a href="#cb11-76" aria-hidden="true" tabindex="-1"></a>maddison_gamma_pr <span class="ot">&lt;-</span> np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb11-77"><a href="#cb11-77" aria-hidden="true" tabindex="-1"></a>  <span class="fu">estimate_gamma_distributed_pr</span>(</span>
+<span id="cb11-78"><a href="#cb11-78" aria-hidden="true" tabindex="-1"></a>    <span class="at">players =</span> <span class="st">'James Maddison'</span>,</span>
+<span id="cb11-79"><a href="#cb11-79" aria-hidden="true" tabindex="-1"></a>    <span class="at">target_season_end_year =</span> TARGET_SEASON_END_YEAR</span>
+<span id="cb11-80"><a href="#cb11-80" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-81"><a href="#cb11-81" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">inner_join</span>(</span>
+<span id="cb11-82"><a href="#cb11-82" aria-hidden="true" tabindex="-1"></a>    wide_player_np_shots <span class="sc">|&gt;</span> </span>
+<span id="cb11-83"><a href="#cb11-83" aria-hidden="true" tabindex="-1"></a>      dplyr<span class="sc">::</span><span class="fu">select</span>(</span>
+<span id="cb11-84"><a href="#cb11-84" aria-hidden="true" tabindex="-1"></a>        player,</span>
+<span id="cb11-85"><a href="#cb11-85" aria-hidden="true" tabindex="-1"></a>        prior_pr,</span>
+<span id="cb11-86"><a href="#cb11-86" aria-hidden="true" tabindex="-1"></a>        target_pr</span>
+<span id="cb11-87"><a href="#cb11-87" aria-hidden="true" tabindex="-1"></a>      ),</span>
+<span id="cb11-88"><a href="#cb11-88" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> dplyr<span class="sc">::</span><span class="fu">join_by</span>(player)</span>
+<span id="cb11-89"><a href="#cb11-89" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-90"><a href="#cb11-90" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(player)</span>
+<span id="cb11-91"><a href="#cb11-91" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-92"><a href="#cb11-92" aria-hidden="true" tabindex="-1"></a>maddison_prp_approach3 <span class="ot">&lt;-</span> maddison_gamma_pr <span class="sc">|&gt;</span> </span>
+<span id="cb11-93"><a href="#cb11-93" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb11-94"><a href="#cb11-94" aria-hidden="true" tabindex="-1"></a>    <span class="at">prp =</span> purrr<span class="sc">::</span><span class="fu">map2_dbl</span>(</span>
+<span id="cb11-95"><a href="#cb11-95" aria-hidden="true" tabindex="-1"></a>      target_pr,</span>
+<span id="cb11-96"><a href="#cb11-96" aria-hidden="true" tabindex="-1"></a>      params,</span>
+<span id="cb11-97"><a href="#cb11-97" aria-hidden="true" tabindex="-1"></a>      \(.target_pr, .params) {</span>
+<span id="cb11-98"><a href="#cb11-98" aria-hidden="true" tabindex="-1"></a>        <span class="fu">pgamma</span>(</span>
+<span id="cb11-99"><a href="#cb11-99" aria-hidden="true" tabindex="-1"></a>          .target_pr, </span>
+<span id="cb11-100"><a href="#cb11-100" aria-hidden="true" tabindex="-1"></a>          <span class="at">shape =</span> .params<span class="sc">$</span>shape, </span>
+<span id="cb11-101"><a href="#cb11-101" aria-hidden="true" tabindex="-1"></a>          <span class="at">rate =</span> .params<span class="sc">$</span>rate,</span>
+<span id="cb11-102"><a href="#cb11-102" aria-hidden="true" tabindex="-1"></a>          <span class="at">lower.tail =</span> <span class="cn">TRUE</span></span>
+<span id="cb11-103"><a href="#cb11-103" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb11-104"><a href="#cb11-104" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb11-105"><a href="#cb11-105" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb11-106"><a href="#cb11-106" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-107"><a href="#cb11-107" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(params)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -830,7 +832,7 @@ PR_p = \frac{G_p}{xG_p}
 <p>We see that Maddison’s 2023/24 <span class="math inline">\(PR_{p,\text{target}}\)</span> ratio of 0.797 (or worse) is about a 5th percentile outcome given his prior shot history.</p>
 <p>To gain some intuition around this approach, we can plot out the Gamma distributed estimate of Maddison’s <span class="math inline">\(PR_p\)</span>. The result is a histogram that looks not all that dissimilar to the one from before with resampled shots, just much smoother (since this is a “parametric” approach).</p>
 <p><img src="maddison_prp_approach3.png" class="img-fluid"></p>
-<p>As with approach 2, we should check to see what the distribution of underperforming unlikeliness looks like–we should expect to see a somewhat uniform distribution.</p>
+<p>As with approach 2, we should check to see what the distribution of performance ratio percentiles looks like–we should expect to see a somewhat uniform distribution.</p>
 <div class="cell">
 <details>
 <summary>Approach 3 for all players</summary>
@@ -896,14 +898,13 @@ PR_p = \frac{G_p}{xG_p}
 </div>
 <p>We can visually check the consistency of the results from this method with the prior two with scatter plots of the estimated performance ratio percentile from each.</p>
 <p><img src="all_prp.png" class="img-fluid"></p>
-<p>If two of the approaches were perfectly in agreement, then each point, representing one of the 602 evaluated players, would fall along the 45-degree slope 1 line.</p>
-<p>With that in mind, we can see that approach 3 is more <strong>precise</strong> agrees with approach 1, although approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.</p>
+<p>If two of the approaches were perfectly in agreement, then each point–representing one of the 602 evaluated players–would fall along the 45-degree slope 1 line.</p>
+<p>With that in mind, we can see that approach 3 more precisely agrees with approach 1, although approach 3 tends to assign slightly higher percentiles to players on the whole. The results from approaches 2 and 3 also have a fair degree of agreement, and the results are more uniformly calibrated.</p>
 <section id="discussion-2" class="level4">
 <h4 class="anchored" data-anchor-id="discussion-2">Discussion</h4>
 <ul>
-<li><strong>Parametric Nature</strong>: The reliance on a Gamma distribution for modeling a player’s performance is both a strength and a limitation. The Gamma distribution is apt for positive, skewed continuous variables, making it suitable for modeling goals-to-xG ratios. However, the dependency on a single distribution type may restrict the scope of analysis.</li>
-<li><strong>Sensitivity to Distribution Parameters</strong>: The outcomes of this methodology are highly sensitive to the parameters defining each player’s Gamma distribution. Small adjustments in shape or rate parameters can significantly alter the distribution, causing substantial shifts in the percentile outcomes of player performances. This sensitivity underscores the need for careful parameter selection and calibration.</li>
-<li><strong>Flexibility of the Model</strong>: Despite its sensitivity, the Gamma distribution offers considerable flexibility. It allows for fine-tuning of the model to better fit the data, which can be advantageous for capturing the nuances of different players’ shot profiles.</li>
+<li><strong>Parametric nature</strong>: The reliance on a Gamma distribution for modeling a player’s performance is both a strength and a limitation. The Gamma distribution is apt for positive, skewed continuous variables, making it suitable for modeling goals-to-xG ratios. And we can leverage the properties of the distribution to calculate a likelihood percentile directly. However, the dependency on a distribution is sort of an “all-or-nothing” endeavor–if we don’t estimate an appropriate distribution, then we can under- or over-estimate the likelihood of individual player outcomes.</li>
+<li><strong>Sensitivity to distribution parameters</strong>: The outcomes of this methodology are highly sensitive to the parameters defining each player’s Gamma distribution. Small adjustments in shape or rate parameters can significantly alter the distribution, causing substantial shifts in the percentile outcomes of player performances. This sensitivity underscores the need for careful parameter selection and calibration.</li>
 </ul>
 </section>
 </section>
@@ -914,41 +915,41 @@ PR_p = \frac{G_p}{xG_p}
 <p>Here’s a summary of the biggest pros and cons of each approach, along with the result for Maddison.</p>
 <table class="table">
 <colgroup>
-<col style="width: 6%">
-<col style="width: 24%">
-<col style="width: 10%">
-<col style="width: 29%">
-<col style="width: 29%">
+<col style="width: 3%">
+<col style="width: 22%">
+<col style="width: 31%">
+<col style="width: 25%">
+<col style="width: 17%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Approach</th>
 <th>Description</th>
-<th>Biggest Pro</th>
-<th>Biggest Con</th>
-<th>Maddison 2023/24 Underperformance Unlikeliness</th>
+<th>Pros</th>
+<th>Cons</th>
+<th>James Maddison 2023/24 Performance Ratio Percentile</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td>1</td>
-<td>Percentile Ranking</td>
-<td>customizable</td>
-<td>sensitive to the choice of players to evaluate</td>
+<td>Weighted percentile ranking</td>
+<td>Easy to understand and implement</td>
+<td>Sensitive to the weighting scheme and the set of evaluated players</td>
 <td>2nd percentile</td>
 </tr>
 <tr class="even">
 <td>2</td>
-<td>Resampling</td>
-<td>non-parametric</td>
-<td>limited by player’s shot history</td>
+<td>Resampling from prior shot history</td>
+<td>Non-parametric (no need to make a choices about weighting scheme, distribituion fitting, etc.)</td>
+<td>Assumes a player’s shot profile is static, can be computationally intensive</td>
 <td>11th percentile</td>
 </tr>
 <tr class="odd">
 <td>3</td>
-<td>Cumulative Distribution Function (CDF)</td>
-<td>flexibility<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a></td>
-<td>sensitive to choice of distribution parameters</td>
+<td>Evaluating a player-specific cumulative distribution function (CDF)</td>
+<td>Likelihood of an outcome can be calculated directly from the properties of the distribution</td>
+<td>Sensitive to choice of distribution parameters</td>
 <td>5th percentile</td>
 </tr>
 </tbody>
@@ -961,10 +962,10 @@ PR_p = \frac{G_p}{xG_p}
 </ol>
 <p>I think the answer is “yes”, for the resampling approach. The non-parametric nature of resampling makes it easy to translate to other “levels of aggregation”, i.e.&nbsp;a set of players under a manager or playing as a team.</p>
 <ol start="2" type="1">
-<li><strong>Can we accurately attribute a percentage of underperformance to skill and luck?</strong></li>
+<li><strong>Can we accurately attribute a percentage of the underperformance to skill and luck?</strong></li>
 </ol>
-<p>Eh, I don’t know about “accurately”, especially at the player-level.The <a href="https://en.wikipedia.org/wiki/Coefficient_of_determination">R-squared</a> of <a href="https://www.americansocceranalysis.com/home/2023/8/28/the-replication-project-measuring-shooting-overperformance">year-over-year player-level G / xG ratios is nearly zero</a>. If we equate “skill” to “percent of variance explained in year-over-year correlations of a measure (i.e.&nbsp;G / xG)”, then I suppose the answer is that basically 0% of seasonal over- or under-performance is due to innate factors; rather, we’d attribute all variation to “luck” (assuming that their “skill” and “luck” are the only factors that can explain residuals). That’s not all that compelling, although it may be the reality.</p>
-<p><a href="../../posts/soccer-meta-analytics/">My prior work on “meta-metrics” for soccer</a> perhaps has a more compelling answer. The “stability” measure defined in that post for <span class="math inline">\(G / xG\)</span> comes out to about 70% (out of 100%).</p>
+<p>Eh, I don’t know about “accurately”, especially at the player level.The <a href="https://en.wikipedia.org/wiki/Coefficient_of_determination">R-squared</a> of <a href="https://www.americansocceranalysis.com/home/2023/8/28/the-replication-project-measuring-shooting-overperformance">year-over-year player-level G / xG ratios is nearly zero</a>. If we equate “skill” to “percent of variance explained in year-over-year correlations of a measure (i.e.&nbsp;G / xG)”, then I suppose the answer is that basically 0% of seasonal over- or under-performance is due to innate factors; rather, we’d attribute all variation to “luck” (assuming that their “skill” and “luck” are the only factors that can explain residuals). That’s not all that compelling, although it may be the reality.</p>
+<p><a href="../../posts/soccer-meta-analytics/">My prior work on “meta-metrics” for soccer</a> perhaps has a more compelling answer. The “stability” measure defined in that post for <span class="math inline">\(G / xG\)</span> comes out to about 70% (out of 100%). If we say that “stability” is just another word for “skill”, then we could attribute about 70% of a player’s seasonal over- or under-performance to innate factors, on average.</p>
 </section>
 </section>
 <section id="appendix" class="level1">
@@ -1013,7 +1014,7 @@ PR_p = \frac{G_p}{xG_p}
 <span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; 1 James Maddison     1.38     0.797 0.0543</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>In reality, this isn’t giving us a percentage of unlikelihood of the outcome. Rather, the p-value measures the probability of underformance as extreme as the underperformance observed in 2023/24 if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player’s actual <span class="math inline">\(PR_p\)</span> in the 2023/24 season and the distribution of performance ratios observed in previous seasons.</p>
+<p>In reality, this isn’t giving us a percentage of unlikelihood of the outcome. Rather, the p-value measures the probability of underperformance as extreme as the underperformance observed in 2023/24 if the null hypothesis is true. The null hypothesis in this case would be that there is no significant difference between the player’s actual <span class="math inline">\(PR_p\)</span> in the 2023/24 season and the distribution of performance ratios observed in previous seasons.</p>
 
 
 
@@ -1036,7 +1037,6 @@ No matching items
 <li id="fn3"><p>The weighting emphasizes scenarios where a veteran player, typically overperforming or at worst neutral, suddenly underperforms, as opposed to a second-year player experiencing similar downturns.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn4"><p>Percentiles greater than 50% generally correspond with players who have overperformed, so really the bottom 50% are the players we’re looking at when we’re considering underperformance.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p><span class="math inline">\(N_p\)</span> should be set equal to the number of shots a player has taken in the target season. <span class="math inline">\(R\)</span> should be set to some fairly large number, so as to achieve stability in the results.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn6"><p>Well, it’s “flexible” to the extent that a statistical distribution can be flexible.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
