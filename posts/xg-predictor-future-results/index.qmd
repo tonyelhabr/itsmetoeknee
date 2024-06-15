@@ -1,0 +1,66 @@
+---
+title: Expected goals and in-season predictiveness
+description: "Is expected goals in neutral game states the best predictor for future performance?"
+date: 2024-07-01
+draft: true
+toc-depth: 4
+toc-expand: true
+categories:
+  - r
+  - soccer
+execute: 
+  code-fold: show
+  eval: false
+  include: false
+  echo: true
+---
+
+# Introduction
+
+["The best predictor for future performance is Expected Goals"](http://web.archive.org/web/20181112175811/http://www.11tegen11.com/2015/01/05/the-best-predictor-for-future-performance-is-expected-goals/), authored by Sander Ijtsma of [11tegen11](https://twitter.com/11tegen11) in 2015, is one of the most notable articles in public soccer analytics. The write-up provided compelling evidence for the superiority of [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) in terms of forecasting team-season outcomes on a game-by-game basis.[^1][^2] Specifically, Ijtsma drew out curves for within-season, cumulative correlation of various metrics--xG ratio[^3], shots ratio, etc.--in terms of their relationship with rest-of-season ("future") goals ratio and [points](https://en.wikipedia.org/wiki/Three_points_for_a_win).
+
+[^1]: If you know anything about the broader soccer analytics discourse, you've more than likely heard about one of the Ijtsma's findings regarding the predictiveness of xG. As [Eliot](https://x.com/etmckinley) [puts](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) it:
+
+    > If you’ve ever heard or read someone say that it takes 5-10 (4 in the article) games for xG to be predictive, they probably read this article or got it second hand from someone who has.
+
+[^2]: Note that there are [some critics](https://jameswgrayson.wordpress.com/2015/01/06/a-quick-cautionary-note-on-predictiveness-and-r-squared/) of the choice to rely on R-squared as a measure of predictiveness. For the purpose of this post, we'll take the criticism on the chin.
+
+[^3]: A "ratio" here is broadly defined in pseudo-code as `team's value / (team's value + opponent's value)`. Ijtsma's notes in a reply to a comment that one might arguably use a difference formula, i.e. `team's value - opponent's value`, as opposed to ratios, as ratios are susceptible to noise when values are themselves fractional. This is most relevant for xG, and not so relevant for shots and goals, which are inherently discrete.
+
+![](11tegen11-xg.png)
+
+In 2022, [Eliot McKinley](https://x.com/etmckinley) wrote [a cool piece](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) for [American Soccer Analytics (ASA)](https://www.americansocceranalysis.com) where he replicated and enhanced Ijtsma's analysis, updating the data set to use 2018 through 2022 matches for [the Big 5 European Leagues](https://en.wikipedia.org/wiki/Big_Five_(association_football)), and adding in a look at the MLS. Further, Eliot presented a novel aspect where he bootstrapped the running R-squared values to generate smoother, more interpretable curves.
+
+![](asa-xg.png)
+
+Now I'd like to further expand on this prior art in a few ways:
+
+1.  Most simply, expand the data set range to 2018 through 2024, sourcing from a known, reputed source--[FBref](https://fbref.com/en/). [^4]
+2.  Publicize code for performing the running [correlation](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) calculations, including my take on the bootstrapping that Eliot demonstrated.
+3.  Include additional curves for "gamestate" shots and xG, in an effort to see if one can achieve metrics that are perhaps even more predictive than xG.
+
+[^4]: Notably, I'll also exclude the COVID-19 influenced 2020 season, so as to reduce a bit of noise in the data. Although bootstrapping games within season should reduce much of this noise, in practice, [FBref](https://fbref.com/en/) is missing some game-level xG data for 2020 matches, so this choice is sort of just a pragmatic one.
+
+On the last point, Ijtsma noted that to adjust for the bias introduced by team quality, one might only look at shot ratio, etc. when the score line is neutral or when teams are within one goal of each other. In fact, he said he had evaluated this:
+
+> I've looked at this, but I have decided not to include that subanalysis in this post, for the sake of accessibility. However, I will put it out here soon, with graph specifying how the metrics do in certain match situations. I think this method will show that the phenomenon either does not truly exists, or that its effect are so small that correcting for this will allow more noise and thereby weaken the model.
+
+Unfortunately, I couldn't find any subsequent blog post where Ijtsma writes about the role of gamestate in this analysis, so, alas, I'm here to do exactly that.
+
+Now, my point isn't necessarily to find the absolute best metric possible to use to forecast future team performance. Eliot and Tiotal Football [showed that](https://www.americansocceranalysis.com/home/2020/5/12/breaking-goals-added) non-shot, event-based metrics like goals added and
+
+![](breaking-goals-added.png)
+
+# Data
+
+foo
+
+# Methods and Analysis
+
+## Replicating
+
+## Extending
+
+# Conclusion
+
+foo
