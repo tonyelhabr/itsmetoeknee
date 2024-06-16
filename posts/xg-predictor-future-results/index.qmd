@@ -414,14 +414,7 @@ clean_shots <- shots_with_own_goals |>
       TRUE ~ 0
     )
   ) |>
-  dplyr::group_by(match_id) |>
-  ## Differentiate between shots in the same minute.
-  dplyr::mutate(
-    shot_idx = dplyr::row_number((minutes + dplyr::coalesce(minutes_added, 0L)))
-  ) |> 
-  dplyr::ungroup() |> 
-  dplyr::transmute(
-    shot_id = sprintf('%s-%02d', match_id, shot_idx),
+  dplyr::select(
     match_id,
     period,
     minutes,
@@ -439,6 +432,18 @@ clean_shots <- shots_with_own_goals |>
     away_xg,
     home_xgot,
     away_xgot
+  ) |> 
+  ## Still need to distinct because, even with fixing team names, there have been FBref MatchURL changes
+  dplyr::distinct() |> 
+  dplyr::group_by(match_id) |>
+  ## Differentiate between shots in the same minute.
+  dplyr::mutate(
+    shot_idx = dplyr::row_number((minutes + dplyr::coalesce(minutes_added, 0L)))
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    shot_id = sprintf('%s-%02d', match_id, shot_idx),
+    .before = 1
   )
 
 restacked_shots <- dplyr::bind_rows(
@@ -539,7 +544,6 @@ cumu_doublecounted_restacked_shots <- doublecounted_restacked_shots |>
     gamestate = g_cumu - g_conceded_cumu
   )
 
-ORDERED_GAMESTATE_LABELS <- c('trailing', 'tied', 'leading')
 gamestate_shots <- cumu_doublecounted_restacked_shots |> 
   dplyr::inner_join(
     deduped_match_summaries |> 
@@ -584,14 +588,22 @@ gamestate_shots <- cumu_doublecounted_restacked_shots |>
     xgot,
     xgot_conceded,
     xgd = xg - xg_conceded,
-    gamestate_gd0 = gamestate == 0,
-    gamestate_abs_gd1 = abs(gamestate) <= 1
+    gamestate_gd0 = dplyr::case_when(
+      gamestate == 0 ~ 'neutral',
+      gamestate < 0 ~ 'trailing',
+      gamestate > 0 ~ 'leading'
+    ),
+    gamestate_abs_gd1 = dplyr::case_when(
+      abs(gamestate) <= 1 ~ 'neutral',
+      gamestate < 1 ~ 'trailing',
+      gamestate > 1 ~ 'leading'
+    )
   ) |> 
   dplyr::group_by(match_id, team) |> 
   dplyr::arrange(shot_id, .by_group = TRUE) |> 
   dplyr::mutate(
-    pre_shot_gamestate_gd0 = dplyr::lag(gamestate_gd0, default = TRUE),
-    pre_shot_gamestate_abs_gd1 = dplyr::lag(gamestate_abs_gd1, default = TRUE)
+    pre_shot_gamestate_gd0 = dplyr::lag(gamestate_gd0, default = 'neutral'),
+    pre_shot_gamestate_abs_gd1 = dplyr::lag(gamestate_abs_gd1, default = 'neutral')
   ) |> 
   dplyr::ungroup() |> 
   dplyr::arrange(team, season, date, shot_id)
@@ -657,18 +669,19 @@ aggregate_games_by_gamestate <- function(df, gamestate_col) {
       match_id, 
       date,
       !!gamestate_sym,
-    ) |> 
+    ) |>
+    ## need all the `na.rm = TRUE`'s since i don't fill in `pov` for the padded minute records
     dplyr::summarize(
-      shots = sum(pov == 'primary'),
-      shots_conceded = sum(pov == 'secondary'),
-      sot = sum(pov == 'primary' & xgot > 0),
-      sot_conceded = sum(pov == 'primary' & xgot_conceded > 0),
+      shots = sum(pov == 'primary', na.rm = TRUE),
+      shots_conceded = sum(pov == 'secondary', na.rm = TRUE),
+      sot = sum(pov == 'primary' & xgot > 0, na.rm = TRUE),
+      sot_conceded = sum(pov == 'primary' & xgot_conceded > 0, na.rm = TRUE),
       dplyr::across(
         c(
           g, g_conceded, xg, xg_conceded, xgot, xgot_conceded,
           duration
         ),
-        \(.x) sum(.x)
+        \(.x) sum(.x, na.rm = TRUE)
       )
     ) |> 
     dplyr::ungroup() |> 
@@ -693,7 +706,7 @@ aggregate_games_by_gamestate <- function(df, gamestate_col) {
       match_id
     ) |> 
     tidyr::crossing(
-      !!gamestate_sym := c(TRUE, FALSE)
+      !!gamestate_sym := c('trailing', 'neutral', 'leading')
     ) |> 
     dplyr::left_join(
       agg_shots_by_game_gamestate,
@@ -726,10 +739,6 @@ aggregate_games_by_gamestate <- function(df, gamestate_col) {
         \(.x) dplyr::coalesce(.x, 0)
       )
     ) |> 
-    ## convert boolean to character
-    dplyr::mutate(
-      !!gamestate_sym := ifelse(!!gamestate_sym, 'neutral', 'other')
-    ) |> 
     tidyr::pivot_wider(
       names_from = !!gamestate_sym,
       values_from = c(
@@ -757,36 +766,47 @@ gamestate_abs_gd1_by_game <- gamestate_shots_and_durations |>
   aggregate_games_by_gamestate('pre_shot_gamestate_abs_gd1')
 dplyr::glimpse(gamestate_abs_gd1_by_game)
 #> Rows: 29,852
-#> Columns: 29
-#> $ country                <chr> "ENG", "ENG", "ENG", "ENG", "ENG", "ENG", "E…
-#> $ gender                 <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M",…
-#> $ tier                   <chr> "1st", "1st", "1st", "1st", "1st", "1st", "1…
-#> $ team                   <chr> "Arsenal", "Arsenal", "Arsenal", "Arsenal", …
-#> $ season                 <int> 2018, 2018, 2018, 2018, 2018, 2018, 2018, 20…
-#> $ date                   <date> 2017-08-11, 2017-08-19, 2017-08-27, 2017-09…
-#> $ match_id               <chr> "e3c3ddf0", "37f97732", "e4374144", "2fab7d5…
-#> $ shots_neutral          <dbl> 0, 0, 1, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 7,…
-#> $ shots_other            <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0,…
-#> $ shots_conceded_neutral <dbl> 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 6…
-#> $ shots_conceded_other   <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
-#> $ sot_neutral            <dbl> 10, 6, 0, 4, 2, 4, 7, 6, 11, 5, 1, 2, 2, 2, …
-#> $ sot_other              <dbl> 0, 0, 0, 5, 0, 2, 1, 0, 3, 0, 2, 3, 0, 4, 10…
-#> $ sot_conceded_neutral   <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
-#> $ sot_conceded_other     <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
-#> $ g_neutral              <dbl> 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0,…
-#> $ g_other                <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,…
-#> $ g_conceded_neutral     <dbl> 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3,…
-#> $ g_conceded_other       <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
-#> $ xg_neutral             <dbl> 2.57, 1.46, 0.09, 0.66, 1.53, 1.56, 1.71, 0.…
-#> $ xg_other               <dbl> 0.00, 0.00, 0.48, 1.57, 0.00, 0.65, 0.72, 0.…
-#> $ xg_conceded_neutral    <dbl> 1.50, 0.71, 1.65, 0.00, 0.79, 0.88, 0.20, 1.…
-#> $ xg_conceded_other      <dbl> 0.00, 0.00, 1.52, 0.57, 0.00, 0.00, 0.21, 0.…
-#> $ xgot_neutral           <dbl> 3.34, 1.09, 0.00, 1.72, 0.18, 2.01, 2.67, 1.…
-#> $ xgot_other             <dbl> 0.00, 0.00, 0.00, 3.06, 0.00, 0.23, 0.07, 0.…
-#> $ xgot_conceded_neutral  <dbl> 2.11, 1.02, 2.21, 0.00, 0.53, 0.26, 0.08, 1.…
-#> $ xgot_conceded_other    <dbl> 0.00, 0.00, 2.20, 0.63, 0.00, 0.00, 0.00, 0.…
-#> $ duration_neutral       <dbl> 99, 99, 40, 27, 96, 70, 59, 98, 77, 96, 81, …
-#> $ duration_other         <dbl> 0, 0, 56, 70, 0, 26, 38, 0, 22, 0, 15, 57, 0…
+#> Columns: 40
+#> $ country                 <chr> "ENG", "ENG", "ENG", "ENG", "ENG", "ENG", "…
+#> $ gender                  <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M"…
+#> $ tier                    <chr> "1st", "1st", "1st", "1st", "1st", "1st", "…
+#> $ team                    <chr> "Arsenal", "Arsenal", "Arsenal", "Arsenal",…
+#> $ season                  <int> 2018, 2018, 2018, 2018, 2018, 2018, 2018, 2…
+#> $ date                    <date> 2017-08-11, 2017-08-19, 2017-08-27, 2017-0…
+#> $ match_id                <chr> "e3c3ddf0", "37f97732", "e4374144", "2fab7d…
+#> $ shots_leading           <dbl> 0, 0, 0, 11, 0, 8, 9, 0, 8, 0, 0, 10, 0, 8,…
+#> $ shots_neutral           <dbl> 27, 18, 1, 6, 11, 8, 16, 9, 22, 17, 4, 4, 1…
+#> $ shots_trailing          <dbl> 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2…
+#> $ shots_conceded_leading  <dbl> 0, 0, 0, 7, 0, 0, 4, 0, 3, 0, 0, 10, 0, 1, …
+#> $ shots_conceded_neutral  <dbl> 6, 11, 10, 0, 13, 7, 5, 11, 6, 5, 9, 4, 8, …
+#> $ shots_conceded_trailing <dbl> 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2…
+#> $ sot_leading             <dbl> 0, 0, 0, 5, 0, 2, 1, 0, 3, 0, 0, 3, 0, 4, 0…
+#> $ sot_neutral             <dbl> 10, 6, 0, 4, 2, 4, 7, 6, 11, 5, 1, 2, 2, 2,…
+#> $ sot_trailing            <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 1…
+#> $ sot_conceded_leading    <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+#> $ sot_conceded_neutral    <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+#> $ sot_conceded_trailing   <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+#> $ g_leading               <dbl> 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0…
+#> $ g_neutral               <dbl> 4, 0, 0, 2, 0, 2, 2, 1, 3, 2, 0, 2, 1, 2, 0…
+#> $ g_trailing              <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1…
+#> $ g_conceded_leading      <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0…
+#> $ g_conceded_neutral      <dbl> 3, 1, 2, 0, 0, 0, 0, 2, 1, 1, 3, 0, 0, 0, 3…
+#> $ g_conceded_trailing     <dbl> 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+#> $ xg_leading              <dbl> 0.00, 0.00, 0.00, 1.57, 0.00, 0.65, 0.72, 0…
+#> $ xg_neutral              <dbl> 2.57, 1.46, 0.09, 0.66, 1.53, 1.56, 1.71, 0…
+#> $ xg_trailing             <dbl> 0.00, 0.00, 0.48, 0.00, 0.00, 0.00, 0.00, 0…
+#> $ xg_conceded_leading     <dbl> 0.00, 0.00, 0.00, 0.57, 0.00, 0.00, 0.21, 0…
+#> $ xg_conceded_neutral     <dbl> 1.50, 0.71, 1.65, 0.00, 0.79, 0.88, 0.20, 1…
+#> $ xg_conceded_trailing    <dbl> 0.00, 0.00, 1.52, 0.00, 0.00, 0.00, 0.00, 0…
+#> $ xgot_leading            <dbl> 0.00, 0.00, 0.00, 3.06, 0.00, 0.23, 0.07, 0…
+#> $ xgot_neutral            <dbl> 3.34, 1.09, 0.00, 1.72, 0.18, 2.01, 2.67, 1…
+#> $ xgot_trailing           <dbl> 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0…
+#> $ xgot_conceded_leading   <dbl> 0.00, 0.00, 0.00, 0.63, 0.00, 0.00, 0.00, 0…
+#> $ xgot_conceded_neutral   <dbl> 2.11, 1.02, 2.21, 0.00, 0.53, 0.26, 0.08, 1…
+#> $ xgot_conceded_trailing  <dbl> 0.0, 0.0, 2.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0…
+#> $ duration_leading        <dbl> 0, 0, 0, 70, 0, 26, 38, 0, 22, 0, 0, 57, 0,…
+#> $ duration_neutral        <dbl> 99, 99, 40, 27, 96, 70, 59, 98, 77, 96, 81,…
+#> $ duration_trailing       <dbl> 0, 0, 56, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0,…
 ```
 
 ```{r}
@@ -805,7 +825,7 @@ gamestate_abs_gd1_by_game <- qs::qread(file.path(PROJ_DIR, 'gamestate_abs_gd1_by
 
 ## Replicating prior art
 
-Let's begin with replicating Ijtsma's visualization where he evaluated the correlation of the five measures of past performance with respect to two measures of rest-of-season performance. The five measures of past performance are:
+Let's begin with replicating Ijtsma's visualization where he evaluated the correlation of the five measures of season-to-date ("past") performance with respect to two measures of rest-of-season ("future") performance. The five measures of past performance are:
 
 1.  points per game
 2.  goal ratio
@@ -819,18 +839,410 @@ The two measures of future performance are:
 2.  points per game
 
 ```{r}
+#| label: rolling-r2s
+#| code-fold: true
+#| echo: true
+#| code-summary: "Calculate rolling R-squared for season-to-date and rest-of-season performance measures"
+accumulate_team_summary <- function(df, op, .prefix) {
+  df |> 
+    dplyr::arrange(team, season, op(game_idx)) |> 
+    dplyr::group_by(season, team) |> 
+    dplyr::mutate(
+      dplyr::across(
+        c(
+          shots, shots_conceded, sot, sot_conceded,
+          g, g_conceded, xg, xg_conceded,
+          g_neutral, g_conceded_neutral, xg_neutral, xg_conceded_neutral, xgot_neutral, xgot_conceded_neutral,
+          duration_leading,
+          pts, pts_conceded
+        ),
+        \(.x) cumsum(coalesce(.x, 0))
+      )
+    ) |> 
+    dplyr::ungroup() |> 
+    dplyr::mutate(
+      shot_ratio = shots / (shots + shots_conceded),
+      sot_ratio = sot / (sot + sot_conceded),
+      g_ratio = g / (g + g_conceded),
+      xg_ratio = xg / (xg + xg_conceded),
+      
+      shot_neutral_ratio = shots_neutral / (shots_neutral + shots_conceded_neutral),
+      sot_neutral_ratio = sot_neutral / (sot_neutral + sot_conceded_neutral),
+      g_neutral_ratio = g_neutral / (g_neutral + g_conceded_neutral),
+      xg_neutral_ratio = xg_neutral / (xg_neutral + xg_conceded_neutral),
+      xgot_neutral_ratio = xgot_neutral / (xgot_neutral + xgot_conceded_neutral),
+      
+      duration_leading_per_game = duration_leading / game_idx,
+      pts_per_game = pts / game_idx
+    ) |> 
+    dplyr::mutate(
+      ## replace NaNs with NAs for the cor calculation
+      dplyr::across(
+        dplyr::ends_with('ratio'),
+        \(.x) tidyr::replace_na(.x, 0.5)
+      )
+    ) |> 
+    dplyr::rename_with(
+      .fn = \(.x) paste0(.prefix, '_', .x),
+      .cols = c(
+        shots, shots_conceded, sot, sot_conceded,
+        g, g_conceded, xg, xg_conceded,
+        shots_neutral, shots_conceded_neutral, sot_neutral, sot_conceded_neutral,
+        g_neutral, g_conceded_neutral, xg_neutral, xg_conceded_neutral, xgot_neutral, xgot_conceded_neutral,
+        duration_leading,
+        pts, pts_conceded,
+        dplyr::ends_with('ratio'),
+        dplyr::ends_with('per_game')
+      )
+    )
+}
 
+calculate_nested_r2 <- function(data, col, target_col) {
+  purrr::map_dbl(
+    data,
+    \(.x) {
+      cor(
+        .x[[col]],
+        .x[[target_col]],
+        use = 'complete.obs'
+      )^2
+    }
+  )
+}
+
+calculate_rolling_r2s <- function(df) {
+  
+  past_team_summary <- df |> 
+    accumulate_team_summary(`+`, .prefix = 'past')
+  
+  future_team_summary <- df |> 
+    accumulate_team_summary(`-`, .prefix = 'future')
+  
+  accumulated_df <- dplyr::inner_join(
+    past_team_summary |> 
+      dplyr::select(
+        season,
+        team,
+        country,
+        game_idx,
+        dplyr::starts_with('past')
+      ),
+    future_team_summary |> 
+      dplyr::select(
+        season,
+        team,
+        game_idx,
+        dplyr::starts_with('future')
+      ),
+    by = dplyr::join_by(season, team, game_idx)
+  ) |> 
+    dplyr::mutate(
+      league_group = ifelse(country == 'USA', 'MLS', 'Big 5'),
+      .keep = 'unused',
+      .before = 1
+    )
+  
+  accumulated_df |> 
+    tidyr::nest(data = -c(league_group, game_idx)) |> 
+    dplyr::mutate(
+      past_shot_ratio__future_g_ratio = calculate_nested_r2(data, 'past_shot_ratio', 'future_g_ratio'),
+      past_sot_ratio__future_g_ratio = calculate_nested_r2(data, 'past_sot_ratio', 'future_g_ratio'),
+      past_g_ratio__future_g_ratio = calculate_nested_r2(data, 'past_g_ratio', 'future_g_ratio'),
+      past_xg_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_ratio', 'future_g_ratio'),
+      past_shot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_shot_neutral_ratio', 'future_g_ratio'),
+      past_sot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_sot_neutral_ratio', 'future_g_ratio'),
+      past_g_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_g_neutral_ratio', 'future_g_ratio'),
+      past_xg_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_neutral_ratio', 'future_g_ratio'),
+      past_xgot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xgot_neutral_ratio', 'future_g_ratio'),
+      past_duration_leading_per_game__future_g_ratio = calculate_nested_r2(data, 'past_duration_leading_per_game', 'future_g_ratio'),
+      past_pts_per_game__future_g_ratio = calculate_nested_r2(data, 'past_pts_per_game', 'future_g_ratio'),
+      
+      past_shot_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_shot_ratio', 'future_pts_per_game'),
+      past_sot_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_sot_ratio', 'future_pts_per_game'),
+      past_g_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_g_ratio', 'future_pts_per_game'),
+      past_xg_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_xg_ratio', 'future_pts_per_game'),
+      past_shot_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_shot_neutral_ratio', 'future_pts_per_game'),
+      past_sot_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_sot_neutral_ratio', 'future_pts_per_game'),
+      past_g_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_g_neutral_ratio', 'future_pts_per_game'),
+      past_xg_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_xg_neutral_ratio', 'future_pts_per_game'),
+      past_xgot_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_xgot_neutral_ratio', 'future_pts_per_game'),
+      past_duration_leading_per_game__future_pts_per_game = calculate_nested_r2(data, 'past_duration_leading_per_game', 'future_pts_per_game'),
+      past_pts_per_game__future_pts_per_game = calculate_nested_r2(data, 'past_pts_per_game', 'future_pts_per_game')
+    ) |> 
+    dplyr::select(-data)
+}
+
+pivot_rolling_r2s <- function(df) {
+  df |> 
+    tidyr::pivot_longer(
+      -c(league_group, game_idx),
+      names_pattern = '(^.*)__(.*$)',
+      names_to = c('predictor', 'target'),
+      values_to = 'r2'
+    )
+}
+
+do_calculate_rolling_r2s <- purrr::compose( 
+  calculate_rolling_r2s,
+  pivot_rolling_r2s,
+  .dir = 'forward'
+)
+
+combined_data_gd0 <- combined_team_summary |> 
+  dplyr::left_join(
+    gamestate_gd0_by_game,
+    by = dplyr::join_by(season, country, gender, tier, match_id, team)
+  )
+
+combined_data_abs_gd1 <- combined_team_summary |> 
+  dplyr::left_join(
+    gamestate_gd0_by_game,
+    by = dplyr::join_by(season, country, gender, tier, match_id, team)
+  )
+
+## boths dfs have the same format
+rolling_r2s_gd0 <- combined_data_gd0 |> do_calculate_rolling_r2s()
+rolling_r2s_abs_gd1 <- combined_data_abs_gd1 |> do_calculate_rolling_r2s()
+#> # A tibble: 1,584 × 5
+#>    league_group game_idx predictor                      target             r2
+#>    <chr>           <int> <chr>                          <chr>           <dbl>
+#>  1 Big 5               1 past_shot_ratio                future_g_ratio 0.187 
+#>  2 Big 5               1 past_sot_ratio                 future_g_ratio 0.170 
+#>  3 Big 5               1 past_g_ratio                   future_g_ratio 0.165 
+#>  4 Big 5               1 past_xg_ratio                  future_g_ratio 0.182 
+#>  5 Big 5               1 past_shot_neutral_ratio        future_g_ratio 0.156 
+#>  6 Big 5               1 past_sot_neutral_ratio         future_g_ratio 0.0261
+#>  7 Big 5               1 past_g_neutral_ratio           future_g_ratio 0.108 
+#>  8 Big 5               1 past_xg_neutral_ratio          future_g_ratio 0.142 
+#>  9 Big 5               1 past_xgot_neutral_ratio        future_g_ratio 0.110 
+#> 10 Big 5               1 past_duration_leading_per_game future_g_ratio 0.129 
+#> # ℹ 1,574 more rows
+#> # ℹ Use `print(n = ...)` to see more rows
 ```
 
-![](running-cors.png)
+```{r}
+#| label: plot-rolling-r2s
+#| include: false
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
+
+TAG_LABEL <- htmltools::tagList(
+  htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
+  htmltools::tags$span("@TonyElHabr"),
+)
+CAPTION_LABEL <- '**Data**: Opta via fbref. 2018 - 2024 seasons, excluding 2020.<br/>**Inspiration**: 11tegen, American Soccer Analysis'
+
+PLOT_RESOLUTION <- 300
+WHITISH_FOREGROUND_COLOR <- 'white'
+COMPLEMENTARY_FOREGROUND_COLOR <- '#cbcbcb' # '#f1f1f1'
+BLACKISH_BACKGROUND_COLOR <- '#1c1c1c'
+COMPLEMENTARY_BACKGROUND_COLOR <- '#4d4d4d'
+FONT <- 'Titillium Web'
+sysfonts::font_add_google(FONT, FONT)
+## https://github.com/tashapiro/tanya-data-viz/blob/main/chatgpt-lensa/chatgpt-lensa.R for twitter logo
+sysfonts::font_add('fb', 'Font Awesome 6 Brands-Regular-400.otf')
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = PLOT_RESOLUTION)
+
+ggplot2::theme_set(ggplot2::theme_minimal())
+ggplot2::theme_update(
+  text = ggplot2::element_text(family = FONT),
+  title = ggplot2::element_text(size = 18, color = WHITISH_FOREGROUND_COLOR),
+  plot.title = ggtext::element_markdown(face = 'bold', size = 18, color = WHITISH_FOREGROUND_COLOR),
+  plot.title.position = 'plot',
+  plot.subtitle = ggtext::element_markdown(size = 18, color = COMPLEMENTARY_FOREGROUND_COLOR),
+  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
+  legend.text = ggplot2::element_text(size = 12, color = WHITISH_FOREGROUND_COLOR, face = 'plain'),
+  legend.title = ggplot2::element_text(size = 12, color = WHITISH_FOREGROUND_COLOR, face = 'bold'),
+  axis.title.x = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.title.y = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
+  axis.ticks = ggplot2::element_line(color = WHITISH_FOREGROUND_COLOR),
+  axis.line = ggplot2::element_blank(),
+  strip.text = ggplot2::element_text(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0),
+  panel.grid.major = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor = ggplot2::element_line(color = COMPLEMENTARY_BACKGROUND_COLOR),
+  panel.grid.minor.x = ggplot2::element_blank(),
+  panel.grid.minor.y = ggplot2::element_blank(),
+  plot.margin = ggplot2::margin(10, 20, 10, 20),
+  plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
+  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain'),
+  plot.caption.position = 'plot',
+  plot.tag = ggtext::element_markdown(size = 10, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
+  plot.tag.position = c(0.99, 0.01),
+  panel.spacing.x = grid::unit(2, 'lines'),
+  # panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
+  panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = WHITISH_FOREGROUND_COLOR)
+)
+
+## Can pick either rolling_r2s_gd0 or rolling_r2s_abs_gd1 to plot since we're looking at just
+##   non-gamestate features here
+pretty_predictor_names <- c(
+  'past_pts_per_game' = 'Points per Game',
+  'past_g_ratio' = 'Goal Ratio',
+  'past_shot_ratio' = 'Total Shots Ratio',
+  'past_sot_ratio' = 'Shots on Target Ratio',
+  'past_xg_ratio' = 'Expected Goals Ratio'
+)
+pretty_target_names <- c(
+  'future_pts_per_game' = 'Future Points per Game',
+  'future_g_ratio' = 'Future Goals Ratio'
+)
+predictor_palette <- c(
+  'Points per Game' = '#cad2c5',
+  'Goal Ratio' = '#06d6a0',
+  'Total Shots Ratio' = '#ffd166',
+  'Shots on Target Ratio' = '#118ab2',
+  'Expected Goals Ratio' = '#ef476f'
+)
+
+prettified_rolling_r2s <- rolling_r2s_gd0 |> 
+  dplyr::filter(
+    predictor %in% names(pretty_predictor_names)
+  ) |> 
+  dplyr::mutate(
+    pretty_predictor = factor(pretty_predictor_names[predictor], rev(pretty_predictor_names)),
+    pretty_target = pretty_target_names[target]
+  ) 
+
+max_prettified_rolling_r2s <- prettified_rolling_r2s |> 
+  dplyr::group_by(league_group, predictor, target) |> 
+  dplyr::slice_max(r2, n = 1) |> 
+  dplyr::ungroup()
+
+rolling_r2s_plot <- prettified_rolling_r2s |> 
+  ggplot2::ggplot() +
+  ggplot2::aes(
+    x = game_idx,
+    y = r2
+  ) +
+  ggplot2::geom_segment(
+    data = max_prettified_rolling_r2s,
+    ggplot2::aes(
+      color = pretty_predictor,
+      x = 0,
+      xend = game_idx,
+      y = r2,
+      yend = r2
+    ),
+    linetype = 2,
+    linewidth = 0.25
+  ) +
+  ggplot2::geom_segment(
+    data = max_prettified_rolling_r2s,
+    ggplot2::aes(
+      color = pretty_predictor,
+      x = game_idx,
+      xend = game_idx,
+      y = 0,
+      yend = r2
+    ),
+    linetype = 2,
+    linewidth = 0.25
+  ) +
+  ggplot2::geom_line(
+    linewidth = 0.75,
+    ggplot2::aes(color = pretty_predictor)
+  ) +
+  ggplot2::scale_color_manual(
+    values = predictor_palette
+  ) +
+  ggplot2::guides(
+    color = ggplot2::guide_legend(
+      title = NULL,
+      label.theme = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 10, FONT),
+      override.aes = list(linewidth = 2)
+    )
+  ) +
+  ggplot2::scale_y_continuous(
+    limits = c(0, 1),
+    breaks = seq(0, 1, by = 0.2),
+    labels = scales::number_format(accuracy = 0.1)
+  ) +
+  ggplot2::scale_x_continuous(
+    breaks = seq.int(0, 35, by = 5),
+    labels = seq.int(0, 35, by = 5)
+  ) +
+  ggplot2::geom_text(
+    data = tibble::tibble(
+      league_group = 'Big 5',
+      pretty_target = 'Future Goals Ratio'
+    ),
+    ggplot2::aes(
+      x = 1,
+      y = 0.8,
+      label = 'Crosshairs mark max values.'
+    ),
+    color = WHITISH_FOREGROUND_COLOR,
+    family = FONT,
+    size = 10 / .pt,
+    fontface = 'italic',
+    hjust = 0,
+    vjust = 0.5
+  ) +
+  ggplot2::theme(
+    legend.position = c(0.85, 0.33),
+    # legend.spacing.y = ggplot2::unit(-1, 'cm'),
+    panel.grid.major = ggplot2::element_blank()
+  ) +
+  ggplot2::facet_grid(league_group~pretty_target) +
+  ggplot2::labs(
+    title = 'Predictors of Future Performance',
+    x = 'Match Day',
+    y = 'Correlation (R<sup>2</sup>)',
+    caption = CAPTION_LABEL,
+    tag = TAG_LABEL
+  )
+
+ggplot2::ggsave(
+  rolling_r2s_plot,
+  filename = file.path(PROJ_DIR, 'rolling_r2s.png'),
+  width = 9,
+  height = 9 / 1.5
+)
+```
+
+![](rolling-r2s.png)
 
 Now, if we bootstrap this code by randomly reordering matchweeks, then re-calculating up-to and rest-of-season measures, and doing that 1,000 times, we end up with the following plot.
 
 ```{r}
-
+calculate_resampled_rolling_r2s <- function(df, resamples = 10, seed = 42) {
+  # df |> 
+  #   dplyr::distinct(country, gender, tier, season, match_idx)
+  resampled_split_team_summary <- purrr::map(
+    1:resamples,
+    \(.i) {
+      message(sprintf('Resample %d.', .i))
+      resampled_df <- df |> 
+        dplyr::slice_sample(n = nrow(df), replace = FALSE) |> 
+        dplyr::group_by(team, season) |> 
+        dplyr::mutate(
+          game_idx = dplyr::row_number(),
+        ) |> 
+        dplyr::ungroup()
+      
+      
+      resampled_df |> 
+        calculate_rolling_r2s()
+    }
+  ) |> 
+    purrr::list_rbind()
+  
+  resampled_split_team_summary |> 
+    dplyr::summarize(
+      .by = c(league_group, game_idx),
+      dplyr::across(
+        dplyr::matches('__'),
+        \(.x) mean(.x, na.rm = TRUE)
+      )
+    )
+}
 ```
 
-![](boostrapped-running-cors.png)
+![](boostrapped-rolling-r2s.png)
 
 This looks like the bootstrapped plot from ASA, as intended.
 
