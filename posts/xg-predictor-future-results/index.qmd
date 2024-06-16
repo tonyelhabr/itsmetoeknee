@@ -17,15 +17,15 @@ execute:
 
 # Introduction
 
-["The best predictor for future performance is Expected Goals"](http://web.archive.org/web/20181112175811/http://www.11tegen11.com/2015/01/05/the-best-predictor-for-future-performance-is-expected-goals/), authored by Sander Ijtsma of [11tegen11](https://twitter.com/11tegen11) in 2015, is one of the most notable articles in public soccer analytics. The write-up provided compelling evidence for the superiority of [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) in terms of forecasting team-season outcomes on a game-by-game basis.[^1][^2] Specifically, Ijtsma drew out curves for within-season, cumulative correlation of various metrics--xG ratio[^3], shots ratio, etc.--in terms of their relationship with rest-of-season ("future") goals ratio and [points](https://en.wikipedia.org/wiki/Three_points_for_a_win).
+["The best predictor for future performance is Expected Goals"](http://web.archive.org/web/20181112175811/http://www.11tegen11.com/2015/01/05/the-best-predictor-for-future-performance-is-expected-goals/), authored by Sander Ijtsma of [11tegen11](https://twitter.com/11tegen11) in 2015, is one of the most notable articles in public soccer analytics. The write-up provided compelling evidence for the superiority of [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) in terms of forecasting team-season outcomes on a game-by-game basis.[^1][^2] Specifically, Ijtsma drew out curves for within-season, cumulative [correlation](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient)[^3] of various metrics--xG ratio[^4], shots ratio, etc.--in terms of their relationship with rest-of-season ("future") goals ratio and [points](https://en.wikipedia.org/wiki/Three_points_for_a_win).
 
-[^1]: If you know anything about the broader soccer analytics discourse, you've more than likely heard about one of the Ijtsma's findings regarding the predictiveness of xG. As [Eliot](https://x.com/etmckinley) [puts](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) it:
-
-    > If you’ve ever heard or read someone say that it takes 5-10 (4 in the article) games for xG to be predictive, they probably read this article or got it second hand from someone who has.
+[^1]: If you know anything about the broader soccer analytics discourse, you've more than likely heard about one of the Ijtsma's findings regarding the predictiveness of xG. As [Eliot](https://x.com/etmckinley) [puts](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) it: "If you’ve ever heard or read someone say that it takes 5-10 (4 in the article) games for xG to be predictive, they probably read this article or got it second hand from someone who has."
 
 [^2]: Note that there are [some critics](https://jameswgrayson.wordpress.com/2015/01/06/a-quick-cautionary-note-on-predictiveness-and-r-squared/) of the choice to rely on R-squared as a measure of predictiveness. For the purpose of this post, we'll take the criticism on the chin.
 
-[^3]: A "ratio" here is broadly defined in pseudo-code as `team's value / (team's value + opponent's value)`. Ijtsma's notes in a reply to a comment that one might arguably use a difference formula, i.e. `team's value - opponent's value`, as opposed to ratios, as ratios are susceptible to noise when values are themselves fractional. This is most relevant for xG, and not so relevant for shots and goals, which are inherently discrete.
+[^3]: I'll use (Pearson) correlation and [R-squared](https://en.wikipedia.org/wiki/Coefficient_of_determination) sort of interchangeably with one another in this post. Note that R-squared is just a squared version of Pearson correlation, so originality of results is not altered.
+
+[^4]: A "ratio" here is broadly defined in pseudo-code as `team's value / (team's value + opponent's value)`. Ijtsma's notes in a reply to a comment that one might arguably use a difference formula, i.e. `team's value - opponent's value`, as opposed to ratios, as ratios are susceptible to noise when values are themselves fractional. This is most relevant for xG, and not so relevant for shots and goals, which are inherently discrete.
 
 ![](11tegen11-xg.png)
 
@@ -35,15 +35,15 @@ In 2022, [Eliot McKinley](https://x.com/etmckinley) wrote [a cool piece](https:/
 
 Now I'd like to further expand on this prior art in a few ways:
 
-1.  Expand the data set range to 2018 through 2024, sourcing from a reputed data source--[FBref](https://fbref.com/en/). [^4]
+1.  Expand the data set range to 2018 through 2024, sourcing from a reputed data source--[FBref](https://fbref.com/en/). [^5]
 2.  Publicize code for performing the running [correlation](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) calculations, including my take on the bootstrapping that Eliot demonstrated.
 3.  Include additional curves for "gamestate" shots and xG, in an effort to see if one can achieve metrics that are perhaps even more predictive than xG.
 
-[^4]: Notably, I'll also exclude the COVID-19 influenced 2020 season, so as to reduce a bit of noise in the data. Although bootstrapping games within season should reduce much of this noise, in practice, [FBref](https://fbref.com/en/) is missing some game-level xG data for 2020 matches, so this choice is sort of just a pragmatic one.
+[^5]: Notably, I'll also exclude the COVID-19 influenced 2020 season, so as to reduce a bit of noise in the data. Although bootstrapping games within season should reduce much of this noise, in practice, [FBref](https://fbref.com/en/) is missing some game-level xG data for 2020 matches, so this choice is sort of just a pragmatic one.
 
 On the last point, Ijtsma noted that to adjust for the bias introduced by team quality, one might only look at shot ratio, etc. when the score line is neutral or when teams are within one goal of each other. In fact, he said he had evaluated this:
 
-> I've looked at this, but I have decided not to include that subanalysis in this post, for the sake of accessibility. However, I will put it out here soon, with graph specifying how the metrics do in certain match situations. I think this method will show that the phenomenon \[where teams exert more or less effort in matches against particular opposition\] either does not truly exists, or that its effect are so small that correcting for this will allow more noise and thereby weaken the model.
+> I've looked at this, but I have decided not to include that subanalysis in this post, for the sake of accessibility... I think this method will show that the phenomenon \[(where teams exert more or less effort in matches against particular opposition)\] either does not truly exists, or that its effect are so small that correcting for this will allow more noise and thereby weaken the model.
 
 Unfortunately, I couldn't find any subsequent blog post where Ijtsma writes about the role of gamestate in this analysis, so, alas, I'm here to do exactly that.
 
@@ -55,7 +55,751 @@ Now, my point isn't necessarily to find the absolute best metric possible to use
 
 For the most part, we just need to pull in FBref's match-level figures.
 
+```{r}
+#| label: setup
+#| code-fold: true
+#| echo: true
+#| code-summary: "Setup"
+library(worldfootballR)
+library(dplyr)
+library(stringr)
+
+PROJ_DIR <- 'posts/xg-predictor-future-results'
+
+## Extract the from "47880eb7" from "https://fbref.com/en/matches/47880eb7/Liverpool-Manchester-City-November-10-2019-Premier-League"
+extract_fbref_match_id <- function(match_url) {
+  basename(dirname(match_url))
+}
+
+fix_team <- function(x) {
+  dplyr::case_match(
+    x,
+    'Montreal Impact' ~ 'CF Montréal',
+    'Sporting Kansas City' ~ 'Sporting KC',
+    .default = x
+  )
+}
+
+COUNTRY <- c('ENG', 'ESP', 'FRA', 'GER', 'ITA', 'USA')
+GENDER <- 'M'
+TIER <- '1st'
+SEASON_END_YEAR <- c(2018:2024)
+
+## for match-level data
+raw_team_summary <- worldfootballR::load_fb_advanced_match_stats(
+  country = COUNTRY,
+  gender = GENDER,
+  tier = TIER,
+  season_end_year = SEASON_END_YEAR,
+  stat_type = 'summary',
+  team_or_player = 'team'
+)
+#> → Data last updated 2024-05-21 18:39:59 UTC
+
+## for shot-level / gamestate calcs
+raw_shots <- worldfootballR::load_fb_match_shooting(
+  country = COUNTRY,
+  gender = GENDER,
+  tier = TIER,
+  season_end_year = SEASON_END_YEAR
+)
+#> → Data last updated 2024-05-21 17:52:12 UTC
+
+raw_match_summaries <- worldfootballR::load_fb_match_summary(
+  country = COUNTRY,
+  gender = GENDER,
+  tier = TIER,
+  season_end_year = SEASON_END_YEAR
+)
+#> → Data last updated 2024-05-21 18:14:02 UTC
+```
+
+```{r}
+#| label: reprex_print
+reprex_print <- function(...) {
+  withr::local_options(width = 77)
+  capture.output(...) |> 
+    paste('#>', x = _) |> 
+    cat(sep = '\n')
+}
+```
+
+```{r}
+#| label: raw-data-save
+qs::qsave(raw_team_summary, file.path(PROJ_DIR, 'raw_team_summary.qs'))
+qs::qsave(raw_shots, file.path(PROJ_DIR, 'raw_shots.qs'))
+qs::qsave(raw_match_summaries, file.path(PROJ_DIR, 'raw_match_summaries.qs'))
+```
+
+```{r}
+#| label: raw-data-read
+raw_team_summary <- qs::qread(file.path(PROJ_DIR, 'raw_team_summary.qs'))
+raw_shots <- qs::qread(file.path(PROJ_DIR, 'raw_shots.qs'))
+raw_match_summaries <- qs::qread(file.path(PROJ_DIR, 'raw_match_summaries.qs'))
+```
+
+```{r}
+#| label: data-ingestion-team-summary
+#| code-fold: true
+#| echo: true
+#| code-summary: "Match-level data ingestion"
+## Known/valid matches with missing xG
+## - https://fbref.com/en/matches/e0a20cfe/Hellas-Verona-Roma-September-19-2020-Serie-A: awarded to Hellas Verona
+## https://fbref.com/en/matches/c34bbc21/Bochum-Monchengladbach-March-18-2022-Bundesliga: awarded to Monchengladbach
+team_summary <- raw_team_summary |>
+  dplyr::filter(
+    ## choose non-playoff/relegation weeks
+    (Country != 'USA' & stringr::str_detect(Matchweek, 'Matchweek')) | (Country == 'USA' & Matchweek == 'Major League Soccer (Regular Season)')
+  ) |> 
+  ## Fix effectively dup records due to change in MatchURLs
+  dplyr::filter(!(Country == 'GER' & Season_End_Year == 2024 & stringr::str_detect(MatchURL, 'Leverkusen') & !stringr::str_detect(MatchURL, 'Bayer-Leverkusen'))) |> 
+  ##  Drop MLS 2024 since it's incomplete at time of writing
+  dplyr::filter(
+    !(Country == 'USA' & Season_End_Year == 2024)
+  ) |> 
+  ## Drop COVID-19-affected seasonf for all leagues
+  ##  (Ligue 1 is espeically odd, as each team has about 7 games missing.)
+  dplyr::filter(
+    Season_End_Year != 2020
+  ) |>
+  dplyr::transmute(
+    season = Season_End_Year,
+    country = Country,
+    gender = Gender,
+    tier = Tier,
+    # match_week = stringr::str_extract(Matchweek, '[0-9]+') |> as.integer(), ## won't works for MLS
+    ## We'll use this to define our own notion of match week, where we order games
+    ##   by date rather than use the FBref matchweek provided at face value, since a
+    ##   a match could have been rescheduled, leading to situations where the labeled
+    ##   matchweek 2 comes before the matchweek 1, for example.
+    date = Match_Date, 
+    match_id = extract_fbref_match_id(MatchURL),
+    team = Team,
+    is_home = Home_Away == 'Home',
+    g = Gls,
+    xg = xG_Expected,
+    shots = Sh,
+    sot = SoT
+  ) |> 
+  dplyr::group_by(season, team) |> 
+  dplyr::mutate(
+    season_game_count = dplyr::n(),
+    game_idx = dplyr::row_number(date)
+  ) |> 
+  dplyr::ungroup()
+
+combined_team_summary <- dplyr::left_join(
+  team_summary,
+  team_summary |> 
+    dplyr::transmute(
+      match_id,
+      opponent = team,
+      g_conceded = g,
+      xg_conceded = xg,
+      shots_conceded = shots,
+      sot_conceded = sot
+    ),
+  by = dplyr::join_by(match_id),
+  relationship = 'many-to-many'
+) |> 
+  dplyr::filter(team != opponent) |> 
+  dplyr::mutate(
+    pts = dplyr::case_when(
+      g > g_conceded ~ 3L,
+      g < g_conceded ~ 0L,
+      g == g_conceded ~ 1L
+    ),
+    pts_conceded = dplyr::case_when(
+      g > g_conceded ~ 0L,
+      g < g_conceded ~ 3L,
+      g == g_conceded ~ 1L
+    )
+  ) |> 
+  dplyr::arrange(team, season, date)
+dplyr::glimpse(combined_team_summary)
+#> Rows: 25,416
+#> Columns: 21
+#> $ season            <int> 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2…
+#> $ country           <chr> "FRA", "FRA", "FRA", "FRA", "FRA", "FRA", "FRA", …
+#> $ gender            <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M",…
+#> $ tier              <chr> "1st", "1st", "1st", "1st", "1st", "1st", "1st", …
+#> $ date              <chr> "2022-08-05", "2022-08-14", "2022-08-21", "2022-0…
+#> $ match_id          <chr> "47ab569b", "8b559e8f", "9befca9a", "d8aa49d4", "…
+#> $ team              <chr> "Ajaccio", "Ajaccio", "Ajaccio", "Ajaccio", "Ajac…
+#> $ is_home           <lgl> FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, FALS…
+#> $ g                 <dbl> 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 4, 2, 1, 0…
+#> $ xg                <dbl> 1.5, 0.5, 1.4, 1.7, 1.2, 0.5, 1.2, 0.5, 1.5, 0.2,…
+#> $ shots             <dbl> 7, 9, 9, 14, 15, 16, 9, 6, 12, 6, 14, 8, 5, 9, 12…
+#> $ sot               <dbl> 3, 2, 2, 2, 0, 3, 3, 4, 3, 1, 6, 1, 1, 5, 3, 2, 0…
+#> $ season_game_count <int> 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 3…
+#> $ game_idx          <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15…
+#> $ opponent          <chr> "Lyon", "Lens", "Rennes", "Lille", "Montpellier",…
+#> $ g_conceded        <dbl> 2, 0, 2, 3, 2, 1, 1, 0, 3, 1, 1, 3, 1, 2, 2, 0, 2…
+#> $ xg_conceded       <dbl> 1.3, 1.4, 1.2, 1.7, 1.7, 0.8, 1.3, 0.5, 1.0, 1.8,…
+#> $ shots_conceded    <dbl> 10, 12, 16, 6, 9, 7, 12, 8, 7, 9, 9, 11, 18, 9, 1…
+#> $ sot_conceded      <dbl> 5, 3, 7, 4, 4, 4, 3, 4, 3, 1, 2, 6, 5, 5, 5, 4, 4…
+#> $ pts               <int> 0, 1, 0, 0, 0, 0, 0, 3, 0, 1, 1, 0, 0, 3, 1, 3, 0…
+#> $ pts_conceded      <int> 3, 1, 3, 3, 3, 3, 3, 0, 3, 1, 1, 3, 3, 0, 1, 0, 3…
+```
+
+```{r}
+#| label: team-summary-save
+qs::qsave(combined_team_summary, file.path(PROJ_DIR, 'combined_team_summary.qs'))
+```
+
 But, for calculating gamestate, we need to drill down to match-shot-level.
+
+```{r}
+#| label: data-ingestion-gamestate
+#| code-fold: true
+#| echo: true
+#| code-summary: "Gamestate data ingestion"
+match_summaries <- raw_match_summaries |> 
+  dplyr::group_by(MatchURL) |> 
+  dplyr::mutate(
+    match_summary_rn = dplyr::row_number(dplyr::desc(Event_Time)),
+    match_has_no_penalties = all(Event_Type != 'Penalty')
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    match_has_no_goals = Away_Score == 0 & Home_Score == 0
+  ) |> 
+  ## Drop non-shot events, e.g. card and substitution events. 
+  ##   Always keep the first timeline event, so that we're not accidentally dropping matches.
+  dplyr::filter(
+    Event_Type %in% c('Goal', 'Own Goal', 'Penalty') | 
+      ## don't drop games with no goals
+      (match_has_no_goals & match_has_no_penalties & match_summary_rn == 1)
+  ) |> 
+  dplyr::transmute(
+    season = Season_End_Year,
+    country = Country,
+    gender = Gender,
+    tier = Tier,
+    match_week = stringr::str_extract(Matchweek, '[0-9]+') |> as.integer(),
+    match_id = extract_fbref_match_id(MatchURL),
+    date = lubridate::ymd(Match_Date),
+    home_team = fix_team(Home_Team) ,
+    away_team = fix_team(Away_Team),
+    period = as.integer(Event_Half),
+    ## ensure that minutes always has a value
+    minutes = dplyr::case_when(
+      period == 1L & Event_Time > 45L ~ 45L, 
+      period == 2L & Event_Time > 90L ~ 90L,
+      .default = Event_Time
+    ) |> as.integer(),
+    minutes_added = dplyr::case_when(
+      period == 1L & Event_Time > 45 ~ Event_Time - 45L, 
+      period == 2L & Event_Time > 90 ~ Event_Time - 90L,
+      .default = NA_integer_
+    ),
+    home_g = as.integer(gsub('[:].*$', '', Score_Progression)), ## after event
+    away_g = as.integer(gsub('^.*[:]', '', Score_Progression)),
+    is_own_goal = Event_Type == 'Own Goal',
+    team = Team,
+    player = Event_Players
+  )
+
+deduped_match_summaries <- match_summaries |> 
+  ## Some matches are recorded twice if they were rescheduled
+  dplyr::semi_join(
+    match_summaries |> 
+      dplyr::distinct(match_id, date) |> 
+      dplyr::group_by(match_id) |> 
+      dplyr::slice_max(date, n = 1) |> 
+      dplyr::ungroup()
+  )
+
+shots <- raw_shots |> 
+  dplyr::transmute(
+    season = Season_End_Year,
+    country = Country,
+    gender = Gender,
+    tier = Tier,
+    match_id = extract_fbref_match_id(MatchURL),
+    period = as.integer(Match_Half),
+    ## convert "45+2" to "45"
+    minutes = ifelse(
+      grepl('[+]', Minute),
+      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\1', Minute)), 
+      as.integer(Minute)
+    ),
+    ## convert "45+2" to "2"
+    minutes_added = ifelse(
+      grepl('[+]', Minute), 
+      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\2', Minute)), 
+      NA_integer_
+    ),
+    is_home = Home_Away == 'Home',
+    team = fix_team(Squad),
+    player = Player,
+    is_goal = Outcome == 'Goal',
+    is_on_target = !is.na(PSxG),
+    xg = as.double(xG),
+    xgot = as.double(PSxG)
+  )
+
+shots_with_own_goals <- dplyr::bind_rows(
+  shots |> 
+    dplyr::transmute(
+      match_id,
+      period,
+      minutes,
+      minutes_added,
+      is_home,
+      team,
+      player,
+      is_goal,
+      xg,
+      xgot,
+      is_on_target,
+      is_own_goal = FALSE
+    ),
+  ## synthetic events for own goals
+  deduped_match_summaries |> 
+    dplyr::filter(
+      is_own_goal
+    ) |> 
+    dplyr::transmute(
+      match_id,
+      period,
+      minutes,
+      minutes_added,
+      is_home = team == home_team,
+      team,
+      player,
+      is_goal = TRUE,
+      xg = NA_real_,
+      xgot = NA_real_,
+      is_on_target = NA,
+      is_own_goal = TRUE
+    )
+)
+
+clean_shots <- shots_with_own_goals |> 
+  # dplyr::filter(dplyr::row_number() == 376946) |> 
+  ## To get meta-information about the game
+  dplyr::inner_join(
+    deduped_match_summaries |>
+      dplyr::distinct(match_id, home_team, away_team),
+    by = dplyr::join_by(match_id),
+    relationship = 'many-to-one'
+  ) |> 
+  dplyr::mutate(
+    home_g = dplyr::case_when(
+      ## Note that fotmob would list the away team for an own goal but fbref 
+      ##   lists the home team
+      (is_goal | is_own_goal) & is_home ~ 1L,
+      is_own_goal & is_home ~ 1L,
+      TRUE ~ 0L
+    ),
+    away_g = dplyr::case_when(
+      (is_goal | is_own_goal) & !is_home ~ 1L,
+      TRUE ~ 0L
+    ),
+    home_xg = dplyr::case_when(
+      is_home ~ dplyr::coalesce(xg, 0),
+      TRUE ~ 0 ## even for own goals
+    ),
+    away_xg = dplyr::case_when(
+      !is_home ~ dplyr::coalesce(xg, 0),
+      TRUE ~ 0
+    ),
+    home_xgot = dplyr::case_when(
+      is_home ~ dplyr::coalesce(xgot, 0),
+      TRUE ~ 0
+    ),
+    away_xgot = dplyr::case_when(
+      !is_home ~ dplyr::coalesce(xgot, 0),
+      TRUE ~ 0
+    )
+  ) |>
+  dplyr::group_by(match_id) |>
+  ## Differentiate between shots in the same minute.
+  dplyr::mutate(
+    shot_idx = dplyr::row_number((minutes + dplyr::coalesce(minutes_added, 0L)))
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::transmute(
+    shot_id = sprintf('%s-%02d', match_id, shot_idx),
+    match_id,
+    period,
+    minutes,
+    minutes_added,
+    is_home,
+    is_goal,
+    is_on_target,
+    is_own_goal,
+    player,
+    home_team,
+    away_team,
+    home_g,
+    away_g,
+    home_xg,
+    away_xg,
+    home_xgot,
+    away_xgot
+  )
+
+restacked_shots <- dplyr::bind_rows(
+  clean_shots |> 
+    dplyr::filter(is_home) |> 
+    dplyr::transmute(
+      shot_id,
+      match_id,
+      period,
+      minutes,
+      minutes_added,
+      is_home,
+      is_goal,
+      is_on_target,
+      is_own_goal,
+      player,
+      team = home_team,
+      opponent = away_team,
+      g = home_g,
+      g_conceded = away_g,
+      xg = home_xg,
+      xg_conceded = away_xg,
+      xgot = home_xgot,
+      xgot_conceded = away_xgot
+    ),
+  clean_shots |> 
+    dplyr::filter(!is_home) |> 
+    dplyr::transmute(
+      shot_id,
+      match_id,
+      period,
+      minutes,
+      minutes_added,
+      is_home,
+      is_goal,
+      is_on_target,
+      is_own_goal,
+      player,
+      team = away_team,
+      opponent = home_team,
+      g = away_g,
+      g_conceded = home_g,
+      xg = away_xg,
+      xg_conceded = home_xg,
+      xgot = away_xgot,
+      xgot_conceded = home_xgot
+    )
+)
+
+doublecounted_restacked_shots <- dplyr::bind_rows(
+  restacked_shots |> dplyr::mutate(pov = 'primary', .before = 1),
+  restacked_shots |> 
+    ## re-assign to temporary variable names first, so that way we don't accidentlaly overwrite information
+    dplyr::rename(
+      team1 = team,
+      team2 = opponent,
+      g1 = g,
+      g2 = g_conceded,
+      xg1 = xg,
+      xg2 = xg_conceded,
+      xgot1 = xgot,
+      xgot2 = xgot_conceded
+    ) |> 
+    ## then formally re-assign columns
+    dplyr::rename(
+      team = team2,
+      opponent = team1,
+      g = g2,
+      g_conceded = g1,
+      xg = xg2,
+      xg_conceded = xg1,
+      xgot = xgot2,
+      xgot_conceded = xgot1
+    ) |> 
+    dplyr::mutate(
+      is_home = !is_home
+    ) |> 
+    dplyr::mutate(
+      pov = 'secondary',
+      .before = 1
+    )
+) |> 
+  dplyr::arrange(shot_id, pov)
+
+cumu_doublecounted_restacked_shots <- doublecounted_restacked_shots |> 
+  dplyr::group_by(
+    match_id, 
+    team
+  ) |> 
+  dplyr::mutate(
+    dplyr::across(
+      c(g, g_conceded),
+      list(cumu = cumsum)
+    )
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    gamestate = g_cumu - g_conceded_cumu
+  )
+
+ORDERED_GAMESTATE_LABELS <- c('trailing', 'tied', 'leading')
+gamestate_shots <- cumu_doublecounted_restacked_shots |> 
+  dplyr::inner_join(
+    deduped_match_summaries |> 
+      dplyr::distinct(
+        match_id,
+        season,
+        country,
+        gender,
+        tier,
+        match_week,
+        date,
+        home_team,
+        away_team
+      ),
+    by = dplyr::join_by(match_id)
+  ) |> 
+  dplyr::transmute(
+    pov,
+    country,
+    gender,
+    tier,
+    match_id,
+    season,
+    country,
+    gender,
+    tier,
+    match_week,
+    date,
+    home_team,
+    away_team,
+    team,
+    player,
+    shot_id,
+    period,
+    minutes,
+    minutes_added,
+    time = minutes + dplyr::coalesce(minutes_added, 0L),
+    g,
+    g_conceded,
+    xg,
+    xg_conceded,
+    xgot,
+    xgot_conceded,
+    xgd = xg - xg_conceded,
+    gamestate_gd0 = gamestate == 0,
+    gamestate_abs_gd1 = abs(gamestate) <= 1
+  ) |> 
+  dplyr::group_by(match_id, team) |> 
+  dplyr::arrange(shot_id, .by_group = TRUE) |> 
+  dplyr::mutate(
+    pre_shot_gamestate_gd0 = dplyr::lag(gamestate_gd0, default = TRUE),
+    pre_shot_gamestate_abs_gd1 = dplyr::lag(gamestate_abs_gd1, default = TRUE)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::arrange(team, season, date, shot_id)
+
+LAST_MIN_BUFFER <- 3
+last_min_pad <- gamestate_shots |>
+  dplyr::select(
+    match_id,
+    season,
+    country,
+    gender,
+    tier,
+    match_week,
+    date,
+    team,
+    pre_shot_gamestate_gd0,
+    pre_shot_gamestate_abs_gd1,
+    period,
+    time
+  ) |> 
+  dplyr::group_by(match_id, team, period) |>
+  dplyr::slice_max(time, n = 1, with_ties = FALSE) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(
+    xg = 0,
+    xg_conceded = 0,
+    xgot = 0,
+    xgot_conceded = 0,
+    last_regular_min = ifelse(period == 1L, 45L, 90L),
+    time = pmax(last_regular_min + LAST_MIN_BUFFER, time + 1)
+  )
+
+padded_gamestate_shots <- dplyr::bind_rows(
+  gamestate_shots,
+  last_min_pad
+) |> 
+  dplyr::arrange(match_id, period, time)
+
+gamestate_shots_and_durations <- padded_gamestate_shots |> 
+  dplyr::group_by(match_id, team) |> 
+  dplyr::mutate(
+    prev_period = dplyr::lag(period),
+    prev_time = dplyr::lag(time)
+  ) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    duration = dplyr::case_when(
+      period == 1L & is.na(prev_period) ~ time - 0L,
+      period == 2L & period != prev_period ~ time - 45L,
+      TRUE ~ time - prev_time
+    )
+  )
+
+aggregate_games_by_gamestate <- function(df, gamestate_col) {
+  gamestate_sym <- rlang::ensym(gamestate_col)
+  agg_shots_by_game_gamestate <- df |> 
+    dplyr::group_by(
+      country, 
+      gender,
+      tier,
+      team,
+      season, 
+      match_id, 
+      date,
+      !!gamestate_sym,
+    ) |> 
+    dplyr::summarize(
+      shots = sum(pov == 'primary'),
+      shots_conceded = sum(pov == 'secondary'),
+      sot = sum(pov == 'primary' & xgot > 0),
+      sot_conceded = sum(pov == 'primary' & xgot_conceded > 0),
+      dplyr::across(
+        c(
+          g, g_conceded, xg, xg_conceded, xgot, xgot_conceded,
+          duration
+        ),
+        \(.x) sum(.x)
+      )
+    ) |> 
+    dplyr::ungroup() |> 
+    dplyr::arrange(
+      country, 
+      gender, 
+      tier, 
+      team, 
+      season,
+      date,
+      !!gamestate_sym
+    )
+  
+  agg_shots_by_game_gamestate |> 
+    dplyr::distinct(
+      country,
+      gender,
+      tier,
+      team,
+      season,
+      date,
+      match_id
+    ) |> 
+    tidyr::crossing(
+      !!gamestate_sym := c(TRUE, FALSE)
+    ) |> 
+    dplyr::left_join(
+      agg_shots_by_game_gamestate,
+      by = dplyr::join_by(
+        country, 
+        gender, 
+        tier,
+        team, 
+        season, 
+        !!gamestate_sym,
+        date,
+        match_id
+      )
+    ) |> 
+    dplyr::mutate(
+      dplyr::across(
+        c(
+          shots,
+          shots_conceded,
+          sot,
+          sot_conceded,
+          g, 
+          g_conceded, 
+          xg,
+          xg_conceded, 
+          xgot, 
+          xgot_conceded,
+          duration
+        ),
+        \(.x) dplyr::coalesce(.x, 0)
+      )
+    ) |> 
+    ## convert boolean to character
+    dplyr::mutate(
+      !!gamestate_sym := ifelse(!!gamestate_sym, 'neutral', 'other')
+    ) |> 
+    tidyr::pivot_wider(
+      names_from = !!gamestate_sym,
+      values_from = c(
+        shots,
+        shots_conceded,
+        sot,
+        sot_conceded,
+        g, 
+        g_conceded, 
+        xg,
+        xg_conceded, 
+        xgot, 
+        xgot_conceded,
+        duration
+      ),
+      names_sort = TRUE
+    )
+}
+
+## output has the same format as gamestate_abs_gd1_by_game
+gamestate_gd0_by_game <- gamestate_shots_and_durations |> 
+  aggregate_games_by_gamestate('pre_shot_gamestate_gd0')
+
+gamestate_abs_gd1_by_game <- gamestate_shots_and_durations |> 
+  aggregate_games_by_gamestate('pre_shot_gamestate_abs_gd1')
+dplyr::glimpse(gamestate_abs_gd1_by_game)
+#> Rows: 29,852
+#> Columns: 29
+#> $ country                <chr> "ENG", "ENG", "ENG", "ENG", "ENG", "ENG", "E…
+#> $ gender                 <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M",…
+#> $ tier                   <chr> "1st", "1st", "1st", "1st", "1st", "1st", "1…
+#> $ team                   <chr> "Arsenal", "Arsenal", "Arsenal", "Arsenal", …
+#> $ season                 <int> 2018, 2018, 2018, 2018, 2018, 2018, 2018, 20…
+#> $ date                   <date> 2017-08-11, 2017-08-19, 2017-08-27, 2017-09…
+#> $ match_id               <chr> "e3c3ddf0", "37f97732", "e4374144", "2fab7d5…
+#> $ shots_neutral          <dbl> 0, 0, 1, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 7,…
+#> $ shots_other            <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0,…
+#> $ shots_conceded_neutral <dbl> 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 6…
+#> $ shots_conceded_other   <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+#> $ sot_neutral            <dbl> 10, 6, 0, 4, 2, 4, 7, 6, 11, 5, 1, 2, 2, 2, …
+#> $ sot_other              <dbl> 0, 0, 0, 5, 0, 2, 1, 0, 3, 0, 2, 3, 0, 4, 10…
+#> $ sot_conceded_neutral   <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+#> $ sot_conceded_other     <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+#> $ g_neutral              <dbl> 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0,…
+#> $ g_other                <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,…
+#> $ g_conceded_neutral     <dbl> 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3,…
+#> $ g_conceded_other       <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+#> $ xg_neutral             <dbl> 2.57, 1.46, 0.09, 0.66, 1.53, 1.56, 1.71, 0.…
+#> $ xg_other               <dbl> 0.00, 0.00, 0.48, 1.57, 0.00, 0.65, 0.72, 0.…
+#> $ xg_conceded_neutral    <dbl> 1.50, 0.71, 1.65, 0.00, 0.79, 0.88, 0.20, 1.…
+#> $ xg_conceded_other      <dbl> 0.00, 0.00, 1.52, 0.57, 0.00, 0.00, 0.21, 0.…
+#> $ xgot_neutral           <dbl> 3.34, 1.09, 0.00, 1.72, 0.18, 2.01, 2.67, 1.…
+#> $ xgot_other             <dbl> 0.00, 0.00, 0.00, 3.06, 0.00, 0.23, 0.07, 0.…
+#> $ xgot_conceded_neutral  <dbl> 2.11, 1.02, 2.21, 0.00, 0.53, 0.26, 0.08, 1.…
+#> $ xgot_conceded_other    <dbl> 0.00, 0.00, 2.20, 0.63, 0.00, 0.00, 0.00, 0.…
+#> $ duration_neutral       <dbl> 99, 99, 40, 27, 96, 70, 59, 98, 77, 96, 81, …
+#> $ duration_other         <dbl> 0, 0, 56, 70, 0, 26, 38, 0, 22, 0, 15, 57, 0…
+```
+
+```{r}
+#| label: gamestate-save
+qs::qsave(gamestate_gd0_by_game, file.path(PROJ_DIR, 'gamestate_gd0_by_game.qs'))
+qs::qsave(gamestate_abs_gd1_by_game, file.path(PROJ_DIR, 'gamestate_abs_gd1_by_game.qs'))
+```
+
+```{r}
+#| label: gamestate-read
+gamestate_gd0_by_game <- qs::qread(file.path(PROJ_DIR, 'gamestate_gd0_by_game.qs'))
+gamestate_abs_gd1_by_game <- qs::qread(file.path(PROJ_DIR, 'gamestate_abs_gd1_by_game.qs'))
+```
 
 # Methods and Analysis
 
@@ -129,4 +873,6 @@ We see that:
 
 # Conclusion
 
-foo
+Overall, I find that accounting for gamestate does little to improve how season-to-date xG forecasts rest-of-season points per game. This is true for both definitions of "neutral" gamestate evaluated--(1) tied score line and (2) score within 1 goal. Alas, I'd argue that a ["null result"](https://en.wikipedia.org/wiki/Null_result) is still a useful result here, as we've proved that contextualizing expected goals--at least in the manner attempted--does not improve our ability to forecast rest-of-season performance.
+
+Further, while we did not come to find anything ground-breaking, I hope the open-sourced code in this post can be seen as an advancement to the prior art, facilitating future extension of this analysis in the future, whether it's for soccer, hockey, or another sport.
