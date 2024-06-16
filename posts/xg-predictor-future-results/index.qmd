@@ -60,9 +60,27 @@ For the most part, we just need to pull in FBref's match-level figures.
 #| code-fold: true
 #| echo: true
 #| code-summary: "Setup"
+## data ingestion
 library(worldfootballR)
 library(dplyr)
 library(stringr)
+library(tidyr)
+
+## plotting
+library(ggplot2)
+library(sysfonts)
+library(showtext)
+library(ggtext)
+library(htmltools)
+
+## local dev
+library(withr)
+library(qs)
+
+## parallelization for bootstrap calcs
+library(parallel)
+library(future)
+library(furrr)
 
 PROJ_DIR <- 'posts/xg-predictor-future-results'
 
@@ -990,13 +1008,13 @@ do_calculate_rolling_r2s <- purrr::compose(
 
 combined_data_gd0 <- combined_team_summary |> 
   dplyr::left_join(
-    gamestate_gd0_by_game,
+    gamestate_gd0_by_game |> dplyr::select(-date),
     by = dplyr::join_by(season, country, gender, tier, match_id, team)
   )
 
 combined_data_abs_gd1 <- combined_team_summary |> 
   dplyr::left_join(
-    gamestate_gd0_by_game,
+    gamestate_gd0_by_game |> dplyr::select(-date),
     by = dplyr::join_by(season, country, gender, tier, match_id, team)
   )
 
@@ -1022,13 +1040,9 @@ rolling_r2s_abs_gd1 <- combined_data_abs_gd1 |> do_calculate_rolling_r2s()
 
 ```{r}
 #| label: plot-rolling-r2s
-#| include: false
-library(ggplot2)
-library(sysfonts)
-library(showtext)
-library(ggtext)
-library(htmltools)
-
+#| code-fold: true
+#| echo: true
+#| code-summary: "Plotting the R-squared values"
 TAG_LABEL <- htmltools::tagList(
   htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
   htmltools::tags$span("@TonyElHabr"),
@@ -1050,11 +1064,11 @@ showtext::showtext_opts(dpi = PLOT_RESOLUTION)
 ggplot2::theme_set(ggplot2::theme_minimal())
 ggplot2::theme_update(
   text = ggplot2::element_text(family = FONT),
-  title = ggplot2::element_text(size = 18, color = WHITISH_FOREGROUND_COLOR),
-  plot.title = ggtext::element_markdown(face = 'bold', size = 18, color = WHITISH_FOREGROUND_COLOR),
+  title = ggplot2::element_text(size = 16, color = WHITISH_FOREGROUND_COLOR),
+  plot.title = ggtext::element_markdown(face = 'bold', size = 16, color = WHITISH_FOREGROUND_COLOR),
   plot.title.position = 'plot',
-  plot.subtitle = ggtext::element_markdown(size = 18, color = COMPLEMENTARY_FOREGROUND_COLOR),
-  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 14),
+  plot.subtitle = ggtext::element_markdown(size = 16, color = COMPLEMENTARY_FOREGROUND_COLOR),
+  axis.text = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 11),
   legend.text = ggplot2::element_text(size = 12, color = WHITISH_FOREGROUND_COLOR, face = 'plain'),
   legend.title = ggplot2::element_text(size = 12, color = WHITISH_FOREGROUND_COLOR, face = 'bold'),
   axis.title.x = ggtext::element_markdown(size = 14, color = WHITISH_FOREGROUND_COLOR, face = 'bold', hjust = 0.99),
@@ -1073,24 +1087,23 @@ ggplot2::theme_update(
   plot.tag = ggtext::element_markdown(size = 10, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
   plot.tag.position = c(0.99, 0.01),
   panel.spacing.x = grid::unit(2, 'lines'),
+  panel.spacing.y = grid::unit(1, 'lines'),
   # panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR)
   panel.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = WHITISH_FOREGROUND_COLOR)
 )
 
-## Can pick either rolling_r2s_gd0 or rolling_r2s_abs_gd1 to plot since we're looking at just
-##   non-gamestate features here
-pretty_predictor_names <- c(
+BASE_PRETTY_PREDICTOR_NAMES <- c(
   'past_pts_per_game' = 'Points per Game',
   'past_g_ratio' = 'Goal Ratio',
   'past_shot_ratio' = 'Total Shots Ratio',
   'past_sot_ratio' = 'Shots on Target Ratio',
   'past_xg_ratio' = 'Expected Goals Ratio'
 )
-pretty_target_names <- c(
+PRETTY_TARGET_NAMES <- c(
   'future_pts_per_game' = 'Future Points per Game',
   'future_g_ratio' = 'Future Goals Ratio'
 )
-predictor_palette <- c(
+BASE_PREDICTOR_PALETTE <- c(
   'Points per Game' = '#cad2c5',
   'Goal Ratio' = '#06d6a0',
   'Total Shots Ratio' = '#ffd166',
@@ -1098,107 +1111,118 @@ predictor_palette <- c(
   'Expected Goals Ratio' = '#ef476f'
 )
 
-prettified_rolling_r2s <- rolling_r2s_gd0 |> 
-  dplyr::filter(
-    predictor %in% names(pretty_predictor_names)
-  ) |> 
-  dplyr::mutate(
-    pretty_predictor = factor(pretty_predictor_names[predictor], rev(pretty_predictor_names)),
-    pretty_target = pretty_target_names[target]
-  ) 
-
-max_prettified_rolling_r2s <- prettified_rolling_r2s |> 
-  dplyr::group_by(league_group, predictor, target) |> 
-  dplyr::slice_max(r2, n = 1) |> 
-  dplyr::ungroup()
-
-rolling_r2s_plot <- prettified_rolling_r2s |> 
-  ggplot2::ggplot() +
-  ggplot2::aes(
-    x = game_idx,
-    y = r2
-  ) +
-  ggplot2::geom_segment(
-    data = max_prettified_rolling_r2s,
+plotting_rolling_r2s <- function(df) {
+  prettified_rolling_r2s <- df |> 
+    dplyr::filter(
+      predictor %in% names(BASE_PRETTY_PREDICTOR_NAMES)
+    ) |> 
+    dplyr::mutate(
+      pretty_predictor = factor(BASE_PRETTY_PREDICTOR_NAMES[predictor], rev(BASE_PRETTY_PREDICTOR_NAMES)),
+      pretty_target = PRETTY_TARGET_NAMES[target]
+    ) |> 
+    ## put xG on top
+    dplyr::arrange(league_group, pretty_target, dplyr::desc(pretty_predictor))
+  
+  max_prettified_rolling_r2s <- prettified_rolling_r2s |> 
+    dplyr::group_by(league_group, pretty_target, pretty_predictor) |> 
+    dplyr::slice_max(r2, n = 1) |> 
+    dplyr::ungroup()
+  
+  rolling_r2s_plot <- prettified_rolling_r2s |> 
+    ggplot2::ggplot() +
     ggplot2::aes(
-      color = pretty_predictor,
-      x = 0,
-      xend = game_idx,
-      y = r2,
-      yend = r2
-    ),
-    linetype = 2,
-    linewidth = 0.25
-  ) +
-  ggplot2::geom_segment(
-    data = max_prettified_rolling_r2s,
-    ggplot2::aes(
-      color = pretty_predictor,
       x = game_idx,
-      xend = game_idx,
-      y = 0,
-      yend = r2
-    ),
-    linetype = 2,
-    linewidth = 0.25
-  ) +
-  ggplot2::geom_line(
-    linewidth = 0.75,
-    ggplot2::aes(color = pretty_predictor)
-  ) +
-  ggplot2::scale_color_manual(
-    values = predictor_palette
-  ) +
-  ggplot2::guides(
-    color = ggplot2::guide_legend(
-      title = NULL,
-      label.theme = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 10, FONT),
-      override.aes = list(linewidth = 2)
+      y = r2
+    ) +
+    ggplot2::geom_segment(
+      data = max_prettified_rolling_r2s,
+      ggplot2::aes(
+        color = pretty_predictor,
+        x = 0,
+        xend = game_idx,
+        y = r2,
+        yend = r2
+      ),
+      linetype = 2,
+      linewidth = 0.25
+    ) +
+    ggplot2::geom_segment(
+      data = max_prettified_rolling_r2s,
+      ggplot2::aes(
+        color = pretty_predictor,
+        x = game_idx,
+        xend = game_idx,
+        y = 0,
+        yend = r2
+      ),
+      linetype = 2,
+      linewidth = 0.25
+    ) +
+    ggplot2::geom_line(
+      linewidth = 0.75,
+      ggplot2::aes(color = pretty_predictor)
+    ) +
+    ggplot2::scale_color_manual(
+      values = BASE_PREDICTOR_PALETTE
+    ) +
+    ggplot2::guides(
+      color = ggplot2::guide_legend(
+        title = NULL,
+        label.theme = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 10, FONT),
+        override.aes = list(linewidth = 2)
+      )
+    ) +
+    ggplot2::scale_y_continuous(
+      expand = c(0, 0),
+      limits = c(0, 1),
+      breaks = seq(0, 1, by = 0.2),
+      labels = scales::number_format(accuracy = 0.1)
+    ) +
+    ggplot2::scale_x_continuous(
+      expand = c(0, 0),
+      limits = c(0, 38),
+      breaks = seq.int(0, 35, by = 5),
+      labels = seq.int(0, 35, by = 5)
+    ) +
+    ggplot2::geom_text(
+      data = tibble::tibble(
+        league_group = 'Big 5',
+        pretty_target = 'Future Goals Ratio'
+      ),
+      ggplot2::aes(
+        x = 1,
+        y = 0.7,
+        label = 'Crosshairs mark max values.'
+      ),
+      color = WHITISH_FOREGROUND_COLOR,
+      family = FONT,
+      size = 10 / .pt,
+      fontface = 'italic',
+      hjust = 0,
+      vjust = 0.5
+    ) +
+    ggplot2::theme(
+      legend.position = c(0.85, 0.33),
+      # legend.spacing.y = ggplot2::unit(-1, 'cm'), ## doesn't work?
+      panel.grid.major = ggplot2::element_blank()
+    ) +
+    ggplot2::facet_grid(league_group~pretty_target) +
+    ggplot2::labs(
+      title = 'Correlation of Season-to-Date Metrics with Rest-of-Season Performance Metrics',
+      x = 'Match Day',
+      y = 'Correlation (R<sup>2</sup>)',
+      caption = CAPTION_LABEL,
+      tag = TAG_LABEL
     )
-  ) +
-  ggplot2::scale_y_continuous(
-    limits = c(0, 1),
-    breaks = seq(0, 1, by = 0.2),
-    labels = scales::number_format(accuracy = 0.1)
-  ) +
-  ggplot2::scale_x_continuous(
-    breaks = seq.int(0, 35, by = 5),
-    labels = seq.int(0, 35, by = 5)
-  ) +
-  ggplot2::geom_text(
-    data = tibble::tibble(
-      league_group = 'Big 5',
-      pretty_target = 'Future Goals Ratio'
-    ),
-    ggplot2::aes(
-      x = 1,
-      y = 0.8,
-      label = 'Crosshairs mark max values.'
-    ),
-    color = WHITISH_FOREGROUND_COLOR,
-    family = FONT,
-    size = 10 / .pt,
-    fontface = 'italic',
-    hjust = 0,
-    vjust = 0.5
-  ) +
-  ggplot2::theme(
-    legend.position = c(0.85, 0.33),
-    # legend.spacing.y = ggplot2::unit(-1, 'cm'),
-    panel.grid.major = ggplot2::element_blank()
-  ) +
-  ggplot2::facet_grid(league_group~pretty_target) +
-  ggplot2::labs(
-    title = 'Predictors of Future Performance',
-    x = 'Match Day',
-    y = 'Correlation (R<sup>2</sup>)',
-    caption = CAPTION_LABEL,
-    tag = TAG_LABEL
-  )
+}
+
+## Can pick either rolling_r2s_gd0 or rolling_r2s_abs_gd1 to plot since we're looking at just
+##   non-gamestate features here
+rolling_r2s_plot <- plotting_rolling_r2s(rolling_r2s_gd0)
 
 ggplot2::ggsave(
   rolling_r2s_plot,
-  filename = file.path(PROJ_DIR, 'rolling_r2s.png'),
+  filename = file.path(PROJ_DIR, 'rolling-r2s.png'),
   width = 9,
   height = 9 / 1.5
 )
@@ -1209,29 +1233,48 @@ ggplot2::ggsave(
 Now, if we bootstrap this code by randomly reordering matchweeks, then re-calculating up-to and rest-of-season measures, and doing that 1,000 times, we end up with the following plot.
 
 ```{r}
-calculate_resampled_rolling_r2s <- function(df, resamples = 10, seed = 42) {
-  # df |> 
-  #   dplyr::distinct(country, gender, tier, season, match_idx)
-  resampled_split_team_summary <- purrr::map(
+#| label: resample_rolling_r2s
+#| code-fold: true
+#| echo: true
+#| code-summary: "Calculating bootstrapped R-squared values"
+calculate_resampled_rolling_r2s <- function(df, resamples = 10, seed = 42, parallel_seed = 117, cores_prop = 0.5) {
+
+  match_idx_grid <- df |> dplyr::distinct(season, country, gender, tier, game_idx)
+  n_cores <- parallel::detectCores()
+  cores_for_parallel <- ceiling(n_cores * cores_prop)
+  future::plan(
+    future::multisession,
+    workers = cores_for_parallel
+  )
+  withr::local_seed(seed)
+  resampled_rolling_df <- furrr::future_map(
     1:resamples,
+    .progress = TRUE,
+    .options = furrr::furrr_options(
+      seed = parallel_seed
+    ),
     \(.i) {
-      message(sprintf('Resample %d.', .i))
-      resampled_df <- df |> 
-        dplyr::slice_sample(n = nrow(df), replace = FALSE) |> 
-        dplyr::group_by(team, season) |> 
+      resampled_match_idx_grid <- match_idx_grid |> 
+        dplyr::rename(orig_game_idx = game_idx) |> 
+        dplyr::slice_sample(n = nrow(match_idx_grid), replace = FALSE) |> 
+        dplyr::group_by(country, gender, tier, season) |>
         dplyr::mutate(
           game_idx = dplyr::row_number(),
         ) |> 
         dplyr::ungroup()
       
-      
-      resampled_df |> 
+      df |> 
+        dplyr::rename(orig_game_idx = game_idx) |> 
+        dplyr::left_join(
+          resampled_match_idx_grid,
+          by = dplyr::join_by(season, country, gender, tier, orig_game_idx)
+        ) |> 
         calculate_rolling_r2s()
     }
-  ) |> 
+  )  |> 
     purrr::list_rbind()
-  
-  resampled_split_team_summary |> 
+  future::plan(future::sequential)
+  resampled_rolling_df |> 
     dplyr::summarize(
       .by = c(league_group, game_idx),
       dplyr::across(
@@ -1240,6 +1283,34 @@ calculate_resampled_rolling_r2s <- function(df, resamples = 10, seed = 42) {
       )
     )
 }
+
+do_calculate_resampled_rolling_r2s <- purrr::compose( 
+  calculate_resampled_rolling_r2s,
+  pivot_rolling_r2s,
+  .dir = 'forward'
+)
+
+resampled_rolling_r2s_gd0 <- combined_data_gd0 |> do_calculate_resampled_rolling_r2s(resamples = 10)
+resampled_rolling_r2s_abs_gd1 <- combined_data_abs_gd1 |> do_calculate_resampled_rolling_r2s(resamples = 10)
+```
+
+```{r}
+#| label: plot-rolling-r2s
+#| code-fold: true
+#| echo: true
+#| code-summary: "Plotting the bootstrapped R-squared values"
+resampled_rolling_r2s_plot <- plotting_rolling_r2s(resampled_rolling_r2s_gd0) +
+  ggplot2::labs(
+    y = 'Average Bootstrapped Correlation (R<sup>2</sup>)',
+    x = 'Randomized Match Day'
+  )
+
+ggplot2::ggsave(
+  resampled_rolling_r2s_plot,
+  filename = file.path(PROJ_DIR, 'boostrapped-rolling-r2s.png'),
+  width = 9,
+  height = 9 / 1.5
+)
 ```
 
 ![](boostrapped-rolling-r2s.png)
@@ -1248,7 +1319,9 @@ This looks like the bootstrapped plot from ASA, as intended.
 
 ## Extending prior art
 
-Now we incorporate gamestate-aware measures. At this point, to condense our visual illustrations, we'll focus on just future points per game as our measure of rest-of-season performance.
+Now we incorporate gamestate-aware measures.[^6] At this point, to condense our visual illustrations, we'll focus on just future points per game as our measure of rest-of-season performance.
+
+[^6]: If you've been following the code, these measures have already been calculated.
 
 When referring to gamestate-aware measures, we're mostly interested in just the "neutral" score lines. That is, we want to subset our sums of shots, goals, and xG to game intervals where the score is "close".
 
@@ -1258,7 +1331,128 @@ We might also say that a gamestate is "neutral" when the absolute difference in 
 
 In the plot below I've split out each of the measures of past performance into its own facet, paired with the neutral gamestate version, using the `gd = 0` definition of neutral gamestate. This makes it easy to see which pairs of past and future performance measures are improved by subsetting the past performance measure to neutral gamestates.
 
-![](bootstrapped-running-cors-gamestate-gd-0.png)
+```{r}
+ALL_PRETTY_PREDICTOR_NAMES <- c(
+  BASE_PRETTY_PREDICTOR_NAMES,
+  'past_g_neutral_ratio' = 'Goal Ratio',
+  'past_shot_neutral_ratio' = 'Neutral Total Shots Ratio',
+  'past_sot_neutral_ratio' = 'Neutral Shots on Target Ratio',
+  'past_xg_neutral_ratio' = 'Neutral Expected Goals Ratio'
+)
+
+BASE_PREDICTOR_PALETTE <- c(
+  'Points per Game' = '#cad2c5',
+  'Goal Ratio' = '#06d6a0',
+  'Total Shots Ratio' = '#ffd166',
+  'Shots on Target Ratio' = '#118ab2',
+  'Expected Goals Ratio' = '#ef476f'
+)
+
+plotting_rolling_r2s <- function(df) {
+  prettified_rolling_r2s <- df |> 
+    dplyr::filter(
+      predictor %in% names(BASE_PRETTY_PREDICTOR_NAMES)
+    ) |> 
+    dplyr::mutate(
+      pretty_predictor = factor(BASE_PRETTY_PREDICTOR_NAMES[predictor], rev(BASE_PRETTY_PREDICTOR_NAMES)),
+      pretty_target = PRETTY_TARGET_NAMES[target]
+    ) |> 
+    ## put xG on top
+    dplyr::arrange(league_group, pretty_target, dplyr::desc(pretty_predictor))
+  
+  max_prettified_rolling_r2s <- prettified_rolling_r2s |> 
+    dplyr::group_by(league_group, pretty_target, pretty_predictor) |> 
+    dplyr::slice_max(r2, n = 1) |> 
+    dplyr::ungroup()
+  
+  rolling_r2s_plot <- prettified_rolling_r2s |> 
+    ggplot2::ggplot() +
+    ggplot2::aes(
+      x = game_idx,
+      y = r2
+    ) +
+    ggplot2::geom_segment(
+      data = max_prettified_rolling_r2s,
+      ggplot2::aes(
+        color = pretty_predictor,
+        x = 0,
+        xend = game_idx,
+        y = r2,
+        yend = r2
+      ),
+      linetype = 2,
+      linewidth = 0.25
+    ) +
+    ggplot2::geom_segment(
+      data = max_prettified_rolling_r2s,
+      ggplot2::aes(
+        color = pretty_predictor,
+        x = game_idx,
+        xend = game_idx,
+        y = 0,
+        yend = r2
+      ),
+      linetype = 2,
+      linewidth = 0.25
+    ) +
+    ggplot2::geom_line(
+      linewidth = 0.75,
+      ggplot2::aes(color = pretty_predictor)
+    ) +
+    ggplot2::scale_color_manual(
+      values = BASE_PREDICTOR_PALETTE
+    ) +
+    ggplot2::guides(
+      color = ggplot2::guide_legend(
+        title = NULL,
+        label.theme = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 10, FONT),
+        override.aes = list(linewidth = 2)
+      )
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 1),
+      breaks = seq(0, 1, by = 0.2),
+      labels = scales::number_format(accuracy = 0.1)
+    ) +
+    ggplot2::scale_x_continuous(
+      breaks = seq.int(0, 35, by = 5),
+      labels = seq.int(0, 35, by = 5)
+    ) +
+    ggplot2::geom_text(
+      data = tibble::tibble(
+        league_group = 'Big 5',
+        pretty_target = 'Future Goals Ratio'
+      ),
+      ggplot2::aes(
+        x = 1,
+        y = 0.6,
+        label = 'Crosshairs mark max values.'
+      ),
+      color = WHITISH_FOREGROUND_COLOR,
+      family = FONT,
+      size = 10 / .pt,
+      fontface = 'italic',
+      hjust = 0,
+      vjust = 0.5
+    ) +
+    ggplot2::theme(
+      legend.position = c(0.85, 0.33),
+      # legend.spacing.y = ggplot2::unit(-1, 'cm'), ## doesn't work?
+      panel.grid.major = ggplot2::element_blank()
+    ) +
+    ggplot2::facet_grid(league_group~pretty_target) +
+    ggplot2::labs(
+      title = 'Correlation of Season-to-Date Metrics with Rest-of-Season Performance Metrics',
+      x = 'Match Day',
+      y = 'Correlation (R<sup>2</sup>)',
+      caption = CAPTION_LABEL,
+      tag = TAG_LABEL
+    )
+}
+
+```
+
+![](bootstrapped-rolling-r2s-gamestate-gd-0.png)
 
 So we see that
 
@@ -1267,7 +1461,7 @@ So we see that
 
 Now let's make the same plot, but with the `abs(gd) = 1` neutral gamestate definition.
 
-![](bootstrapped-running-cors-gamestate-abs-gd-1.png)
+![](bootstrapped-rolling-r2s-gamestate-abs-gd-1.png)
 
 We observe:
 
