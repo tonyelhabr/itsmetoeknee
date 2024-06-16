@@ -29,13 +29,13 @@ execute:
 
 ![](11tegen11-xg.png)
 
-In 2022, [Eliot McKinley](https://x.com/etmckinley) wrote [a cool piece](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) for [American Soccer Analytics (ASA)](https://www.americansocceranalysis.com) where he replicated and enhanced Ijtsma's analysis, updating the data set to use 2018 through 2022 matches for [the Big 5 European Leagues](https://en.wikipedia.org/wiki/Big_Five_(association_football)), and adding in a look at the MLS. Further, Eliot presented a novel aspect where he bootstrapped the running R-squared values to generate smoother, more interpretable curves.
+In 2022, [Eliot McKinley](https://x.com/etmckinley) wrote [a cool piece](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) for [American Soccer Analytics (ASA)](https://www.americansocceranalysis.com) where he replicated and enhanced Ijtsma's analysis, updating the data set to use 2018 through 2022 matches for [the Big 5 European Leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), and adding in a look at [Major League Soccer (MLS)](https://fbref.com/en/comps/22/Major-League-Soccer-Stats). Further, Eliot presented a novel aspect where he [bootstrapped](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) the running R-squared values to generate smoother, more interpretable curves.
 
 ![](asa-xg.png)
 
 Now I'd like to further expand on this prior art in a few ways:
 
-1.  Most simply, expand the data set range to 2018 through 2024, sourcing from a known, reputed source--[FBref](https://fbref.com/en/). [^4]
+1.  Expand the data set range to 2018 through 2024, sourcing from a reputed data source--[FBref](https://fbref.com/en/). [^4]
 2.  Publicize code for performing the running [correlation](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) calculations, including my take on the bootstrapping that Eliot demonstrated.
 3.  Include additional curves for "gamestate" shots and xG, in an effort to see if one can achieve metrics that are perhaps even more predictive than xG.
 
@@ -43,23 +43,89 @@ Now I'd like to further expand on this prior art in a few ways:
 
 On the last point, Ijtsma noted that to adjust for the bias introduced by team quality, one might only look at shot ratio, etc. when the score line is neutral or when teams are within one goal of each other. In fact, he said he had evaluated this:
 
-> I've looked at this, but I have decided not to include that subanalysis in this post, for the sake of accessibility. However, I will put it out here soon, with graph specifying how the metrics do in certain match situations. I think this method will show that the phenomenon either does not truly exists, or that its effect are so small that correcting for this will allow more noise and thereby weaken the model.
+> I've looked at this, but I have decided not to include that subanalysis in this post, for the sake of accessibility. However, I will put it out here soon, with graph specifying how the metrics do in certain match situations. I think this method will show that the phenomenon \[where teams exert more or less effort in matches against particular opposition\] either does not truly exists, or that its effect are so small that correcting for this will allow more noise and thereby weaken the model.
 
 Unfortunately, I couldn't find any subsequent blog post where Ijtsma writes about the role of gamestate in this analysis, so, alas, I'm here to do exactly that.
 
-Now, my point isn't necessarily to find the absolute best metric possible to use to forecast future team performance. Eliot and Tiotal Football [showed that](https://www.americansocceranalysis.com/home/2020/5/12/breaking-goals-added) non-shot, event-based metrics like goals added and
+Now, my point isn't necessarily to find the absolute best metric possible to use to forecast future team performance. [Tiotal Football](https://twitter.com/TiotalFootball) (with assistance from Eliot) [showed that](https://www.americansocceranalysis.com/home/2020/5/12/breaking-goals-added) non-shot event-based metrics like goals added (blue) and completed passes into the area in front of the box (yellow) are even more predictive of future points per game than xG, at least in the MLS.
 
 ![](breaking-goals-added.png)
 
 # Data
 
-foo
+For the most part, we just need to pull in FBref's match-level figures.
+
+But, for calculating gamestate, we need to drill down to match-shot-level.
 
 # Methods and Analysis
 
-## Replicating
+## Replicating prior art
 
-## Extending
+Let's begin with replicating Ijtsma's visualization where he evaluated the correlation of the five measures of past performance with respect to two measures of rest-of-season performance. The five measures of past performance are:
+
+1.  points per game
+2.  goal ratio
+3.  total shots ratio
+4.  shots on target ratio
+5.  expected goals ratio
+
+The two measures of future performance are:
+
+1.  goals ratio
+2.  points per game
+
+```{r}
+
+```
+
+![](running-cors.png)
+
+Now, if we bootstrap this code by randomly reordering matchweeks, then re-calculating up-to and rest-of-season measures, and doing that 1,000 times, we end up with the following plot.
+
+```{r}
+
+```
+
+![](boostrapped-running-cors.png)
+
+This looks like the bootstrapped plot from ASA, as intended.
+
+## Extending prior art
+
+Now we incorporate gamestate-aware measures. At this point, to condense our visual illustrations, we'll focus on just future points per game as our measure of rest-of-season performance.
+
+When referring to gamestate-aware measures, we're mostly interested in just the "neutral" score lines. That is, we want to subset our sums of shots, goals, and xG to game intervals where the score is "close".
+
+Most commonly, "neutral" / "close" is defined as a tied score, whether it's 0-0, 1-1, etc. (Let's call this the `gd = 0` approach.) The assumption is that teams start to play more conservatively when leading (and more aggressively when trailing), thereby distorting the ratio of shots, goals, and xG that we might otherwise expect given the relative quality of the teams. The implicit hypothesis is that, by excluding events when the game is not tied, we can achieve more "signal" in our measures of performance.
+
+We might also say that a gamestate is "neutral" when the absolute difference in goals is just 1, so 0-1, 1-2, 3-2, 5-4, etc. (Let's call this the `abs(gd) = 1` approach.) This definition assumes that teams don't start to play more complacently when leading until they have [a 2 goal lead](https://en.wikipedia.org/wiki/2%E2%80%930_lead_is_the_worst_lead). This approach would capture more game time (and have higher tallies of goals, shots, etc.) compared to the prior definition of neutral gamestate--which might be too strict, dropping data that provides substance--although less time than just using the whole match.
+
+In the plot below I've split out each of the measures of past performance into its own facet, paired with the neutral gamestate version, using the `gd = 0` definition of neutral gamestate. This makes it easy to see which pairs of past and future performance measures are improved by subsetting the past performance measure to neutral gamestates.
+
+![](bootstrapped-running-cors-gamestate-gd-0.png)
+
+So we see that
+
+-   foo
+-   bar
+
+Now let's make the same plot, but with the `abs(gd) = 1` neutral gamestate definition.
+
+![](bootstrapped-running-cors-gamestate-abs-gd-1.png)
+
+We observe:
+
+-   foo
+-   bar
+
+Using the `abs(gd) = 1` definition of neutral gamestate, let's condense our R-squared traces into just two facets, only splitting out by league group. This view makes it more clear which singular past performance measure, gamestate-aware or not, proves to be best for forecasting future points per game.
+
+![](bootstrapped-running-cors-gamestate-abs-gd-1-summarized.png)
+
+We see that:
+
+-   foo
+-   bar
 
 # Conclusion
 
