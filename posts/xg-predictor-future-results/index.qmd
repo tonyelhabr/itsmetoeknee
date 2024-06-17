@@ -828,6 +828,21 @@ dplyr::glimpse(gamestate_abs_gd1_by_game)
 ```
 
 ```{r}
+#| label: gamestate-debug
+## https://fbref.com/en/matches/5c57984f/
+gamestate_gd0_by_game |>
+  filter(match_id == '5c57984f') |> 
+  glimpse()
+gamestate_abs_gd1_by_game |>
+  filter(match_id == '5c57984f') |> 
+  glimpse()
+
+## https://fbref.com/en/matches/e3c3ddf0/Arsenal-Leicester-City-August-11-2017-Premier-League
+gamestate_gd0_by_game |> 
+  filter(match_id == 'e3c3ddf0') |> 
+```
+
+```{r}
 #| label: gamestate-save
 qs::qsave(gamestate_gd0_by_game, file.path(PROJ_DIR, 'gamestate_gd0_by_game.qs'))
 qs::qsave(gamestate_abs_gd1_by_game, file.path(PROJ_DIR, 'gamestate_abs_gd1_by_game.qs'))
@@ -928,12 +943,12 @@ calculate_nested_r2 <- function(data, col, target_col) {
   )
 }
 
-calculate_rolling_r2s <- function(df) {
+calculate_rolling_r2s <- function(combined_df) {
   
-  past_team_summary <- df |> 
+  past_team_summary <- combined_df |> 
     accumulate_team_summary(`+`, .prefix = 'past')
   
-  future_team_summary <- df |> 
+  future_team_summary <- combined_df |> 
     accumulate_team_summary(`-`, .prefix = 'future')
   
   accumulated_df <- dplyr::inner_join(
@@ -1111,8 +1126,8 @@ BASE_PREDICTOR_PALETTE <- c(
   'Expected Goals Ratio' = '#ef476f'
 )
 
-plotting_rolling_r2s <- function(df) {
-  prettified_rolling_r2s <- df |> 
+plotting_rolling_r2s <- function(rolling_r2s) {
+  prettified_rolling_r2s <- rolling_r2s |> 
     dplyr::filter(
       predictor %in% names(BASE_PRETTY_PREDICTOR_NAMES)
     ) |> 
@@ -1237,9 +1252,15 @@ Now, if we bootstrap this code by randomly reordering matchweeks, then re-calcul
 #| code-fold: true
 #| echo: true
 #| code-summary: "Calculating bootstrapped R-squared values"
-calculate_resampled_rolling_r2s <- function(df, resamples = 10, seed = 42, parallel_seed = 117, cores_prop = 0.5) {
+calculate_resampled_rolling_r2s <- function(
+    combined_df, 
+    resamples = 10, 
+    seed = 42,
+    parallel_seed = 117, 
+    cores_prop = 0.5
+  ) {
 
-  match_idx_grid <- df |> dplyr::distinct(season, country, gender, tier, game_idx)
+  match_idx_grid <- combined_df |> dplyr::distinct(season, country, gender, tier, game_idx)
   n_cores <- parallel::detectCores()
   cores_for_parallel <- ceiling(n_cores * cores_prop)
   future::plan(
@@ -1263,7 +1284,7 @@ calculate_resampled_rolling_r2s <- function(df, resamples = 10, seed = 42, paral
         ) |> 
         dplyr::ungroup()
       
-      df |> 
+      combined_df |> 
         dplyr::rename(orig_game_idx = game_idx) |> 
         dplyr::left_join(
           resampled_match_idx_grid,
@@ -1274,6 +1295,7 @@ calculate_resampled_rolling_r2s <- function(df, resamples = 10, seed = 42, paral
   )  |> 
     purrr::list_rbind()
   future::plan(future::sequential)
+  
   resampled_rolling_df |> 
     dplyr::summarize(
       .by = c(league_group, game_idx),
@@ -1292,6 +1314,44 @@ do_calculate_resampled_rolling_r2s <- purrr::compose(
 
 resampled_rolling_r2s_gd0 <- combined_data_gd0 |> do_calculate_resampled_rolling_r2s(resamples = 10)
 resampled_rolling_r2s_abs_gd1 <- combined_data_abs_gd1 |> do_calculate_resampled_rolling_r2s(resamples = 10)
+```
+
+```{r}
+#| label: rolling-r2s-debug
+#| include: false
+## Should have different values
+resampled_rolling_r2s_gd0 |> filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+resampled_rolling_r2s_abs_gd1 |> filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+
+# https://fbref.com/en/matches/00836893/Bournemouth-Brighton-and-Hove-Albion-September-15-2017-Premier-League
+combined_data_gd0 |>
+  filter(match_id == '00836893') |> 
+  select(
+    team, 
+    duration_leading,
+    duration_neutral,
+    duration_trailing,
+    shots_leading, 
+    shots_neutral, 
+    shots_trailing,
+    xg_leading, 
+    xg_neutral, 
+    xg_trailing
+  )
+combined_data_abs_gd1 |>
+  filter(match_id == '00836893') |>
+  select(
+    team, 
+    duration_leading,
+    duration_neutral,
+    duration_trailing,
+    shots_leading, 
+    shots_neutral, 
+    shots_trailing,
+    xg_leading, 
+    xg_neutral, 
+    xg_trailing
+  )
 ```
 
 ```{r}
@@ -1332,82 +1392,107 @@ We might also say that a gamestate is "neutral" when the absolute difference in 
 In the plot below I've split out each of the measures of past performance into its own facet, paired with the neutral gamestate version, using the `gd = 0` definition of neutral gamestate. This makes it easy to see which pairs of past and future performance measures are improved by subsetting the past performance measure to neutral gamestates.
 
 ```{r}
-ALL_PRETTY_PREDICTOR_NAMES <- c(
-  BASE_PRETTY_PREDICTOR_NAMES,
-  'past_g_neutral_ratio' = 'Goal Ratio',
-  'past_shot_neutral_ratio' = 'Neutral Total Shots Ratio',
-  'past_sot_neutral_ratio' = 'Neutral Shots on Target Ratio',
-  'past_xg_neutral_ratio' = 'Neutral Expected Goals Ratio'
+#| label: plot-rolling-r2s-with-neutral
+#| code-fold: true
+#| echo: true
+#| code-summary: "Plotting the bootstrapped R-squared values, including the neutral game state metrics"
+BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP <- list(
+  'Goal Ratio' = c(
+    'past_g_ratio',
+    'past_g_neutral_ratio'
+  ),
+  'Total Shots Ratio' = c(
+    'past_shot_ratio',
+    'past_shot_neutral_ratio'
+  ),
+  'Shots on Target Ratio' = c(
+    'past_sot_ratio',
+    'past_sot_neutral_ratio'
+  ),
+  'Expected Goals Ratio' = c(
+    'past_xg_ratio',
+    'past_xg_neutral_ratio'
+  )
+)
+BASE_AND_NEUTRAL_TARGET_PREDICTOR <- 'future_pts_per_game'
+INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES <- unlist(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP)
+
+names(INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES) <- rep(
+  names(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP), 
+  lengths(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP)
+)
+BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES <- setNames(
+  names(INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES),
+  unname(INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES)
 )
 
-BASE_PREDICTOR_PALETTE <- c(
-  'Points per Game' = '#cad2c5',
-  'Goal Ratio' = '#06d6a0',
-  'Total Shots Ratio' = '#ffd166',
-  'Shots on Target Ratio' = '#118ab2',
-  'Expected Goals Ratio' = '#ef476f'
+  
+IS_NEUTRAL_PALETTE <- c(
+  `FALSE` =  '#00b4d8',
+  `TRUE` = '#caf0f8'
 )
 
-plotting_rolling_r2s <- function(df) {
-  prettified_rolling_r2s <- df |> 
+plotting_rolling_r2s_with_neutral <- function(rolling_r2s) {
+  prettified_rolling_r2s <- rolling_r2s |> 
     dplyr::filter(
-      predictor %in% names(BASE_PRETTY_PREDICTOR_NAMES)
+      predictor %in% names(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES),
+      target == BASE_AND_NEUTRAL_TARGET_PREDICTOR
     ) |> 
     dplyr::mutate(
-      pretty_predictor = factor(BASE_PRETTY_PREDICTOR_NAMES[predictor], rev(BASE_PRETTY_PREDICTOR_NAMES)),
-      pretty_target = PRETTY_TARGET_NAMES[target]
+      is_neutral = stringr::str_detect(predictor, 'neutral'),
+      pretty_predictor_group = factor(
+        BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES[predictor],
+        levels = names(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP)
+      )
     ) |> 
     ## put xG on top
-    dplyr::arrange(league_group, pretty_target, dplyr::desc(pretty_predictor))
+    dplyr::arrange(league_group, pretty_predictor_group, is_neutral)
   
-  max_prettified_rolling_r2s <- prettified_rolling_r2s |> 
-    dplyr::group_by(league_group, pretty_target, pretty_predictor) |> 
+  max_rolling_r2s <- prettified_rolling_r2s |> 
+    dplyr::group_by(league_group, predictor) |> 
     dplyr::slice_max(r2, n = 1) |> 
     dplyr::ungroup()
-  
-  rolling_r2s_plot <- prettified_rolling_r2s |> 
+
+  prettified_rolling_r2s |> 
     ggplot2::ggplot() +
     ggplot2::aes(
       x = game_idx,
-      y = r2
+      y = r2,
+      group = predictor
     ) +
     ggplot2::geom_segment(
-      data = max_prettified_rolling_r2s,
+      data = max_rolling_r2s,
       ggplot2::aes(
-        color = pretty_predictor,
+        color = is_neutral,
         x = 0,
         xend = game_idx,
         y = r2,
         yend = r2
       ),
       linetype = 2,
-      linewidth = 0.25
+      linewidth = 0.5
     ) +
     ggplot2::geom_segment(
-      data = max_prettified_rolling_r2s,
+      data = max_rolling_r2s,
       ggplot2::aes(
-        color = pretty_predictor,
+        color = is_neutral,
         x = game_idx,
         xend = game_idx,
         y = 0,
         yend = r2
       ),
       linetype = 2,
-      linewidth = 0.25
+      linewidth = 0.5
     ) +
     ggplot2::geom_line(
-      linewidth = 0.75,
-      ggplot2::aes(color = pretty_predictor)
+      linewidth = 1,
+      ggplot2::aes(color = is_neutral)
     ) +
     ggplot2::scale_color_manual(
-      values = BASE_PREDICTOR_PALETTE
+      values = IS_NEUTRAL_PALETTE
     ) +
     ggplot2::guides(
-      color = ggplot2::guide_legend(
-        title = NULL,
-        label.theme = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 10, FONT),
-        override.aes = list(linewidth = 2)
-      )
+      color = 'none'
     ) +
     ggplot2::scale_y_continuous(
       limits = c(0, 1),
@@ -1419,9 +1504,10 @@ plotting_rolling_r2s <- function(df) {
       labels = seq.int(0, 35, by = 5)
     ) +
     ggplot2::geom_text(
+      inherit.aes = FALSE,
       data = tibble::tibble(
         league_group = 'Big 5',
-        pretty_target = 'Future Goals Ratio'
+        pretty_predictor_group = factor('Goal Ratio', names(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP))
       ),
       ggplot2::aes(
         x = 1,
@@ -1436,13 +1522,13 @@ plotting_rolling_r2s <- function(df) {
       vjust = 0.5
     ) +
     ggplot2::theme(
-      legend.position = c(0.85, 0.33),
       # legend.spacing.y = ggplot2::unit(-1, 'cm'), ## doesn't work?
       panel.grid.major = ggplot2::element_blank()
     ) +
-    ggplot2::facet_grid(league_group~pretty_target) +
+    ggplot2::facet_grid(league_group~pretty_predictor_group) +
     ggplot2::labs(
       title = 'Correlation of Season-to-Date Metrics with Rest-of-Season Performance Metrics',
+      subtitle = glue::glue('<b><span style="color:{IS_NEUTRAL_PALETTE[["FALSE"]]}">Full Match</span> vs. <span style="color:{IS_NEUTRAL_PALETTE[["TRUE"]]}">Neutral Game State</span></b>'),
       x = 'Match Day',
       y = 'Correlation (R<sup>2</sup>)',
       caption = CAPTION_LABEL,
@@ -1450,18 +1536,37 @@ plotting_rolling_r2s <- function(df) {
     )
 }
 
+rolling_r2s_with_neutral_gd0_plot <- resampled_rolling_r2s_gd0 |>
+  plotting_rolling_r2s_with_neutral()
+
+rolling_r2s_with_neutral_abs_gd1_plot <- resampled_rolling_r2s_abs_gd1 |> 
+  plotting_rolling_r2s_with_neutral()
+
+ggplot2::ggsave(
+  rolling_r2s_with_neutral_gd0_plot,
+  filename = file.path(PROJ_DIR, 'boostrapped-rolling-r2s-with-neutral-gd-0.png'),
+  width = 10,
+  height = 10 / 2
+)
+
+ggplot2::ggsave(
+  rolling_r2s_with_neutral_abs_gd1_plot,
+  filename = file.path(PROJ_DIR, 'boostrapped-rolling-r2s-with-neutral-abs-gd-1.png'),
+  width = 10,
+  height = 10 / 2
+)
 ```
 
-![](bootstrapped-rolling-r2s-gamestate-gd-0.png)
+![](bootstrapped-rolling-r2s-with-neutral-gd-0.png)
 
 So we see that
 
 -   foo
 -   bar
 
-Now let's make the same plot, but with the `abs(gd) = 1` neutral gamestate definition.
+Let's see if same plot using the `abs(gd) = 1` neutral gamestate definition looks any different.
 
-![](bootstrapped-rolling-r2s-gamestate-abs-gd-1.png)
+![](bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png)
 
 We observe:
 
