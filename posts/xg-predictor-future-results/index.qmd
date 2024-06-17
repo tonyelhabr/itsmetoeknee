@@ -59,7 +59,7 @@ For the most part, we just need to pull in FBref's match-level figures.
 #| label: setup
 #| code-fold: true
 #| echo: true
-#| code-summary: "Setup"
+#| code-summary: "Code Setup"
 ## data ingestion
 library(worldfootballR)
 library(dplyr)
@@ -88,7 +88,13 @@ PROJ_DIR <- 'posts/xg-predictor-future-results'
 extract_fbref_match_id <- function(match_url) {
   basename(dirname(match_url))
 }
+```
 
+```{r}
+#| label: setup-data
+#| code-fold: true
+#| echo: true
+#| code-summary: "Data Setup"
 fix_team <- function(x) {
   dplyr::case_match(
     x,
@@ -987,6 +993,7 @@ calculate_rolling_r2s <- function(combined_df) {
       past_g_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_g_neutral_ratio', 'future_g_ratio'),
       past_xg_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_neutral_ratio', 'future_g_ratio'),
       past_xgot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xgot_neutral_ratio', 'future_g_ratio'),
+      ## Bonus! duration leading per game
       past_duration_leading_per_game__future_g_ratio = calculate_nested_r2(data, 'past_duration_leading_per_game', 'future_g_ratio'),
       past_pts_per_game__future_g_ratio = calculate_nested_r2(data, 'past_pts_per_game', 'future_g_ratio'),
       
@@ -1021,36 +1028,77 @@ do_calculate_rolling_r2s <- purrr::compose(
   .dir = 'forward'
 )
 
-combined_data_gd0 <- combined_team_summary |> 
+combined_df_gd0 <- combined_team_summary |> 
   dplyr::left_join(
     gamestate_gd0_by_game |> dplyr::select(-date),
     by = dplyr::join_by(season, country, gender, tier, match_id, team)
   )
 
-combined_data_abs_gd1 <- combined_team_summary |> 
+combined_df_abs_gd1 <- combined_team_summary |> 
   dplyr::left_join(
-    gamestate_gd0_by_game |> dplyr::select(-date),
+    gamestate_abs_gd1_by_game |> dplyr::select(-date),
     by = dplyr::join_by(season, country, gender, tier, match_id, team)
   )
 
-## boths dfs have the same format
-rolling_r2s_gd0 <- combined_data_gd0 |> do_calculate_rolling_r2s()
-rolling_r2s_abs_gd1 <- combined_data_abs_gd1 |> do_calculate_rolling_r2s()
-#> # A tibble: 1,584 × 5
+## both dfs have the same format
+rolling_r2s_gd0 <- combined_df_gd0 |> do_calculate_rolling_r2s()
+rolling_r2s_abs_gd1 <- combined_df_abs_gd1 |> do_calculate_rolling_r2s()
+rolling_r2s_abs_gd1
+> # A tibble: 1,584 × 5
 #>    league_group game_idx predictor                      target             r2
 #>    <chr>           <int> <chr>                          <chr>           <dbl>
 #>  1 Big 5               1 past_shot_ratio                future_g_ratio 0.187 
 #>  2 Big 5               1 past_sot_ratio                 future_g_ratio 0.170 
 #>  3 Big 5               1 past_g_ratio                   future_g_ratio 0.165 
 #>  4 Big 5               1 past_xg_ratio                  future_g_ratio 0.182 
-#>  5 Big 5               1 past_shot_neutral_ratio        future_g_ratio 0.156 
-#>  6 Big 5               1 past_sot_neutral_ratio         future_g_ratio 0.0261
-#>  7 Big 5               1 past_g_neutral_ratio           future_g_ratio 0.108 
-#>  8 Big 5               1 past_xg_neutral_ratio          future_g_ratio 0.142 
-#>  9 Big 5               1 past_xgot_neutral_ratio        future_g_ratio 0.110 
-#> 10 Big 5               1 past_duration_leading_per_game future_g_ratio 0.129 
+#>  5 Big 5               1 past_shot_neutral_ratio        future_g_ratio 0.188 
+#>  6 Big 5               1 past_sot_neutral_ratio         future_g_ratio 0.0206
+#>  7 Big 5               1 past_g_neutral_ratio           future_g_ratio 0.166 
+#>  8 Big 5               1 past_xg_neutral_ratio          future_g_ratio 0.183 
+#>  9 Big 5               1 past_xgot_neutral_ratio        future_g_ratio 0.155 
+#> 10 Big 5               1 past_duration_leading_per_game future_g_ratio 0.116 
 #> # ℹ 1,574 more rows
 #> # ℹ Use `print(n = ...)` to see more rows
+```
+
+```{r}
+#| label: rolling-r2s-debug
+#| include: false
+## Should have different values
+rolling_r2s_gd0 |> 
+  filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+rolling_r2s_abs_gd1 |> 
+  filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+
+# https://fbref.com/en/matches/00836893/Bournemouth-Brighton-and-Hove-Albion-September-15-2017-Premier-League
+combined_df_gd0 |>
+  filter(match_id == '00836893') |> 
+  select(
+    team, 
+    duration_leading,
+    duration_neutral,
+    duration_trailing,
+    shots_leading, 
+    shots_neutral, 
+    shots_trailing,
+    xg_leading, 
+    xg_neutral, 
+    xg_trailing
+  )
+combined_df_abs_gd1 |>
+  filter(match_id == '00836893') |>
+  select(
+    team, 
+    duration_leading,
+    duration_neutral,
+    duration_trailing,
+    shots_leading, 
+    shots_neutral, 
+    shots_trailing,
+    xg_leading, 
+    xg_neutral, 
+    xg_trailing
+  )
 ```
 
 ```{r}
@@ -1312,46 +1360,20 @@ do_calculate_resampled_rolling_r2s <- purrr::compose(
   .dir = 'forward'
 )
 
-resampled_rolling_r2s_gd0 <- combined_data_gd0 |> do_calculate_resampled_rolling_r2s(resamples = 10)
-resampled_rolling_r2s_abs_gd1 <- combined_data_abs_gd1 |> do_calculate_resampled_rolling_r2s(resamples = 10)
+resampled_rolling_r2s_gd0 <- combined_df_gd0 |>
+  do_calculate_resampled_rolling_r2s(resamples = 10)
+resampled_rolling_r2s_abs_gd1 <- combined_df_abs_gd1 |> 
+  do_calculate_resampled_rolling_r2s(resamples = 10)
 ```
 
 ```{r}
-#| label: rolling-r2s-debug
+#| label: resampled-rolling-r2s-debug
 #| include: false
 ## Should have different values
-resampled_rolling_r2s_gd0 |> filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
-resampled_rolling_r2s_abs_gd1 |> filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
-
-# https://fbref.com/en/matches/00836893/Bournemouth-Brighton-and-Hove-Albion-September-15-2017-Premier-League
-combined_data_gd0 |>
-  filter(match_id == '00836893') |> 
-  select(
-    team, 
-    duration_leading,
-    duration_neutral,
-    duration_trailing,
-    shots_leading, 
-    shots_neutral, 
-    shots_trailing,
-    xg_leading, 
-    xg_neutral, 
-    xg_trailing
-  )
-combined_data_abs_gd1 |>
-  filter(match_id == '00836893') |>
-  select(
-    team, 
-    duration_leading,
-    duration_neutral,
-    duration_trailing,
-    shots_leading, 
-    shots_neutral, 
-    shots_trailing,
-    xg_leading, 
-    xg_neutral, 
-    xg_trailing
-  )
+resampled_rolling_r2s_gd0 |> 
+  filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+resampled_rolling_r2s_abs_gd1 |>
+  filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
 ```
 
 ```{r}
@@ -1426,7 +1448,6 @@ BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES <- setNames(
   unname(INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES)
 )
 
-  
 IS_NEUTRAL_PALETTE <- c(
   `FALSE` =  '#00b4d8',
   `TRUE` = '#caf0f8'
@@ -1530,7 +1551,7 @@ plotting_rolling_r2s_with_neutral <- function(rolling_r2s) {
       title = 'Correlation of Season-to-Date Metrics with Rest-of-Season Performance Metrics',
       subtitle = glue::glue('<b><span style="color:{IS_NEUTRAL_PALETTE[["FALSE"]]}">Full Match</span> vs. <span style="color:{IS_NEUTRAL_PALETTE[["TRUE"]]}">Neutral Game State</span></b>'),
       x = 'Match Day',
-      y = 'Correlation (R<sup>2</sup>)',
+      y = 'Average Bootstrapped Correlation (R<sup>2</sup>)',
       caption = CAPTION_LABEL,
       tag = TAG_LABEL
     )
@@ -1570,7 +1591,7 @@ Let's see if same plot using the `abs(gd) = 1` neutral gamestate definition look
 
 We observe:
 
--   foo
+-   The neutral gamestate R-squared curves are notably lower than their analogous full match metrics. We might infer that the reduction of game events to just the events that occur in a tied gamestate is too aggressive, eliminating useful data for future predictiveness that occurs in non-tied gamestates.
 -   bar
 
 Using the `abs(gd) = 1` definition of neutral gamestate, let's condense our R-squared traces into just two facets, only splitting out by league group. This view makes it more clear which singular past performance measure, gamestate-aware or not, proves to be best for forecasting future points per game.
@@ -1579,8 +1600,55 @@ Using the `abs(gd) = 1` definition of neutral gamestate, let's condense our R-sq
 
 We see that:
 
--   foo
--   bar
+-   Relative to the full match measures, our alternative definition of a neutral game state seems to improve the rest-of-season predictiveness for goals ratio and xG ratio. This is evident in the steeper rise and higher peaks of our the traces for those gamestate measures. Still, the neutral gamestate traces for goals and xG never exceed the full match traces, meaning that they don't improve rest-of-season predictiveness.
+-   Overall, the bootstrapped R-squared values are slightly smaller across the board. This is perhaps not surprising, as resampling tends to have a "shrinking" effect on figures. Intuitively, this noise could be associated with scheduling bias, injuries, etc.
+
+```{r}
+#| label: interesting-inferences
+#| include: false
+## Which metric has the highest correlation with future pts per game at any point?
+rolling_r2s_abs_gd1 |> 
+  filter(target == 'future_pts_per_game') |> 
+  group_by(predictor) |>
+  slice_max(r2, n = 1) |> 
+  ungroup() |> 
+  arrange(desc(r2))
+
+## Which metric has the earliest >0.5 correlation with future pts per game?
+rolling_r2s_abs_gd1 |> 
+  filter(target == 'future_pts_per_game') |> 
+  filter(r2 > 0.5) |> 
+  group_by(predictor) |>
+  slice_min(game_idx, n = 1) |> 
+  ungroup() |> 
+  arrange(game_idx)
+
+## ... when bootstrapping?
+resampled_rolling_r2s_abs_gd1 |> 
+  filter(target == 'future_pts_per_game') |> 
+  filter(r2 > 0.45) |> 
+  group_by(predictor) |>
+  slice_min(game_idx, n = 1) |> 
+  ungroup() |> 
+  arrange(game_idx)
+
+## what about past duration leading?
+rolling_r2s_abs_gd1 |> 
+  filter(predictor == 'past_duration_leading_per_game', target == 'future_pts_per_game') |> 
+  arrange(desc(r2))
+
+rolling_r2s_gd0 |> 
+  filter(predictor == 'past_duration_leading_per_game', target == 'future_pts_per_game') |> 
+  arrange(desc(r2))
+```
+
+# Discussion
+
+In attempt to summarize all the findings, I present two tables, both of which use future points per game as our sole measure of rest-of-season performance.
+
+In this first table, I show the (1) match week in which each season-to-date metric achieves its max rest-of-season predictiveness, and (2) the first week in which its rest-of-season predictiveness exceeds an R-squared \> 0.5. The 0.5 threshold is the point at which we might say that the there is more signal than noise in forecasting rest-of-season performance.
+
+In this second table, I present the same information, but this time for our bootstrapped R-squared values. As seen in the plots, R-squared values are generally smaller with the bootstrapping (due )
 
 # Conclusion
 
