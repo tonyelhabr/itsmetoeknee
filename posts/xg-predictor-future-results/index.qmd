@@ -1,15 +1,15 @@
 ---
-title: Expected goals and in-season predictiveness
+title: Expected goals, gamestate, and predictiveness
 description: "Is expected goals in neutral game states the best predictor for future performance?"
-date: 2024-07-01
-draft: true
+date: 2024-06-19
 toc-depth: 4
 toc-expand: true
 categories:
   - r
   - soccer
+image: bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png
 execute: 
-  code-fold: show
+  code-fold: true
   eval: false
   include: false
   echo: true
@@ -17,48 +17,47 @@ execute:
 
 # Introduction
 
-["The best predictor for future performance is Expected Goals"](http://web.archive.org/web/20181112175811/http://www.11tegen11.com/2015/01/05/the-best-predictor-for-future-performance-is-expected-goals/), authored by Sander Ijtsma of [11tegen11](https://twitter.com/11tegen11) in 2015, is one of the most notable articles in public soccer analytics. The write-up provided compelling evidence for the superiority of [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) in terms of forecasting team-season outcomes on a game-by-game basis.[^1][^2] Specifically, Ijtsma drew out curves for within-season, cumulative [correlation](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient)[^3] of various metrics--xG ratio[^4], shots ratio, etc.--in terms of their relationship with rest-of-season ("future") goals ratio and [points](https://en.wikipedia.org/wiki/Three_points_for_a_win).
+["The best predictor for future performance is Expected Goals"](http://web.archive.org/web/20181112175811/http://www.11tegen11.com/2015/01/05/the-best-predictor-for-future-performance-is-expected-goals/), authored by Sander Ijtsma of [11tegen11](https://twitter.com/11tegen11) in 2015, is one of the most notable articles in public soccer analytics. The write-up provided compelling evidence for the superiority of [expected goals (xG)](https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/) in terms of forecasting team-season outcomes on a game-by-game basis.[^1][^2] Ijtsma drew out curves for running [R-squared values](https://en.wikipedia.org/wiki/Coefficient_of_determination) of a handful of season-to-date ("past") metrics with respect to rest-of-season ("future") performance indicators--goals ratio and [points per game](https://en.wikipedia.org/wiki/Three_points_for_a_win)--and found that xG ratio[^3] tended to be the most predictive.
 
 [^1]: If you know anything about the broader soccer analytics discourse, you've more than likely heard about one of the Ijtsma's findings regarding the predictiveness of xG. As [Eliot](https://x.com/etmckinley) [puts](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) it: "If you’ve ever heard or read someone say that it takes 5-10 (4 in the article) games for xG to be predictive, they probably read this article or got it second hand from someone who has."
 
-[^2]: Note that there are [some critics](https://jameswgrayson.wordpress.com/2015/01/06/a-quick-cautionary-note-on-predictiveness-and-r-squared/) of the choice to rely on R-squared as a measure of predictiveness. For the purpose of this post, we'll take the criticism on the chin.
+[^2]: Note that there are [some critics](https://jameswgrayson.wordpress.com/2015/01/06/a-quick-cautionary-note-on-predictiveness-and-r-squared/) of the choice to rely on R-squared as a measure of predictiveness. For the purpose of this post, we'll take that criticism on the chin.
 
-[^3]: I'll use (Pearson) correlation and [R-squared](https://en.wikipedia.org/wiki/Coefficient_of_determination) sort of interchangeably with one another in this post. Note that R-squared is just a squared version of Pearson correlation, so originality of results is not altered.
-
-[^4]: A "ratio" here is broadly defined in pseudo-code as `team's value / (team's value + opponent's value)`. Ijtsma's notes in a reply to a comment that one might arguably use a difference formula, i.e. `team's value - opponent's value`, as opposed to ratios, as ratios are susceptible to noise when values are themselves fractional. This is most relevant for xG, and not so relevant for shots and goals, which are inherently discrete.
+[^3]: A "ratio" here is broadly defined in pseudo-code as `team's value / (team's value + opponent's value)`. Ijtsma's notes in a reply to a comment that one might arguably use a difference formula, i.e. `team's value - opponent's value`, as ratios are susceptible to noise when values are themselves fractional. This is most relevant for xG, and not so relevant for shots and goals, which are inherently discrete.
 
 ![](11tegen11-xg.png)
 
-In 2022, [Eliot McKinley](https://x.com/etmckinley) wrote [a cool piece](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) for [American Soccer Analytics (ASA)](https://www.americansocceranalysis.com) where he replicated and enhanced Ijtsma's analysis, updating the data set to use 2018 through 2022 matches for [the Big 5 European Leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), and adding in a look at [Major League Soccer (MLS)](https://fbref.com/en/comps/22/Major-League-Soccer-Stats). Further, Eliot presented a novel aspect where he [bootstrapped](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) the running R-squared values to generate smoother, more interpretable curves.
+In 2022, [Eliot McKinley](https://x.com/etmckinley) wrote [a cool piece](https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results) for [American Soccer Analytics (ASA)](https://www.americansocceranalysis.com) where he replicated and extended Ijtsma's analysis. He used a larger data set of more recent seasons--2018 through 2022-- and added a look at [Major League Soccer (MLS)](https://fbref.com/en/comps/22/Major-League-Soccer-Stats) in addition to the [the Big 5 European Leagues](https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats), and adding. Further, Eliot presented a novel aspect where he [bootstrapped](https://en.wikipedia.org/wiki/Bootstrapping_(statistics)) the procedure for generating running R-squared values to generate smoother, more interpretable curves.
 
 ![](asa-xg.png)
 
-Now I'd like to further expand on this prior art in a few ways:
+In this post I extend this prior art in two ways:
 
-1.  Expand the data set range to 2018 through 2024, sourcing from a reputed data source--[FBref](https://fbref.com/en/). [^5]
-2.  Publicize code for performing the running [correlation](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) calculations, including my take on the bootstrapping that Eliot demonstrated.
-3.  Include additional curves for "gamestate" shots and xG, in an effort to see if one can achieve metrics that are perhaps even more predictive than xG.
+1.  I **expand the data set range to 2018 through 2024**, sourcing from a reputed public data source--[FBref](https://fbref.com/en/).[^4] The intention is to make the analysis even more robust and reproducible.
+2.  I include **additional curves for "gamestate-aware" goals and xG**, in an effort to see if one can achieve metrics that are perhaps even more predictive than xG itself.
 
-[^5]: Notably, I'll also exclude the COVID-19 influenced 2020 season, so as to reduce a bit of noise in the data. Although bootstrapping games within season should reduce much of this noise, in practice, [FBref](https://fbref.com/en/) is missing some game-level xG data for 2020 matches, so this choice is sort of just a pragmatic one.
+[^4]: Notably, I exclude the COVID-19 influenced 2020 season, so as to reduce a bit of noise in the data. Although bootstrapping games within-season should reduce much of this noise, in practice, [FBref](https://fbref.com/en/) is missing some game-level xG data for 2020 matches, so this choice is sort of just a pragmatic one.
 
-On the last point, Ijtsma noted that to adjust for the bias introduced by team quality, one might only look at shot ratio, etc. when the score line is neutral or when teams are within one goal of each other. In fact, he said he had evaluated this:
+On the second point, Ijtsma noted that subsetting the past performance tallies to gamestates when the score is either tied or within 1 goal might abate the potential biases introduced by within-match complacency (manifesting in conservative tactics). In fact, he said he had evaluated these things.
 
-> I've looked at this, but I have decided not to include that subanalysis in this post, for the sake of accessibility... I think this method will show that the phenomenon \[(where teams exert more or less effort in matches against particular opposition)\] either does not truly exists, or that its effect are so small that correcting for this will allow more noise and thereby weaken the model.
+> I've looked at this, but I have decided not to include that subanalysis in this post, for the sake of accessibility... I think this method will show that the phenomenon \[where teams exert more or less effort in matches against particular opposition\] either does not truly exist, or that its effect is so small that correcting for this will allow more noise and thereby weaken the model.
 
-Unfortunately, I couldn't find any subsequent blog post where Ijtsma writes about the role of gamestate in this analysis, so, alas, I'm here to do exactly that.
+Unfortunately, I couldn't find any subsequent blog post where Ijtsma writes about the role of gamestate in the context of his R-squared analysis, so, alas, I'm here to do exactly that.
 
-Now, my point isn't necessarily to find the absolute best metric possible to use to forecast future team performance. [Tiotal Football](https://twitter.com/TiotalFootball) (with assistance from Eliot) [showed that](https://www.americansocceranalysis.com/home/2020/5/12/breaking-goals-added) non-shot event-based metrics like goals added (blue) and completed passes into the area in front of the box (yellow) are even more predictive of future points per game than xG, at least in the MLS.
+Now, my point isn't necessarily to find the absolute best metric possible to use to forecast future team performance. [Tiotal Football](https://twitter.com/TiotalFootball) (with assistance from Eliot) [showed that](https://www.americansocceranalysis.com/home/2020/5/12/breaking-goals-added) comprehensive event-based metrics like goals added (light blue), completed passes into the area in front of the box (yellow), etc. are even more predictive of future points per game than xG, at least in the MLS.
 
 ![](breaking-goals-added.png)
 
+I do look at a few metrics that go beyond Ijtsma's set in the Appendix, but that is not the primary focus of this post.
+
 # Data
 
-For the most part, we just need to pull in FBref's match-level figures.
+I use [`{worldfootballR}`](https://github.com/JaseZiv/worldfootballR) to retrieve match-level figures and shot logs from FBref. As noted in the intro, we're going to be working with Big 5 and MLS data for the 2018 - 2024 (season-ending) seasons.
 
 ```{r}
 #| label: setup
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Code Setup"
 ## data ingestion
 library(worldfootballR)
@@ -93,8 +92,9 @@ extract_fbref_match_id <- function(match_url) {
 ```{r}
 #| label: setup-data
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Data Setup"
+## Discrepancies in worldfootballR's saved data
 fix_team <- function(x) {
   dplyr::case_match(
     x,
@@ -109,7 +109,7 @@ GENDER <- 'M'
 TIER <- '1st'
 SEASON_END_YEAR <- c(2018:2024)
 
-## for match-level data
+## for match-level shot data
 raw_team_summary <- worldfootballR::load_fb_advanced_match_stats(
   country = COUNTRY,
   gender = GENDER,
@@ -120,7 +120,17 @@ raw_team_summary <- worldfootballR::load_fb_advanced_match_stats(
 )
 #> → Data last updated 2024-05-21 18:39:59 UTC
 
-## for shot-level / gamestate calcs
+raw_team_passing <- worldfootballR::load_fb_advanced_match_stats(
+  country = COUNTRY,
+  gender = GENDER,
+  tier = TIER,
+  season_end_year = SEASON_END_YEAR,
+  stat_type = 'passing',
+  team_or_player = 'team'
+)
+#> → Data last updated 2024-05-21 18:39:59 UTC
+
+## for shot-level data for gamestate calcs
 raw_shots <- worldfootballR::load_fb_match_shooting(
   country = COUNTRY,
   gender = GENDER,
@@ -129,6 +139,7 @@ raw_shots <- worldfootballR::load_fb_match_shooting(
 )
 #> → Data last updated 2024-05-21 17:52:12 UTC
 
+## for team info for gamestate calcs
 raw_match_summaries <- worldfootballR::load_fb_match_summary(
   country = COUNTRY,
   gender = GENDER,
@@ -151,6 +162,7 @@ reprex_print <- function(...) {
 ```{r}
 #| label: raw-data-save
 qs::qsave(raw_team_summary, file.path(PROJ_DIR, 'raw_team_summary.qs'))
+qs::qsave(raw_team_passing, file.path(PROJ_DIR, 'raw_team_passing.qs'))
 qs::qsave(raw_shots, file.path(PROJ_DIR, 'raw_shots.qs'))
 qs::qsave(raw_match_summaries, file.path(PROJ_DIR, 'raw_match_summaries.qs'))
 ```
@@ -158,6 +170,7 @@ qs::qsave(raw_match_summaries, file.path(PROJ_DIR, 'raw_match_summaries.qs'))
 ```{r}
 #| label: raw-data-read
 raw_team_summary <- qs::qread(file.path(PROJ_DIR, 'raw_team_summary.qs'))
+raw_team_passing <- qs::qread(file.path(PROJ_DIR, 'raw_team_passing.qs'))
 raw_shots <- qs::qread(file.path(PROJ_DIR, 'raw_shots.qs'))
 raw_match_summaries <- qs::qread(file.path(PROJ_DIR, 'raw_match_summaries.qs'))
 ```
@@ -165,13 +178,14 @@ raw_match_summaries <- qs::qread(file.path(PROJ_DIR, 'raw_match_summaries.qs'))
 ```{r}
 #| label: data-ingestion-team-summary
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Match-level data ingestion"
 ## Known/valid matches with missing xG
 ## - https://fbref.com/en/matches/e0a20cfe/Hellas-Verona-Roma-September-19-2020-Serie-A: awarded to Hellas Verona
 ## https://fbref.com/en/matches/c34bbc21/Bochum-Monchengladbach-March-18-2022-Bundesliga: awarded to Monchengladbach
-team_summary <- raw_team_summary |>
-  dplyr::filter(
+drop_bad_matches <- function(df) {
+  df |> 
+    dplyr::filter(
     ## choose non-playoff/relegation weeks
     (Country != 'USA' & stringr::str_detect(Matchweek, 'Matchweek')) | (Country == 'USA' & Matchweek == 'Major League Soccer (Regular Season)')
   ) |> 
@@ -185,7 +199,11 @@ team_summary <- raw_team_summary |>
   ##  (Ligue 1 is espeically odd, as each team has about 7 games missing.)
   dplyr::filter(
     Season_End_Year != 2020
-  ) |>
+  )
+}
+
+team_summary <- raw_team_summary |>
+  drop_bad_matches() |> 
   dplyr::transmute(
     season = Season_End_Year,
     country = Country,
@@ -205,6 +223,21 @@ team_summary <- raw_team_summary |>
     shots = Sh,
     sot = SoT
   ) |> 
+  ## passing metrics for further exploration
+  dplyr::left_join(
+    raw_team_passing |> 
+      drop_bad_matches() |> 
+      dplyr::transmute(
+        match_id = extract_fbref_match_id(MatchURL),
+        team = Team,
+        ppa = PPA,
+        xag = xAG
+      ),
+    by = dplyr::join_by(match_id, team)
+  ) |> 
+  dplyr::mutate(
+    xg_xag = dplyr::coalesce(xg, 0) + dplyr::coalesce(xag, 0)
+  ) |> 
   dplyr::group_by(season, team) |> 
   dplyr::mutate(
     season_game_count = dplyr::n(),
@@ -214,14 +247,19 @@ team_summary <- raw_team_summary |>
 
 combined_team_summary <- dplyr::left_join(
   team_summary,
-  team_summary |> 
-    dplyr::transmute(
+  team_summary |>
+    dplyr::rename_with(
+      \(.x) paste0(.x, '_conceded'),
+      c(
+        g, xg, shots, sot,
+        ppa, xag, xg_xag
+      )
+    ) |> 
+    dplyr::select(
       match_id,
       opponent = team,
-      g_conceded = g,
-      xg_conceded = xg,
-      shots_conceded = shots,
-      sot_conceded = sot
+      dplyr::ends_with('conceded')
+      
     ),
   by = dplyr::join_by(match_id),
   relationship = 'many-to-many'
@@ -242,7 +280,7 @@ combined_team_summary <- dplyr::left_join(
   dplyr::arrange(team, season, date)
 dplyr::glimpse(combined_team_summary)
 #> Rows: 25,416
-#> Columns: 21
+#> Columns: 27
 #> $ season            <int> 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023, 2…
 #> $ country           <chr> "FRA", "FRA", "FRA", "FRA", "FRA", "FRA", "FRA", …
 #> $ gender            <chr> "M", "M", "M", "M", "M", "M", "M", "M", "M", "M",…
@@ -255,6 +293,9 @@ dplyr::glimpse(combined_team_summary)
 #> $ xg                <dbl> 1.5, 0.5, 1.4, 1.7, 1.2, 0.5, 1.2, 0.5, 1.5, 0.2,…
 #> $ shots             <dbl> 7, 9, 9, 14, 15, 16, 9, 6, 12, 6, 14, 8, 5, 9, 12…
 #> $ sot               <dbl> 3, 2, 2, 2, 0, 3, 3, 4, 3, 1, 6, 1, 1, 5, 3, 2, 0…
+#> $ ppa               <dbl> 6, 4, 3, 5, 7, 11, 9, 4, 5, 2, 8, 3, 5, 8, 6, 7, …
+#> $ xag               <dbl> 0.4, 0.3, 0.6, 0.7, 0.7, 0.4, 1.2, 0.4, 0.7, 0.1,…
+#> $ xg_xag            <dbl> 1.9, 0.8, 2.0, 2.4, 1.9, 0.9, 2.4, 0.9, 2.2, 0.3,…
 #> $ season_game_count <int> 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 3…
 #> $ game_idx          <int> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15…
 #> $ opponent          <chr> "Lyon", "Lens", "Rennes", "Lille", "Montpellier",…
@@ -262,6 +303,9 @@ dplyr::glimpse(combined_team_summary)
 #> $ xg_conceded       <dbl> 1.3, 1.4, 1.2, 1.7, 1.7, 0.8, 1.3, 0.5, 1.0, 1.8,…
 #> $ shots_conceded    <dbl> 10, 12, 16, 6, 9, 7, 12, 8, 7, 9, 9, 11, 18, 9, 1…
 #> $ sot_conceded      <dbl> 5, 3, 7, 4, 4, 4, 3, 4, 3, 1, 2, 6, 5, 5, 5, 4, 4…
+#> $ ppa_conceded      <dbl> 7, 13, 5, 7, 5, 3, 5, 7, 6, 12, 7, 16, 3, 7, 5, 9…
+#> $ xag_conceded      <dbl> 0.5, 1.2, 0.8, 0.7, 1.7, 0.7, 1.1, 0.3, 1.0, 0.8,…
+#> $ xg_xag_conceded   <dbl> 1.8, 2.6, 2.0, 2.4, 3.4, 1.5, 2.4, 0.8, 2.0, 2.6,…
 #> $ pts               <int> 0, 1, 0, 0, 0, 0, 0, 3, 0, 1, 1, 0, 0, 3, 1, 3, 0…
 #> $ pts_conceded      <int> 3, 1, 3, 3, 3, 3, 3, 0, 3, 1, 1, 3, 3, 0, 1, 0, 3…
 ```
@@ -271,12 +315,15 @@ dplyr::glimpse(combined_team_summary)
 qs::qsave(combined_team_summary, file.path(PROJ_DIR, 'combined_team_summary.qs'))
 ```
 
-But, for calculating gamestate, we need to drill down to match-shot-level.
+```{r}
+#| label: team-summary-read
+combined_team_summary <- qs::qread(file.path(PROJ_DIR, 'combined_team_summary.qs'))
+```
 
 ```{r}
 #| label: data-ingestion-gamestate
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Gamestate data ingestion"
 match_summaries <- raw_match_summaries |> 
   dplyr::group_by(MatchURL) |> 
@@ -401,7 +448,6 @@ shots_with_own_goals <- dplyr::bind_rows(
 )
 
 clean_shots <- shots_with_own_goals |> 
-  # dplyr::filter(dplyr::row_number() == 376946) |> 
   ## To get meta-information about the game
   dplyr::inner_join(
     deduped_match_summaries |>
@@ -440,22 +486,13 @@ clean_shots <- shots_with_own_goals |>
   ) |>
   dplyr::select(
     match_id,
-    period,
-    minutes,
-    minutes_added,
-    is_home,
-    is_goal,
-    is_on_target,
-    is_own_goal,
+    period, minutes, minutes_added,
+    is_home, is_goal, is_on_target, is_own_goal,
     player,
-    home_team,
-    away_team,
-    home_g,
-    away_g,
-    home_xg,
-    away_xg,
-    home_xgot,
-    away_xgot
+    home_team, away_team,
+    home_g, away_g,
+    home_xg, away_xg,
+    home_xgot, away_xgot
   ) |> 
   ## Still need to distinct because, even with fixing team names, there have been FBref MatchURL changes
   dplyr::distinct() |> 
@@ -474,15 +511,9 @@ restacked_shots <- dplyr::bind_rows(
   clean_shots |> 
     dplyr::filter(is_home) |> 
     dplyr::transmute(
-      shot_id,
-      match_id,
-      period,
-      minutes,
-      minutes_added,
-      is_home,
-      is_goal,
-      is_on_target,
-      is_own_goal,
+      shot_id, match_id,
+      period, minutes, minutes_added,
+      is_home, is_goal, is_on_target, is_own_goal,
       player,
       team = home_team,
       opponent = away_team,
@@ -496,15 +527,9 @@ restacked_shots <- dplyr::bind_rows(
   clean_shots |> 
     dplyr::filter(!is_home) |> 
     dplyr::transmute(
-      shot_id,
-      match_id,
-      period,
-      minutes,
-      minutes_added,
-      is_home,
-      is_goal,
-      is_on_target,
-      is_own_goal,
+      shot_id, match_id,
+      period, minutes, minutes_added,
+      is_home, is_goal, is_on_target, is_own_goal,
       player,
       team = away_team,
       opponent = home_team,
@@ -573,44 +598,25 @@ gamestate_shots <- cumu_doublecounted_restacked_shots |>
     deduped_match_summaries |> 
       dplyr::distinct(
         match_id,
-        season,
-        country,
-        gender,
-        tier,
-        match_week,
-        date,
-        home_team,
-        away_team
+        season, country, gender, tier,
+        match_week, date,
+        home_team, away_team
       ),
     by = dplyr::join_by(match_id)
   ) |> 
   dplyr::transmute(
     pov,
-    country,
-    gender,
-    tier,
     match_id,
-    season,
-    country,
-    gender,
-    tier,
-    match_week,
-    date,
-    home_team,
-    away_team,
-    team,
-    player,
+    season, country, gender, tier,
+    match_week, date,
+    home_team, away_team,
+    team, player,
     shot_id,
-    period,
-    minutes,
-    minutes_added,
+    period, minutes, minutes_added,
     time = minutes + dplyr::coalesce(minutes_added, 0L),
-    g,
-    g_conceded,
-    xg,
-    xg_conceded,
-    xgot,
-    xgot_conceded,
+    g, g_conceded,
+    xg, xg_conceded,
+    xgot, xgot_conceded,
     xgd = xg - xg_conceded,
     gamestate_gd0 = dplyr::case_when(
       gamestate == 0 ~ 'neutral',
@@ -685,13 +691,10 @@ aggregate_games_by_gamestate <- function(df, gamestate_col) {
   gamestate_sym <- rlang::ensym(gamestate_col)
   agg_shots_by_game_gamestate <- df |> 
     dplyr::group_by(
-      country, 
-      gender,
-      tier,
-      team,
-      season, 
-      match_id, 
-      date,
+      country, gender, tier,
+      team, 
+      season,
+      match_id, date,
       !!gamestate_sym,
     ) |>
     ## need all the `na.rm = TRUE`'s since i don't fill in `pov` for the padded minute records
@@ -710,24 +713,17 @@ aggregate_games_by_gamestate <- function(df, gamestate_col) {
     ) |> 
     dplyr::ungroup() |> 
     dplyr::arrange(
-      country, 
-      gender, 
-      tier, 
+      country, gender, tier, season,
       team, 
-      season,
-      date,
+      season, date,
       !!gamestate_sym
     )
   
   agg_shots_by_game_gamestate |> 
     dplyr::distinct(
-      country,
-      gender,
-      tier,
+      country, gender, tier, season,
       team,
-      season,
-      date,
-      match_id
+      date, match_id
     ) |> 
     tidyr::crossing(
       !!gamestate_sym := c('trailing', 'neutral', 'leading')
@@ -735,29 +731,20 @@ aggregate_games_by_gamestate <- function(df, gamestate_col) {
     dplyr::left_join(
       agg_shots_by_game_gamestate,
       by = dplyr::join_by(
-        country, 
-        gender, 
-        tier,
+        country, gender, tier, season,
         team, 
-        season, 
         !!gamestate_sym,
-        date,
-        match_id
+        date, match_id
       )
     ) |> 
     dplyr::mutate(
       dplyr::across(
         c(
-          shots,
-          shots_conceded,
-          sot,
-          sot_conceded,
-          g, 
-          g_conceded, 
-          xg,
-          xg_conceded, 
-          xgot, 
-          xgot_conceded,
+          shots, shots_conceded,
+          sot, sot_conceded,
+          g, g_conceded, 
+          xg, xg_conceded, 
+          xgot, xgot_conceded,
           duration
         ),
         \(.x) dplyr::coalesce(.x, 0)
@@ -766,16 +753,11 @@ aggregate_games_by_gamestate <- function(df, gamestate_col) {
     tidyr::pivot_wider(
       names_from = !!gamestate_sym,
       values_from = c(
-        shots,
-        shots_conceded,
-        sot,
-        sot_conceded,
-        g, 
-        g_conceded, 
-        xg,
-        xg_conceded, 
-        xgot, 
-        xgot_conceded,
+        shots, shots_conceded,
+        sot, sot_conceded,
+        g,  g_conceded, 
+        xg, xg_conceded, 
+        xgot, xgot_conceded,
         duration
       ),
       names_sort = TRUE
@@ -864,13 +846,13 @@ gamestate_abs_gd1_by_game <- qs::qread(file.path(PROJ_DIR, 'gamestate_abs_gd1_by
 
 ## Replicating prior art
 
-Let's begin with replicating Ijtsma's visualization where he evaluated the correlation of the five measures of season-to-date ("past") performance with respect to two measures of rest-of-season ("future") performance. The five measures of past performance are:
+Let's begin with replicating Ijtsma's visualization where he evaluated the running R-squared of the five measures of past performance with respect to two measures of future performance. The five measures of past performance are:
 
 1.  points per game
 2.  goal ratio
 3.  total shots ratio
 4.  shots on target ratio
-5.  expected goals ratio
+5.  xG ratio
 
 The two measures of future performance are:
 
@@ -880,7 +862,7 @@ The two measures of future performance are:
 ```{r}
 #| label: rolling-r2s
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Calculate rolling R-squared for season-to-date and rest-of-season performance measures"
 accumulate_team_summary <- function(df, op, .prefix) {
   df |> 
@@ -889,13 +871,24 @@ accumulate_team_summary <- function(df, op, .prefix) {
     dplyr::mutate(
       dplyr::across(
         c(
-          shots, shots_conceded, sot, sot_conceded,
-          g, g_conceded, xg, xg_conceded,
-          g_neutral, g_conceded_neutral, xg_neutral, xg_conceded_neutral, xgot_neutral, xgot_conceded_neutral,
+          shots, shots_conceded, 
+          sot, sot_conceded,
+          g, g_conceded, 
+          xg, xg_conceded,
+          xgot, xgot_conceded,
+          
+          g_neutral, g_conceded_neutral, 
+          xg_neutral, xg_conceded_neutral, 
+          xgot_neutral, xgot_conceded_neutral,
+          
+          ppa, ppa_conceded, 
+          xag, xag_conceded,
+          xg_xag, xg_xag_conceded,
+          
           duration_leading,
           pts, pts_conceded
         ),
-        \(.x) cumsum(coalesce(.x, 0))
+        \(.x) cumsum(dplyr::coalesce(.x, 0))
       )
     ) |> 
     dplyr::ungroup() |> 
@@ -904,15 +897,20 @@ accumulate_team_summary <- function(df, op, .prefix) {
       sot_ratio = sot / (sot + sot_conceded),
       g_ratio = g / (g + g_conceded),
       xg_ratio = xg / (xg + xg_conceded),
+      xgot_ratio = xgot / (xgot + xgot_conceded),
       
       shot_neutral_ratio = shots_neutral / (shots_neutral + shots_conceded_neutral),
       sot_neutral_ratio = sot_neutral / (sot_neutral + sot_conceded_neutral),
       g_neutral_ratio = g_neutral / (g_neutral + g_conceded_neutral),
       xg_neutral_ratio = xg_neutral / (xg_neutral + xg_conceded_neutral),
       xgot_neutral_ratio = xgot_neutral / (xgot_neutral + xgot_conceded_neutral),
+
+      ppa_ratio = ppa / (ppa + ppa_conceded),
+      xag_ratio = xag / (xag + xag_conceded),
+      xg_xag_ratio = xg_xag / (xg_xag + xg_xag_conceded),
       
       duration_leading_per_game = duration_leading / game_idx,
-      pts_per_game = pts / game_idx
+      ppg = pts / game_idx
     ) |> 
     dplyr::mutate(
       ## replace NaNs with NAs for the cor calculation
@@ -924,14 +922,29 @@ accumulate_team_summary <- function(df, op, .prefix) {
     dplyr::rename_with(
       .fn = \(.x) paste0(.prefix, '_', .x),
       .cols = c(
-        shots, shots_conceded, sot, sot_conceded,
-        g, g_conceded, xg, xg_conceded,
-        shots_neutral, shots_conceded_neutral, sot_neutral, sot_conceded_neutral,
-        g_neutral, g_conceded_neutral, xg_neutral, xg_conceded_neutral, xgot_neutral, xgot_conceded_neutral,
+        shots, shots_conceded, 
+        sot, sot_conceded,
+        g, g_conceded, 
+        xg, xg_conceded,
+        xgot, xgot_conceded,
+        
+        shots_neutral, shots_conceded_neutral, 
+        sot_neutral, sot_conceded_neutral,
+        g_neutral, g_conceded_neutral, 
+        xg_neutral, xg_conceded_neutral, 
+        xgot_neutral, xgot_conceded_neutral,
+        
+        ppa, ppa_conceded, 
+        xag, xag_conceded,
+        xg_xag, xg_xag_conceded,
+        
         duration_leading,
         pts, pts_conceded,
+        
         dplyr::ends_with('ratio'),
-        dplyr::ends_with('per_game')
+        
+        duration_leading_per_game,
+        ppg
       )
     )
 }
@@ -988,26 +1001,41 @@ calculate_rolling_r2s <- function(combined_df) {
       past_sot_ratio__future_g_ratio = calculate_nested_r2(data, 'past_sot_ratio', 'future_g_ratio'),
       past_g_ratio__future_g_ratio = calculate_nested_r2(data, 'past_g_ratio', 'future_g_ratio'),
       past_xg_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_ratio', 'future_g_ratio'),
+      past_xgot_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xgot_ratio', 'future_g_ratio'),
+      
       past_shot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_shot_neutral_ratio', 'future_g_ratio'),
       past_sot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_sot_neutral_ratio', 'future_g_ratio'),
       past_g_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_g_neutral_ratio', 'future_g_ratio'),
       past_xg_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_neutral_ratio', 'future_g_ratio'),
       past_xgot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xgot_neutral_ratio', 'future_g_ratio'),
-      ## Bonus! duration leading per game
-      past_duration_leading_per_game__future_g_ratio = calculate_nested_r2(data, 'past_duration_leading_per_game', 'future_g_ratio'),
-      past_pts_per_game__future_g_ratio = calculate_nested_r2(data, 'past_pts_per_game', 'future_g_ratio'),
       
-      past_shot_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_shot_ratio', 'future_pts_per_game'),
-      past_sot_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_sot_ratio', 'future_pts_per_game'),
-      past_g_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_g_ratio', 'future_pts_per_game'),
-      past_xg_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_xg_ratio', 'future_pts_per_game'),
-      past_shot_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_shot_neutral_ratio', 'future_pts_per_game'),
-      past_sot_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_sot_neutral_ratio', 'future_pts_per_game'),
-      past_g_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_g_neutral_ratio', 'future_pts_per_game'),
-      past_xg_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_xg_neutral_ratio', 'future_pts_per_game'),
-      past_xgot_neutral_ratio__future_pts_per_game = calculate_nested_r2(data, 'past_xgot_neutral_ratio', 'future_pts_per_game'),
-      past_duration_leading_per_game__future_pts_per_game = calculate_nested_r2(data, 'past_duration_leading_per_game', 'future_pts_per_game'),
-      past_pts_per_game__future_pts_per_game = calculate_nested_r2(data, 'past_pts_per_game', 'future_pts_per_game')
+      ## Bonus 1: Non-gamestate, non-shot features
+      past_ppa_ratio__future_g_ratio = calculate_nested_r2(data, 'past_ppa_ratio', 'future_g_ratio'),
+      past_xag_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xag_ratio', 'future_g_ratio'),
+      past_xg_xag_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_xag_ratio', 'future_g_ratio'),
+      
+      ## Bonus 2: duration leading per game
+      past_duration_leading_per_game__future_g_ratio = calculate_nested_r2(data, 'past_duration_leading_per_game', 'future_g_ratio'),
+      past_ppg__future_g_ratio = calculate_nested_r2(data, 'past_ppg', 'future_g_ratio'),
+      
+      past_shot_ratio__future_ppg = calculate_nested_r2(data, 'past_shot_ratio', 'future_ppg'),
+      past_sot_ratio__future_ppg = calculate_nested_r2(data, 'past_sot_ratio', 'future_ppg'),
+      past_g_ratio__future_ppg = calculate_nested_r2(data, 'past_g_ratio', 'future_ppg'),
+      past_xg_ratio__future_ppg = calculate_nested_r2(data, 'past_xg_ratio', 'future_ppg'),
+      past_xgot_ratio__future_ppg = calculate_nested_r2(data, 'past_xgot_ratio', 'future_ppg'),
+      
+      past_shot_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_shot_neutral_ratio', 'future_ppg'),
+      past_sot_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_sot_neutral_ratio', 'future_ppg'),
+      past_g_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_g_neutral_ratio', 'future_ppg'),
+      past_xg_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_xg_neutral_ratio', 'future_ppg'),
+      past_xgot_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_xgot_neutral_ratio', 'future_ppg'),
+      
+      past_ppa_ratio__future_ppg = calculate_nested_r2(data, 'past_ppa_ratio', 'future_ppg'),
+      past_xag_ratio__future_ppg = calculate_nested_r2(data, 'past_xag_ratio', 'future_ppg'),
+      past_xg_xag_ratio__future_ppg = calculate_nested_r2(data, 'past_xg_xag_ratio', 'future_ppg'),
+      
+      past_duration_leading_per_game__future_ppg = calculate_nested_r2(data, 'past_duration_leading_per_game', 'future_ppg'),
+      past_ppg__future_ppg = calculate_nested_r2(data, 'past_ppg', 'future_ppg')
     ) |> 
     dplyr::select(-data)
 }
@@ -1028,37 +1056,59 @@ do_calculate_rolling_r2s <- purrr::compose(
   .dir = 'forward'
 )
 
-combined_df_gd0 <- combined_team_summary |> 
-  dplyr::left_join(
-    gamestate_gd0_by_game |> dplyr::select(-date),
-    by = dplyr::join_by(season, country, gender, tier, match_id, team)
-  )
+join_team_summary_and_gamestate_dfs <- function(team_summary_df, gamestate_df) {
+  team_summary_df |> 
+    dplyr::left_join(
+      gamestate_df |> dplyr::select(-c(country, gender, tier, date)),
+      by = dplyr::join_by(season, match_id, team)
+    ) |> 
+    ## since we didn't have xgot at the match-level, we need to create it from the shot-level data
+    dplyr::mutate(
+      xgot = xgot_trailing + xgot_neutral + xgot_leading,
+      xgot_conceded = xgot_conceded_trailing + xgot_conceded_neutral + xgot_conceded_leading
+    )
+}
 
-combined_df_abs_gd1 <- combined_team_summary |> 
-  dplyr::left_join(
-    gamestate_abs_gd1_by_game |> dplyr::select(-date),
-    by = dplyr::join_by(season, country, gender, tier, match_id, team)
-  )
+combined_df_gd0 <- join_team_summary_and_gamestate_dfs(
+  combined_team_summary,
+  gamestate_gd0_by_game
+)
+combined_df_abs_gd1 <- join_team_summary_and_gamestate_dfs(
+  combined_team_summary,
+  gamestate_abs_gd1_by_game
+)
 
 ## both dfs have the same format
 rolling_r2s_gd0 <- combined_df_gd0 |> do_calculate_rolling_r2s()
 rolling_r2s_abs_gd1 <- combined_df_abs_gd1 |> do_calculate_rolling_r2s()
 rolling_r2s_abs_gd1
-> # A tibble: 1,584 × 5
-#>    league_group game_idx predictor                      target             r2
-#>    <chr>           <int> <chr>                          <chr>           <dbl>
-#>  1 Big 5               1 past_shot_ratio                future_g_ratio 0.187 
-#>  2 Big 5               1 past_sot_ratio                 future_g_ratio 0.170 
-#>  3 Big 5               1 past_g_ratio                   future_g_ratio 0.165 
-#>  4 Big 5               1 past_xg_ratio                  future_g_ratio 0.182 
-#>  5 Big 5               1 past_shot_neutral_ratio        future_g_ratio 0.188 
-#>  6 Big 5               1 past_sot_neutral_ratio         future_g_ratio 0.0206
-#>  7 Big 5               1 past_g_neutral_ratio           future_g_ratio 0.166 
-#>  8 Big 5               1 past_xg_neutral_ratio          future_g_ratio 0.183 
-#>  9 Big 5               1 past_xgot_neutral_ratio        future_g_ratio 0.155 
-#> 10 Big 5               1 past_duration_leading_per_game future_g_ratio 0.116 
-#> # ℹ 1,574 more rows
+#> # A tibble: 2,088 × 5
+#>    league_group game_idx predictor               target             r2
+#>    <chr>           <int> <chr>                   <chr>           <dbl>
+#>  1 Big 5               1 past_shot_ratio         future_g_ratio 0.187 
+#>  2 Big 5               1 past_sot_ratio          future_g_ratio 0.170 
+#>  3 Big 5               1 past_g_ratio            future_g_ratio 0.165 
+#>  4 Big 5               1 past_xg_ratio           future_g_ratio 0.182 
+#>  5 Big 5               1 past_xgot_ratio         future_g_ratio 0.158 
+#>  6 Big 5               1 past_shot_neutral_ratio future_g_ratio 0.188 
+#>  7 Big 5               1 past_sot_neutral_ratio  future_g_ratio 0.0206
+#>  8 Big 5               1 past_g_neutral_ratio    future_g_ratio 0.166 
+#>  9 Big 5               1 past_xg_neutral_ratio   future_g_ratio 0.183 
+#> 10 Big 5               1 past_xgot_neutral_ratio future_g_ratio 0.155 
+#> # ℹ 2,294 more rows
 #> # ℹ Use `print(n = ...)` to see more rows
+```
+
+```{r}
+#| label: rolling-r2s-save
+qs::qsave(rolling_r2s_gd0, file.path(PROJ_DIR, 'rolling_r2s_gd0.qs'))
+qs::qsave(rolling_r2s_abs_gd1, file.path(PROJ_DIR, 'rolling_r2s_abs_gd1.qs'))
+```
+
+```{r}
+#| label: rolling-r2s-read
+rolling_r2s_gd0 <- qs::qread(file.path(PROJ_DIR, 'rolling_r2s_gd0.qs'))
+rolling_r2s_abs_gd1 <- qs::qread(file.path(PROJ_DIR, 'rolling_r2s_abs_gd1.qs'))
 ```
 
 ```{r}
@@ -1066,9 +1116,9 @@ rolling_r2s_abs_gd1
 #| include: false
 ## Should have different values
 rolling_r2s_gd0 |> 
-  filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+  filter(predictor == 'past_xg_neutral_ratio', target == 'future_ppg')
 rolling_r2s_abs_gd1 |> 
-  filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+  filter(predictor == 'past_xg_neutral_ratio', target == 'future_ppg')
 
 # https://fbref.com/en/matches/00836893/Bournemouth-Brighton-and-Hove-Albion-September-15-2017-Premier-League
 combined_df_gd0 |>
@@ -1102,15 +1152,15 @@ combined_df_abs_gd1 |>
 ```
 
 ```{r}
-#| label: plot-rolling-r2s
+#| label: rolling-r2s-plot
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Plotting the R-squared values"
 TAG_LABEL <- htmltools::tagList(
   htmltools::tags$span(htmltools::HTML(enc2utf8("&#xf099;")), style = 'font-family:fb'),
   htmltools::tags$span("@TonyElHabr"),
 )
-CAPTION_LABEL <- '**Data**: Opta via fbref. 2018 - 2024 seasons, excluding 2020.<br/>**Inspiration**: 11tegen, American Soccer Analysis'
+CAPTION_LABEL <- '**Data**: Opta via fbref. 2018 - 2024 seasons, excluding 2020.<br/>**Definitions**: Ratio = team value / (team value + opponent value).<br/>**Inspiration**: 11tegen, American Soccer Analysis'
 
 PLOT_RESOLUTION <- 300
 WHITISH_FOREGROUND_COLOR <- 'white'
@@ -1145,7 +1195,7 @@ ggplot2::theme_update(
   panel.grid.minor.y = ggplot2::element_blank(),
   plot.margin = ggplot2::margin(10, 20, 10, 20),
   plot.background = ggplot2::element_rect(fill = BLACKISH_BACKGROUND_COLOR, color = BLACKISH_BACKGROUND_COLOR),
-  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain'),
+  plot.caption = ggtext::element_markdown(color = WHITISH_FOREGROUND_COLOR, hjust = 0, size = 10, face = 'plain', lineheight = 1.1),
   plot.caption.position = 'plot',
   plot.tag = ggtext::element_markdown(size = 10, color = WHITISH_FOREGROUND_COLOR, hjust = 1),
   plot.tag.position = c(0.99, 0.01),
@@ -1156,49 +1206,65 @@ ggplot2::theme_update(
 )
 
 BASE_PRETTY_PREDICTOR_NAMES <- c(
-  'past_pts_per_game' = 'Points per Game',
+  'past_ppg' = 'Points per Game',
   'past_g_ratio' = 'Goal Ratio',
   'past_shot_ratio' = 'Total Shots Ratio',
   'past_sot_ratio' = 'Shots on Target Ratio',
-  'past_xg_ratio' = 'Expected Goals Ratio'
+  'past_xg_ratio' = 'xG Ratio'
+)
+APPENDIX_PRETTY_PREDICTOR_NAMES <- c(
+  'past_ppa_ratio' = 'Passes into Penalty Area Ratio',
+  'past_xgot_ratio' = 'xGOT Ratio',
+  # 'past_xag_ratio' = 'xAG Ratio',
+  'past_xg_xag_ratio' = 'xG+xAG Ratio',
+  'past_xg_ratio' = 'xG Ratio'
 )
 PRETTY_TARGET_NAMES <- c(
-  'future_pts_per_game' = 'Future Points per Game',
+  'future_ppg' = 'Future Points per Game',
   'future_g_ratio' = 'Future Goals Ratio'
 )
 BASE_PREDICTOR_PALETTE <- c(
   'Points per Game' = '#cad2c5',
-  'Goal Ratio' = '#06d6a0',
-  'Total Shots Ratio' = '#ffd166',
-  'Shots on Target Ratio' = '#118ab2',
-  'Expected Goals Ratio' = '#ef476f'
+  'Goal Ratio' = '#8bc34a',
+  'Total Shots Ratio' = '#ffc107',
+  'Shots on Target Ratio' = '#448aff',
+  'xG Ratio' = '#f44336'
+)
+APPENDIX_PREDICTOR_PALETTE <- c(
+  'Passes into Penalty Area Ratio' = '#dbf679',
+  'xGOT Ratio' = '#2ec4b6',
+  # 'xAG Ratio' = '#e0aaff', # '#7b2cbf'
+  'xG+xAG Ratio' = '#e0aaff',
+  'xG Ratio' = '#f44336'
 )
 
-plotting_rolling_r2s <- function(rolling_r2s) {
+CROSSHAIR_LABEL <- '<i>Crosshairs mark first match week where R<sup>2</sup>>0.5.</i>'
+plotting_rolling_r2s <- function(rolling_r2s, pretty_predictor_names, predictor_palette) {
   prettified_rolling_r2s <- rolling_r2s |> 
     dplyr::filter(
-      predictor %in% names(BASE_PRETTY_PREDICTOR_NAMES)
+      predictor %in% names(pretty_predictor_names)
     ) |> 
     dplyr::mutate(
-      pretty_predictor = factor(BASE_PRETTY_PREDICTOR_NAMES[predictor], rev(BASE_PRETTY_PREDICTOR_NAMES)),
+      pretty_predictor = factor(pretty_predictor_names[predictor], rev(pretty_predictor_names)),
       pretty_target = PRETTY_TARGET_NAMES[target]
     ) |> 
     ## put xG on top
     dplyr::arrange(league_group, pretty_target, dplyr::desc(pretty_predictor))
   
-  max_prettified_rolling_r2s <- prettified_rolling_r2s |> 
+  min_prettified_rolling_r2s <- prettified_rolling_r2s |> 
+    dplyr::filter(r2 > 0.5) |> 
     dplyr::group_by(league_group, pretty_target, pretty_predictor) |> 
-    dplyr::slice_max(r2, n = 1) |> 
+    dplyr::slice_min(game_idx, n = 1) |> 
     dplyr::ungroup()
   
-  rolling_r2s_plot <- prettified_rolling_r2s |> 
+  prettified_rolling_r2s |> 
     ggplot2::ggplot() +
     ggplot2::aes(
       x = game_idx,
       y = r2
     ) +
     ggplot2::geom_segment(
-      data = max_prettified_rolling_r2s,
+      data = min_prettified_rolling_r2s,
       ggplot2::aes(
         color = pretty_predictor,
         x = 0,
@@ -1207,10 +1273,10 @@ plotting_rolling_r2s <- function(rolling_r2s) {
         yend = r2
       ),
       linetype = 2,
-      linewidth = 0.25
+      linewidth = 0.5
     ) +
     ggplot2::geom_segment(
-      data = max_prettified_rolling_r2s,
+      data = min_prettified_rolling_r2s,
       ggplot2::aes(
         color = pretty_predictor,
         x = game_idx,
@@ -1219,19 +1285,20 @@ plotting_rolling_r2s <- function(rolling_r2s) {
         yend = r2
       ),
       linetype = 2,
-      linewidth = 0.25
+      linewidth = 0.5
     ) +
     ggplot2::geom_line(
       linewidth = 0.75,
       ggplot2::aes(color = pretty_predictor)
     ) +
     ggplot2::scale_color_manual(
-      values = BASE_PREDICTOR_PALETTE
+      values = predictor_palette
     ) +
     ggplot2::guides(
       color = ggplot2::guide_legend(
         title = NULL,
-        label.theme = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 10, FONT),
+        position = 'inside',
+        label.theme = ggplot2::element_text(color = WHITISH_FOREGROUND_COLOR, size = 11, FONT),
         override.aes = list(linewidth = 2)
       )
     ) +
@@ -1247,33 +1314,34 @@ plotting_rolling_r2s <- function(rolling_r2s) {
       breaks = seq.int(0, 35, by = 5),
       labels = seq.int(0, 35, by = 5)
     ) +
-    ggplot2::geom_text(
+    ggtext::geom_richtext(
       data = tibble::tibble(
         league_group = 'Big 5',
-        pretty_target = 'Future Goals Ratio'
+        pretty_target = sort(unname(PRETTY_TARGET_NAMES))[1]
       ),
       ggplot2::aes(
         x = 1,
         y = 0.7,
-        label = 'Crosshairs mark max values.'
+        label = CROSSHAIR_LABEL
       ),
+      fill = NA, label.color = NA,
+      label.padding = grid::unit(rep(0, 4), 'pt'),
       color = WHITISH_FOREGROUND_COLOR,
       family = FONT,
       size = 10 / .pt,
-      fontface = 'italic',
       hjust = 0,
       vjust = 0.5
     ) +
     ggplot2::theme(
-      legend.position = c(0.85, 0.33),
-      # legend.spacing.y = ggplot2::unit(-1, 'cm'), ## doesn't work?
+      legend.position.inside = c(0.82, 0.35),
+      legend.key.spacing.y = ggplot2::unit(-4, 'pt'),
       panel.grid.major = ggplot2::element_blank()
     ) +
     ggplot2::facet_grid(league_group~pretty_target) +
     ggplot2::labs(
-      title = 'Correlation of Season-to-Date Metrics with Rest-of-Season Performance Metrics',
+      title = 'Predictiveness of Season-to-Date Metrics on Rest-of-Season Performance',
       x = 'Match Day',
-      y = 'Correlation (R<sup>2</sup>)',
+      y = 'R<sup>2</sup>',
       caption = CAPTION_LABEL,
       tag = TAG_LABEL
     )
@@ -1281,7 +1349,11 @@ plotting_rolling_r2s <- function(rolling_r2s) {
 
 ## Can pick either rolling_r2s_gd0 or rolling_r2s_abs_gd1 to plot since we're looking at just
 ##   non-gamestate features here
-rolling_r2s_plot <- plotting_rolling_r2s(rolling_r2s_gd0)
+rolling_r2s_plot <- rolling_r2s_abs_gd1 |> 
+  plotting_rolling_r2s(
+    pretty_predictor_names = BASE_PRETTY_PREDICTOR_NAMES, 
+    predictor_palette = BASE_PREDICTOR_PALETTE
+  )
 
 ggplot2::ggsave(
   rolling_r2s_plot,
@@ -1293,12 +1365,14 @@ ggplot2::ggsave(
 
 ![](rolling-r2s.png)
 
-Now, if we bootstrap this code by randomly reordering matchweeks, then re-calculating up-to and rest-of-season measures, and doing that 1,000 times, we end up with the following plot.
+There's a bit of visual noise here that can make it hard to differentiate traces. This can be smoothed out by resampling.
+
+Specifically, if we randomly reorder matchweeks before calculating cumulative in-season measures, and do that 100 times, we end up with a plot that looks like this.
 
 ```{r}
-#| label: resample_rolling_r2s
+#| label: resample-rolling-r2s
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Calculating bootstrapped R-squared values"
 calculate_resampled_rolling_r2s <- function(
     combined_df, 
@@ -1360,100 +1434,130 @@ do_calculate_resampled_rolling_r2s <- purrr::compose(
   .dir = 'forward'
 )
 
+N_RESAMPLES <- 100
 resampled_rolling_r2s_gd0 <- combined_df_gd0 |>
-  do_calculate_resampled_rolling_r2s(resamples = 10)
+  do_calculate_resampled_rolling_r2s(resamples = N_RESAMPLES)
 resampled_rolling_r2s_abs_gd1 <- combined_df_abs_gd1 |> 
-  do_calculate_resampled_rolling_r2s(resamples = 10)
+  do_calculate_resampled_rolling_r2s(resamples = N_RESAMPLES)
 ```
 
 ```{r}
-#| label: resampled-rolling-r2s-debug
+#| label: resample-rolling-r2s-save
+qs::qsave(resampled_rolling_r2s_gd0, file.path(PROJ_DIR, 'resampled_rolling_r2s_gd0.qs'))
+qs::qsave(resampled_rolling_r2s_abs_gd1, file.path(PROJ_DIR, 'resampled_rolling_r2s_abs_gd1.qs'))
+```
+
+```{r}
+#| label: resample-rolling-r2s-read
+resampled_rolling_r2s_gd0 <- qs::qread(file.path(PROJ_DIR, 'resampled_rolling_r2s_gd0.qs'))
+resampled_rolling_r2s_abs_gd1 <- qs::qread(file.path(PROJ_DIR, 'resampled_rolling_r2s_abs_gd1.qs'))
+```
+
+```{r}
+#| label: resample-rolling-r2s-debug
 #| include: false
 ## Should have different values
 resampled_rolling_r2s_gd0 |> 
-  filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+  filter(predictor == 'past_xg_neutral_ratio', target == 'future_ppg')
 resampled_rolling_r2s_abs_gd1 |>
-  filter(predictor == 'past_xg_neutral_ratio', target == 'future_pts_per_game')
+  filter(predictor == 'past_xg_neutral_ratio', target == 'future_ppg')
 ```
 
 ```{r}
-#| label: plot-rolling-r2s
+#| label: resample-rolling-r2s-plot
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Plotting the bootstrapped R-squared values"
-resampled_rolling_r2s_plot <- plotting_rolling_r2s(resampled_rolling_r2s_gd0) +
-  ggplot2::labs(
-    y = 'Average Bootstrapped Correlation (R<sup>2</sup>)',
-    x = 'Randomized Match Day'
+BOOTSTRAPPED_CAPTION_LABEL <- stringr::str_replace(
+  CAPTION_LABEL, 
+  '<br\\/>', 
+  glue::glue(' Data resampled by match day {N_RESAMPLES} times.<br/>')
+)
+relabel_for_bootstrap_plot <- function(...) {
+  list(
+    ...,
+    ggplot2::labs(
+      y = 'Average Bootstrapped R<sup>2</sup>',
+      caption = BOOTSTRAPPED_CAPTION_LABEL,
+      x = 'Randomized Match Day'
+    )
   )
+}
+
+resampled_rolling_r2s_plot <- resampled_rolling_r2s_gd0 |> 
+  plotting_rolling_r2s(
+    pretty_predictor_names = BASE_PRETTY_PREDICTOR_NAMES, 
+    predictor_palette = BASE_PREDICTOR_PALETTE
+  ) +
+  relabel_for_bootstrap_plot()
 
 ggplot2::ggsave(
   resampled_rolling_r2s_plot,
-  filename = file.path(PROJ_DIR, 'boostrapped-rolling-r2s.png'),
+  filename = file.path(PROJ_DIR, 'bootstrapped-rolling-r2s.png'),
   width = 9,
   height = 9 / 1.5
 )
 ```
 
-![](boostrapped-rolling-r2s.png)
+![](bootstrapped-rolling-r2s.png)
 
-This looks like the bootstrapped plot from ASA, as intended.
+Indeed, this looks like the bootstrapped plot from ASA.[^5] Note that, for a given measure, the bootstrapped R-squared values are slightly smaller across the board compared to the non-bootstrapped values.[^6] This is perhaps not surprising, as resampling tends to have a "shrinking" effect on figures. Intuitively, this noise could be associated with scheduling bias, injuries, etc.
+
+[^5]: I only perform 100 bootstraps instead of 1,000 like Eliot did since I found 100 sufficient for creating visual clarity.
+
+[^6]: This may not be easy to see directly since the bootstrapped and non-bootstrapped curves are not plotted altogether. Nonetheless, one can compare the peaks of the curves against the y-axis in this plot compared to the prior one to verify the suppressing effect of the resampling.
 
 ## Extending prior art
 
-Now we incorporate gamestate-aware measures.[^6] At this point, to condense our visual illustrations, we'll focus on just future points per game as our measure of rest-of-season performance.
+Now we incorporate gamestate-aware measures.[^7] In this case, we're mostly interested game time where the score is close.
 
-[^6]: If you've been following the code, these measures have already been calculated.
+[^7]: If you've been following the code, these measures have already been calculated.
 
-When referring to gamestate-aware measures, we're mostly interested in just the "neutral" score lines. That is, we want to subset our sums of shots, goals, and xG to game intervals where the score is "close".
+Most commonly, "close" is defined as a tied score, whether it's 0-0, 1-1, etc. Let's call this the `gd = 0` approach. The indirect assumption is that teams start to play more conservatively when leading (and more aggressively when trailing), thereby distorting the ratio of shots, goals, and xG that we might otherwise expect given the relative quality of the teams. By excluding events when the game is not tied, we might achieve more "signal" in our measures of performance.
 
-Most commonly, "neutral" / "close" is defined as a tied score, whether it's 0-0, 1-1, etc. (Let's call this the `gd = 0` approach.) The assumption is that teams start to play more conservatively when leading (and more aggressively when trailing), thereby distorting the ratio of shots, goals, and xG that we might otherwise expect given the relative quality of the teams. The implicit hypothesis is that, by excluding events when the game is not tied, we can achieve more "signal" in our measures of performance.
+We might also define "close" as periods when the absolute difference in goals is just 1, so 0-1, 1-2, 3-2, 5-4, etc. Let's call this the `abs(gd) = 1` approach. This definition indirectly assumes that teams don't start to play more complacently when ahead until they have [a 2 goal lead](https://en.wikipedia.org/wiki/2%E2%80%930_lead_is_the_worst_lead). This approach would capture more game time (and have higher tallies of goals, shots, etc.) compared to the `gd = 0` approach, although less time than just using the whole match.
 
-We might also say that a gamestate is "neutral" when the absolute difference in goals is just 1, so 0-1, 1-2, 3-2, 5-4, etc. (Let's call this the `abs(gd) = 1` approach.) This definition assumes that teams don't start to play more complacently when leading until they have [a 2 goal lead](https://en.wikipedia.org/wiki/2%E2%80%930_lead_is_the_worst_lead). This approach would capture more game time (and have higher tallies of goals, shots, etc.) compared to the prior definition of neutral gamestate--which might be too strict, dropping data that provides substance--although less time than just using the whole match.
-
-In the plot below I've split out each of the measures of past performance into its own facet, paired with the neutral gamestate version, using the `gd = 0` definition of neutral gamestate. This makes it easy to see which pairs of past and future performance measures are improved by subsetting the past performance measure to neutral gamestates.
+In the plot below, I've split out each of the measures of past performance into its own facet, paired with the neutral gamestate version using the `gd = 0` definition. This makes it easy to see which pairs of past and future performance measures are improved by subsetting the past performance measure to neutral gamestates. To reduce the scope and enhance the focus of the work, I've chosen to look at just points per game as our measure of future performance, and just the goals and xG ratios as our measures of past performance.
 
 ```{r}
-#| label: plot-rolling-r2s-with-neutral
+#| label: rolling-r2s-with-neutral-plot
 #| code-fold: true
-#| echo: true
+#| include: true
 #| code-summary: "Plotting the bootstrapped R-squared values, including the neutral game state metrics"
 BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP <- list(
+  'xG Ratio' = c(
+    'past_xg_ratio',
+    'past_xg_neutral_ratio'
+  ),
   'Goal Ratio' = c(
     'past_g_ratio',
     'past_g_neutral_ratio'
-  ),
-  'Total Shots Ratio' = c(
-    'past_shot_ratio',
-    'past_shot_neutral_ratio'
-  ),
-  'Shots on Target Ratio' = c(
-    'past_sot_ratio',
-    'past_sot_neutral_ratio'
-  ),
-  'Expected Goals Ratio' = c(
-    'past_xg_ratio',
-    'past_xg_neutral_ratio'
-  )
+  ) #,
+  # 'Total Shots Ratio' = c(
+  #   'past_shot_ratio',
+  #   'past_shot_neutral_ratio'
+  # ),
+  # 'Shots on Target Ratio' = c(
+  #   'past_sot_ratio',
+  #   'past_sot_neutral_ratio'
+  # )
 )
-BASE_AND_NEUTRAL_TARGET_PREDICTOR <- 'future_pts_per_game'
-INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES <- unlist(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP)
-
-names(INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES) <- rep(
-  names(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP), 
-  lengths(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP)
-)
-BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES <- setNames(
-  names(INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES),
-  unname(INV_BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES)
+BASE_AND_NEUTRAL_TARGET_PREDICTOR <- 'future_ppg'
+unlist_and_invert <- function(x) {
+  unlisted <- unlist(x)
+  names(unlisted) <- rep(names(x), lengths(x))
+  setNames(names(unlisted), unname(unlisted))
+}
+BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES <- unlist_and_invert(
+  BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP
 )
 
 IS_NEUTRAL_PALETTE <- c(
-  `FALSE` =  '#00b4d8',
-  `TRUE` = '#caf0f8'
+  `TRUE` =  '#00b4d8',
+  `FALSE` = '#caf0f8'
 )
 
-plotting_rolling_r2s_with_neutral <- function(rolling_r2s) {
+plotting_rolling_r2s_with_neutral <- function(rolling_r2s, gamestate_description) {
   prettified_rolling_r2s <- rolling_r2s |> 
     dplyr::filter(
       predictor %in% names(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES),
@@ -1469,9 +1573,10 @@ plotting_rolling_r2s_with_neutral <- function(rolling_r2s) {
     ## put xG on top
     dplyr::arrange(league_group, pretty_predictor_group, is_neutral)
   
-  max_rolling_r2s <- prettified_rolling_r2s |> 
+  min_rolling_r2s <- prettified_rolling_r2s |> 
+    dplyr::filter(r2 > 0.5) |> 
     dplyr::group_by(league_group, predictor) |> 
-    dplyr::slice_max(r2, n = 1) |> 
+    dplyr::slice_min(game_idx, n = 1) |> 
     dplyr::ungroup()
 
   prettified_rolling_r2s |> 
@@ -1482,7 +1587,7 @@ plotting_rolling_r2s_with_neutral <- function(rolling_r2s) {
       group = predictor
     ) +
     ggplot2::geom_segment(
-      data = max_rolling_r2s,
+      data = min_rolling_r2s,
       ggplot2::aes(
         color = is_neutral,
         x = 0,
@@ -1494,7 +1599,7 @@ plotting_rolling_r2s_with_neutral <- function(rolling_r2s) {
       linewidth = 0.5
     ) +
     ggplot2::geom_segment(
-      data = max_rolling_r2s,
+      data = min_rolling_r2s,
       ggplot2::aes(
         color = is_neutral,
         x = game_idx,
@@ -1524,134 +1629,251 @@ plotting_rolling_r2s_with_neutral <- function(rolling_r2s) {
       breaks = seq.int(0, 35, by = 5),
       labels = seq.int(0, 35, by = 5)
     ) +
-    ggplot2::geom_text(
-      inherit.aes = FALSE,
-      data = tibble::tibble(
-        league_group = 'Big 5',
-        pretty_predictor_group = factor('Goal Ratio', names(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP))
-      ),
-      ggplot2::aes(
-        x = 1,
-        y = 0.6,
-        label = 'Crosshairs mark max values.'
-      ),
-      color = WHITISH_FOREGROUND_COLOR,
-      family = FONT,
-      size = 10 / .pt,
-      fontface = 'italic',
-      hjust = 0,
-      vjust = 0.5
-    ) +
     ggplot2::theme(
-      # legend.spacing.y = ggplot2::unit(-1, 'cm'), ## doesn't work?
-      panel.grid.major = ggplot2::element_blank()
+      panel.grid.major = ggplot2::element_blank(),
+      plot.subtitle = ggtext::element_markdown(size = 12)
     ) +
     ggplot2::facet_grid(league_group~pretty_predictor_group) +
     ggplot2::labs(
-      title = 'Correlation of Season-to-Date Metrics with Rest-of-Season Performance Metrics',
-      subtitle = glue::glue('<b><span style="color:{IS_NEUTRAL_PALETTE[["FALSE"]]}">Full Match</span> vs. <span style="color:{IS_NEUTRAL_PALETTE[["TRUE"]]}">Neutral Game State</span></b>'),
-      x = 'Match Day',
-      y = 'Average Bootstrapped Correlation (R<sup>2</sup>)',
-      caption = CAPTION_LABEL,
+      title = 'Predictiveness of Season-to-Date Metrics on Rest-of-Season Points Per Game',
+      subtitle = glue::glue('Are <b><span style="color:{IS_NEUTRAL_PALETTE[["FALSE"]]}">full match</span></b> metrics more predictive when subset to <b><span style="color:{IS_NEUTRAL_PALETTE[["TRUE"]]}">{gamestate_description}</span></b>?'),
+      x = 'Randomized Match Day',
+      y = 'Average Bootstrapped R<sup>2</sup>',
+      caption = BOOTSTRAPPED_CAPTION_LABEL,
       tag = TAG_LABEL
     )
 }
 
 rolling_r2s_with_neutral_gd0_plot <- resampled_rolling_r2s_gd0 |>
-  plotting_rolling_r2s_with_neutral()
+  plotting_rolling_r2s_with_neutral('tied gamestates')
 
 rolling_r2s_with_neutral_abs_gd1_plot <- resampled_rolling_r2s_abs_gd1 |> 
-  plotting_rolling_r2s_with_neutral()
+  plotting_rolling_r2s_with_neutral('gamestates with absolute goal difference <= 1')
 
 ggplot2::ggsave(
   rolling_r2s_with_neutral_gd0_plot,
-  filename = file.path(PROJ_DIR, 'boostrapped-rolling-r2s-with-neutral-gd-0.png'),
-  width = 10,
-  height = 10 / 2
+  filename = file.path(PROJ_DIR, 'bootstrapped-rolling-r2s-with-neutral-gd-0.png'),
+  width = 8,
+  height = 8 / 1.5
 )
 
 ggplot2::ggsave(
   rolling_r2s_with_neutral_abs_gd1_plot,
-  filename = file.path(PROJ_DIR, 'boostrapped-rolling-r2s-with-neutral-abs-gd-1.png'),
-  width = 10,
-  height = 10 / 2
+  filename = file.path(PROJ_DIR, 'bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png'),
+  width = 8,
+  height = 8 / 1.5
 )
 ```
 
 ![](bootstrapped-rolling-r2s-with-neutral-gd-0.png)
 
-So we see that
+So we see that subsetting xG and goals to tied gamestates **reduces** how predictive they are of future points per game, both for the Big 5 leagues and the MLS. Perhaps this is not surprising, as we're disregarding a lot of data (over 50%!) that is included in full match sums.
 
--   foo
--   bar
-
-Let's see if same plot using the `abs(gd) = 1` neutral gamestate definition looks any different.
+Let's see if the same plot using the `abs(gd) = 1` neutral gamestate definition looks any different.
 
 ![](bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png)
 
-We observe:
-
--   The neutral gamestate R-squared curves are notably lower than their analogous full match metrics. We might infer that the reduction of game events to just the events that occur in a tied gamestate is too aggressive, eliminating useful data for future predictiveness that occurs in non-tied gamestates.
--   bar
-
-Using the `abs(gd) = 1` definition of neutral gamestate, let's condense our R-squared traces into just two facets, only splitting out by league group. This view makes it more clear which singular past performance measure, gamestate-aware or not, proves to be best for forecasting future points per game.
-
-![](bootstrapped-running-cors-gamestate-abs-gd-1-summarized.png)
-
-We see that:
-
--   Relative to the full match measures, our alternative definition of a neutral game state seems to improve the rest-of-season predictiveness for goals ratio and xG ratio. This is evident in the steeper rise and higher peaks of our the traces for those gamestate measures. Still, the neutral gamestate traces for goals and xG never exceed the full match traces, meaning that they don't improve rest-of-season predictiveness.
--   Overall, the bootstrapped R-squared values are slightly smaller across the board. This is perhaps not surprising, as resampling tends to have a "shrinking" effect on figures. Intuitively, this noise could be associated with scheduling bias, injuries, etc.
+Ah, so using this alternative definition of "neutral" gamestate, the predictiveness of the season-to-date xG and goal ratios is much closer to the full match analogues, so perhaps the `abs(gd) = 1` is superior. Nonetheless, it's evident that neutral gamestate xG and goal ratios are no better than the full match ratios, indicating that there is no incremental value to be had with focusing on neutral gamestates. This falls in line with what Ijtsma hypothesized--that the effect of within-match complacency is minimal, and accounting for it (by reducing tallies to neutral gamestates) is more than likely to reduce predictiveness.
 
 ```{r}
 #| label: interesting-inferences
 #| include: false
-## Which metric has the highest correlation with future pts per game at any point?
+## Which metric has the highest R-squared with future pts per game at any point?
 rolling_r2s_abs_gd1 |> 
-  filter(target == 'future_pts_per_game') |> 
-  group_by(predictor) |>
+  filter(target == 'future_ppg') |> 
+  group_by(league_group, predictor) |>
+  slice_max(r2, n = 1) |> 
+  ungroup() |> 
+  arrange(desc(r2)) |> 
+  head(20)
+
+rolling_r2s_abs_gd1 |> 
+  filter(target == 'future_g_ratio') |> 
+  group_by(league_group, predictor) |>
   slice_max(r2, n = 1) |> 
   ungroup() |> 
   arrange(desc(r2))
 
-## Which metric has the earliest >0.5 correlation with future pts per game?
+## Which metric has the earliest >0.5 R-squared with future pts per game?
 rolling_r2s_abs_gd1 |> 
-  filter(target == 'future_pts_per_game') |> 
+  filter(target == 'future_ppg') |> 
   filter(r2 > 0.5) |> 
-  group_by(predictor) |>
+  group_by(league_group, predictor) |>
+  slice_min(game_idx, n = 1) |> 
+  ungroup() |> 
+  arrange(game_idx)
+
+rolling_r2s_abs_gd1 |> 
+  filter(target == 'future_g_ratio') |> 
+  filter(r2 > 0.5) |> 
+  group_by(league_group, predictor) |>
   slice_min(game_idx, n = 1) |> 
   ungroup() |> 
   arrange(game_idx)
 
 ## ... when bootstrapping?
 resampled_rolling_r2s_abs_gd1 |> 
-  filter(target == 'future_pts_per_game') |> 
+  filter(target == 'future_ppg') |> 
   filter(r2 > 0.45) |> 
-  group_by(predictor) |>
+  group_by(league_group, predictor) |>
   slice_min(game_idx, n = 1) |> 
   ungroup() |> 
   arrange(game_idx)
 
 ## what about past duration leading?
 rolling_r2s_abs_gd1 |> 
-  filter(predictor == 'past_duration_leading_per_game', target == 'future_pts_per_game') |> 
-  arrange(desc(r2))
-
-rolling_r2s_gd0 |> 
-  filter(predictor == 'past_duration_leading_per_game', target == 'future_pts_per_game') |> 
+  filter(predictor == 'past_duration_leading_per_game', target == 'future_ppg') |> 
   arrange(desc(r2))
 ```
 
-# Discussion
+# Discussion and Conclusion
 
-In attempt to summarize all the findings, I present two tables, both of which use future points per game as our sole measure of rest-of-season performance.
+Ok, so we didn't find a ground-breaking result with neutral gamestates, although the value of a ["null result"](https://en.wikipedia.org/wiki/Null_result) should not be understated.
 
-In this first table, I show the (1) match week in which each season-to-date metric achieves its max rest-of-season predictiveness, and (2) the first week in which its rest-of-season predictiveness exceeds an R-squared \> 0.5. The 0.5 threshold is the point at which we might say that the there is more signal than noise in forecasting rest-of-season performance.
+To offer some kind of insight that might be useful, I present the game index (i.e. match day) at which my data shows that the season-to-date measures start to provide a reliable signal for forecasting future performance.[^8] I define the reliability "threshold" as the first week in which the running R-squared value exceeds 0.5. For those reading the footnotes or broadly aware of the literature on xG predictiveness, this is effectively my look at the common adage that xG becomes a reliable indicator of future performance somewhere between the 5 and 15 game mark.[^9]
 
-In this second table, I present the same information, but this time for our bootstrapped R-squared values. As seen in the plots, R-squared values are generally smaller with the bootstrapping (due )
+[^8]: The tables that follow show non-bootstrapped R-squared values. The bootstrapped R-squared values only exceed 0.5 for a handful of measures, typically in the 15-20 game range.
 
-# Conclusion
+[^9]: Note that Ijtsma says that xG ratio becomes useful as early as the fourth match week. However, his statement is based purely on a visual assessment of when the R-squared curve generally "settles down" after the expected early season up-tick. Looking at his graph, the R-squared values for xG don't actually exceed the 0.5 threshold until some point between the 10th and 15th match days.
 
-Overall, I find that accounting for gamestate does little to improve how season-to-date xG forecasts rest-of-season points per game. This is true for both definitions of "neutral" gamestate evaluated--(1) tied score line and (2) score within 1 goal. Alas, I'd argue that a ["null result"](https://en.wikipedia.org/wiki/Null_result) is still a useful result here, as we've proved that contextualizing expected goals--at least in the manner attempted--does not improve our ability to forecast rest-of-season performance.
+```{r}
+#| label: reliability
+#| include: true
+#| code-fold: true
+#| code-summary: "Calculating when past performance measures become reliable indicators of future performance"
+rolling_r2s_abs_gd1 |> 
+  dplyr::filter(
+    league_group == 'Big 5',
+    target == 'future_g_ratio',
+    predictor %in% names(BASE_PRETTY_PREDICTOR_NAMES)
+  ) |> 
+  dplyr::mutate(
+    pretty_predictor = BASE_PRETTY_PREDICTOR_NAMES[predictor]
+  ) |> 
+  dplyr::filter(r2 > 0.5) |> 
+  dplyr::group_by(pretty_predictor) |>
+  dplyr::slice_min(game_idx, n = 1) |> 
+  dplyr::ungroup() |> 
+  tidyr::complete(
+    pretty_predictor = BASE_PRETTY_PREDICTOR_NAMES
+  ) |> 
+  dplyr::arrange(game_idx) |> 
+  dplyr::transmute(
+    `Predictor` = pretty_predictor, 
+    `Match Day` = tidyr::replace_na(as.character(game_idx), '-')
+  ) |> 
+  knitr::kable(
+    align = 'lr'
+  ) |> 
+  clipr::write_clip()
 
-Further, while we did not come to find anything ground-breaking, I hope the open-sourced code in this post can be seen as an advancement to the prior art, facilitating future extension of this analysis in the future, whether it's for soccer, hockey, or another sport.
+rolling_r2s_abs_gd1 |> 
+  dplyr::filter(
+    league_group == 'Big 5',
+    target == 'future_ppg',
+    predictor %in% names(BASE_PRETTY_PREDICTOR_NAMES)
+  ) |> 
+  dplyr::mutate(
+    pretty_predictor = BASE_PRETTY_PREDICTOR_NAMES[predictor]
+  ) |> 
+  dplyr::filter(r2 > 0.5) |> 
+  dplyr::group_by(pretty_predictor) |>
+  dplyr::slice_min(game_idx, n = 1) |> 
+  dplyr::ungroup() |> 
+  tidyr::complete(
+    pretty_predictor = BASE_PRETTY_PREDICTOR_NAMES
+  ) |> 
+  dplyr::arrange(game_idx) |> 
+  dplyr::transmute(
+    `Predictor` = pretty_predictor, 
+    `Match Day` = tidyr::replace_na(as.character(game_idx), '-')
+  ) |> 
+  knitr::kable(
+    align = 'lr'
+  ) |> 
+  clipr::write_clip()
+```
+
+| Predictor             | Match Day |
+|:----------------------|----------:|
+| xG Ratio              |         9 |
+| Goal Ratio            |        11 |
+| Shots on Target Ratio |        12 |
+| Points per Game       |        13 |
+| Total Shots Ratio     |        \- |
+
+: Earliest match day in which the past metric becomes a reliable measure of **future goals ratio** in the Big 5 leagues.
+
+| Predictor             | Match Day |
+|:----------------------|----------:|
+| xG Ratio              |        13 |
+| Goal Ratio            |        15 |
+| Points per Game       |        16 |
+| Shots on Target Ratio |        16 |
+| Total Shots Ratio     |        \- |
+
+: Earliest match day in which the past metric becomes a reliable measure of future **points per game** in the Big 5 leagues.
+
+# Appendix
+
+I was interested in evaluating running in-season R-squared values for a few more measures of past performance:
+
+1.  passes into the penalty area ratio
+2.  [expected goals on target (xGOT)](https://theanalyst.com/eu/2021/06/what-are-expected-goals-on-target-xgot/) ratio
+3.  xG + expected assisted goals[^10] (xG+xAG) ratio
+
+[^10]: FBref's explanation regarding how xAG differs from expected assists (xA): "xA, or expected assists, is the likelihood that a given completed pass will become a goal assist... Players receive xA for every completed pass regardless of whether a shot occurred or not... \[Expected Assisted Goals (xAG)\] indicates a player's ability to set up scoring chances... Players receive xAG only when a shot is taken after a completed pass."
+
+Below is the same running R-squared plot shown before, just with these new measures, along side our tried and true xG ratio measure.
+
+```{r}
+#| label: rolling-r2s-appendix-plot
+rolling_r2s_appendix_plot <- rolling_r2s_abs_gd1 |> 
+  plotting_rolling_r2s(
+    pretty_predictor_names = APPENDIX_PRETTY_PREDICTOR_NAMES, 
+    predictor_palette = APPENDIX_PREDICTOR_PALETTE
+  )
+
+ggplot2::ggsave(
+  rolling_r2s_appendix_plot,
+  filename = file.path(PROJ_DIR, 'rolling-r2s-appendix.png'),
+  width = 9,
+  height = 9 / 1.5
+)
+```
+
+```{r}
+#| label: reliability-appendix
+#| include: false
+rolling_r2s_abs_gd1 |> 
+  dplyr::filter(
+    league_group == 'Big 5',
+    target == 'future_g_ratio',
+    predictor %in% names(APPENDIX_PRETTY_PREDICTOR_NAMES)
+  ) |> 
+  dplyr::filter(r2 > 0.5) |> 
+  dplyr::group_by(predictor) |>
+  dplyr::slice_min(game_idx, n = 1) |> 
+  dplyr::ungroup() |> 
+  dplyr::arrange(game_idx)
+
+rolling_r2s_abs_gd1 |> 
+  dplyr::filter(
+    league_group == 'Big 5',
+    target == 'future_ppg',
+    predictor %in% names(APPENDIX_PRETTY_PREDICTOR_NAMES)
+  ) |> 
+  dplyr::filter(r2 > 0.5) |> 
+  dplyr::group_by(predictor) |>
+  dplyr::slice_min(game_idx, n = 1) |> 
+  dplyr::ungroup() |> 
+  dplyr::arrange(game_idx)
+```
+
+![](rolling-r2s-appendix.png)
+
+Aha! It seems that we have identified a measure--xG+xAG ratio (purple above)--that becomes reliable for forecasting rest-of-season performance even earlier than xG ratio. Specifically, it exceeds the reliability threshold at the 7 and 10 game marks for future goal ratio and future points per game respectively. That's a non-trivial improvement compared to the 9 and 13 match day marks for xG ratio.
+
+Alas, xG+xAG metaphorically stands on the shoulders of xG, adding in the component of expected assists (xA) on shots. Assuming that the underlying xA model is well calibrated, perhaps we should not be surprised to see that the composite xG+xAG measure outperforms all others.
+
+On the other hand, I suppose I am a bit surprised that xGOT ratio does not seem to do nearly as well as xG ratio in terms of forecasting rest-of-season performancet. The implication is that **there is value in the xG of off-target shots** for projecting the future. By comparison, shots on target ratio tend to be more predictive than just the shots ratio, meaning that including off-target shots introduces noise that reduces predictiveness. That's an interesting difference in shots and xG!
