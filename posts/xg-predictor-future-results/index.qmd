@@ -31,6 +31,10 @@ In 2022, [Eliot McKinley](https://x.com/etmckinley) wrote [a cool piece](https:/
 
 ![](asa-xg.png)
 
+::: {.callout-note collapse="true" title="Smaller R-squared values in the MLS"}
+[Mike Imburgio](https://twitter.com/mimburgio) deduced [that the parity (partially due to the salary cap) in the MLS](https://www.americansocceranalysis.com/home/2022/11/17/salary-caps-and-chaos-examining-parity-and-predictability-across-sports) relative is probably to blame for the diluted predictiveness of metrics like xG ratio relative to the Big 5.
+:::
+
 In this post I extend this prior art in two ways:
 
 1.  I **expand the data set range to 2018 through 2024**, sourcing from a reputed public data source--[FBref](https://fbref.com/en/).[^4] The intention is to make the analysis even more robust and reproducible.
@@ -866,6 +870,10 @@ The two measures of future performance are:
 #| code-summary: "Calculate rolling R-squared for season-to-date and rest-of-season performance measures"
 accumulate_team_summary <- function(df, op, .prefix) {
   df |> 
+    dplyr::mutate(
+      xg_nonneutral = xg_trailing + xg_leading,
+      xg_conceded_nonneutral = xg_conceded_trailing + xg_conceded_leading
+    ) |> 
     dplyr::arrange(team, season, op(game_idx)) |> 
     dplyr::group_by(season, team) |> 
     dplyr::mutate(
@@ -879,7 +887,9 @@ accumulate_team_summary <- function(df, op, .prefix) {
           
           g_neutral, g_conceded_neutral, 
           xg_neutral, xg_conceded_neutral, 
-          xgot_neutral, xgot_conceded_neutral,
+          xg_nonneutral, xg_conceded_nonneutral,
+          xg_trailing, xg_conceded_trailing, 
+          xg_leading, xg_conceded_leading, 
           
           ppa, ppa_conceded, 
           xag, xag_conceded,
@@ -903,7 +913,9 @@ accumulate_team_summary <- function(df, op, .prefix) {
       sot_neutral_ratio = sot_neutral / (sot_neutral + sot_conceded_neutral),
       g_neutral_ratio = g_neutral / (g_neutral + g_conceded_neutral),
       xg_neutral_ratio = xg_neutral / (xg_neutral + xg_conceded_neutral),
-      xgot_neutral_ratio = xgot_neutral / (xgot_neutral + xgot_conceded_neutral),
+      xg_nonneutral_ratio = xg_nonneutral / (xg_nonneutral + xg_conceded_nonneutral),
+      xg_trailing_ratio = xgot_trailing / (xgot_trailing + xgot_conceded_trailing),
+      xg_leading_ratio = xgot_leading / (xgot_leading + xgot_conceded_leading),
 
       ppa_ratio = ppa / (ppa + ppa_conceded),
       xag_ratio = xag / (xag + xag_conceded),
@@ -932,7 +944,9 @@ accumulate_team_summary <- function(df, op, .prefix) {
         sot_neutral, sot_conceded_neutral,
         g_neutral, g_conceded_neutral, 
         xg_neutral, xg_conceded_neutral, 
-        xgot_neutral, xgot_conceded_neutral,
+        xg_nonneutral, xg_conceded_nonneutral,
+        xg_trailing, xg_conceded_trailing,
+        xg_leading, xg_conceded_leading,
         
         ppa, ppa_conceded, 
         xag, xag_conceded,
@@ -1007,7 +1021,9 @@ calculate_rolling_r2s <- function(combined_df) {
       past_sot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_sot_neutral_ratio', 'future_g_ratio'),
       past_g_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_g_neutral_ratio', 'future_g_ratio'),
       past_xg_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_neutral_ratio', 'future_g_ratio'),
-      past_xgot_neutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xgot_neutral_ratio', 'future_g_ratio'),
+      past_xg_nonneutral_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_nonneutral_ratio', 'future_g_ratio'),
+      past_xg_trailing_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_trailing_ratio', 'future_g_ratio'),
+      past_xg_leading_ratio__future_g_ratio = calculate_nested_r2(data, 'past_xg_leading_ratio', 'future_g_ratio'),
       
       ## Bonus 1: Non-gamestate, non-shot features
       past_ppa_ratio__future_g_ratio = calculate_nested_r2(data, 'past_ppa_ratio', 'future_g_ratio'),
@@ -1028,7 +1044,9 @@ calculate_rolling_r2s <- function(combined_df) {
       past_sot_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_sot_neutral_ratio', 'future_ppg'),
       past_g_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_g_neutral_ratio', 'future_ppg'),
       past_xg_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_xg_neutral_ratio', 'future_ppg'),
-      past_xgot_neutral_ratio__future_ppg = calculate_nested_r2(data, 'past_xgot_neutral_ratio', 'future_ppg'),
+      past_xg_nonneutral_ratio__future_ppg = calculate_nested_r2(data, 'past_xg_nonneutral_ratio', 'future_ppg'),
+      past_xg_trailing_ratio__future_ppg = calculate_nested_r2(data, 'past_xg_trailing_ratio', 'future_ppg'),
+      past_xg_leading_ratio__future_ppg = calculate_nested_r2(data, 'past_xg_leading_ratio', 'future_ppg'),
       
       past_ppa_ratio__future_ppg = calculate_nested_r2(data, 'past_ppa_ratio', 'future_ppg'),
       past_xag_ratio__future_ppg = calculate_nested_r2(data, 'past_xag_ratio', 'future_ppg'),
@@ -1082,7 +1100,7 @@ combined_df_abs_gd1 <- join_team_summary_and_gamestate_dfs(
 rolling_r2s_gd0 <- combined_df_gd0 |> do_calculate_rolling_r2s()
 rolling_r2s_abs_gd1 <- combined_df_abs_gd1 |> do_calculate_rolling_r2s()
 rolling_r2s_abs_gd1
-#> # A tibble: 2,088 × 5
+#> # A tibble: 2,448 × 5
 #>    league_group game_idx predictor               target             r2
 #>    <chr>           <int> <chr>                   <chr>           <dbl>
 #>  1 Big 5               1 past_shot_ratio         future_g_ratio 0.187 
@@ -1212,30 +1230,17 @@ BASE_PRETTY_PREDICTOR_NAMES <- c(
   'past_sot_ratio' = 'Shots on Target Ratio',
   'past_xg_ratio' = 'xG Ratio'
 )
-APPENDIX_PRETTY_PREDICTOR_NAMES <- c(
-  'past_ppa_ratio' = 'Passes into Penalty Area Ratio',
-  'past_xgot_ratio' = 'xGOT Ratio',
-  # 'past_xag_ratio' = 'xAG Ratio',
-  'past_xg_xag_ratio' = 'xG+xAG Ratio',
-  'past_xg_ratio' = 'xG Ratio'
-)
 PRETTY_TARGET_NAMES <- c(
   'future_ppg' = 'Future Points per Game',
   'future_g_ratio' = 'Future Goals Ratio'
 )
+XG_RATIO_COLOR <- '#f44336'
 BASE_PREDICTOR_PALETTE <- c(
   'Points per Game' = '#cad2c5',
   'Goal Ratio' = '#8bc34a',
   'Total Shots Ratio' = '#ffc107',
   'Shots on Target Ratio' = '#448aff',
-  'xG Ratio' = '#f44336'
-)
-APPENDIX_PREDICTOR_PALETTE <- c(
-  'Passes into Penalty Area Ratio' = '#dbf679',
-  'xGOT Ratio' = '#2ec4b6',
-  # 'xAG Ratio' = '#e0aaff', # '#7b2cbf'
-  'xG+xAG Ratio' = '#e0aaff',
-  'xG Ratio' = '#f44336'
+  'xG Ratio' = XG_RATIO_COLOR
 )
 
 CROSSHAIR_LABEL <- '<i>Crosshairs mark first match week where R<sup>2</sup>>0.5.</i>'
@@ -1501,9 +1506,13 @@ ggplot2::ggsave(
 
 ![](bootstrapped-rolling-r2s.png)
 
-Indeed, this looks like the bootstrapped plot from ASA.[^5] Note that, for a given measure, the bootstrapped R-squared values are slightly smaller across the board compared to the non-bootstrapped values.[^6] This is perhaps not surprising, as resampling tends to have a "shrinking" effect on figures. Intuitively, this noise could be associated with scheduling bias, injuries, etc.
+Indeed, this looks like the bootstrapped plot from ASA.[^5] Note that,
 
 [^5]: I only perform 100 bootstraps instead of 1,000 like Eliot did since I found 100 sufficient for creating visual clarity.
+
+::: {.callout-note collapse="true" title="Effect of bootstrapping"}
+For a given metric, the bootstrapped R-squared values are slightly smaller across the board compared to the non-bootstrapped values.[^6] This is perhaps not surprising, as resampling tends to have a "shrinking" effect on figures. Intuitively, this noise could be associated with scheduling bias, injuries, etc.
+:::
 
 [^6]: This may not be easy to see directly since the bootstrapped and non-bootstrapped curves are not plotted altogether. Nonetheless, one can compare the peaks of the curves against the y-axis in this plot compared to the prior one to verify the suppressing effect of the resampling.
 
@@ -1513,11 +1522,13 @@ Now we incorporate gamestate-aware measures.[^7] In this case, we're mostly inte
 
 [^7]: If you've been following the code, these measures have already been calculated.
 
-Most commonly, "close" is defined as a tied score, whether it's 0-0, 1-1, etc. Let's call this the `gd = 0` approach. The indirect assumption is that teams start to play more conservatively when leading (and more aggressively when trailing), thereby distorting the ratio of shots, goals, and xG that we might otherwise expect given the relative quality of the teams. By excluding events when the game is not tied, we might achieve more "signal" in our measures of performance.
+A "close" match can be strictly defined as one with a **tied** score, whether it's 0-0, 1-1, etc. The indirect assumption is that teams start to play more conservatively (if at all) when leading, thereby distorting the ratio of shots, goals, and xG that we might otherwise expect given the relative quality of the teams. By excluding events when the game is not tied, we might achieve more "signal" in our measures of performance.
 
-We might also define "close" as periods when the absolute difference in goals is just 1, so 0-1, 1-2, 3-2, 5-4, etc. Let's call this the `abs(gd) = 1` approach. This definition indirectly assumes that teams don't start to play more complacently when ahead until they have [a 2 goal lead](https://en.wikipedia.org/wiki/2%E2%80%930_lead_is_the_worst_lead). This approach would capture more game time (and have higher tallies of goals, shots, etc.) compared to the `gd = 0` approach, although less time than just using the whole match.
+We might also define "close" as periods when the **absolute difference in goals is 0 or 1**, so 0-1, 1-2, 3-2, 5-4, etc. in addition to 0-0, 1-1, etc. This definition indirectly assumes that teams don't start to play more complacently (if at all) when ahead until they have [a 2 goal lead](https://en.wikipedia.org/wiki/2%E2%80%930_lead_is_the_worst_lead). This approach would capture more game time (and have higher tallies of goals, shots, etc.) compared to the `gd = 0` approach, although less time than just using the whole match.
 
-In the plot below, I've split out each of the measures of past performance into its own facet, paired with the neutral gamestate version using the `gd = 0` definition. This makes it easy to see which pairs of past and future performance measures are improved by subsetting the past performance measure to neutral gamestates. To reduce the scope and enhance the focus of the work, I've chosen to look at just points per game as our measure of future performance, and just the goals and xG ratios as our measures of past performance.
+In the plot below, I've split out each the xG and goals measures of past performance into their own facets, paired with tied gamestate analogue (in a brighter blue shade). Note that I'm showing just points per game as the sole measure of future performance.[^8]
+
+[^8]: There are similar trends with future goal ratio. I've opted for visual brevity here.
 
 ```{r}
 #| label: rolling-r2s-with-neutral-plot
@@ -1669,11 +1680,41 @@ ggplot2::ggsave(
 
 So we see that subsetting xG and goals to tied gamestates **reduces** how predictive they are of future points per game, both for the Big 5 leagues and the MLS. Perhaps this is not surprising, as we're disregarding a lot of data (over 50%!) that is included in full match sums.
 
-Let's see if the same plot using the `abs(gd) = 1` neutral gamestate definition looks any different.
+```{r}
+#| label: neutral_duration
+## Confirm 50% number
+combined_df_gd0 |> 
+  summarize(
+    total_duration = sum(n() * 96), 
+    duration_neutral = sum(duration_neutral, na.rm = TRUE),
+    duration_trailing = sum(duration_trailing, na.rm = TRUE),
+    duration_leading = sum(duration_leading, na.rm = TRUE)
+  ) |> 
+  mutate(
+    neutral_prop = duration_neutral / total_duration,
+    trailing_prop = duration_trailing / total_duration,
+    leading_prop = duration_leading / total_duration
+  )
+
+combined_df_abs_gd1 |> 
+  summarize(
+    total_duration = sum(n() * 96), 
+    duration_neutral = sum(duration_neutral, na.rm = TRUE),
+    duration_trailing = sum(duration_trailing, na.rm = TRUE),
+    duration_leading = sum(duration_leading, na.rm = TRUE)
+  ) |> 
+  mutate(
+    neutral_prop = duration_neutral / total_duration,
+    trailing_prop = duration_trailing / total_duration,
+    leading_prop = duration_leading / total_duration
+  )
+```
+
+Let's see if the same plot using the alternative definition for neutral gamestates--time when the absolute goal difference is 0 or 1--looks any different.
 
 ![](bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png)
 
-Ah, so using this alternative definition of "neutral" gamestate, the predictiveness of the season-to-date xG and goal ratios is much closer to the full match analogues, so perhaps the `abs(gd) = 1` is superior. Nonetheless, it's evident that neutral gamestate xG and goal ratios are no better than the full match ratios, indicating that there is no incremental value to be had with focusing on neutral gamestates. This falls in line with what Ijtsma hypothesized--that the effect of within-match complacency is minimal, and accounting for it (by reducing tallies to neutral gamestates) is more than likely to reduce predictiveness.
+Ah, so using the alternative, more relaxed definition of neutral gamestate, the predictiveness of the season-to-date xG and goal ratios is much closer to the full match analogues. Nonetheless, it's evident that the neutral gamestate xG and goal ratios are no better than the full match ratios, indicating that there is no incremental value to be had with focusing on neutral gamestates. This falls in line with what Ijtsma hypothesized--that the effect of within-match complacency is minimal, and accounting for it (by reducing tallies to neutral gamestates) is more than likely to reduce predictiveness.
 
 ```{r}
 #| label: interesting-inferences
@@ -1730,11 +1771,11 @@ rolling_r2s_abs_gd1 |>
 
 Ok, so we didn't find a ground-breaking result with neutral gamestates, although the value of a ["null result"](https://en.wikipedia.org/wiki/Null_result) should not be understated.
 
-To offer some kind of insight that might be useful, I present the game index (i.e. match day) at which my data shows that the season-to-date measures start to provide a reliable signal for forecasting future performance.[^8] I define the reliability "threshold" as the first week in which the running R-squared value exceeds 0.5. For those reading the footnotes or broadly aware of the literature on xG predictiveness, this is effectively my look at the common adage that xG becomes a reliable indicator of future performance somewhere between the 5 and 15 game mark.[^9]
+To offer some kind of insight that might be useful, I present the game index (i.e. match day) at which my data shows that the season-to-date measures start to provide a reliable signal for forecasting future performance.[^9] I define the reliability "threshold" as the first week in which the running R-squared value exceeds 0.5. For those reading the footnotes or broadly aware of the literature on xG predictiveness, this is effectively my look at the common adage that xG becomes a reliable indicator of future performance somewhere between the 5 and 15 game mark.[^10]
 
-[^8]: The tables that follow show non-bootstrapped R-squared values. The bootstrapped R-squared values only exceed 0.5 for a handful of measures, typically in the 15-20 game range.
+[^9]: The tables that follow show non-bootstrapped R-squared values. The bootstrapped R-squared values only exceed 0.5 for a handful of measures, typically in the 15-20 game range.
 
-[^9]: Note that Ijtsma says that xG ratio becomes useful as early as the fourth match week. However, his statement is based purely on a visual assessment of when the R-squared curve generally "settles down" after the expected early season up-tick. Looking at his graph, the R-squared values for xG don't actually exceed the 0.5 threshold until some point between the 10th and 15th match days.
+[^10]: Note that Ijtsma says that xG ratio becomes useful as early as the fourth match week. However, his statement is based purely on a visual assessment of when the R-squared curve generally "settles down" after the expected early season up-tick. Looking at his graph, the R-squared values for xG don't actually exceed the 0.5 threshold until some point between the 10th and 15th match days.
 
 ```{r}
 #| label: reliability
@@ -1816,13 +1857,15 @@ rolling_r2s_abs_gd1 |>
 
 # Appendix
 
+## Additional Past Metrics
+
 I was interested in evaluating running in-season R-squared values for a few more measures of past performance:
 
 1.  passes into the penalty area ratio
 2.  [expected goals on target (xGOT)](https://theanalyst.com/eu/2021/06/what-are-expected-goals-on-target-xgot/) ratio
-3.  xG + expected assisted goals[^10] (xG+xAG) ratio
+3.  xG + expected assisted goals[^11] (xG+xAG) ratio
 
-[^10]: FBref's explanation regarding how xAG differs from expected assists (xA): "xA, or expected assists, is the likelihood that a given completed pass will become a goal assist... Players receive xA for every completed pass regardless of whether a shot occurred or not... \[Expected Assisted Goals (xAG)\] indicates a player's ability to set up scoring chances... Players receive xAG only when a shot is taken after a completed pass."
+[^11]: FBref's explanation regarding how xAG differs from expected assists (xA): "xA, or expected assists, is the likelihood that a given completed pass will become a goal assist... Players receive xA for every completed pass regardless of whether a shot occurred or not... \[Expected Assisted Goals (xAG)\] indicates a player's ability to set up scoring chances... Players receive xAG only when a shot is taken after a completed pass."
 
 Below is the same running R-squared plot shown before, just with these new measures, along side our tried and true xG ratio measure.
 
@@ -1830,8 +1873,18 @@ Below is the same running R-squared plot shown before, just with these new measu
 #| label: rolling-r2s-appendix-plot
 rolling_r2s_appendix_plot <- rolling_r2s_abs_gd1 |> 
   plotting_rolling_r2s(
-    pretty_predictor_names = APPENDIX_PRETTY_PREDICTOR_NAMES, 
-    predictor_palette = APPENDIX_PREDICTOR_PALETTE
+    pretty_predictor_names = c(
+      'past_ppa_ratio' = 'Passes into Penalty Area Ratio',
+      'past_xgot_ratio' = 'xGOT Ratio',
+      'past_xg_xag_ratio' = 'xG+xAG Ratio',
+      'past_xg_ratio' = 'xG Ratio'
+    ), 
+    predictor_palette = c(
+      'Passes into Penalty Area Ratio' = '#dbf679',
+      'xGOT Ratio' = '#2ec4b6',
+      'xG+xAG Ratio' = '#e0aaff',
+      'xG Ratio' = XG_RATIO_COLOR
+    )
   )
 
 ggplot2::ggsave(
@@ -1876,4 +1929,53 @@ Aha! It seems that we have identified a measure--xG+xAG ratio (purple above)--th
 
 Alas, xG+xAG metaphorically stands on the shoulders of xG, adding in the component of expected assists (xA) on shots. Assuming that the underlying xA model is well calibrated, perhaps we should not be surprised to see that the composite xG+xAG measure outperforms all others.
 
-On the other hand, I suppose I am a bit surprised that xGOT ratio does not seem to do nearly as well as xG ratio in terms of forecasting rest-of-season performancet. The implication is that **there is value in the xG of off-target shots** for projecting the future. By comparison, shots on target ratio tend to be more predictive than just the shots ratio, meaning that including off-target shots introduces noise that reduces predictiveness. That's an interesting difference in shots and xG!
+::: {.callout-note collapse="true" title="xG+xAG usage"}
+xG+xAG is not something I typically see used at the team-level. Rather, it's more commonly used to describe expected individual player contributions (goals + assists). Nonetheless, it's interesting to see that one can achieve slightly better predictiveness with team xG+xAG.
+:::
+
+On the other hand, I suppose I am a bit surprised that xGOT ratio does not seem to do nearly as well as xG ratio in terms of forecasting rest-of-season performance. The implication is that **there is value in the xG of off-target shots** for projecting the future. By comparison, shots on target ratio tend to be more predictive than just the shots ratio, meaning that including off-target shots introduces noise that reduces predictiveness. That's an interesting difference in shots and xG!
+
+## Non-Neutral xG Ratio
+
+Finally, I was interested in verifying that there's not a lot of value in non-neutral gamestate xG ratios. The plot below shows the running R-squared values for two measures already visualized:
+
+1.  xG ratio
+2.  xG ratio when the absolute goal difference ("GD") is less than or equal to 1 (84.2% of total minutes).
+
+But, in additional to these, I also plot
+
+1.  xG ratio when the absolute goal difference is greater than 1 (17.1% of total minutes)
+2.  xG ratio when the goal difference is greater than 1, i.e. leading by at least 2 (8.6% of total minutes)
+3.  xG ratio when the goal difference is less than 1, i.e. trailing by at least 2 (also 8.6% of total minutes)
+
+```{r}
+#| label: rolling-r2s-abs-gd1-appendix-plot
+rolling_r2s_abs_gd1_appendix_plot <- rolling_r2s_abs_gd1 |> 
+  plotting_rolling_r2s(
+    pretty_predictor_names = c(
+      'past_xg_neutral_ratio' = 'xG Ratio when abs(GD) <= 1',
+      'past_xg_nonneutral_ratio' = 'xG Ratio when abs(GD) > 1',
+      'past_xg_leading_ratio' = 'xG Ratio when GD >1',
+      'past_xg_trailing_ratio' = 'xG Ratio when GD <-1',
+      'past_xg_ratio' = 'xG Ratio'
+    ), 
+    predictor_palette = c(
+      'xG Ratio when abs(GD) <= 1' = '#b4e600',
+      'xG Ratio when abs(GD) > 1' = '#0fffdb',
+      'xG Ratio when GD >1' = '#9500ff',
+      'xG Ratio when GD <-1' = '#ff8c00',
+      'xG Ratio' = XG_RATIO_COLOR
+    )
+  )
+
+ggplot2::ggsave(
+  rolling_r2s_abs_gd1_appendix_plot,
+  filename = file.path(PROJ_DIR, 'rolling-r2s-abs-gd1-appendix.png'),
+  width = 9,
+  height = 9 / 1.5
+)
+```
+
+![](rolling-r2s-abs-gd1-appendix.png)
+
+We see that that the trailing and leading by \>1 goal gamestate R-squared values basically hover around 0 across all match days, for both Big 5 and the MLS. This isn't all that surprising given how small a percentage of full matches occur in \>1 GD gamestates.
