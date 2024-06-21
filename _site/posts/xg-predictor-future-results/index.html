@@ -8,7 +8,7 @@
 
 <meta name="author" content="Tony ElHabr">
 <meta name="dcterms.date" content="2024-06-19">
-<meta name="description" content="Is expected goals in neutral game states the best predictor for future performance?">
+<meta name="description" content="Is expected goals (xG) in neutral game states a better predictor of future performance than xG across all gamestates?">
 
 <title>Tony’s Blog - Expected goals, gamestate, and predictiveness</title>
 <style>
@@ -144,11 +144,11 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 <link rel="alternate" type="application/rss+xml" title="Tony's Blog" href="index.xml"><meta name="twitter:title" content="Tony’s Blog - Expected goals, gamestate, and predictiveness">
-<meta name="twitter:description" content="Is expected goals in neutral game states the best predictor for future performance?">
-<meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts/xg-predictor-future-results/bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png">
+<meta name="twitter:description" content="Is expected goals (xG) in neutral game states a better predictor of future performance than xG across all gamestates?">
+<meta name="twitter:image" content="https://tonyelhabr.rbind.io/posts/xg-predictor-future-results/rolling-r2s-neutral.png">
 <meta name="twitter:site" content="@TonyElHabr">
-<meta name="twitter:image-height" content="1600">
-<meta name="twitter:image-width" content="2400">
+<meta name="twitter:image-height" content="1800">
+<meta name="twitter:image-width" content="1800">
 <meta name="twitter:card" content="summary_large_image">
 </head>
 
@@ -248,7 +248,7 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 
 <div>
   <div class="description">
-    Is expected goals in neutral game states the best predictor for future performance?
+    Is expected goals (xG) in neutral game states a better predictor of future performance than xG across all gamestates?
   </div>
 </div>
 
@@ -277,21 +277,55 @@ gtag('config', 'G-TKB26G5GZW', { 'anonymize_ip': true});
 
 <section id="introduction" class="level1">
 <h1>Introduction</h1>
-<p><a href="http://web.archive.org/web/20181112175811/http://www.11tegen11.com/2015/01/05/the-best-predictor-for-future-performance-is-expected-goals/">“The best predictor for future performance is Expected Goals”</a>, authored by Sander Ijtsma of <a href="https://twitter.com/11tegen11">11tegen11</a> in 2015, is one of the most notable articles in public soccer analytics. The write-up provided compelling evidence for the superiority of <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">expected goals (xG)</a> in terms of forecasting team-season outcomes on a game-by-game basis.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a><a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> Ijtsma drew out curves for running <a href="https://en.wikipedia.org/wiki/Coefficient_of_determination">R-squared values</a> of a handful of season-to-date (“past”) metrics with respect to rest-of-season (“future”) performance indicators–goals ratio and <a href="https://en.wikipedia.org/wiki/Three_points_for_a_win">points per game</a>–and found that xG ratio<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> tended to be the most predictive.</p>
-<p><img src="11tegen11-xg.png" class="img-fluid"></p>
-<p>In 2022, <a href="https://x.com/etmckinley">Eliot McKinley</a> wrote <a href="https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results">a cool piece</a> for <a href="https://www.americansocceranalysis.com">American Soccer Analytics (ASA)</a> where he replicated and extended Ijtsma’s analysis. He used a larger data set of more recent seasons–2018 through 2022– and added a look at <a href="https://fbref.com/en/comps/22/Major-League-Soccer-Stats">Major League Soccer (MLS)</a> in addition to the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big 5 European Leagues</a>, and adding. Further, Eliot presented a novel aspect where he <a href="https://en.wikipedia.org/wiki/Bootstrapping_(statistics)">bootstrapped</a> the procedure for generating running R-squared values to generate smoother, more interpretable curves.</p>
-<p><img src="asa-xg.png" class="img-fluid"></p>
-<div class="callout callout-style-default callout-note callout-titled" title="Smaller R-squared values in the MLS">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout callout-style-default callout-important callout-titled" title="What is a 'neutral' gamestate?">
+<div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Smaller R-squared values in the MLS
+What is a ‘neutral’ gamestate?
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The two most common definitions I’ve seen for “neutral” gamestate are periods of match time when</p>
+<ol type="1">
+<li>the score is tied, i.e.&nbsp;goal difference of 0</li>
+<li>the absolute goal difference (GD) is 0 or 1</li>
+</ol>
+<p>I investigate both.</p>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled" title="tldr: The answer to the header question">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+tldr: The answer to the header question
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div id="callout-2" class="callout-2-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The answer to the question is “no”–expected goals (xG) subset to neutral gamestates does not end up being a better predictor of future performance than overall xG. Nonetheless, I do find that there is barely any reduction in the predictiveness in xG when using the latter definition of “neutral” gamestate (absolute GD &lt;= 1). This itself is an interesting finding, as it indirectly validates the common notion that xG accumulated in lopsided gamestates (e.g.&nbsp;2-0, 1-4) adds litle value in terms of forecasting rest-of-season performance.</p>
+</div>
+</div>
+</div>
+<p><a href="http://web.archive.org/web/20181112175811/http://www.11tegen11.com/2015/01/05/the-best-predictor-for-future-performance-is-expected-goals/">“The best predictor for future performance is Expected Goals”</a>, authored by Sander Ijtsma of <a href="https://twitter.com/11tegen11">11tegen11</a> in 2015, is one of the most influential pieces of writing in the public soccer analytics sphere. The write-up provided compelling evidence for the superiority of <a href="https://theanalyst.com/na/2023/08/what-is-expected-goals-xg/">expected goals (xG)</a> in terms of forecasting team-season outcomes on a game-by-game basis.<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a><a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> Ijtsma drew out curves for running <a href="https://en.wikipedia.org/wiki/Coefficient_of_determination"><span class="math inline">\(R^2\)</span> values</a> of a handful of season-to-date (“past”) metrics with respect to rest-of-season (“future”) performance indicators–goals ratio and <a href="https://en.wikipedia.org/wiki/Three_points_for_a_win">points per game</a>–and found that xG ratio<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> tended to be the most predictive.</p>
+<p><img src="11tegen11-xg.png" class="img-fluid"></p>
+<p>In 2022, <a href="https://x.com/etmckinley">Eliot McKinley</a> wrote <a href="https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results">a cool piece</a> for <a href="https://www.americansocceranalysis.com">American Soccer Analytics (ASA)</a> where he replicated and extended Ijtsma’s analysis. He used a larger data set of more recent seasons–2018 through 2022– and added a look at <a href="https://fbref.com/en/comps/22/Major-League-Soccer-Stats">Major League Soccer (MLS)</a> in addition to the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big 5 European Leagues</a>, and adding. Further, Eliot presented a novel aspect where he <a href="https://en.wikipedia.org/wiki/Bootstrapping_(statistics)">bootstrapped</a> the procedure for generating running <span class="math inline">\(R^2\)</span> values to generate smoother, more interpretable curves.</p>
+<p><img src="asa-xg.png" class="img-fluid"></p>
+<div class="callout callout-style-default callout-note callout-titled" title="Smaller $R^2$ values in the MLS">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Smaller <span class="math inline">\(R^2\)</span> values in the MLS
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-3" class="callout-3-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <p><a href="https://twitter.com/mimburgio">Mike Imburgio</a> deduced <a href="https://www.americansocceranalysis.com/home/2022/11/17/salary-caps-and-chaos-examining-parity-and-predictability-across-sports">that the parity (partially due to the salary cap) in the MLS</a> relative is probably to blame for the diluted predictiveness of metrics like xG ratio relative to the Big 5.</p>
 </div>
@@ -306,7 +340,7 @@ Smaller R-squared values in the MLS
 <blockquote class="blockquote">
 <p>I’ve looked at this, but I have decided not to include that subanalysis in this post, for the sake of accessibility… I think this method will show that the phenomenon [where teams exert more or less effort in matches against particular opposition] either does not truly exist, or that its effect is so small that correcting for this will allow more noise and thereby weaken the model.</p>
 </blockquote>
-<p>Unfortunately, I couldn’t find any subsequent blog post where Ijtsma writes about the role of gamestate in the context of his R-squared analysis, so, alas, I’m here to do exactly that.</p>
+<p>Unfortunately, I couldn’t find any subsequent blog post where Ijtsma writes about the role of gamestate in the context of his <span class="math inline">\(R^2\)</span> analysis, so, alas, I’m here to do exactly that.</p>
 <p>Now, my point isn’t necessarily to find the absolute best metric possible to use to forecast future team performance. <a href="https://twitter.com/TiotalFootball">Tiotal Football</a> (with assistance from Eliot) <a href="https://www.americansocceranalysis.com/home/2020/5/12/breaking-goals-added">showed that</a> comprehensive event-based metrics like goals added (light blue), completed passes into the area in front of the box (yellow), etc. are even more predictive of future points per game than xG, at least in the MLS.</p>
 <p><img src="breaking-goals-added.png" class="img-fluid"></p>
 <p>I do look at a few metrics that go beyond Ijtsma’s set in the Appendix, but that is not the primary focus of this post.</p>
@@ -1036,7 +1070,7 @@ Smaller R-squared values in the MLS
 <h1>Methods and Analysis</h1>
 <section id="replicating-prior-art" class="level2">
 <h2 class="anchored" data-anchor-id="replicating-prior-art">Replicating prior art</h2>
-<p>Let’s begin with replicating Ijtsma’s visualization where he evaluated the running R-squared of the five measures of past performance with respect to two measures of future performance. The five measures of past performance are:</p>
+<p>Let’s begin with replicating Ijtsma’s visualization where he evaluated the running <span class="math inline">\(R^2\)</span> of the five measures of past performance with respect to two measures of future performance. The five measures of past performance are:</p>
 <ol type="1">
 <li>points per game</li>
 <li>goal ratio</li>
@@ -1051,7 +1085,7 @@ Smaller R-squared values in the MLS
 </ol>
 <div class="cell">
 <details>
-<summary>Calculate rolling R-squared for season-to-date and rest-of-season performance measures</summary>
+<summary>Calculate rolling <span class="math inline">\(R^2\)</span> for season-to-date and rest-of-season performance measures</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>accumulate_team_summary <span class="ot">&lt;-</span> <span class="cf">function</span>(df, op, .prefix) {</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  df <span class="sc">|&gt;</span> </span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
@@ -1303,7 +1337,7 @@ Smaller R-squared values in the MLS
 </div>
 <div class="cell">
 <details>
-<summary>Plotting the R-squared values</summary>
+<summary>Plotting the <span class="math inline">\(R^2\)</span> values</summary>
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>TAG_LABEL <span class="ot">&lt;-</span> htmltools<span class="sc">::</span><span class="fu">tagList</span>(</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  htmltools<span class="sc">::</span>tags<span class="sc">$</span><span class="fu">span</span>(htmltools<span class="sc">::</span><span class="fu">HTML</span>(<span class="fu">enc2utf8</span>(<span class="st">"&amp;#xf099;"</span>)), <span class="at">style =</span> <span class="st">'font-family:fb'</span>),</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  htmltools<span class="sc">::</span>tags<span class="sc">$</span><span class="fu">span</span>(<span class="st">"@TonyElHabr"</span>),</span>
@@ -1503,7 +1537,7 @@ Smaller R-squared values in the MLS
 <p>Specifically, if we randomly reorder matchweeks before calculating cumulative in-season measures, and do that 100 times, we end up with a plot that looks like this.</p>
 <div class="cell">
 <details>
-<summary>Calculating bootstrapped R-squared values</summary>
+<summary>Calculating bootstrapped <span class="math inline">\(R^2\)</span> values</summary>
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>calculate_resampled_rolling_r2s <span class="ot">&lt;-</span> <span class="cf">function</span>(</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    combined_df, </span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">resamples =</span> <span class="dv">10</span>, </span>
@@ -1573,7 +1607,7 @@ Smaller R-squared values in the MLS
 </div>
 <div class="cell">
 <details>
-<summary>Plotting the bootstrapped R-squared values</summary>
+<summary>Plotting the bootstrapped <span class="math inline">\(R^2\)</span> values</summary>
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>BOOTSTRAPPED_CAPTION_LABEL <span class="ot">&lt;-</span> stringr<span class="sc">::</span><span class="fu">str_replace</span>(</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  CAPTION_LABEL, </span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">'&lt;br</span><span class="sc">\\</span><span class="st">/&gt;'</span>, </span>
@@ -1608,7 +1642,7 @@ Smaller R-squared values in the MLS
 <p><img src="bootstrapped-rolling-r2s.png" class="img-fluid"></p>
 <p>Indeed, this looks like the bootstrapped plot from ASA.<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a> Note that,</p>
 <div class="callout callout-style-default callout-note callout-titled" title="Effect of bootstrapping">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-4-contents" aria-controls="callout-4" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1617,9 +1651,9 @@ Effect of bootstrapping
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-2" class="callout-2-contents callout-collapse collapse">
+<div id="callout-4" class="callout-4-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
-<p>For a given metric, the bootstrapped R-squared values are slightly smaller across the board compared to the non-bootstrapped values.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a> This is perhaps not surprising, as resampling tends to have a “shrinking” effect on figures. Intuitively, this noise could be associated with scheduling bias, injuries, etc.</p>
+<p>For a given metric, the bootstrapped <span class="math inline">\(R^2\)</span> values are slightly smaller across the board compared to the non-bootstrapped values.<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a> This is perhaps not surprising, as resampling tends to have a “shrinking” effect on figures. Intuitively, this noise could be associated with scheduling bias, injuries, etc.</p>
 </div>
 </div>
 </div>
@@ -1632,7 +1666,7 @@ Effect of bootstrapping
 <p>In the plot below, I’ve split out each the xG and goals measures of past performance into their own facets, paired with tied gamestate analogue (in a brighter blue shade). Note that I’m showing just points per game as the sole measure of future performance.<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a></p>
 <div class="cell">
 <details>
-<summary>Plotting the bootstrapped R-squared values, including the neutral game state metrics</summary>
+<summary>Plotting the bootstrapped <span class="math inline">\(R^2\)</span> values, including the neutral game state metrics</summary>
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">'xG Ratio'</span> <span class="ot">=</span> <span class="fu">c</span>(</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">'past_xg_ratio'</span>,</span>
@@ -1641,204 +1675,348 @@ Effect of bootstrapping
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">'Goal Ratio'</span> <span class="ot">=</span> <span class="fu">c</span>(</span>
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">'past_g_ratio'</span>,</span>
 <span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">'past_g_neutral_ratio'</span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="co">#,</span></span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 'Total Shots Ratio' = c(</span></span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   'past_shot_ratio',</span></span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   'past_shot_neutral_ratio'</span></span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># ),</span></span>
-<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 'Shots on Target Ratio' = c(</span></span>
-<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   'past_sot_ratio',</span></span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   'past_sot_neutral_ratio'</span></span>
-<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>  <span class="co"># )</span></span>
-<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>BASE_AND_NEUTRAL_TARGET_PREDICTOR <span class="ot">&lt;-</span> <span class="st">'future_ppg'</span></span>
-<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>unlist_and_invert <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
-<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>  unlisted <span class="ot">&lt;-</span> <span class="fu">unlist</span>(x)</span>
-<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">names</span>(unlisted) <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="fu">names</span>(x), <span class="fu">lengths</span>(x))</span>
-<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">setNames</span>(<span class="fu">names</span>(unlisted), <span class="fu">unname</span>(unlisted))</span>
-<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES <span class="ot">&lt;-</span> <span class="fu">unlist_and_invert</span>(</span>
-<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>  BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP</span>
-<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>IS_NEUTRAL_PALETTE <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">TRUE</span><span class="st">`</span> <span class="ot">=</span>  <span class="st">'#00b4d8'</span>,</span>
-<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">FALSE</span><span class="st">`</span> <span class="ot">=</span> <span class="st">'#caf0f8'</span></span>
-<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>plotting_rolling_r2s_with_neutral <span class="ot">&lt;-</span> <span class="cf">function</span>(rolling_r2s, gamestate_description) {</span>
-<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a>  prettified_rolling_r2s <span class="ot">&lt;-</span> rolling_r2s <span class="sc">|&gt;</span> </span>
-<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
-<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a>      predictor <span class="sc">%in%</span> <span class="fu">names</span>(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES),</span>
-<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a>      target <span class="sc">==</span> BASE_AND_NEUTRAL_TARGET_PREDICTOR</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>BASE_AND_NEUTRAL_TARGET_PREDICTOR <span class="ot">&lt;-</span> <span class="st">'future_ppg'</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>unlist_and_invert <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  unlisted <span class="ot">&lt;-</span> <span class="fu">unlist</span>(x)</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">names</span>(unlisted) <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="fu">names</span>(x), <span class="fu">lengths</span>(x))</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">setNames</span>(<span class="fu">names</span>(unlisted), <span class="fu">unname</span>(unlisted))</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES <span class="ot">&lt;-</span> <span class="fu">unlist_and_invert</span>(</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>  BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>XG_RATIO_GD0_COLOR <span class="ot">&lt;-</span> <span class="st">'#00b4d8'</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>IS_NEUTRAL_PALETTE <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">TRUE</span><span class="st">`</span> <span class="ot">=</span>  XG_RATIO_GD0_COLOR,</span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">FALSE</span><span class="st">`</span> <span class="ot">=</span> <span class="st">'#caf0f8'</span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>plotting_rolling_r2s_with_neutral <span class="ot">&lt;-</span> <span class="cf">function</span>(rolling_r2s, gamestate_description) {</span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a>  prettified_rolling_r2s <span class="ot">&lt;-</span> rolling_r2s <span class="sc">|&gt;</span> </span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>      predictor <span class="sc">%in%</span> <span class="fu">names</span>(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES),</span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>      target <span class="sc">==</span> BASE_AND_NEUTRAL_TARGET_PREDICTOR</span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>      <span class="at">is_neutral =</span> stringr<span class="sc">::</span><span class="fu">str_detect</span>(predictor, <span class="st">'neutral'</span>),</span>
+<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a>      <span class="at">pretty_predictor_group =</span> <span class="fu">factor</span>(</span>
+<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a>        BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES[predictor],</span>
+<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a>        <span class="at">levels =</span> <span class="fu">names</span>(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP)</span>
+<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a>      )</span>
 <span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
-<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a>      <span class="at">is_neutral =</span> stringr<span class="sc">::</span><span class="fu">str_detect</span>(predictor, <span class="st">'neutral'</span>),</span>
-<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a>      <span class="at">pretty_predictor_group =</span> <span class="fu">factor</span>(</span>
-<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a>        BASE_AND_NEUTRAL_PRETTY_PREDICTOR_GROUP_NAMES[predictor],</span>
-<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a>        <span class="at">levels =</span> <span class="fu">names</span>(BASE_AND_NEUTRAL_PRETTY_PREDICTOR_LOOKUP)</span>
-<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a>      )</span>
-<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
-<span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a>    <span class="do">## put xG on top</span></span>
-<span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">arrange</span>(league_group, pretty_predictor_group, is_neutral)</span>
-<span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb9-50"><a href="#cb9-50" aria-hidden="true" tabindex="-1"></a>  min_rolling_r2s <span class="ot">&lt;-</span> prettified_rolling_r2s <span class="sc">|&gt;</span> </span>
-<span id="cb9-51"><a href="#cb9-51" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(r2 <span class="sc">&gt;</span> <span class="fl">0.5</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb9-52"><a href="#cb9-52" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">group_by</span>(league_group, predictor) <span class="sc">|&gt;</span> </span>
-<span id="cb9-53"><a href="#cb9-53" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">slice_min</span>(game_idx, <span class="at">n =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb9-54"><a href="#cb9-54" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">ungroup</span>()</span>
-<span id="cb9-55"><a href="#cb9-55" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-56"><a href="#cb9-56" aria-hidden="true" tabindex="-1"></a>  prettified_rolling_r2s <span class="sc">|&gt;</span> </span>
-<span id="cb9-57"><a href="#cb9-57" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
-<span id="cb9-58"><a href="#cb9-58" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
-<span id="cb9-59"><a href="#cb9-59" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> game_idx,</span>
-<span id="cb9-60"><a href="#cb9-60" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> r2,</span>
-<span id="cb9-61"><a href="#cb9-61" aria-hidden="true" tabindex="-1"></a>      <span class="at">group =</span> predictor</span>
-<span id="cb9-62"><a href="#cb9-62" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-63"><a href="#cb9-63" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">geom_segment</span>(</span>
-<span id="cb9-64"><a href="#cb9-64" aria-hidden="true" tabindex="-1"></a>      <span class="at">data =</span> min_rolling_r2s,</span>
-<span id="cb9-65"><a href="#cb9-65" aria-hidden="true" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
-<span id="cb9-66"><a href="#cb9-66" aria-hidden="true" tabindex="-1"></a>        <span class="at">color =</span> is_neutral,</span>
-<span id="cb9-67"><a href="#cb9-67" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> <span class="dv">0</span>,</span>
-<span id="cb9-68"><a href="#cb9-68" aria-hidden="true" tabindex="-1"></a>        <span class="at">xend =</span> game_idx,</span>
-<span id="cb9-69"><a href="#cb9-69" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> r2,</span>
-<span id="cb9-70"><a href="#cb9-70" aria-hidden="true" tabindex="-1"></a>        <span class="at">yend =</span> r2</span>
-<span id="cb9-71"><a href="#cb9-71" aria-hidden="true" tabindex="-1"></a>      ),</span>
-<span id="cb9-72"><a href="#cb9-72" aria-hidden="true" tabindex="-1"></a>      <span class="at">linetype =</span> <span class="dv">2</span>,</span>
-<span id="cb9-73"><a href="#cb9-73" aria-hidden="true" tabindex="-1"></a>      <span class="at">linewidth =</span> <span class="fl">0.5</span></span>
-<span id="cb9-74"><a href="#cb9-74" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-75"><a href="#cb9-75" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">geom_segment</span>(</span>
-<span id="cb9-76"><a href="#cb9-76" aria-hidden="true" tabindex="-1"></a>      <span class="at">data =</span> min_rolling_r2s,</span>
-<span id="cb9-77"><a href="#cb9-77" aria-hidden="true" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
-<span id="cb9-78"><a href="#cb9-78" aria-hidden="true" tabindex="-1"></a>        <span class="at">color =</span> is_neutral,</span>
-<span id="cb9-79"><a href="#cb9-79" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> game_idx,</span>
-<span id="cb9-80"><a href="#cb9-80" aria-hidden="true" tabindex="-1"></a>        <span class="at">xend =</span> game_idx,</span>
-<span id="cb9-81"><a href="#cb9-81" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> <span class="dv">0</span>,</span>
-<span id="cb9-82"><a href="#cb9-82" aria-hidden="true" tabindex="-1"></a>        <span class="at">yend =</span> r2</span>
-<span id="cb9-83"><a href="#cb9-83" aria-hidden="true" tabindex="-1"></a>      ),</span>
-<span id="cb9-84"><a href="#cb9-84" aria-hidden="true" tabindex="-1"></a>      <span class="at">linetype =</span> <span class="dv">2</span>,</span>
-<span id="cb9-85"><a href="#cb9-85" aria-hidden="true" tabindex="-1"></a>      <span class="at">linewidth =</span> <span class="fl">0.5</span></span>
+<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>    <span class="do">## put xG on top</span></span>
+<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">arrange</span>(league_group, pretty_predictor_group, is_neutral)</span>
+<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a>  min_rolling_r2s <span class="ot">&lt;-</span> prettified_rolling_r2s <span class="sc">|&gt;</span> </span>
+<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(r2 <span class="sc">&gt;</span> <span class="fl">0.5</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">group_by</span>(league_group, predictor) <span class="sc">|&gt;</span> </span>
+<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">slice_min</span>(game_idx, <span class="at">n =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">ungroup</span>()</span>
+<span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a>  prettified_rolling_r2s <span class="sc">|&gt;</span> </span>
+<span id="cb9-50"><a href="#cb9-50" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb9-51"><a href="#cb9-51" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
+<span id="cb9-52"><a href="#cb9-52" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> game_idx,</span>
+<span id="cb9-53"><a href="#cb9-53" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> r2,</span>
+<span id="cb9-54"><a href="#cb9-54" aria-hidden="true" tabindex="-1"></a>      <span class="at">group =</span> predictor</span>
+<span id="cb9-55"><a href="#cb9-55" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb9-56"><a href="#cb9-56" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">geom_segment</span>(</span>
+<span id="cb9-57"><a href="#cb9-57" aria-hidden="true" tabindex="-1"></a>      <span class="at">data =</span> min_rolling_r2s,</span>
+<span id="cb9-58"><a href="#cb9-58" aria-hidden="true" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
+<span id="cb9-59"><a href="#cb9-59" aria-hidden="true" tabindex="-1"></a>        <span class="at">color =</span> is_neutral,</span>
+<span id="cb9-60"><a href="#cb9-60" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> <span class="dv">0</span>,</span>
+<span id="cb9-61"><a href="#cb9-61" aria-hidden="true" tabindex="-1"></a>        <span class="at">xend =</span> game_idx,</span>
+<span id="cb9-62"><a href="#cb9-62" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> r2,</span>
+<span id="cb9-63"><a href="#cb9-63" aria-hidden="true" tabindex="-1"></a>        <span class="at">yend =</span> r2</span>
+<span id="cb9-64"><a href="#cb9-64" aria-hidden="true" tabindex="-1"></a>      ),</span>
+<span id="cb9-65"><a href="#cb9-65" aria-hidden="true" tabindex="-1"></a>      <span class="at">linetype =</span> <span class="dv">2</span>,</span>
+<span id="cb9-66"><a href="#cb9-66" aria-hidden="true" tabindex="-1"></a>      <span class="at">linewidth =</span> <span class="fl">0.5</span></span>
+<span id="cb9-67"><a href="#cb9-67" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb9-68"><a href="#cb9-68" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">geom_segment</span>(</span>
+<span id="cb9-69"><a href="#cb9-69" aria-hidden="true" tabindex="-1"></a>      <span class="at">data =</span> min_rolling_r2s,</span>
+<span id="cb9-70"><a href="#cb9-70" aria-hidden="true" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
+<span id="cb9-71"><a href="#cb9-71" aria-hidden="true" tabindex="-1"></a>        <span class="at">color =</span> is_neutral,</span>
+<span id="cb9-72"><a href="#cb9-72" aria-hidden="true" tabindex="-1"></a>        <span class="at">x =</span> game_idx,</span>
+<span id="cb9-73"><a href="#cb9-73" aria-hidden="true" tabindex="-1"></a>        <span class="at">xend =</span> game_idx,</span>
+<span id="cb9-74"><a href="#cb9-74" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> <span class="dv">0</span>,</span>
+<span id="cb9-75"><a href="#cb9-75" aria-hidden="true" tabindex="-1"></a>        <span class="at">yend =</span> r2</span>
+<span id="cb9-76"><a href="#cb9-76" aria-hidden="true" tabindex="-1"></a>      ),</span>
+<span id="cb9-77"><a href="#cb9-77" aria-hidden="true" tabindex="-1"></a>      <span class="at">linetype =</span> <span class="dv">2</span>,</span>
+<span id="cb9-78"><a href="#cb9-78" aria-hidden="true" tabindex="-1"></a>      <span class="at">linewidth =</span> <span class="fl">0.5</span></span>
+<span id="cb9-79"><a href="#cb9-79" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb9-80"><a href="#cb9-80" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">geom_line</span>(</span>
+<span id="cb9-81"><a href="#cb9-81" aria-hidden="true" tabindex="-1"></a>      <span class="at">linewidth =</span> <span class="dv">1</span>,</span>
+<span id="cb9-82"><a href="#cb9-82" aria-hidden="true" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">color =</span> is_neutral)</span>
+<span id="cb9-83"><a href="#cb9-83" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb9-84"><a href="#cb9-84" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">scale_color_manual</span>(</span>
+<span id="cb9-85"><a href="#cb9-85" aria-hidden="true" tabindex="-1"></a>      <span class="at">values =</span> IS_NEUTRAL_PALETTE</span>
 <span id="cb9-86"><a href="#cb9-86" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-87"><a href="#cb9-87" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">geom_line</span>(</span>
-<span id="cb9-88"><a href="#cb9-88" aria-hidden="true" tabindex="-1"></a>      <span class="at">linewidth =</span> <span class="dv">1</span>,</span>
-<span id="cb9-89"><a href="#cb9-89" aria-hidden="true" tabindex="-1"></a>      ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">color =</span> is_neutral)</span>
-<span id="cb9-90"><a href="#cb9-90" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-91"><a href="#cb9-91" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">scale_color_manual</span>(</span>
-<span id="cb9-92"><a href="#cb9-92" aria-hidden="true" tabindex="-1"></a>      <span class="at">values =</span> IS_NEUTRAL_PALETTE</span>
-<span id="cb9-93"><a href="#cb9-93" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-94"><a href="#cb9-94" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">guides</span>(</span>
-<span id="cb9-95"><a href="#cb9-95" aria-hidden="true" tabindex="-1"></a>      <span class="at">color =</span> <span class="st">'none'</span></span>
-<span id="cb9-96"><a href="#cb9-96" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-97"><a href="#cb9-97" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">scale_y_continuous</span>(</span>
-<span id="cb9-98"><a href="#cb9-98" aria-hidden="true" tabindex="-1"></a>      <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>),</span>
-<span id="cb9-99"><a href="#cb9-99" aria-hidden="true" tabindex="-1"></a>      <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.2</span>),</span>
-<span id="cb9-100"><a href="#cb9-100" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">number_format</span>(<span class="at">accuracy =</span> <span class="fl">0.1</span>)</span>
-<span id="cb9-101"><a href="#cb9-101" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-102"><a href="#cb9-102" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">scale_x_continuous</span>(</span>
-<span id="cb9-103"><a href="#cb9-103" aria-hidden="true" tabindex="-1"></a>      <span class="at">breaks =</span> <span class="fu">seq.int</span>(<span class="dv">0</span>, <span class="dv">35</span>, <span class="at">by =</span> <span class="dv">5</span>),</span>
-<span id="cb9-104"><a href="#cb9-104" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">seq.int</span>(<span class="dv">0</span>, <span class="dv">35</span>, <span class="at">by =</span> <span class="dv">5</span>)</span>
-<span id="cb9-105"><a href="#cb9-105" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-106"><a href="#cb9-106" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">theme</span>(</span>
-<span id="cb9-107"><a href="#cb9-107" aria-hidden="true" tabindex="-1"></a>      <span class="at">panel.grid.major =</span> ggplot2<span class="sc">::</span><span class="fu">element_blank</span>(),</span>
-<span id="cb9-108"><a href="#cb9-108" aria-hidden="true" tabindex="-1"></a>      <span class="at">plot.subtitle =</span> ggtext<span class="sc">::</span><span class="fu">element_markdown</span>(<span class="at">size =</span> <span class="dv">12</span>)</span>
-<span id="cb9-109"><a href="#cb9-109" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
-<span id="cb9-110"><a href="#cb9-110" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">facet_grid</span>(league_group<span class="sc">~</span>pretty_predictor_group) <span class="sc">+</span></span>
-<span id="cb9-111"><a href="#cb9-111" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">labs</span>(</span>
-<span id="cb9-112"><a href="#cb9-112" aria-hidden="true" tabindex="-1"></a>      <span class="at">title =</span> <span class="st">'Predictiveness of Season-to-Date Metrics on Rest-of-Season Points Per Game'</span>,</span>
-<span id="cb9-113"><a href="#cb9-113" aria-hidden="true" tabindex="-1"></a>      <span class="at">subtitle =</span> glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">'Are &lt;b&gt;&lt;span style="color:{IS_NEUTRAL_PALETTE[["FALSE"]]}"&gt;full match&lt;/span&gt;&lt;/b&gt; metrics more predictive when subset to &lt;b&gt;&lt;span style="color:{IS_NEUTRAL_PALETTE[["TRUE"]]}"&gt;{gamestate_description}&lt;/span&gt;&lt;/b&gt;?'</span>),</span>
-<span id="cb9-114"><a href="#cb9-114" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="st">'Randomized Match Day'</span>,</span>
-<span id="cb9-115"><a href="#cb9-115" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> <span class="st">'Average Bootstrapped R&lt;sup&gt;2&lt;/sup&gt;'</span>,</span>
-<span id="cb9-116"><a href="#cb9-116" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> BOOTSTRAPPED_CAPTION_LABEL,</span>
-<span id="cb9-117"><a href="#cb9-117" aria-hidden="true" tabindex="-1"></a>      <span class="at">tag =</span> TAG_LABEL</span>
-<span id="cb9-118"><a href="#cb9-118" aria-hidden="true" tabindex="-1"></a>    )</span>
-<span id="cb9-119"><a href="#cb9-119" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb9-120"><a href="#cb9-120" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-121"><a href="#cb9-121" aria-hidden="true" tabindex="-1"></a>rolling_r2s_with_neutral_gd0_plot <span class="ot">&lt;-</span> resampled_rolling_r2s_gd0 <span class="sc">|&gt;</span></span>
-<span id="cb9-122"><a href="#cb9-122" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plotting_rolling_r2s_with_neutral</span>(<span class="st">'tied gamestates'</span>)</span>
-<span id="cb9-123"><a href="#cb9-123" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-124"><a href="#cb9-124" aria-hidden="true" tabindex="-1"></a>rolling_r2s_with_neutral_abs_gd1_plot <span class="ot">&lt;-</span> resampled_rolling_r2s_abs_gd1 <span class="sc">|&gt;</span> </span>
-<span id="cb9-125"><a href="#cb9-125" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plotting_rolling_r2s_with_neutral</span>(<span class="st">'gamestates with absolute goal difference &lt;= 1'</span>)</span>
+<span id="cb9-87"><a href="#cb9-87" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">guides</span>(</span>
+<span id="cb9-88"><a href="#cb9-88" aria-hidden="true" tabindex="-1"></a>      <span class="at">color =</span> <span class="st">'none'</span></span>
+<span id="cb9-89"><a href="#cb9-89" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb9-90"><a href="#cb9-90" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">scale_y_continuous</span>(</span>
+<span id="cb9-91"><a href="#cb9-91" aria-hidden="true" tabindex="-1"></a>      <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>),</span>
+<span id="cb9-92"><a href="#cb9-92" aria-hidden="true" tabindex="-1"></a>      <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.2</span>),</span>
+<span id="cb9-93"><a href="#cb9-93" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">number_format</span>(<span class="at">accuracy =</span> <span class="fl">0.1</span>)</span>
+<span id="cb9-94"><a href="#cb9-94" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb9-95"><a href="#cb9-95" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">scale_x_continuous</span>(</span>
+<span id="cb9-96"><a href="#cb9-96" aria-hidden="true" tabindex="-1"></a>      <span class="at">breaks =</span> <span class="fu">seq.int</span>(<span class="dv">0</span>, <span class="dv">35</span>, <span class="at">by =</span> <span class="dv">5</span>),</span>
+<span id="cb9-97"><a href="#cb9-97" aria-hidden="true" tabindex="-1"></a>      <span class="at">labels =</span> <span class="fu">seq.int</span>(<span class="dv">0</span>, <span class="dv">35</span>, <span class="at">by =</span> <span class="dv">5</span>)</span>
+<span id="cb9-98"><a href="#cb9-98" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb9-99"><a href="#cb9-99" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">theme</span>(</span>
+<span id="cb9-100"><a href="#cb9-100" aria-hidden="true" tabindex="-1"></a>      <span class="at">panel.grid.major =</span> ggplot2<span class="sc">::</span><span class="fu">element_blank</span>(),</span>
+<span id="cb9-101"><a href="#cb9-101" aria-hidden="true" tabindex="-1"></a>      <span class="at">plot.subtitle =</span> ggtext<span class="sc">::</span><span class="fu">element_markdown</span>(<span class="at">size =</span> <span class="dv">12</span>)</span>
+<span id="cb9-102"><a href="#cb9-102" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb9-103"><a href="#cb9-103" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">facet_grid</span>(league_group<span class="sc">~</span>pretty_predictor_group) <span class="sc">+</span></span>
+<span id="cb9-104"><a href="#cb9-104" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">labs</span>(</span>
+<span id="cb9-105"><a href="#cb9-105" aria-hidden="true" tabindex="-1"></a>      <span class="at">title =</span> <span class="st">'Predictiveness of Season-to-Date Metrics on Rest-of-Season Points Per Game'</span>,</span>
+<span id="cb9-106"><a href="#cb9-106" aria-hidden="true" tabindex="-1"></a>      <span class="at">subtitle =</span> glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">'Are &lt;b&gt;&lt;span style="color:{IS_NEUTRAL_PALETTE[["FALSE"]]}"&gt;full match&lt;/span&gt;&lt;/b&gt; metrics more predictive when subset to &lt;b&gt;&lt;span style="color:{IS_NEUTRAL_PALETTE[["TRUE"]]}"&gt;{gamestate_description}&lt;/span&gt;&lt;/b&gt;?'</span>),</span>
+<span id="cb9-107"><a href="#cb9-107" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="st">'Randomized Match Day'</span>,</span>
+<span id="cb9-108"><a href="#cb9-108" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> <span class="st">'Average Bootstrapped R&lt;sup&gt;2&lt;/sup&gt;'</span>,</span>
+<span id="cb9-109"><a href="#cb9-109" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> BOOTSTRAPPED_CAPTION_LABEL,</span>
+<span id="cb9-110"><a href="#cb9-110" aria-hidden="true" tabindex="-1"></a>      <span class="at">tag =</span> TAG_LABEL</span>
+<span id="cb9-111"><a href="#cb9-111" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb9-112"><a href="#cb9-112" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb9-113"><a href="#cb9-113" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-114"><a href="#cb9-114" aria-hidden="true" tabindex="-1"></a>rolling_r2s_with_neutral_gd0_plot <span class="ot">&lt;-</span> resampled_rolling_r2s_gd0 <span class="sc">|&gt;</span></span>
+<span id="cb9-115"><a href="#cb9-115" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plotting_rolling_r2s_with_neutral</span>(<span class="st">'tied gamestates'</span>)</span>
+<span id="cb9-116"><a href="#cb9-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-117"><a href="#cb9-117" aria-hidden="true" tabindex="-1"></a>rolling_r2s_with_neutral_abs_gd1_plot <span class="ot">&lt;-</span> resampled_rolling_r2s_abs_gd1 <span class="sc">|&gt;</span> </span>
+<span id="cb9-118"><a href="#cb9-118" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plotting_rolling_r2s_with_neutral</span>(<span class="st">'gamestates with absolute goal difference &lt;= 1'</span>)</span>
+<span id="cb9-119"><a href="#cb9-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-120"><a href="#cb9-120" aria-hidden="true" tabindex="-1"></a>ggplot2<span class="sc">::</span><span class="fu">ggsave</span>(</span>
+<span id="cb9-121"><a href="#cb9-121" aria-hidden="true" tabindex="-1"></a>  rolling_r2s_with_neutral_gd0_plot,</span>
+<span id="cb9-122"><a href="#cb9-122" aria-hidden="true" tabindex="-1"></a>  <span class="at">filename =</span> <span class="fu">file.path</span>(PROJ_DIR, <span class="st">'bootstrapped-rolling-r2s-with-neutral-gd-0.png'</span>),</span>
+<span id="cb9-123"><a href="#cb9-123" aria-hidden="true" tabindex="-1"></a>  <span class="at">width =</span> <span class="dv">8</span>,</span>
+<span id="cb9-124"><a href="#cb9-124" aria-hidden="true" tabindex="-1"></a>  <span class="at">height =</span> <span class="dv">8</span> <span class="sc">/</span> <span class="fl">1.5</span></span>
+<span id="cb9-125"><a href="#cb9-125" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb9-126"><a href="#cb9-126" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-127"><a href="#cb9-127" aria-hidden="true" tabindex="-1"></a>ggplot2<span class="sc">::</span><span class="fu">ggsave</span>(</span>
-<span id="cb9-128"><a href="#cb9-128" aria-hidden="true" tabindex="-1"></a>  rolling_r2s_with_neutral_gd0_plot,</span>
-<span id="cb9-129"><a href="#cb9-129" aria-hidden="true" tabindex="-1"></a>  <span class="at">filename =</span> <span class="fu">file.path</span>(PROJ_DIR, <span class="st">'bootstrapped-rolling-r2s-with-neutral-gd-0.png'</span>),</span>
+<span id="cb9-128"><a href="#cb9-128" aria-hidden="true" tabindex="-1"></a>  rolling_r2s_with_neutral_abs_gd1_plot,</span>
+<span id="cb9-129"><a href="#cb9-129" aria-hidden="true" tabindex="-1"></a>  <span class="at">filename =</span> <span class="fu">file.path</span>(PROJ_DIR, <span class="st">'bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png'</span>),</span>
 <span id="cb9-130"><a href="#cb9-130" aria-hidden="true" tabindex="-1"></a>  <span class="at">width =</span> <span class="dv">8</span>,</span>
 <span id="cb9-131"><a href="#cb9-131" aria-hidden="true" tabindex="-1"></a>  <span class="at">height =</span> <span class="dv">8</span> <span class="sc">/</span> <span class="fl">1.5</span></span>
-<span id="cb9-132"><a href="#cb9-132" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb9-133"><a href="#cb9-133" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-134"><a href="#cb9-134" aria-hidden="true" tabindex="-1"></a>ggplot2<span class="sc">::</span><span class="fu">ggsave</span>(</span>
-<span id="cb9-135"><a href="#cb9-135" aria-hidden="true" tabindex="-1"></a>  rolling_r2s_with_neutral_abs_gd1_plot,</span>
-<span id="cb9-136"><a href="#cb9-136" aria-hidden="true" tabindex="-1"></a>  <span class="at">filename =</span> <span class="fu">file.path</span>(PROJ_DIR, <span class="st">'bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png'</span>),</span>
-<span id="cb9-137"><a href="#cb9-137" aria-hidden="true" tabindex="-1"></a>  <span class="at">width =</span> <span class="dv">8</span>,</span>
-<span id="cb9-138"><a href="#cb9-138" aria-hidden="true" tabindex="-1"></a>  <span class="at">height =</span> <span class="dv">8</span> <span class="sc">/</span> <span class="fl">1.5</span></span>
-<span id="cb9-139"><a href="#cb9-139" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb9-132"><a href="#cb9-132" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <p><img src="bootstrapped-rolling-r2s-with-neutral-gd-0.png" class="img-fluid"></p>
 <p>So we see that subsetting xG and goals to tied gamestates <strong>reduces</strong> how predictive they are of future points per game, both for the Big 5 leagues and the MLS. Perhaps this is not surprising, as we’re disregarding a lot of data (over 50%!) that is included in full match sums.</p>
-<p>Let’s see if the same plot using the alternative definition for neutral gamestates–time when the absolute goal difference is 0 or 1–looks any different.</p>
+<p>Let’s see if the same plot using the alternative definition for neutral gamestates–time when the absolute GD is 0 or 1–looks any different.</p>
 <p><img src="bootstrapped-rolling-r2s-with-neutral-abs-gd-1.png" class="img-fluid"></p>
 <p>Ah, so using the alternative, more relaxed definition of neutral gamestate, the predictiveness of the season-to-date xG and goal ratios is much closer to the full match analogues. Nonetheless, it’s evident that the neutral gamestate xG and goal ratios are no better than the full match ratios, indicating that there is no incremental value to be had with focusing on neutral gamestates. This falls in line with what Ijtsma hypothesized–that the effect of within-match complacency is minimal, and accounting for it (by reducing tallies to neutral gamestates) is more than likely to reduce predictiveness.</p>
+<p>Let’s put our two neutral gamestate xG traces alongside the full match xG trace for one complete picture.</p>
+<div class="cell">
+<details>
+<summary>Plotting full-match and neutral xG ratios</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>mini_rolling_r2s_neutral <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">bind_rows</span>(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  rolling_r2s_gd0 <span class="sc">|&gt;</span> </span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>      league_group <span class="sc">==</span> <span class="st">'Big 5'</span>,</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>      predictor <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">'past_xg_ratio'</span>, <span class="st">'past_xg_neutral_ratio'</span>),</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>      target <span class="sc">==</span> <span class="st">'future_ppg'</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">predictor =</span> <span class="fu">ifelse</span>(predictor <span class="sc">==</span> <span class="st">'past_xg_neutral_ratio'</span>, <span class="st">'past_xg_gd0_ratio'</span>, predictor)</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  rolling_r2s_abs_gd1 <span class="sc">|&gt;</span> </span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>      league_group <span class="sc">==</span> <span class="st">'Big 5'</span>,</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>      predictor <span class="sc">==</span> <span class="st">'past_xg_neutral_ratio'</span>,</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>      target <span class="sc">==</span> <span class="st">'future_ppg'</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>    dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>      <span class="at">predictor =</span> <span class="st">'past_xg_abs_gd1_ratio'</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>NEUTRAL_PRETTY_PREDICTOR_NAMES <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>  <span class="st">'past_xg_gd0_ratio'</span> <span class="ot">=</span> <span class="st">'xG Ratio when tied'</span>,</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>  <span class="st">'past_xg_abs_gd1_ratio'</span> <span class="ot">=</span> <span class="st">'xG Ratio when abs(GD) &lt;= 1'</span>,</span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>  <span class="st">'past_xg_ratio'</span> <span class="ot">=</span> <span class="st">'xG Ratio'</span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>XG_RATIO_ABS_GD1_COLOR <span class="ot">&lt;-</span> <span class="st">'#b4e600'</span></span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>NEUTRAL_COLOR_PALETTE <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>  <span class="st">'xG Ratio when tied'</span> <span class="ot">=</span> XG_RATIO_GD0_COLOR,</span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a>  <span class="st">'xG Ratio when abs(GD) &lt;= 1'</span> <span class="ot">=</span> XG_RATIO_ABS_GD1_COLOR,</span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>  <span class="st">'xG Ratio'</span> <span class="ot">=</span> XG_RATIO_COLOR</span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>prettified_rolling_r2s_neutral <span class="ot">&lt;-</span> mini_rolling_r2s_neutral <span class="sc">|&gt;</span> </span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>    predictor <span class="sc">%in%</span> <span class="fu">names</span>(NEUTRAL_PRETTY_PREDICTOR_NAMES),</span>
+<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a>    target <span class="sc">==</span> <span class="st">'future_ppg'</span>,</span>
+<span id="cb10-39"><a href="#cb10-39" aria-hidden="true" tabindex="-1"></a>    league_group <span class="sc">==</span> <span class="st">'Big 5'</span></span>
+<span id="cb10-40"><a href="#cb10-40" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb10-41"><a href="#cb10-41" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb10-42"><a href="#cb10-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> <span class="fu">factor</span>(NEUTRAL_PRETTY_PREDICTOR_NAMES[predictor], <span class="fu">rev</span>(NEUTRAL_PRETTY_PREDICTOR_NAMES))</span>
+<span id="cb10-43"><a href="#cb10-43" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb10-44"><a href="#cb10-44" aria-hidden="true" tabindex="-1"></a>  <span class="do">## put xG on top</span></span>
+<span id="cb10-45"><a href="#cb10-45" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(dplyr<span class="sc">::</span><span class="fu">desc</span>(pretty_predictor))</span>
+<span id="cb10-46"><a href="#cb10-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-47"><a href="#cb10-47" aria-hidden="true" tabindex="-1"></a>min_prettified_rolling_r2s_neutral <span class="ot">&lt;-</span> prettified_rolling_r2s_neutral <span class="sc">|&gt;</span> </span>
+<span id="cb10-48"><a href="#cb10-48" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(r2 <span class="sc">&gt;</span> <span class="fl">0.5</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb10-49"><a href="#cb10-49" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(pretty_predictor) <span class="sc">|&gt;</span> </span>
+<span id="cb10-50"><a href="#cb10-50" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">slice_min</span>(game_idx, <span class="at">n =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb10-51"><a href="#cb10-51" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">ungroup</span>()</span>
+<span id="cb10-52"><a href="#cb10-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-53"><a href="#cb10-53" aria-hidden="true" tabindex="-1"></a>rolling_r2s_neutral_plot <span class="ot">&lt;-</span> prettified_rolling_r2s_neutral <span class="sc">|&gt;</span> </span>
+<span id="cb10-54"><a href="#cb10-54" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb10-55"><a href="#cb10-55" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
+<span id="cb10-56"><a href="#cb10-56" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> game_idx,</span>
+<span id="cb10-57"><a href="#cb10-57" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> r2</span>
+<span id="cb10-58"><a href="#cb10-58" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-59"><a href="#cb10-59" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_segment</span>(</span>
+<span id="cb10-60"><a href="#cb10-60" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> min_prettified_rolling_r2s_neutral,</span>
+<span id="cb10-61"><a href="#cb10-61" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
+<span id="cb10-62"><a href="#cb10-62" aria-hidden="true" tabindex="-1"></a>      <span class="at">color =</span> pretty_predictor,</span>
+<span id="cb10-63"><a href="#cb10-63" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="dv">0</span>,</span>
+<span id="cb10-64"><a href="#cb10-64" aria-hidden="true" tabindex="-1"></a>      <span class="at">xend =</span> game_idx,</span>
+<span id="cb10-65"><a href="#cb10-65" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> r2,</span>
+<span id="cb10-66"><a href="#cb10-66" aria-hidden="true" tabindex="-1"></a>      <span class="at">yend =</span> r2</span>
+<span id="cb10-67"><a href="#cb10-67" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb10-68"><a href="#cb10-68" aria-hidden="true" tabindex="-1"></a>    <span class="at">linetype =</span> <span class="dv">2</span>,</span>
+<span id="cb10-69"><a href="#cb10-69" aria-hidden="true" tabindex="-1"></a>    <span class="at">linewidth =</span> <span class="fl">0.5</span></span>
+<span id="cb10-70"><a href="#cb10-70" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-71"><a href="#cb10-71" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_segment</span>(</span>
+<span id="cb10-72"><a href="#cb10-72" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> min_prettified_rolling_r2s_neutral,</span>
+<span id="cb10-73"><a href="#cb10-73" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
+<span id="cb10-74"><a href="#cb10-74" aria-hidden="true" tabindex="-1"></a>      <span class="at">color =</span> pretty_predictor,</span>
+<span id="cb10-75"><a href="#cb10-75" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> game_idx,</span>
+<span id="cb10-76"><a href="#cb10-76" aria-hidden="true" tabindex="-1"></a>      <span class="at">xend =</span> game_idx,</span>
+<span id="cb10-77"><a href="#cb10-77" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> <span class="dv">0</span>,</span>
+<span id="cb10-78"><a href="#cb10-78" aria-hidden="true" tabindex="-1"></a>      <span class="at">yend =</span> r2</span>
+<span id="cb10-79"><a href="#cb10-79" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb10-80"><a href="#cb10-80" aria-hidden="true" tabindex="-1"></a>    <span class="at">linetype =</span> <span class="dv">2</span>,</span>
+<span id="cb10-81"><a href="#cb10-81" aria-hidden="true" tabindex="-1"></a>    <span class="at">linewidth =</span> <span class="fl">0.5</span></span>
+<span id="cb10-82"><a href="#cb10-82" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-83"><a href="#cb10-83" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_line</span>(</span>
+<span id="cb10-84"><a href="#cb10-84" aria-hidden="true" tabindex="-1"></a>    <span class="at">linewidth =</span> <span class="fl">0.75</span>,</span>
+<span id="cb10-85"><a href="#cb10-85" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">color =</span> pretty_predictor)</span>
+<span id="cb10-86"><a href="#cb10-86" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-87"><a href="#cb10-87" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">scale_color_manual</span>(</span>
+<span id="cb10-88"><a href="#cb10-88" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> NEUTRAL_COLOR_PALETTE</span>
+<span id="cb10-89"><a href="#cb10-89" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-90"><a href="#cb10-90" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">guides</span>(</span>
+<span id="cb10-91"><a href="#cb10-91" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> ggplot2<span class="sc">::</span><span class="fu">guide_legend</span>(</span>
+<span id="cb10-92"><a href="#cb10-92" aria-hidden="true" tabindex="-1"></a>      <span class="at">title =</span> <span class="cn">NULL</span>,</span>
+<span id="cb10-93"><a href="#cb10-93" aria-hidden="true" tabindex="-1"></a>      <span class="at">position =</span> <span class="st">'inside'</span>,</span>
+<span id="cb10-94"><a href="#cb10-94" aria-hidden="true" tabindex="-1"></a>      <span class="at">label.theme =</span> ggplot2<span class="sc">::</span><span class="fu">element_text</span>(<span class="at">color =</span> WHITISH_FOREGROUND_COLOR, <span class="at">size =</span> <span class="dv">14</span>, FONT),</span>
+<span id="cb10-95"><a href="#cb10-95" aria-hidden="true" tabindex="-1"></a>      <span class="at">override.aes =</span> <span class="fu">list</span>(<span class="at">linewidth =</span> <span class="dv">2</span>)</span>
+<span id="cb10-96"><a href="#cb10-96" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb10-97"><a href="#cb10-97" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-98"><a href="#cb10-98" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">scale_y_continuous</span>(</span>
+<span id="cb10-99"><a href="#cb10-99" aria-hidden="true" tabindex="-1"></a>    <span class="at">expand =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>),</span>
+<span id="cb10-100"><a href="#cb10-100" aria-hidden="true" tabindex="-1"></a>    <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>),</span>
+<span id="cb10-101"><a href="#cb10-101" aria-hidden="true" tabindex="-1"></a>    <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.2</span>),</span>
+<span id="cb10-102"><a href="#cb10-102" aria-hidden="true" tabindex="-1"></a>    <span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">number_format</span>(<span class="at">accuracy =</span> <span class="fl">0.1</span>)</span>
+<span id="cb10-103"><a href="#cb10-103" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-104"><a href="#cb10-104" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">scale_x_continuous</span>(</span>
+<span id="cb10-105"><a href="#cb10-105" aria-hidden="true" tabindex="-1"></a>    <span class="at">expand =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>),</span>
+<span id="cb10-106"><a href="#cb10-106" aria-hidden="true" tabindex="-1"></a>    <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">38</span>),</span>
+<span id="cb10-107"><a href="#cb10-107" aria-hidden="true" tabindex="-1"></a>    <span class="at">breaks =</span> <span class="fu">seq.int</span>(<span class="dv">0</span>, <span class="dv">35</span>, <span class="at">by =</span> <span class="dv">5</span>),</span>
+<span id="cb10-108"><a href="#cb10-108" aria-hidden="true" tabindex="-1"></a>    <span class="at">labels =</span> <span class="fu">seq.int</span>(<span class="dv">0</span>, <span class="dv">35</span>, <span class="at">by =</span> <span class="dv">5</span>)</span>
+<span id="cb10-109"><a href="#cb10-109" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-110"><a href="#cb10-110" aria-hidden="true" tabindex="-1"></a>  ggtext<span class="sc">::</span><span class="fu">geom_richtext</span>(</span>
+<span id="cb10-111"><a href="#cb10-111" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(),</span>
+<span id="cb10-112"><a href="#cb10-112" aria-hidden="true" tabindex="-1"></a>    ggplot2<span class="sc">::</span><span class="fu">aes</span>(</span>
+<span id="cb10-113"><a href="#cb10-113" aria-hidden="true" tabindex="-1"></a>      <span class="at">x =</span> <span class="dv">1</span>,</span>
+<span id="cb10-114"><a href="#cb10-114" aria-hidden="true" tabindex="-1"></a>      <span class="at">y =</span> <span class="fl">0.6</span>,</span>
+<span id="cb10-115"><a href="#cb10-115" aria-hidden="true" tabindex="-1"></a>      <span class="at">label =</span> CROSSHAIR_LABEL</span>
+<span id="cb10-116"><a href="#cb10-116" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb10-117"><a href="#cb10-117" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">label.color =</span> <span class="cn">NA</span>,</span>
+<span id="cb10-118"><a href="#cb10-118" aria-hidden="true" tabindex="-1"></a>    <span class="at">label.padding =</span> grid<span class="sc">::</span><span class="fu">unit</span>(<span class="fu">rep</span>(<span class="dv">0</span>, <span class="dv">4</span>), <span class="st">'pt'</span>),</span>
+<span id="cb10-119"><a href="#cb10-119" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> WHITISH_FOREGROUND_COLOR,</span>
+<span id="cb10-120"><a href="#cb10-120" aria-hidden="true" tabindex="-1"></a>    <span class="at">family =</span> FONT,</span>
+<span id="cb10-121"><a href="#cb10-121" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="dv">14</span> <span class="sc">/</span> .pt,</span>
+<span id="cb10-122"><a href="#cb10-122" aria-hidden="true" tabindex="-1"></a>    <span class="at">hjust =</span> <span class="dv">0</span>,</span>
+<span id="cb10-123"><a href="#cb10-123" aria-hidden="true" tabindex="-1"></a>    <span class="at">vjust =</span> <span class="fl">0.5</span></span>
+<span id="cb10-124"><a href="#cb10-124" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-125"><a href="#cb10-125" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">theme</span>(</span>
+<span id="cb10-126"><a href="#cb10-126" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position.inside =</span> <span class="fu">c</span>(<span class="fl">0.7</span>, <span class="fl">0.8</span>),</span>
+<span id="cb10-127"><a href="#cb10-127" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.key.spacing.y =</span> ggplot2<span class="sc">::</span><span class="fu">unit</span>(<span class="sc">-</span><span class="dv">2</span>, <span class="st">'pt'</span>),</span>
+<span id="cb10-128"><a href="#cb10-128" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.major =</span> ggplot2<span class="sc">::</span><span class="fu">element_blank</span>(),</span>
+<span id="cb10-129"><a href="#cb10-129" aria-hidden="true" tabindex="-1"></a>    <span class="at">plot.title =</span> ggtext<span class="sc">::</span><span class="fu">element_markdown</span>(<span class="at">margin =</span> ggplot2<span class="sc">::</span><span class="fu">margin</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">10</span>, <span class="dv">0</span>))</span>
+<span id="cb10-130"><a href="#cb10-130" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb10-131"><a href="#cb10-131" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">labs</span>(</span>
+<span id="cb10-132"><a href="#cb10-132" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">'Predictiveness of Season-to-Date xG on&lt;br/&gt;Rest-of-Season Points per Game in the Big 5 leagues'</span>,</span>
+<span id="cb10-133"><a href="#cb10-133" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">'Match Day'</span>,</span>
+<span id="cb10-134"><a href="#cb10-134" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">'R&lt;sup&gt;2&lt;/sup&gt;'</span>,</span>
+<span id="cb10-135"><a href="#cb10-135" aria-hidden="true" tabindex="-1"></a>    <span class="at">caption =</span> CAPTION_LABEL,</span>
+<span id="cb10-136"><a href="#cb10-136" aria-hidden="true" tabindex="-1"></a>    <span class="at">tag =</span> TAG_LABEL</span>
+<span id="cb10-137"><a href="#cb10-137" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb10-138"><a href="#cb10-138" aria-hidden="true" tabindex="-1"></a>rolling_r2s_neutral_plot</span>
+<span id="cb10-139"><a href="#cb10-139" aria-hidden="true" tabindex="-1"></a>ggplot2<span class="sc">::</span><span class="fu">ggsave</span>(</span>
+<span id="cb10-140"><a href="#cb10-140" aria-hidden="true" tabindex="-1"></a>  rolling_r2s_neutral_plot,</span>
+<span id="cb10-141"><a href="#cb10-141" aria-hidden="true" tabindex="-1"></a>  <span class="at">filename =</span> <span class="fu">file.path</span>(PROJ_DIR, <span class="st">'rolling-r2s-neutral.png'</span>),</span>
+<span id="cb10-142"><a href="#cb10-142" aria-hidden="true" tabindex="-1"></a>  <span class="at">width =</span> <span class="dv">6</span>,</span>
+<span id="cb10-143"><a href="#cb10-143" aria-hidden="true" tabindex="-1"></a>  <span class="at">height =</span> <span class="dv">6</span> </span>
+<span id="cb10-144"><a href="#cb10-144" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p><img src="rolling-r2s-neutral.png" class="img-fluid"></p>
 </section>
 </section>
 <section id="discussion-and-conclusion" class="level1">
 <h1>Discussion and Conclusion</h1>
-<p>Ok, so we didn’t find a ground-breaking result with neutral gamestates, although the value of a <a href="https://en.wikipedia.org/wiki/Null_result">“null result”</a> should not be understated.</p>
-<p>To offer some kind of insight that might be useful, I present the game index (i.e.&nbsp;match day) at which my data shows that the season-to-date measures start to provide a reliable signal for forecasting future performance.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a> I define the reliability “threshold” as the first week in which the running R-squared value exceeds 0.5. For those reading the footnotes or broadly aware of the literature on xG predictiveness, this is effectively my look at the common adage that xG becomes a reliable indicator of future performance somewhere between the 5 and 15 game mark.<a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a></p>
+<p>Ok, so we didn’t find that neutral gamestate xG beats out full match xG in terms of rest-of-season predictiveness. On the other hand, if we compare the xG ratio in gamestates with a 0 or 1 absolute score difference to the full match xG, we see that there is not a big difference. This sort of indirectly shows that there is not a lot value in including the xG in gamestates where the absolute score difference is greater than 1. This backs up the intuition that xG accumulated in lopsided games (either by the trailing or leading team) is not all that meaningful for projecting how either team will perform in the future. Further, in comparing the predictiveness of the two definitions of neutral gamestates, we might say that there is non-trivial value in using the xG accumulated in matches where the score difference is just 1, not just when the teams are tied.</p>
+<p>Now, to offer some kind of additional insight that might be useful, I present the game index (i.e.&nbsp;match day) at which my data shows that the season-to-date measures start to provide a reliable signal for forecasting future performance.<a href="#fn9" class="footnote-ref" id="fnref9" role="doc-noteref"><sup>9</sup></a> I define the reliability “threshold” as the first week in which the running <span class="math inline">\(R^2\)</span> value exceeds 0.5. For those reading the footnotes or broadly aware of the literature on xG predictiveness, this is effectively my look at the common adage that xG becomes a reliable indicator of future performance somewhere between the 5 and 15 game mark.<a href="#fn10" class="footnote-ref" id="fnref10" role="doc-noteref"><sup>10</sup></a></p>
 <div class="cell">
 <details>
 <summary>Calculating when past performance measures become reliable indicators of future performance</summary>
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>rolling_r2s_abs_gd1 <span class="sc">|&gt;</span> </span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    league_group <span class="sc">==</span> <span class="st">'Big 5'</span>,</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    target <span class="sc">==</span> <span class="st">'future_g_ratio'</span>,</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    predictor <span class="sc">%in%</span> <span class="fu">names</span>(BASE_PRETTY_PREDICTOR_NAMES)</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> BASE_PRETTY_PREDICTOR_NAMES[predictor]</span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(r2 <span class="sc">&gt;</span> <span class="fl">0.5</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(pretty_predictor) <span class="sc">|&gt;</span></span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">slice_min</span>(game_idx, <span class="at">n =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">complete</span>(</span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> BASE_PRETTY_PREDICTOR_NAMES</span>
-<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(game_idx) <span class="sc">|&gt;</span> </span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
-<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Predictor</span><span class="st">`</span> <span class="ot">=</span> pretty_predictor, </span>
-<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Match Day</span><span class="st">`</span> <span class="ot">=</span> tidyr<span class="sc">::</span><span class="fu">replace_na</span>(<span class="fu">as.character</span>(game_idx), <span class="st">'-'</span>)</span>
-<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
-<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">align =</span> <span class="st">'lr'</span></span>
-<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>  clipr<span class="sc">::</span><span class="fu">write_clip</span>()</span>
-<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>rolling_r2s_abs_gd1 <span class="sc">|&gt;</span> </span>
-<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
-<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>    league_group <span class="sc">==</span> <span class="st">'Big 5'</span>,</span>
-<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>    target <span class="sc">==</span> <span class="st">'future_ppg'</span>,</span>
-<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a>    predictor <span class="sc">%in%</span> <span class="fu">names</span>(BASE_PRETTY_PREDICTOR_NAMES)</span>
-<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> BASE_PRETTY_PREDICTOR_NAMES[predictor]</span>
-<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(r2 <span class="sc">&gt;</span> <span class="fl">0.5</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(pretty_predictor) <span class="sc">|&gt;</span></span>
-<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">slice_min</span>(game_idx, <span class="at">n =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb10-39"><a href="#cb10-39" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
-<span id="cb10-40"><a href="#cb10-40" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">complete</span>(</span>
-<span id="cb10-41"><a href="#cb10-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> BASE_PRETTY_PREDICTOR_NAMES</span>
-<span id="cb10-42"><a href="#cb10-42" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-43"><a href="#cb10-43" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(game_idx) <span class="sc">|&gt;</span> </span>
-<span id="cb10-44"><a href="#cb10-44" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
-<span id="cb10-45"><a href="#cb10-45" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Predictor</span><span class="st">`</span> <span class="ot">=</span> pretty_predictor, </span>
-<span id="cb10-46"><a href="#cb10-46" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Match Day</span><span class="st">`</span> <span class="ot">=</span> tidyr<span class="sc">::</span><span class="fu">replace_na</span>(<span class="fu">as.character</span>(game_idx), <span class="st">'-'</span>)</span>
-<span id="cb10-47"><a href="#cb10-47" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-48"><a href="#cb10-48" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
-<span id="cb10-49"><a href="#cb10-49" aria-hidden="true" tabindex="-1"></a>    <span class="at">align =</span> <span class="st">'lr'</span></span>
-<span id="cb10-50"><a href="#cb10-50" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
-<span id="cb10-51"><a href="#cb10-51" aria-hidden="true" tabindex="-1"></a>  clipr<span class="sc">::</span><span class="fu">write_clip</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>rolling_r2s_abs_gd1 <span class="sc">|&gt;</span> </span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    league_group <span class="sc">==</span> <span class="st">'Big 5'</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    target <span class="sc">==</span> <span class="st">'future_g_ratio'</span>,</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    predictor <span class="sc">%in%</span> <span class="fu">names</span>(BASE_PRETTY_PREDICTOR_NAMES)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> BASE_PRETTY_PREDICTOR_NAMES[predictor]</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(r2 <span class="sc">&gt;</span> <span class="fl">0.5</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(pretty_predictor) <span class="sc">|&gt;</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">slice_min</span>(game_idx, <span class="at">n =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">complete</span>(</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> BASE_PRETTY_PREDICTOR_NAMES</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(game_idx) <span class="sc">|&gt;</span> </span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Predictor</span><span class="st">`</span> <span class="ot">=</span> pretty_predictor, </span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Match Day</span><span class="st">`</span> <span class="ot">=</span> tidyr<span class="sc">::</span><span class="fu">replace_na</span>(<span class="fu">as.character</span>(game_idx), <span class="st">'-'</span>)</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">align =</span> <span class="st">'lr'</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>  clipr<span class="sc">::</span><span class="fu">write_clip</span>()</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>rolling_r2s_abs_gd1 <span class="sc">|&gt;</span> </span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(</span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>    league_group <span class="sc">==</span> <span class="st">'Big 5'</span>,</span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>    target <span class="sc">==</span> <span class="st">'future_ppg'</span>,</span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>    predictor <span class="sc">%in%</span> <span class="fu">names</span>(BASE_PRETTY_PREDICTOR_NAMES)</span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> BASE_PRETTY_PREDICTOR_NAMES[predictor]</span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">filter</span>(r2 <span class="sc">&gt;</span> <span class="fl">0.5</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb11-37"><a href="#cb11-37" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">group_by</span>(pretty_predictor) <span class="sc">|&gt;</span></span>
+<span id="cb11-38"><a href="#cb11-38" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">slice_min</span>(game_idx, <span class="at">n =</span> <span class="dv">1</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb11-39"><a href="#cb11-39" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb11-40"><a href="#cb11-40" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">complete</span>(</span>
+<span id="cb11-41"><a href="#cb11-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">pretty_predictor =</span> BASE_PRETTY_PREDICTOR_NAMES</span>
+<span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">arrange</span>(game_idx) <span class="sc">|&gt;</span> </span>
+<span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">transmute</span>(</span>
+<span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Predictor</span><span class="st">`</span> <span class="ot">=</span> pretty_predictor, </span>
+<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Match Day</span><span class="st">`</span> <span class="ot">=</span> tidyr<span class="sc">::</span><span class="fu">replace_na</span>(<span class="fu">as.character</span>(game_idx), <span class="st">'-'</span>)</span>
+<span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-48"><a href="#cb11-48" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb11-49"><a href="#cb11-49" aria-hidden="true" tabindex="-1"></a>    <span class="at">align =</span> <span class="st">'lr'</span></span>
+<span id="cb11-50"><a href="#cb11-50" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb11-51"><a href="#cb11-51" aria-hidden="true" tabindex="-1"></a>  clipr<span class="sc">::</span><span class="fu">write_clip</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <table class="table">
@@ -1903,23 +2081,31 @@ Effect of bootstrapping
 </tr>
 </tbody>
 </table>
+<p>So, does this mean that we should not look at xG in tied gamestates (or leading or trailing gamestates) at all? Eh, I think there’s still usefulness for contextualizing xG by gamestate to gain insight into how teams have achieved their results.</p>
+<blockquote class="twitter-tweet blockquote">
+<p lang="en" dir="ltr">
+</p><p>Expected goal difference by game state in the EPL this season. What stands out?<br><br>1⃣ Newcastle have been most dominant when leading.<br>2⃣ Man City have been at their best when tied or trailing.<br>3⃣ Spurs have been mediocre when leading, but otherwise very good. <a href="https://t.co/tUZPMDVMcr">pic.twitter.com/tUZPMDVMcr</a></p>
+<p></p>
+<p>— Tony (<span class="citation" data-cites="TonyElHabr">@TonyElHabr</span>) <a href="https://twitter.com/TonyElHabr/status/1718281550633087034?ref_src=twsrc%5Etfw">October 28, 2023</a></p>
+</blockquote>
+<script async="" src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 </section>
 <section id="appendix" class="level1">
 <h1>Appendix</h1>
 <section id="additional-past-metrics" class="level2">
 <h2 class="anchored" data-anchor-id="additional-past-metrics">Additional Past Metrics</h2>
-<p>I was interested in evaluating running in-season R-squared values for a few more measures of past performance:</p>
+<p>I was interested in evaluating running in-season <span class="math inline">\(R^2\)</span> values for a few more measures of past performance:</p>
 <ol type="1">
 <li>passes into the penalty area ratio</li>
 <li><a href="https://theanalyst.com/eu/2021/06/what-are-expected-goals-on-target-xgot/">expected goals on target (xGOT)</a> ratio</li>
 <li>xG + expected assisted goals<a href="#fn11" class="footnote-ref" id="fnref11" role="doc-noteref"><sup>11</sup></a> (xG+xAG) ratio</li>
 </ol>
-<p>Below is the same running R-squared plot shown before, just with these new measures, along side our tried and true xG ratio measure.</p>
+<p>Below is the same running <span class="math inline">\(R^2\)</span> plot shown before, just with these new measures, along side our tried and true xG ratio measure.</p>
 <p><img src="rolling-r2s-appendix.png" class="img-fluid"></p>
 <p>Aha! It seems that we have identified a measure–xG+xAG ratio (purple above)–that becomes reliable for forecasting rest-of-season performance even earlier than xG ratio. Specifically, it exceeds the reliability threshold at the 7 and 10 game marks for future goal ratio and future points per game respectively. That’s a non-trivial improvement compared to the 9 and 13 match day marks for xG ratio.</p>
 <p>Alas, xG+xAG metaphorically stands on the shoulders of xG, adding in the component of expected assists (xA) on shots. Assuming that the underlying xA model is well calibrated, perhaps we should not be surprised to see that the composite xG+xAG measure outperforms all others.</p>
 <div class="callout callout-style-default callout-note callout-titled" title="xG+xAG usage">
-<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-header d-flex align-content-center" data-bs-toggle="collapse" data-bs-target=".callout-5-contents" aria-controls="callout-5" aria-expanded="false" aria-label="Toggle callout">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
@@ -1928,9 +2114,9 @@ xG+xAG usage
 </div>
 <div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-3" class="callout-3-contents callout-collapse collapse">
+<div id="callout-5" class="callout-5-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
-<p>xG+xAG is not something I typically see used at the team-level. Rather, it’s more commonly used to describe expected individual player contributions (goals + assists). Nonetheless, it’s interesting to see that one can achieve slightly better predictiveness with team xG+xAG.</p>
+<p>xG+xAG is not something I typically see used at the team-level, presumably because it effectively “double counts” goal contributions (goals + assists). Rather, it’s more commonly used to describe expected individual player contributions, where the intention is not to roll-up to the team-level. Nonetheless, it’s interesting to see that one can achieve slightly better predictiveness with team xG+xAG.</p>
 </div>
 </div>
 </div>
@@ -1938,19 +2124,14 @@ xG+xAG usage
 </section>
 <section id="non-neutral-xg-ratio" class="level2">
 <h2 class="anchored" data-anchor-id="non-neutral-xg-ratio">Non-Neutral xG Ratio</h2>
-<p>Finally, I was interested in verifying that there’s not a lot of value in non-neutral gamestate xG ratios. The plot below shows the running R-squared values for two measures already visualized:</p>
+<p>Finally, I was interested in verifying that there’s not a lot of value in non-neutral gamestate xG ratios. The plot below shows the running <span class="math inline">\(R^2\)</span> values for two measures already visualized:</p>
 <ol type="1">
 <li>xG ratio</li>
-<li>xG ratio when the absolute goal difference (“GD”) is less than or equal to 1 (84.2% of total minutes).</li>
+<li>xG ratio when the absolute GD is less than or equal to 1 (83.1% of total minutes).</li>
 </ol>
-<p>But, in additional to these, I also plot</p>
-<ol type="1">
-<li>xG ratio when the absolute goal difference is greater than 1 (17.1% of total minutes)</li>
-<li>xG ratio when the goal difference is greater than 1, i.e.&nbsp;leading by at least 2 (8.6% of total minutes)</li>
-<li>xG ratio when the goal difference is less than 1, i.e.&nbsp;trailing by at least 2 (also 8.6% of total minutes)</li>
-</ol>
+<p>But, in additional to these, I also plot the xG ratio when the absolute goal difference is greater than 1 (16.1% of total minutes)</p>
 <p><img src="rolling-r2s-abs-gd1-appendix.png" class="img-fluid"></p>
-<p>We see that that the trailing and leading by &gt;1 goal gamestate R-squared values basically hover around 0 across all match days, for both Big 5 and the MLS. This isn’t all that surprising given how small a percentage of full matches occur in &gt;1 GD gamestates.</p>
+<p>We see that that the <span class="math inline">\(R^2\)</span> values for absolute GD &gt;1 gamestates basically hover around 0 across all match days, for both the Big 5 and the MLS. This isn’t all that surprising given how small a percentage of full matches occur in &gt;1 GD gamestates. But it also backs up our intuition that stats (i.e.&nbsp;shots, xG) accumulated in such gamestates do not strongly reflect how the teams will perform for the rest-of-the-season.</p>
 
 
 
@@ -1969,15 +2150,15 @@ No matching items
 
 <ol>
 <li id="fn1"><p>If you know anything about the broader soccer analytics discourse, you’ve more than likely heard about one of the Ijtsma’s findings regarding the predictiveness of xG. As <a href="https://x.com/etmckinley">Eliot</a> <a href="https://www.americansocceranalysis.com/home/2022/7/19/the-replication-project-is-xg-the-best-predictor-of-future-results">puts</a> it: “If you’ve ever heard or read someone say that it takes 5-10 (4 in the article) games for xG to be predictive, they probably read this article or got it second hand from someone who has.”<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn2"><p>Note that there are <a href="https://jameswgrayson.wordpress.com/2015/01/06/a-quick-cautionary-note-on-predictiveness-and-r-squared/">some critics</a> of the choice to rely on R-squared as a measure of predictiveness. For the purpose of this post, we’ll take that criticism on the chin.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>Note that there are <a href="https://jameswgrayson.wordpress.com/2015/01/06/a-quick-cautionary-note-on-predictiveness-and-$R%5E2$/">some critics</a> of the choice to rely on <span class="math inline">\(R^2\)</span> as a measure of predictiveness. For the purpose of this post, we’ll take that criticism on the chin.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn3"><p>A “ratio” here is broadly defined in pseudo-code as <code>team's value / (team's value + opponent's value)</code>. Ijtsma’s notes in a reply to a comment that one might arguably use a difference formula, i.e.&nbsp;<code>team's value - opponent's value</code>, as ratios are susceptible to noise when values are themselves fractional. This is most relevant for xG, and not so relevant for shots and goals, which are inherently discrete.<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn4"><p>Notably, I exclude the COVID-19 influenced 2020 season, so as to reduce a bit of noise in the data. Although bootstrapping games within-season should reduce much of this noise, in practice, <a href="https://fbref.com/en/">FBref</a> is missing some game-level xG data for 2020 matches, so this choice is sort of just a pragmatic one.<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn5"><p>I only perform 100 bootstraps instead of 1,000 like Eliot did since I found 100 sufficient for creating visual clarity.<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn6"><p>This may not be easy to see directly since the bootstrapped and non-bootstrapped curves are not plotted altogether. Nonetheless, one can compare the peaks of the curves against the y-axis in this plot compared to the prior one to verify the suppressing effect of the resampling.<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn7"><p>If you’ve been following the code, these measures have already been calculated.<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn8"><p>There are similar trends with future goal ratio. I’ve opted for visual brevity here.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn9"><p>The tables that follow show non-bootstrapped R-squared values. The bootstrapped R-squared values only exceed 0.5 for a handful of measures, typically in the 15-20 game range.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
-<li id="fn10"><p>Note that Ijtsma says that xG ratio becomes useful as early as the fourth match week. However, his statement is based purely on a visual assessment of when the R-squared curve generally “settles down” after the expected early season up-tick. Looking at his graph, the R-squared values for xG don’t actually exceed the 0.5 threshold until some point between the 10th and 15th match days.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn9"><p>The tables that follow show non-bootstrapped <span class="math inline">\(R^2\)</span> values. The bootstrapped <span class="math inline">\(R^2\)</span> values only exceed 0.5 for a handful of measures, typically in the 15-20 game range.<a href="#fnref9" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn10"><p>Note that Ijtsma says that xG ratio becomes useful as early as the fourth match week. However, his statement is based purely on a visual assessment of when the <span class="math inline">\(R^2\)</span> curve generally “settles down” after the expected early season up-tick. Looking at his graph, the <span class="math inline">\(R^2\)</span> values for xG don’t actually exceed the 0.5 threshold until some point between the 10th and 15th match days.<a href="#fnref10" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 <li id="fn11"><p>FBref’s explanation regarding how xAG differs from expected assists (xA): “xA, or expected assists, is the likelihood that a given completed pass will become a goal assist… Players receive xA for every completed pass regardless of whether a shot occurred or not… [Expected Assisted Goals (xAG)] indicates a player’s ability to set up scoring chances… Players receive xAG only when a shot is taken after a completed pass.”<a href="#fnref11" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main> <!-- /main -->
