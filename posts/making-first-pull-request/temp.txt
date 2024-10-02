@@ -1,0 +1,94 @@
+
+### Additional Notes
+
+There are a couple of extra/alternative things you should consider doing in this process (although these are completely optional).
+
+-   After `cd`'ing into the repo, a good "sanity check" to perform is a `git remote -v` to verify that you are on `(master)` branch of the forked repo. You should see the following when running this command.
+
+```         
+origin https://github.com/{user}/{repo}.git (fetch)
+origin https://github.com/{user}/{repo}.git (push)
+```
+
+Then, you could run this command again after the `git remote add upstream https://github.com/{owner}/{repo}.git` command and verify that you see the following.
+
+```         
+origin https://github.com/{user}/{repo}.git (fetch)
+origin https://github.com/{user}/{repo}.git (push)
+upstream https://github.com/{owner}/{repo}.git (fetch)
+upstream https://github.com/{owner}/{repo}.git (push)
+```
+
+-   Regarding the `git pull upstream  --ff-only` step, it's actually "safer" to break this step up into two: (1) `git fetch upstream`, followed by (2) `git merge upstream/master`. Nonetheless, the `git pull` command shown here *should* achieve the same result.
+
+-   Following the `git pull upstream  --ff-only` step, you might also want to do a `git push` to **really** ensure that your master branch is "in sync" with the original repo. Nonetheless, this is completely optional, especially if you're working exclusively on a branch. This is discussed by [Jenny Bryan](https://twitter.com/JennyBryan) in the ["Get upstream changes for a fork" chapter](https://happygitwithr.com/upstream-changes.html) in her\[*Happy Git and GitHub for the useR* book\](https://happygitwithr.com).
+
+-   In the last "Create pull request" page, where you have the option to write a comment, it's useful to write something like "Fixes #{#}", where `{#}` is the number of the issue. GitHub has a nice feature that can link the pull request to the issue that it attempts to fix (assuming that the pull request is directed towards a specific issue).
+
+
+## My Experience
+
+The RStudio staff sort of gave us a head-start by tagging some issues beforehand. (Many of these were supposed to be relatively straightforward to resolve.) Trying to avoid something too difficult and not wanting to be stuck in "indecision purgatory", I quickly jumped on one that *seemed* simple enough---[`{dplyr}`'s issue 4071: "Add examples for `cumall()`](https://github.com/tidyverse/dplyr/issues/4071). Note that I say that it "seemed simple enough"; in reality, it would go on to take a little bit more effort than I had originally imagined it would (which seems to be true of anything in software development :grimacing:).
+
+First, it took me a minute or so to find out where I would need to add the documentation examples. Normally, assuming one is following the ["typical" `{devtools}`/`{Roxygen2}` workflow for package documentation](http://r-pkgs.had.co.nz/man.html), one would add comments in the same file as the functions that are being documented. In this case, however, the documentation for `cumall()` (and also that for the the `cumany()` and `cummean()` functions, which were also without examples), is generated programmatically in `{dplyr}`'s [RcppExports.R](https://github.com/tidyverse/dplyr/blob/master/R/RcppExports.R) file from a cpp (i.e. C++) file---[window.cpp](https://github.com/tidyverse/dplyr/blob/master/src/window.cpp).
+
+Next was the actual "heart" of the process---creating the example(s). As a strong advocate of the "copy-and-paste-from-StackOverflow" workflow :smile: (as well as the "changing-things-and-seeing-what-works" workflow), I searched some of the existing examples and found that the "ranking" documentation group (in [rank.R](https://github.com/tidyverse/dplyr/blob/master/R/rank.R)) provided a good starting point. I didn't take too long to come up with some basic examples. ([See the first commit on my pull request](https://github.com/tidyverse/dplyr/pull/4115/commits/4497ec4f6be1df4261a56abc971f3851bec2a9ba), or, for all of the details, [the whole history of the request](https://github.com/tidyverse/dplyr/pull/4115).) Then, after running a `devtools::check()` to regenerate the documentation, rebuild the package (and verify that I didn't "break" anything), etc., I submitted the pull request on GitHub.
+
+![](copy-paste-from-stack-overflow.jpg)
+
+I assumed (perhaps naively) that my pull request would be accepted without question. However, that was without considering the fact that it was going to be reviewed by none other than [Hadley Wickham](https://twitter.com/hadleywickham) himself. Hadley is certainly a meticulous person, so the changes would not get approved without some level of well-intentioned, critical examination. And, as it turns out, the request was not approved immediately.
+
+Hadley identified some points of improvement and submitted some comments, obligating me to address his feedback. Although failure to gain immediate acceptance for the pull request might be discouraging, this was certainly not the case for me (and I hope that it is not for anyone else, especially first-timers). My mindset was to treat the feedback as an opportunity for improvement, which I'm always up for. Moreover, Hadley's supportive statements and tone provided additional motivation for me to continue working toward something better. So, even though I'm mostly writing from my own point of view as a first-time pull request submitter, there is a lesson to be learned here for those receiving and reviewing pull requests from other---be supportive! [^11]
+
+[^11]: This reminds me of one of my favorite blog posts---[Yihui Xie](https://twitter.com/xieyihui)'s rant on the [over-eagerness of the Stack Overflow community to close "bad" questions](https://yihui.name/en/2017/12/so-bounties/).
+
+After submitting some updates in a second commit to my branch, I received another round of feedback from Hadley. Again, his tone was supportive, so I was more than happy to address his comments in a third commit shortly afterwards.
+
+As it stands today--a day after I made the initial fork and pull request---my pull request has an "Open" status. Nonetheless, I'm optimistic that it will eventually be merged (perhaps with another round or two of feedback and commits).
+
+## Parting Thoughts
+
+To sum up my whole `{tidyverse}` Developer Day experience, I'm really glad to have gone through the pull request process in a setting with a bunch of experienced people who were ready and willing to help, as well as others who were just as new to the whole thing as me! It really made everything less intimidating. And now, after having gained the experience, I won't hesitate to continue contributing to open-source projects going forward.
+
+Also, I'm really happy for the other first-time pull request submitters who were successful in their efforts!
+
+<blockquote class="twitter-tweet">
+
+<p lang="en" dir="ltr">
+
+Yay! My first PR to <a href="https://twitter.com/hashtag/tidyverse?src=hash&amp;ref_src=twsrc%5Etfw">#tidyverse</a> ggplot2 was merged 🤓🎉🎊. Happy <a href="https://twitter.com/hashtag/TidyverseDevDay?src=hash&amp;ref_src=twsrc%5Etfw">#TidyverseDevDay</a> !<a href="https://t.co/HDBqHMAsD9">https://t.co/HDBqHMAsD9</a>
+
+</p>
+
+— Amy Yang (@ayanalytics) <a href="https://twitter.com/ayanalytics/status/1086712507295846400?ref_src=twsrc%5Etfw">January 19, 2019</a>
+
+</blockquote>
+
+```{=html}
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+```
+<blockquote class="twitter-tweet">
+
+<p lang="en" dir="ltr">
+
+Wohoo! My first <a href="https://twitter.com/hashtag/dplyr?src=hash&amp;ref_src=twsrc%5Etfw">#dplyr</a> PR has been merged!! 😁 <a href="https://twitter.com/hashtag/TidyverseDevDay?src=hash&amp;ref_src=twsrc%5Etfw">#TidyverseDevDay</a> <a href="https://t.co/A5emJIRmKd">pic.twitter.com/A5emJIRmKd</a>
+
+</p>
+
+— Nic Crane (@nic_crane) <a href="https://twitter.com/nic_crane/status/1086709673896628225?ref_src=twsrc%5Etfw">January 19, 2019</a>
+
+</blockquote>
+
+```{=html}
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+```
+### Additional Resources
+
+Finally, as a "disclaimer" of sorts, I should say that I'm certainly not the first person to write about how to make a pull request (and I'm by no means an expert on the matter). For those looking for good reference material authored by people in the `R` community, I'd recommend the following resources.
+
+-   The ["Making a pull request" section in the "Git and GitHub" chapter](http://r-pkgs.had.co.nz/git.html#git-pullreq) in [Hadley Wickham](https://twitter.com/hadleywickham)'s [*R Packages* book](http://r-pkgs.had.co.nz/). [^12]
+
+-   The ["Get upstream changes for a fork" chapter](https://happygitwithr.com/upstream-changes.html) in [Jenny Bryan](https://twitter.com/JennyBryan)'s in \[*Happy Git and GitHub for the useR* book\] (<https://happygitwithr.com>).
+
+[^12]: Note that `{{branch-name}}` can be anything, but something like `issue-{{#}}` is a good practice.
+
