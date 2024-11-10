@@ -6,7 +6,7 @@ categories:
   - r
   - soccer
 image: 2023-mls-xgd-p90.png
-execute: 
+execute:
   code-fold: true
   eval: false
   include: true
@@ -46,7 +46,7 @@ library(tidyr)
 COUNTRY <- 'USA'
 GENDER <- 'M'
 TIER <- '1st'
-SEASON_END_YEAR <- 2023
+SEASON_END_YEAR <- 2024
 
 raw_shots <- worldfootballR::load_fb_match_shooting(
   country = COUNTRY,
@@ -61,7 +61,7 @@ raw_shots <- worldfootballR::load_fb_match_shooting(
 #| include: false
 # library(qs)
 PROJ_DIR <- 'posts/fbref-gamestate-expected-goal-difference'
-qs::qsave(raw_shots, file.path(PROJ_DIR, 'raw_shots.qs'))
+qs::qsave(raw_shots, file.path(PROJ_DIR, sprintf('raw_shots-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -116,7 +116,7 @@ raw_match_summaries <- worldfootballR::load_fb_match_summary(
 ```{r}
 #| label: raw_match_summaries-save
 #| include: false
-qs::qsave(raw_match_summaries, file.path(PROJ_DIR, 'raw_match_summaries.qs'))
+qs::qsave(raw_match_summaries, file.path(PROJ_DIR, sprintf('raw_match_summaries-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -175,47 +175,56 @@ extract_fbref_match_id <- function(match_url) {
   basename(dirname(match_url))
 }
 
-match_summaries <- raw_match_summaries |> 
-  dplyr::group_by(MatchURL) |> 
+fix_team <- function(x) {
+  dplyr::case_match(
+    x,
+    'Montreal Impact' ~ 'CF Montréal',
+    'Sporting Kansas City' ~ 'Sporting KC',
+    .default = x
+  )
+}
+
+match_summaries <- raw_match_summaries |>
+  dplyr::group_by(MatchURL) |>
   dplyr::mutate(
     match_summary_rn = dplyr::row_number(dplyr::desc(Event_Time)),
     match_has_no_penalties = all(Event_Type != 'Penalty')
-  ) |> 
-  dplyr::ungroup() |> 
+  ) |>
+  dplyr::ungroup() |>
   dplyr::mutate(
     match_has_no_goals = Away_Score == 0 & Home_Score == 0
-  ) |> 
-  ## Drop non-shot events, e.g. card and substitution events. 
+  ) |>
+  ## Drop non-shot events, e.g. card and substitution events.
   ##   Always keep the first timeline event, so that we're not accidentally dropping matches.
   dplyr::filter(
-    Event_Type %in% c('Goal', 'Own Goal', 'Penalty') | 
+    Event_Type %in% c('Goal', 'Own Goal', 'Penalty') |
       ## don't drop games with no goals
       (match_has_no_goals & match_has_no_penalties & match_summary_rn == 1)
-  ) |> 
+  ) |>
   dplyr::transmute(
     match_id = extract_fbref_match_id(MatchURL),
     season = Season_End_Year,
     gender = Gender,
     tier = Tier,
     date = lubridate::ymd(Match_Date),
-    home_team = Home_Team ,
-    away_team = Away_Team,
+    home_team = fix_team(Home_Team) ,
+    away_team = fix_team(Away_Team),
     period = as.integer(Event_Half),
     ## ensure that minutes always has a value
     minutes = dplyr::case_when(
-      period == 1L & Event_Time > 45L ~ 45L, 
+      period == 1L & Event_Time > 45L ~ 45L,
       period == 2L & Event_Time > 90L ~ 90L,
       .default = Event_Time
     ) |> as.integer(),
     minutes_added = dplyr::case_when(
-      period == 1L & Event_Time > 45 ~ Event_Time - 45L, 
+      period == 1L & Event_Time > 45 ~ Event_Time - 45L,
       period == 2L & Event_Time > 90 ~ Event_Time - 90L,
       .default = NA_integer_
     ),
     home_g = as.integer(gsub('[:].*$', '', Score_Progression)), ## after event
     away_g = as.integer(gsub('^.*[:]', '', Score_Progression)),
     is_own_goal = Event_Type == 'Own Goal',
-    team = Team,
+    team = fix_team(Team),
     player = Event_Players
   )
 ```
@@ -223,7 +232,7 @@ match_summaries <- raw_match_summaries |>
 ```{r}
 #| label: match_summaries-save
 #| include: false
-qs::qsave(match_summaries, file.path(PROJ_DIR, 'match_summaries.qs'))
+qs::qsave(match_summaries, file.path(PROJ_DIR, sprintf('match_summaries-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -253,24 +262,24 @@ Next, we start to clean up the `shots` data frame. The data wrangling is similar
 
 ```{r}
 #| label: shots
-shots <- raw_shots |> 
+shots <- raw_shots |>
   dplyr::transmute(
     match_id = extract_fbref_match_id(MatchURL),
     period = as.integer(Match_Half),
     ## convert "45+2" to "45"
     minutes = ifelse(
       grepl('[+]', Minute),
-      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\1', Minute)), 
+      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\1', Minute)),
       as.integer(Minute)
     ),
     ## convert "45+2" to "2"
     minutes_added = ifelse(
-      grepl('[+]', Minute), 
-      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\2', Minute)), 
+      grepl('[+]', Minute),
+      as.integer(gsub('(^[0-9]+)[+]([0-9]+$)', '\\2', Minute)),
       NA_integer_
     ),
     is_home = Home_Away == 'Home',
-    team = Squad,
+    team = fix_team(Squad),
     player = Player,
     is_goal = Outcome == 'Goal',
     xg = as.double(xG)
@@ -280,7 +289,7 @@ shots <- raw_shots |>
 ```{r}
 #| label: shots-save
 #| include: false
-qs::qsave(shots, file.path(PROJ_DIR, 'shots.qs'))
+qs::qsave(shots, file.path(PROJ_DIR, sprintf('shots-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -309,7 +318,7 @@ First, we inject "synthetic" records into the `shots` data for every case where 
 ```{r}
 #| label: shots_with_own_goals
 shots_with_own_goals <- dplyr::bind_rows(
-  shots |> 
+  shots |>
     dplyr::transmute(
       match_id,
       period,
@@ -323,10 +332,10 @@ shots_with_own_goals <- dplyr::bind_rows(
       is_own_goal = FALSE
     ),
   ## synthetic events for own goals
-  match_summaries |> 
+  match_summaries |>
     dplyr::filter(
       is_own_goal
-    ) |> 
+    ) |>
     dplyr::transmute(
       match_id,
       period,
@@ -346,17 +355,17 @@ Next, we add proper, cleaned columns for goals and xG.
 
 ```{r}
 #| label: clean_shots
-clean_shots <- shots_with_own_goals |> 
+clean_shots <- shots_with_own_goals |>
   ## To get meta-information about the game
   dplyr::inner_join(
     match_summaries |>
       dplyr::distinct(match_id, home_team, away_team),
     by = dplyr::join_by(match_id),
-    relationship = 'many-to-one'
-  ) |> 
+    relationship = 'many-to-many'
+  ) |>
   dplyr::mutate(
     home_g = dplyr::case_when(
-      ## Note that fotmob would list the away team for an own goal but fbref 
+      ## Note that fotmob would list the away team for an own goal but fbref
       ##   lists the home team
       (is_goal | is_own_goal) & is_home ~ 1L,
       is_own_goal & is_home ~ 1L,
@@ -379,8 +388,8 @@ clean_shots <- shots_with_own_goals |>
   ## Differentiate between shots in the same minute.
   dplyr::mutate(
     shot_idx = dplyr::row_number((minutes + dplyr::coalesce(minutes_added, 0L)))
-  ) |> 
-  dplyr::ungroup() |> 
+  ) |>
+  dplyr::ungroup() |>
   dplyr::transmute(
     shot_id = sprintf('%s-%02d', match_id, shot_idx),
     match_id,
@@ -403,7 +412,7 @@ clean_shots <- shots_with_own_goals |>
 ```{r}
 #| label: clean_shots-save
 #| include: false
-qs::qsave(clean_shots, file.path(PROJ_DIR, 'clean_shots.qs'))
+qs::qsave(clean_shots, file.path(PROJ_DIR, sprintf('clean_shots-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -438,8 +447,8 @@ To do that, we first re-assign ("re-stack") teams and goals based on the home an
 ```{r}
 #| label: restacked_shots
 restacked_shots <- dplyr::bind_rows(
-  clean_shots |> 
-    dplyr::filter(is_home) |> 
+  clean_shots |>
+    dplyr::filter(is_home) |>
     dplyr::transmute(
       shot_id,
       match_id,
@@ -457,8 +466,8 @@ restacked_shots <- dplyr::bind_rows(
       xg = home_xg,
       xg_conceded = away_xg
     ),
-  clean_shots |> 
-    dplyr::filter(!is_home) |> 
+  clean_shots |>
+    dplyr::filter(!is_home) |>
     dplyr::transmute(
       shot_id,
       match_id,
@@ -485,7 +494,7 @@ Then, we replicate the whole data frame, indicating whether we're looking at the
 #| label: doublecounted_restacked_shots
 doublecounted_restacked_shots <- dplyr::bind_rows(
   restacked_shots |> dplyr::mutate(pov = 'primary', .before = 1),
-  restacked_shots |> 
+  restacked_shots |>
     ## re-assign to temporary variable names first, so that way we don't accidentlaly overwrite information
     dplyr::rename(
       team1 = team,
@@ -494,7 +503,7 @@ doublecounted_restacked_shots <- dplyr::bind_rows(
       g2 = g_conceded,
       xg1 = xg,
       xg2 = xg_conceded
-    ) |> 
+    ) |>
     ## then formally re-assign columns
     dplyr::rename(
       team = team2,
@@ -503,22 +512,22 @@ doublecounted_restacked_shots <- dplyr::bind_rows(
       g_conceded = g1,
       xg = xg2,
       xg_conceded = xg1
-    ) |> 
+    ) |>
     dplyr::mutate(
       is_home = !is_home
-    ) |> 
+    ) |>
     dplyr::mutate(
       pov = 'secondary',
       .before = 1
     )
-) |> 
+) |>
   dplyr::arrange(match_id, shot_id, pov)
 ```
 
 ```{r}
 #| label: doublecounted_restacked_shots-save
 #| include: false
-qs::qsave(doublecounted_restacked_shots, file.path(PROJ_DIR, 'doublecounted_restacked_shots.qs'))
+qs::qsave(doublecounted_restacked_shots, file.path(PROJ_DIR, sprintf('doublecounted_restacked_shots-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -551,15 +560,15 @@ Next, we calculate cumulative goals and xG scored and conceded.
 
 ```{r}
 #| label: cumu_doublecounted_restacked_shots
-cumu_doublecounted_restacked_shots <- doublecounted_restacked_shots |> 
-  dplyr::group_by(match_id, team) |> 
+cumu_doublecounted_restacked_shots <- doublecounted_restacked_shots |>
+  dplyr::group_by(match_id, team) |>
   dplyr::mutate(
     dplyr::across(
       c(g, g_conceded),
       list(cumu = cumsum)
     )
-  ) |> 
-  dplyr::ungroup() |> 
+  ) |>
+  dplyr::ungroup() |>
   dplyr::mutate(
     gamestate = g_cumu - g_conceded_cumu
   )
@@ -571,10 +580,10 @@ And then we bring everything together to create a singular data frame from which
 
 ```{r}
 #| label: gamestate_shots
-ORDERED_gamestate_LABELS <- c('Trailing', 'Tied', 'Leading')
-gamestate_shots <- cumu_doublecounted_restacked_shots |> 
+ORDERED_GAMESTATE_LABELS <- c('Trailing', 'Tied', 'Leading')
+gamestate_shots <- cumu_doublecounted_restacked_shots |>
   dplyr::inner_join(
-    match_summaries |> 
+    match_summaries |>
       dplyr::distinct(
         match_id,
         season,
@@ -582,8 +591,9 @@ gamestate_shots <- cumu_doublecounted_restacked_shots |>
         home_team,
         away_team
       ),
-    by = dplyr::join_by(match_id)
-  ) |> 
+    by = dplyr::join_by(match_id),
+    relationship = 'many-to-many'
+  ) |>
   dplyr::transmute(
     pov,
     match_id,
@@ -603,21 +613,21 @@ gamestate_shots <- cumu_doublecounted_restacked_shots |>
     gamestate = cut(
       gamestate,
       breaks = c(-Inf, -1, 0, Inf),
-      labels = ORDERED_gamestate_LABELS
+      labels = ORDERED_GAMESTATE_LABELS
     )
-  ) |> 
-  dplyr::group_by(match_id, team) |> 
-  dplyr::arrange(shot_id, .by_group = TRUE) |> 
+  ) |>
+  dplyr::group_by(match_id, team) |>
+  dplyr::arrange(shot_id, .by_group = TRUE) |>
   dplyr::mutate(
-    pre_shot_gamestate = dplyr::lag(gamestate, default = ORDERED_gamestate_LABELS[2])
-  ) |> 
+    pre_shot_gamestate = dplyr::lag(gamestate, default = ORDERED_GAMESTATE_LABELS[2])
+  ) |>
   dplyr::ungroup()
 ```
 
 ```{r}
 #| label: gamestate_shots-save
 #| include: false
-qs::qsave(gamestate_shots, file.path(PROJ_DIR, 'gamestate_shots.qs'))
+qs::qsave(gamestate_shots, file.path(PROJ_DIR, sprintf('gamestate_shots-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -653,8 +663,9 @@ Unfortunately, FBref does not provide the exact ending minute of each half, as f
 
 1.  If there are no shots after the last regular minute in a half, we add 3 minutes. (3 minutes is about the median amount of minutes allocated for extra time.)
 2.  If the last shot is after the last regular minute in a half, we take the maximum of:
-    -   Adding 3 minutes beyond the last regular minute (like (1)) or
-    -   Adding one minute beyond the last shot.
+
+-   Adding 3 minutes beyond the last regular minute (like (1)) or
+-   Adding one minute beyond the last shot.
 
 ```{r}
 #| label: gamestate_shots_and_durations
@@ -668,7 +679,7 @@ last_min_pad <- gamestate_shots |>
     pre_shot_gamestate,
     period,
     time
-  ) |> 
+  ) |>
   dplyr::group_by(match_id, team, period) |>
   dplyr::slice_max(time, n = 1, with_ties = FALSE) |>
   dplyr::ungroup() |>
@@ -682,16 +693,16 @@ last_min_pad <- gamestate_shots |>
 padded_gamestate_shots <- dplyr::bind_rows(
   gamestate_shots,
   last_min_pad
-) |> 
+) |>
   dplyr::arrange(match_id, time)
 
-gamestate_shots_and_durations <- padded_gamestate_shots |> 
-  dplyr::group_by(match_id, team) |> 
+gamestate_shots_and_durations <- padded_gamestate_shots |>
+  dplyr::group_by(match_id, team) |>
   dplyr::mutate(
     prev_period = dplyr::lag(period),
     prev_time = dplyr::lag(time)
-  ) |> 
-  dplyr::ungroup() |> 
+  ) |>
+  dplyr::ungroup() |>
   dplyr::mutate(
     duration = dplyr::case_when(
       period == 1L & is.na(prev_period) ~ time - 0L,
@@ -704,7 +715,7 @@ gamestate_shots_and_durations <- padded_gamestate_shots |>
 ```{r}
 #| label: gamestate_shots_and_durations-save
 #| include: false
-qs::qsave(gamestate_shots_and_durations, file.path(PROJ_DIR, 'gamestate_shots_and_durations.qs'))
+qs::qsave(gamestate_shots_and_durations, file.path(PROJ_DIR, sprintf('gamestate_shots_and_durations-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -742,8 +753,8 @@ As the saying goes, "80% of data analysis/science is data cleaning". Well, that 
 
 ```{r}
 #| label: agg_gamestate_xgd
-agg_gamestate_xgd <- gamestate_shots_and_durations |> 
-  dplyr::group_by(team, pre_shot_gamestate) |> 
+agg_gamestate_xgd <- gamestate_shots_and_durations |>
+  dplyr::group_by(team, pre_shot_gamestate) |>
   dplyr::summarize(
     dplyr::across(
       c(
@@ -752,16 +763,16 @@ agg_gamestate_xgd <- gamestate_shots_and_durations |>
       ),
       \(.x) sum(.x, na.rm = TRUE)
     )
-  ) |> 
-  dplyr::ungroup() |> 
+  ) |>
+  dplyr::ungroup() |>
   dplyr::mutate(
     xgd_p90 = xgd * 90 / duration
-  ) |> 
-  dplyr::group_by(team) |> 
+  ) |>
+  dplyr::group_by(team) |>
   dplyr::mutate(
     prop_duration = duration / sum(duration)
-  ) |> 
-  dplyr::ungroup() |> 
+  ) |>
+  dplyr::ungroup() |>
   dplyr::select(
     team,
     pre_shot_gamestate,
@@ -773,7 +784,7 @@ agg_gamestate_xgd <- gamestate_shots_and_durations |>
 ```{r}
 #| label: agg_gamestate_xgd-save
 #| include: false
-qs::qsave(agg_gamestate_xgd, file.path(PROJ_DIR, 'agg_gamestate_xgd.qs'))
+qs::qsave(agg_gamestate_xgd, file.path(PROJ_DIR, sprintf('agg_gamestate_xgd-%s.qs', SEASON_END_YEAR)))
 ```
 
 ```{r}
@@ -823,7 +834,7 @@ TAG_LABEL <- htmltools::tagList(
   htmltools::tags$span('@TonyElHabr'),
 )
 CAPTION_LABEL <- '**Data**: Opta via fbref.'
-SUBTITLE_LABEL <- 'MLS, 2023 Season'
+SUBTITLE_LABEL <- sprintf('MLS, %s Season', SEASON_END_YEAR)
 PLOT_RESOLUTION <- 300
 WHITISH_FOREGROUND_COLOR <- 'white'
 COMPLEMENTARY_FOREGROUND_COLOR <- '#cbcbcb'
@@ -872,7 +883,7 @@ GAMESTATE_PAL <- c(
   'Leading' = '#17bebb'
 )
 
-## There is a way to get team logos from FBref, but they have a white background 
+## There is a way to get team logos from FBref, but they have a white background
 ##   by default, and making the background transparent for a plot with a dark
 ##   background is kind of a pain in the ass. So let's pull images from fotmob.
 ## This function is basically a minified version of what used to exist as
@@ -888,66 +899,160 @@ get_fotmob_standings <- function() {
   result <- jsonlite::fromJSON(cont)
   table_init <- result$table$data
   tables <- dplyr::bind_rows(table_init$tables)
-  tables$table$all[[3]] |> 
+  tables$table$all[[3]] |>
     dplyr::transmute(
       team = name,
       team_id = id,
       pts,
       logo_url = sprintf('https://images.fotmob.com/image_resources/logo/teamlogo/%s.png', team_id)
-    )
+    ) |>
+    tibble::as_tibble()
 }
 
 fotmob_standings <- get_fotmob_standings()
-team_logos <- agg_gamestate_xgd |> 
-  dplyr::distinct(team) |> 
-  dplyr::arrange(team) |> 
+team_logos <- agg_gamestate_xgd |>
+  dplyr::distinct(team) |>
+  dplyr::arrange(team) |>
   ## Lucky for us, MLS team names line up with the fotmob names alphabetically.
   dplyr::bind_cols(
-    fotmob_standings |> 
-      dplyr::arrange(team) |> 
+    fotmob_standings |>
+      dplyr::arrange(team) |>
       dplyr::select(path = logo_url, pts)
   )
 
-agg_gamestate_xgd_with_logos <- agg_gamestate_xgd |> 
+agg_gamestate_xgd_with_logos <- agg_gamestate_xgd |>
   dplyr::inner_join(
-    team_logos |> 
+    team_logos |>
       dplyr::select(
         team,
         pts,
         path
       ),
     by = dplyr::join_by(team)
-  ) |> 
+  ) |>
   dplyr::mutate(
     label = glue::glue("<span style='font-size:12px;color:{WHITISH_FOREGROUND_COLOR}'>{team}</span> <span style='font-size:9px;color:{COMPLEMENTARY_FOREGROUND_COLOR}'>{pts} pts</span> <img src='{path}' width='14' height='14'/>")
-  ) |> 
+  ) |>
   dplyr::select(-path)
 
-team_label_order <- agg_gamestate_xgd_with_logos |> 
+raw_table <- worldfootballR::fb_season_team_stats(
+  country = COUNTRY,
+  gender = GENDER,
+  tier = TIER,
+  season_end_year = SEASON_END_YEAR,
+  stat_type = 'league_table'
+) |>
+  tibble::as_tibble()
+
+init_table <- raw_table |>
+  dplyr::transmute(
+    team_short = Squad,
+    xgd_p90_total = xGD.90,
+    # rank = Rk
+    rank = dplyr::row_number(desc(Pts * 1000 + GD))
+  ) |>
+  dplyr::mutate(
+    team_short = stringr::str_replace_all(
+      team_short,
+      ## Nashville, Revs, and New York teams ordered differently by default
+      c(
+        '^NYC' = 'New York City ',
+        '^NY' = 'New York',
+        '^NE ' = 'New England '
+      )
+    )
+  ) |>
+  dplyr::arrange(team_short) |>
+  dplyr::bind_cols(
+    team_logos |>
+      dplyr::select(team) |>
+      dplyr::arrange(team)
+  ) |>
+  dplyr::arrange(rank)
+## One-off
+team_label_order <- c(rev(init_table$team), '')
+
+table <- init_table |>
+  dplyr::mutate(
+    dplyr::across(
+      team,
+      \(.x) factor(.x, levels = setdiff(team_label_order, ''))
+    )
+  )
+
+
+team_label_order <- agg_gamestate_xgd_with_logos |>
   dplyr::filter(
     pre_shot_gamestate == 'Leading'
-  ) |> 
-  dplyr::arrange(prop_duration) |> 
+  ) |>
+  dplyr::arrange(prop_duration) |>
   dplyr::pull(team)
+team_label_order <- c(team_label_order, '')
 
-prepped_agg_gamestate_xgd <- agg_gamestate_xgd_with_logos |> 
+init_table <- raw_table |>
+  dplyr::transmute(
+    team_short = Squad, ## different than other fbref labels
+    xgd_p90_total = xGD.90,
+    # rank = Rk
+    rank = dplyr::row_number(desc(Pts * 1000 + GD))
+  ) |>
+  dplyr::arrange(team_short) |>
+  dplyr::bind_cols(
+    team_logos |>
+      dplyr::select(team)
+  ) |>
+  dplyr::arrange(rank)
+
+team_label_order <- agg_gamestate_xgd_with_logos |>
+  dplyr::filter(
+    pre_shot_gamestate == 'Leading'
+  ) |>
+  dplyr::arrange(prop_duration) |>
+  dplyr::pull(team)
+## Add extra level for top row for "Overall p90" label
+TOTAL_GAMESTATE_LABEL <- 'Overall'
+team_label_order <- c(team_label_order, '')
+
+## Could also order by table points
+# team_label_order <- c(rev(init_table$team), '')
+
+table <- init_table |>
+  dplyr::mutate(
+    dplyr::across(
+      team,
+      \(.x) factor(.x, levels = setdiff(team_label_order, ''))
+    )
+  )
+
+prepped_agg_gamestate_xgd <- agg_gamestate_xgd_with_logos |>
+  dplyr::bind_rows(
+    tibble::tibble(
+      team = '',
+      pre_shot_gamestate = factor(ORDERED_GAMESTATE_LABELS, levels = ORDERED_GAMESTATE_LABELS)
+    )
+  ) |>
   dplyr::mutate(
     dplyr::across(
       team,
       \(.x) factor(.x, levels = team_label_order)
     )
-  ) |> 
-  dplyr::arrange(team, desc(pre_shot_gamestate)) |> 
-  dplyr::group_by(team) |> 
+  ) |>
+  dplyr::arrange(team, desc(pre_shot_gamestate)) |>
+  dplyr::group_by(team) |>
   dplyr::mutate(
     cumu_prop_duration = cumsum(prop_duration)
-  ) |> 
-  dplyr::ungroup() |> 
+  ) |>
+  dplyr::ungroup() |>
   dplyr::mutate(
-    half_cumu_prop_duration = cumu_prop_duration - 0.5 * prop_duration
+    half_cumu_prop_duration = cumu_prop_duration - 0.5 * prop_duration,
+    half_cumu_prop_duration = dplyr::case_when(
+      prop_duration >= 0.08 ~ half_cumu_prop_duration,
+      cumu_prop_duration == 1 ~ 1 - 2 * prop_duration,
+      TRUE ~ 2 * prop_duration
+    )
   )
 
-xgd_p90_plot <- prepped_agg_gamestate_xgd |> 
+xgd_p90_plot <- prepped_agg_gamestate_xgd |>
   ggplot2::ggplot() +
   ggplot2::aes(
     x = prop_duration,
@@ -967,6 +1072,36 @@ xgd_p90_plot <- prepped_agg_gamestate_xgd |>
     alpha = 0.8,
     ggplot2::aes(
       fill = pre_shot_gamestate
+    )
+  ) +
+  ggplot2::geom_text(
+    family = FONT,
+    size = 9 / ggplot2::.pt,
+    fontface = 'plain',
+    color = COMPLEMENTARY_FOREGROUND_COLOR,
+    data = table |> dplyr::arrange(desc(team)) |> head(1),
+    vjust = -2,
+    lineheight = 1,
+    ggplot2::aes(
+      x = 1.05,
+      y = team,
+      label = TOTAL_GAMESTATE_LABEL
+    )
+  ) +
+  ggplot2::geom_text(
+    family = FONT,
+    size = 10 / ggplot2::.pt,
+    fontface = 'plain',
+    color = COMPLEMENTARY_FOREGROUND_COLOR,
+    data = table,
+    ggplot2::aes(
+      x = 1.05,
+      y = team,
+      label = scales::number(
+        xgd_p90_total,
+        accuracy = 0.01,
+        style_positive = 'plus'
+      )
     )
   ) +
   ggplot2::geom_text(
@@ -995,6 +1130,8 @@ xgd_p90_plot <- prepped_agg_gamestate_xgd |>
   ) +
   ggplot2::scale_x_continuous(
     labels = scales::percent_format(accuracy = 1),
+    breaks = c(0, 0.25, 0.5, 0.75, 1),
+    limits = c(0, 1.15),
     expand = c(0.01, 0.01)
   ) +
   ggplot2::scale_fill_manual(
@@ -1006,7 +1143,7 @@ xgd_p90_plot <- prepped_agg_gamestate_xgd |>
     legend.position = 'top'
   ) +
   ggplot2::labs(
-    title = glue::glue("xGD per 90 when <span style='color:{GAMESTATE_PAL[['Leading']]}'>Leading</span>, <span style='color:{GAMESTATE_PAL[['Tied']]}'>Tied</span>, and <span style='color:{GAMESTATE_PAL[['Trailing']]}'>Trailing</spna>"),
+    title = glue::glue("xGD per 90 when <span style='color:{GAMESTATE_PAL[['Leading']]}'>Leading</span>, <span style='color:{GAMESTATE_PAL[['Tied']]}'>Tied</span>, and <span style='color:{GAMESTATE_PAL[['Trailing']]}'>Trailing</span>"),
     subtitle = SUBTITLE_LABEL,
     y = NULL,
     tag = TAG_LABEL,
@@ -1015,7 +1152,7 @@ xgd_p90_plot <- prepped_agg_gamestate_xgd |>
   )
 xgd_p90_plot
 
-xgd_p90_plot_path <- file.path(PROJ_DIR, '2023-mls-xgd-p90.png')
+xgd_p90_plot_path <- file.path(PROJ_DIR, sprintf('%s-mls-xgd-p90.png', SEASON_END_YEAR))
 ggplot2::ggsave(
   xgd_p90_plot,
   filename = xgd_p90_plot_path,
@@ -1089,6 +1226,26 @@ So, what can we learn from this perspective?
 5.  [New York Red Bulls](https://en.wikipedia.org/wiki/New_York_Red_Bulls) squeaked into the playoffs, but have a really strong xGD rate (+0.98) when tied. They may be a team to look out to overperform their seeding.
 6.  [Los Anegeles FC](https://en.wikipedia.org/wiki/Los_Angeles_FC), like Columbus, is one of the only teams to have a positive xGD in all game states. In fact, they have the strongest xGD in positive game states (+0.97). Evidently, they look to continue to attack once they get a lead.
 7.  [St. Louis City](https://en.wikipedia.org/wiki/St._Louis_City_SC), as analytics folks will tell you, has overperformed in its inaugural season. While they finished with the most points in the Western Conference, the underlying numbers--the negative xGD in all game states--suggest that they could be in for a rude awakening in the playoffs.
+
+```{r}
+#| label: export_agg_gamestate_xgd-save
+#| include: false
+export_agg_gamestate_xgd <- dplyr::bind_rows(
+  agg_gamestate_xgd,
+  init_table |>
+    dplyr::transmute(
+      team,
+      pre_shot_gamestate = TOTAL_GAMESTATE_LABEL,
+      xgd_p90 = xgd_p90_total,
+      prop_duration = 1
+    )
+) |>
+  dplyr::mutate(
+    pre_shot_gamestate = factor(pre_shot_gamestate, c(ORDERED_GAMESTATE_LABELS, total_gamestate_label))
+  ) |>
+  dplyr::arrange(team, pre_shot_gamestate)
+readr::write_csv(export_agg_gamestate_xgd, file.path(PROJ_DIR, sprintf('%s-mls-gamestate-xgd.png', SEASON_END_YEAR)), na = '')
+```
 
 ## Conclusion
 
