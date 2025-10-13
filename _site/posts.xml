@@ -23453,6 +23453,7 @@ No matching items
 
 
 
+
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
 <p>Soccer is a game defined by its discrete, low-scoring nature, where the dynamics of a match are often dictated by the <a href="https://statsbomb.com/articles/soccer/game-states-and-loss-aversion/">“game state”</a>. Whether a team is leading, trailing, or level with their opponent at a specific moment can often influence how aggressively a team plays. Contextualizing statistics like <a href="https://theanalyst.com/na/2021/07/what-are-expected-goals-xg/">expected goals (xG)</a> can shed new light on how we evaluate team performance.</p>
@@ -23465,7 +23466,7 @@ No matching items
 <p>The 2023 Major League Soccer (MLS) regular season just ended, and I’m interested to see what we might learn about the teams who qualified for playoffs. So, naturally, I’ve chosen to focus on this past MLS season for our game state calculations.</p>
 <p>To begin<sup>2</sup>, we pull raw FBref data from pre-saved <code>{worldfootballR}</code> release data, starting with match shots.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><span class="do" style="color: #5E5E5E;
 background-color: null;
@@ -23508,7 +23509,7 @@ font-style: inherit;">'1st'</span></span>
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="dv" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">2023</span></span>
+font-style: inherit;">2024</span></span>
 <span id="cb1-13"></span>
 <span id="cb1-14">raw_shots <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -23619,7 +23620,7 @@ font-style: inherit;">#&gt; $ Season_End_Year  &lt;int&gt; 2023, 2023, 2023, 202
 <p>While it might seem like the shots table is all we’d need to calculate expected goal difference (xGD), FBref’s match shot log table doesn’t include own goals. Nonetheless, we can use <code>worldfootballR::load_fb_match_summary()</code> to extract timestamps for own goals from the “Match Summary” timeline.</p>
 <p><img src="https://tonyelhabr.rbind.io/posts/fbref-gamestate-expected-goal-difference/match-summary.png" class="img-fluid"></p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">raw_match_summaries <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -23765,7 +23766,7 @@ font-style: inherit;">#&gt; $ Season_End_Year   &lt;int&gt; 2023, 2023, 2023, 20
 <li>Rename existing columns.</li>
 </ol>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><span class="do" style="color: #5E5E5E;
 background-color: null;
@@ -23783,24 +23784,56 @@ background-color: null;
 font-style: inherit;">dirname</span>(match_url))</span>
 <span id="cb5-4">}</span>
 <span id="cb5-5"></span>
-<span id="cb5-6">match_summaries <span class="ot" style="color: #003B4F;
+<span id="cb5-6">fix_team <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(x) {</span>
+<span id="cb5-7">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">case_match</span>(</span>
+<span id="cb5-8">    x,</span>
+<span id="cb5-9">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Montreal Impact'</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'CF Montréal'</span>,</span>
+<span id="cb5-10">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Sporting Kansas City'</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Sporting KC'</span>,</span>
+<span id="cb5-11">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">.default =</span> x</span>
+<span id="cb5-12">  )</span>
+<span id="cb5-13">}</span>
+<span id="cb5-14"></span>
+<span id="cb5-15">match_summaries <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> raw_match_summaries <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb5-7">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb5-16">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">group_by</span>(MatchURL) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb5-8">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb5-17">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(</span>
-<span id="cb5-9">    <span class="at" style="color: #657422;
+<span id="cb5-18">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">match_summary_rn =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -23811,7 +23844,7 @@ background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">desc</span>(Event_Time)),</span>
-<span id="cb5-10">    <span class="at" style="color: #657422;
+<span id="cb5-19">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">match_has_no_penalties =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -23820,22 +23853,22 @@ background-color: null;
 font-style: inherit;">!=</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'Penalty'</span>)</span>
-<span id="cb5-11">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb5-20">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb5-12">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb5-21">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ungroup</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb5-13">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb5-22">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(</span>
-<span id="cb5-14">    <span class="at" style="color: #657422;
+<span id="cb5-23">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">match_has_no_goals =</span> Away_Score <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -23848,21 +23881,21 @@ background-color: null;
 font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0</span></span>
-<span id="cb5-15">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb5-24">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb5-16">  <span class="do" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb5-25">  <span class="do" style="color: #5E5E5E;
 background-color: null;
-font-style: italic;">## Drop non-shot events, e.g. card and substitution events. </span></span>
-<span id="cb5-17">  <span class="do" style="color: #5E5E5E;
+font-style: italic;">## Drop non-shot events, e.g. card and substitution events.</span></span>
+<span id="cb5-26">  <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">##   Always keep the first timeline event, so that we're not accidentally dropping matches.</span></span>
-<span id="cb5-18">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb5-27">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">filter</span>(</span>
-<span id="cb5-19">    Event_Type <span class="sc" style="color: #5E5E5E;
+<span id="cb5-28">    Event_Type <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">%in%</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -23874,11 +23907,11 @@ font-style: inherit;">'Own Goal'</span>, <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'Penalty'</span>) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|</span> </span>
-<span id="cb5-20">      <span class="do" style="color: #5E5E5E;
+font-style: inherit;">|</span></span>
+<span id="cb5-29">      <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## don't drop games with no goals</span></span>
-<span id="cb5-21">      (match_has_no_goals <span class="sc" style="color: #5E5E5E;
+<span id="cb5-30">      (match_has_no_goals <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">&amp;</span> match_has_no_penalties <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -23887,92 +23920,110 @@ background-color: null;
 font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">1</span>)</span>
-<span id="cb5-22">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb5-31">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb5-23">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb5-32">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">transmute</span>(</span>
-<span id="cb5-24">    <span class="at" style="color: #657422;
+<span id="cb5-33">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">match_id =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">extract_fbref_match_id</span>(MatchURL),</span>
-<span id="cb5-25">    <span class="at" style="color: #657422;
+<span id="cb5-34">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">season =</span> Season_End_Year,</span>
-<span id="cb5-26">    <span class="at" style="color: #657422;
+<span id="cb5-35">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">gender =</span> Gender,</span>
-<span id="cb5-27">    <span class="at" style="color: #657422;
+<span id="cb5-36">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">tier =</span> Tier,</span>
-<span id="cb5-28">    <span class="at" style="color: #657422;
+<span id="cb5-37">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">date =</span> lubridate<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ymd</span>(Match_Date),</span>
-<span id="cb5-29">    <span class="at" style="color: #657422;
+<span id="cb5-38">    <span class="at" style="color: #657422;
 background-color: null;
-font-style: inherit;">home_team =</span> Home_Team ,</span>
-<span id="cb5-30">    <span class="at" style="color: #657422;
+font-style: inherit;">home_team =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">away_team =</span> Away_Team,</span>
-<span id="cb5-31">    <span class="at" style="color: #657422;
+font-style: inherit;">fix_team</span>(Home_Team) ,</span>
+<span id="cb5-39">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">away_team =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fix_team</span>(Away_Team),</span>
+<span id="cb5-40">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">period =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">as.integer</span>(Event_Half),</span>
-<span id="cb5-32">    <span class="do" style="color: #5E5E5E;
+<span id="cb5-41">    <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## ensure that minutes always has a value</span></span>
-<span id="cb5-33">    <span class="at" style="color: #657422;
+<span id="cb5-42">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">minutes =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">case_when</span>(</span>
-<span id="cb5-34">      period <span class="sc" style="color: #5E5E5E;
+<span id="cb5-43">      period <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">==</span> 1L <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">&amp;</span> Event_Time <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">&gt;</span> 45L <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">~</span> 45L, </span>
-<span id="cb5-35">      period <span class="sc" style="color: #5E5E5E;
-background-color: null;
-font-style: inherit;">==</span> 2L <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">1</span>L <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">&amp;</span> Event_Time <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">&gt;</span> 90L <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">&gt;</span> <span class="dv" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">~</span> 90L,</span>
-<span id="cb5-36">      <span class="at" style="color: #657422;
+font-style: inherit;">45</span>L <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">45</span>L,</span>
+<span id="cb5-44">      period <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>L <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&amp;</span> Event_Time <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&gt;</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">90</span>L <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">90</span>L,</span>
+<span id="cb5-45">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">.default =</span> Event_Time</span>
-<span id="cb5-37">    ) <span class="sc" style="color: #5E5E5E;
+<span id="cb5-46">    ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">as.integer</span>(),</span>
-<span id="cb5-38">    <span class="at" style="color: #657422;
+<span id="cb5-47">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">minutes_added =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">case_when</span>(</span>
-<span id="cb5-39">      period <span class="sc" style="color: #5E5E5E;
+<span id="cb5-48">      period <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">==</span> 1L <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">&amp;</span> Event_Time <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -23982,10 +24033,14 @@ font-style: inherit;">45</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">~</span> Event_Time <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">-</span> 45L, </span>
-<span id="cb5-40">      period <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
 background-color: null;
-font-style: inherit;">==</span> 2L <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">45</span>L,</span>
+<span id="cb5-49">      period <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>L <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">&amp;</span> Event_Time <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -23995,14 +24050,16 @@ font-style: inherit;">90</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">~</span> Event_Time <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">-</span> 90L,</span>
-<span id="cb5-41">      <span class="at" style="color: #657422;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">90</span>L,</span>
+<span id="cb5-50">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">.default =</span> <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">NA_integer_</span></span>
-<span id="cb5-42">    ),</span>
-<span id="cb5-43">    <span class="at" style="color: #657422;
+<span id="cb5-51">    ),</span>
+<span id="cb5-52">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">home_g =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -24015,7 +24072,7 @@ background-color: null;
 font-style: inherit;">''</span>, Score_Progression)), <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## after event</span></span>
-<span id="cb5-44">    <span class="at" style="color: #657422;
+<span id="cb5-53">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">away_g =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -24026,20 +24083,22 @@ background-color: null;
 font-style: inherit;">'^.*[:]'</span>, <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">''</span>, Score_Progression)),</span>
-<span id="cb5-45">    <span class="at" style="color: #657422;
+<span id="cb5-54">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">is_own_goal =</span> Event_Type <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">==</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'Own Goal'</span>,</span>
-<span id="cb5-46">    <span class="at" style="color: #657422;
+<span id="cb5-55">    <span class="at" style="color: #657422;
 background-color: null;
-font-style: inherit;">team =</span> Team,</span>
-<span id="cb5-47">    <span class="at" style="color: #657422;
+font-style: inherit;">team =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fix_team</span>(Team),</span>
+<span id="cb5-56">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">player =</span> Event_Players</span>
-<span id="cb5-48">  )</span></code></pre></div>
+<span id="cb5-57">  )</span></code></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -24102,13 +24161,13 @@ font-style: inherit;">#&gt; $ player        &lt;chr&gt; "Walker Zimmerman Assist
 </div>
 <p>Next, we start to clean up the <code>shots</code> data frame. The data wrangling is similar.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1">shots <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> raw_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb7-2">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24149,7 +24208,7 @@ font-style: inherit;">'</span><span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">\\</span><span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">1'</span>, Minute)), </span>
+font-style: inherit;">1'</span>, Minute)),</span>
 <span id="cb7-9">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">as.integer</span>(Minute)</span>
@@ -24166,7 +24225,7 @@ font-style: inherit;">ifelse</span>(</span>
 background-color: null;
 font-style: inherit;">grepl</span>(<span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">'[+]'</span>, Minute), </span>
+font-style: inherit;">'[+]'</span>, Minute),</span>
 <span id="cb7-14">      <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">as.integer</span>(<span class="fu" style="color: #4758AB;
@@ -24179,7 +24238,7 @@ font-style: inherit;">'</span><span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">\\</span><span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">2'</span>, Minute)), </span>
+font-style: inherit;">2'</span>, Minute)),</span>
 <span id="cb7-15">      <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">NA_integer_</span></span>
@@ -24193,7 +24252,9 @@ background-color: null;
 font-style: inherit;">'Home'</span>,</span>
 <span id="cb7-18">    <span class="at" style="color: #657422;
 background-color: null;
-font-style: inherit;">team =</span> Squad,</span>
+font-style: inherit;">team =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fix_team</span>(Squad),</span>
 <span id="cb7-19">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">player =</span> Player,</span>
@@ -24257,7 +24318,7 @@ font-style: inherit;">#&gt; $ xg            &lt;dbl&gt; 0.39, 0.09, 0.03, 0.25, 
 <p>Now, for the ugliest part of all this shot data wrangling–handling own goals.</p>
 <p>First, we inject “synthetic” records into the <code>shots</code> data for every case where the match summary indicates that there is an own goal.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1">shots_with_own_goals <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -24268,7 +24329,7 @@ background-color: null;
 font-style: inherit;">bind_rows</span>(</span>
 <span id="cb9-2">  shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb9-3">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24294,7 +24355,7 @@ background-color: null;
 font-style: italic;">## synthetic events for own goals</span></span>
 <span id="cb9-16">  match_summaries <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb9-17">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24303,7 +24364,7 @@ font-style: inherit;">filter</span>(</span>
 <span id="cb9-18">      is_own_goal</span>
 <span id="cb9-19">    ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb9-20">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24341,13 +24402,13 @@ font-style: inherit;">TRUE</span></span>
 </div>
 <p>Next, we add proper, cleaned columns for goals and xG.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1">clean_shots <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> shots_with_own_goals <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb10-2">  <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## To get meta-information about the game</span></span>
@@ -24375,10 +24436,10 @@ font-style: inherit;">join_by</span>(match_id),</span>
 background-color: null;
 font-style: inherit;">relationship =</span> <span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">'many-to-one'</span></span>
+font-style: inherit;">'many-to-many'</span></span>
 <span id="cb10-8">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb10-9">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24393,7 +24454,7 @@ background-color: null;
 font-style: inherit;">case_when</span>(</span>
 <span id="cb10-11">      <span class="do" style="color: #5E5E5E;
 background-color: null;
-font-style: italic;">## Note that fotmob would list the away team for an own goal but fbref </span></span>
+font-style: italic;">## Note that fotmob would list the away team for an own goal but fbref</span></span>
 <span id="cb10-12">      <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">##   lists the home team</span></span>
@@ -24403,17 +24464,23 @@ font-style: inherit;">|</span> is_own_goal) <span class="sc" style="color: #5E5E
 background-color: null;
 font-style: inherit;">&amp;</span> is_home <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">~</span> 1L,</span>
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L,</span>
 <span id="cb10-14">      is_own_goal <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">&amp;</span> is_home <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">~</span> 1L,</span>
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L,</span>
 <span id="cb10-15">      <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">TRUE</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">~</span> 0L</span>
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>L</span>
 <span id="cb10-16">    ),</span>
 <span id="cb10-17">    <span class="at" style="color: #657422;
 background-color: null;
@@ -24430,12 +24497,16 @@ font-style: inherit;">&amp;</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">!</span>is_home <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">~</span> 1L,</span>
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L,</span>
 <span id="cb10-19">      <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">TRUE</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">~</span> 0L</span>
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>L</span>
 <span id="cb10-20">    ),</span>
 <span id="cb10-21">    <span class="at" style="color: #657422;
 background-color: null;
@@ -24457,7 +24528,9 @@ font-style: inherit;">0</span>),</span>
 background-color: null;
 font-style: inherit;">TRUE</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">~</span> 0L <span class="do" style="color: #5E5E5E;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>L <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## even for own goals</span></span>
 <span id="cb10-24">    ),</span>
@@ -24483,7 +24556,9 @@ font-style: inherit;">0</span>),</span>
 background-color: null;
 font-style: inherit;">TRUE</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">~</span> 0L</span>
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>L</span>
 <span id="cb10-28">    )</span>
 <span id="cb10-29">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -24515,17 +24590,19 @@ font-style: inherit;">+</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">coalesce</span>(minutes_added, 0L)))</span>
+font-style: inherit;">coalesce</span>(minutes_added, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>L)))</span>
 <span id="cb10-34">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb10-35">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ungroup</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb10-36">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24619,7 +24696,7 @@ font-style: inherit;">#&gt; $ away_xg       &lt;dbl&gt; 0.00, 0.00, 0.00, 0.00, 
 <p>Up to this point, we have one record per shot. But, to calculate goals and expected goals (xG) conceded for any given team at any given point in a game, we can make our lives easier by “double counting” each shot event, once from each team’s perspective.</p>
 <p>To do that, we first re-assign (“re-stack”) teams and goals based on the home and away teams’ perspectives.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1">restacked_shots <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -24630,14 +24707,14 @@ background-color: null;
 font-style: inherit;">bind_rows</span>(</span>
 <span id="cb12-2">  clean_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb12-3">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">filter</span>(is_home) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb12-4">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24673,7 +24750,7 @@ font-style: inherit;">xg_conceded =</span> away_xg</span>
 <span id="cb12-20">    ),</span>
 <span id="cb12-21">  clean_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb12-22">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24682,7 +24759,7 @@ font-style: inherit;">filter</span>(<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">!</span>is_home) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb12-23">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24721,7 +24798,7 @@ font-style: inherit;">xg_conceded =</span> home_xg</span>
 </div>
 <p>Then, we replicate the whole data frame, indicating whether we’re looking at the shot events from a given team’s <strong>p</strong>oint <strong>o</strong>f <strong>v</strong>iew (<code>pov = "primary"</code>) or their opponents’ point of view (<code>"secondary"</code>).</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb13" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1">doublecounted_restacked_shots <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -24747,7 +24824,7 @@ background-color: null;
 font-style: inherit;">1</span>),</span>
 <span id="cb13-3">  restacked_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb13-4">    <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## re-assign to temporary variable names first, so that way we don't accidentlaly overwrite information</span></span>
@@ -24776,7 +24853,7 @@ background-color: null;
 font-style: inherit;">xg2 =</span> xg_conceded</span>
 <span id="cb13-12">    ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb13-13">    <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## then formally re-assign columns</span></span>
@@ -24805,7 +24882,7 @@ background-color: null;
 font-style: inherit;">xg_conceded =</span> xg1</span>
 <span id="cb13-21">    ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb13-22">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24818,7 +24895,7 @@ background-color: null;
 font-style: inherit;">!</span>is_home</span>
 <span id="cb13-24">    ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb13-25">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24837,7 +24914,7 @@ font-style: inherit;">1</span></span>
 <span id="cb13-28">    )</span>
 <span id="cb13-29">) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb13-30">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24911,20 +24988,20 @@ font-style: inherit;">#&gt; $ xg_conceded   &lt;dbl&gt; 0.00, 0.04, 0.00, 0.17, 
 <h3 class="anchored" data-anchor-id="calculating-cumulative-goals">Calculating Cumulative Goals</h3>
 <p>Next, we calculate cumulative goals and xG scored and conceded.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">cumu_doublecounted_restacked_shots <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> doublecounted_restacked_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb15-2">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">group_by</span>(match_id, team) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb15-3">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24946,14 +25023,14 @@ font-style: inherit;">cumu =</span> cumsum)</span>
 <span id="cb15-7">    )</span>
 <span id="cb15-8">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb15-9">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ungroup</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb15-10">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24969,9 +25046,9 @@ font-style: inherit;">-</span> g_conceded_cumu</span>
 </div>
 <p>And then we bring everything together to create a singular data frame from which it is straightforward to calculate xGD with respect to game state.<sup>3</sup></p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1">ORDERED_gamestate_LABELS <span class="ot" style="color: #003B4F;
+<div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1">ORDERED_GAMESTATE_LABELS <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -24986,7 +25063,7 @@ font-style: inherit;">'Leading'</span>)</span>
 background-color: null;
 font-style: inherit;">&lt;-</span> cumu_doublecounted_restacked_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb16-3">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -24994,7 +25071,7 @@ background-color: null;
 font-style: inherit;">inner_join</span>(</span>
 <span id="cb16-4">    match_summaries <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb16-5">      dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25012,28 +25089,33 @@ font-style: inherit;">by =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">join_by</span>(match_id)</span>
-<span id="cb16-13">  ) <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">join_by</span>(match_id),</span>
+<span id="cb16-13">    <span class="at" style="color: #657422;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb16-14">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">relationship =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'many-to-many'</span></span>
+<span id="cb16-14">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb16-15">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">transmute</span>(</span>
-<span id="cb16-15">    pov,</span>
-<span id="cb16-16">    match_id,</span>
-<span id="cb16-17">    season,</span>
-<span id="cb16-18">    date,</span>
-<span id="cb16-19">    home_team,</span>
-<span id="cb16-20">    away_team,</span>
-<span id="cb16-21">    team,</span>
-<span id="cb16-22">    player,</span>
-<span id="cb16-23">    shot_id,</span>
-<span id="cb16-24">    period,</span>
-<span id="cb16-25">    minutes,</span>
-<span id="cb16-26">    minutes_added,</span>
-<span id="cb16-27">    <span class="at" style="color: #657422;
+<span id="cb16-16">    pov,</span>
+<span id="cb16-17">    match_id,</span>
+<span id="cb16-18">    season,</span>
+<span id="cb16-19">    date,</span>
+<span id="cb16-20">    home_team,</span>
+<span id="cb16-21">    away_team,</span>
+<span id="cb16-22">    team,</span>
+<span id="cb16-23">    player,</span>
+<span id="cb16-24">    shot_id,</span>
+<span id="cb16-25">    period,</span>
+<span id="cb16-26">    minutes,</span>
+<span id="cb16-27">    minutes_added,</span>
+<span id="cb16-28">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">time =</span> minutes <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -25041,20 +25123,22 @@ font-style: inherit;">+</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">coalesce</span>(minutes_added, 0L),</span>
-<span id="cb16-28">    xg,</span>
-<span id="cb16-29">    <span class="at" style="color: #657422;
+font-style: inherit;">coalesce</span>(minutes_added, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>L),</span>
+<span id="cb16-29">    xg,</span>
+<span id="cb16-30">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">xgd =</span> xg <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">-</span> xg_conceded,</span>
-<span id="cb16-30">    <span class="at" style="color: #657422;
+<span id="cb16-31">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">gamestate =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">cut</span>(</span>
-<span id="cb16-31">      gamestate,</span>
-<span id="cb16-32">      <span class="at" style="color: #657422;
+<span id="cb16-32">      gamestate,</span>
+<span id="cb16-33">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">breaks =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -25071,21 +25155,21 @@ background-color: null;
 font-style: inherit;">0</span>, <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">Inf</span>),</span>
-<span id="cb16-33">      <span class="at" style="color: #657422;
+<span id="cb16-34">      <span class="at" style="color: #657422;
 background-color: null;
-font-style: inherit;">labels =</span> ORDERED_gamestate_LABELS</span>
-<span id="cb16-34">    )</span>
-<span id="cb16-35">  ) <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">labels =</span> ORDERED_GAMESTATE_LABELS</span>
+<span id="cb16-35">    )</span>
+<span id="cb16-36">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb16-36">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb16-37">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">group_by</span>(match_id, team) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb16-37">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb16-38">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -25095,13 +25179,13 @@ font-style: inherit;">.by_group =</span> <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">TRUE</span>) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb16-38">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb16-39">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(</span>
-<span id="cb16-39">    <span class="at" style="color: #657422;
+<span id="cb16-40">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">pre_shot_gamestate =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -25109,13 +25193,13 @@ font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">lag</span>(gamestate, <span class="at" style="color: #657422;
 background-color: null;
-font-style: inherit;">default =</span> ORDERED_gamestate_LABELS[<span class="dv" style="color: #AD0000;
+font-style: inherit;">default =</span> ORDERED_GAMESTATE_LABELS[<span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">2</span>])</span>
-<span id="cb16-40">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb16-41">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb16-41">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb16-42">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -25193,14 +25277,14 @@ font-style: inherit;">#&gt; $ pre_shot_gamestate &lt;fct&gt; Tied, Tied, Tied, T
 <p>Unfortunately, FBref does not provide the exact ending minute of each half, as far as I know. Thus, we’ll “pad” our data with artificial records to mark the end of halves–the 45th minute in the first half / 90th minute in the second half–using some heuristics.</p>
 <ol type="1">
 <li>If there are no shots after the last regular minute in a half, we add 3 minutes. (3 minutes is about the median amount of minutes allocated for extra time.)</li>
-<li>If the last shot is after the last regular minute in a half, we take the maximum of:
+<li>If the last shot is after the last regular minute in a half, we take the maximum of:</li>
+</ol>
 <ul>
 <li>Adding 3 minutes beyond the last regular minute (like (1)) or</li>
 <li>Adding one minute beyond the last shot.</li>
-</ul></li>
-</ol>
+</ul>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb18" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1">LAST_MIN_BUFFER <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -25226,7 +25310,7 @@ font-style: inherit;">select</span>(</span>
 <span id="cb18-10">    time</span>
 <span id="cb18-11">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb18-12">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25277,7 +25361,13 @@ font-style: inherit;">last_regular_min =</span> <span class="fu" style="color: #
 background-color: null;
 font-style: inherit;">ifelse</span>(period <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">==</span> 1L, 45L, 90L),</span>
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">45</span>L, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">90</span>L),</span>
 <span id="cb18-19">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">time =</span> <span class="fu" style="color: #4758AB;
@@ -25302,7 +25392,7 @@ font-style: inherit;">bind_rows</span>(</span>
 <span id="cb18-24">  last_min_pad</span>
 <span id="cb18-25">) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb18-26">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25313,14 +25403,14 @@ font-style: inherit;">arrange</span>(match_id, time)</span>
 background-color: null;
 font-style: inherit;">&lt;-</span> padded_gamestate_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb18-29">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">group_by</span>(match_id, team) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb18-30">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25342,14 +25432,14 @@ background-color: null;
 font-style: inherit;">lag</span>(time)</span>
 <span id="cb18-33">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb18-34">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ungroup</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb18-35">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25364,7 +25454,9 @@ background-color: null;
 font-style: inherit;">case_when</span>(</span>
 <span id="cb18-37">      period <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">==</span> 1L <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>L <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">&amp;</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -25372,10 +25464,14 @@ font-style: inherit;">is.na</span>(prev_period) <span class="sc" style="color: #
 background-color: null;
 font-style: inherit;">~</span> time <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">-</span> 0L,</span>
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>L,</span>
 <span id="cb18-38">      period <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">==</span> 2L <span class="sc" style="color: #5E5E5E;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>L <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">&amp;</span> period <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -25383,7 +25479,9 @@ font-style: inherit;">!=</span> prev_period <span class="sc" style="color: #5E5E
 background-color: null;
 font-style: inherit;">~</span> time <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">-</span> 45L,</span>
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">45</span>L,</span>
 <span id="cb18-39">      <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">TRUE</span> <span class="sc" style="color: #5E5E5E;
@@ -25477,20 +25575,20 @@ font-style: inherit;">#&gt; $ duration           &lt;dbl&gt; 2, 2, 2, 2, 5, 5, 1
 <h2 class="anchored" data-anchor-id="data-analysis">Data analysis</h2>
 <p>As the saying goes, “80% of data analysis/science is data cleaning”. Well, that rings true here, as all we need to do at this point is perform a few common <code>{dplyr}</code> and <code>{tidyr}</code> actions to arrive at xGD by game state. Oh, and we should contextualize game state xGD by how long a team has spent in each game state (<code>duration</code>).</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb20" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1">agg_gamestate_xgd <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> gamestate_shots_and_durations <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb20-2">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">group_by</span>(team, pre_shot_gamestate) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb20-3">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25517,14 +25615,14 @@ font-style: inherit;">TRUE</span>)</span>
 <span id="cb20-10">    )</span>
 <span id="cb20-11">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb20-12">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ungroup</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb20-13">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25541,14 +25639,14 @@ background-color: null;
 font-style: inherit;">/</span> duration</span>
 <span id="cb20-15">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb20-16">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">group_by</span>(team) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb20-17">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25563,14 +25661,14 @@ background-color: null;
 font-style: inherit;">sum</span>(duration)</span>
 <span id="cb20-19">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb20-20">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ungroup</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb20-21">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -25635,7 +25733,7 @@ font-style: inherit;">#&gt; # ℹ 77 more rows</span></span></code></pre></div>
 </ol>
 <p>for every team. Keep in mind that an xGD per 90 of +0.50 means that you’re accumulating half a goal’s worth of shot quality more than you’re giving up over the course of a game. While this number may seem small, that’s quite a good number over the course of an entire season.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb22" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><span class="do" style="color: #5E5E5E;
 background-color: null;
@@ -25715,9 +25813,11 @@ background-color: null;
 font-style: inherit;">'**Data**: Opta via fbref.'</span></span>
 <span id="cb22-19">SUBTITLE_LABEL <span class="ot" style="color: #003B4F;
 background-color: null;
-font-style: inherit;">&lt;-</span> <span class="st" style="color: #20794D;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">'MLS, 2023 Season'</span></span>
+font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'MLS, %s Season'</span>, SEASON_END_YEAR)</span>
 <span id="cb22-20">PLOT_RESOLUTION <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="dv" style="color: #AD0000;
@@ -26150,7 +26250,7 @@ font-style: inherit;">'#17bebb'</span></span>
 <span id="cb22-67"></span>
 <span id="cb22-68"><span class="do" style="color: #5E5E5E;
 background-color: null;
-font-style: italic;">## There is a way to get team logos from FBref, but they have a white background </span></span>
+font-style: italic;">## There is a way to get team logos from FBref, but they have a white background</span></span>
 <span id="cb22-69"><span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">##   by default, and making the background transparent for a plot with a dark</span></span>
@@ -26233,7 +26333,7 @@ font-style: inherit;">$</span>all[[<span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">3</span>]] <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
+font-style: inherit;">|&gt;</span></span>
 <span id="cb22-85">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
@@ -26253,98 +26353,105 @@ background-color: null;
 font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'https://images.fotmob.com/image_resources/logo/teamlogo/%s.png'</span>, team_id)</span>
-<span id="cb22-90">    )</span>
-<span id="cb22-91">}</span>
-<span id="cb22-92"></span>
-<span id="cb22-93">fotmob_standings <span class="ot" style="color: #003B4F;
+<span id="cb22-90">    ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-91">    tibble<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_tibble</span>()</span>
+<span id="cb22-92">}</span>
+<span id="cb22-93"></span>
+<span id="cb22-94">fotmob_standings <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">get_fotmob_standings</span>()</span>
-<span id="cb22-94">team_logos <span class="ot" style="color: #003B4F;
+<span id="cb22-95">team_logos <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-95">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-96">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">distinct</span>(team) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-96">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-97">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">arrange</span>(team) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-97">  <span class="do" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-98">  <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## Lucky for us, MLS team names line up with the fotmob names alphabetically.</span></span>
-<span id="cb22-98">  dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb22-99">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">bind_cols</span>(</span>
-<span id="cb22-99">    fotmob_standings <span class="sc" style="color: #5E5E5E;
+<span id="cb22-100">    fotmob_standings <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-100">      dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-101">      dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">arrange</span>(team) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-101">      dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-102">      dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">select</span>(<span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">path =</span> logo_url, pts)</span>
-<span id="cb22-102">  )</span>
-<span id="cb22-103"></span>
-<span id="cb22-104">agg_gamestate_xgd_with_logos <span class="ot" style="color: #003B4F;
+<span id="cb22-103">  )</span>
+<span id="cb22-104"></span>
+<span id="cb22-105">agg_gamestate_xgd_with_logos <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-105">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-106">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">inner_join</span>(</span>
-<span id="cb22-106">    team_logos <span class="sc" style="color: #5E5E5E;
+<span id="cb22-107">    team_logos <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-107">      dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-108">      dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">select</span>(</span>
-<span id="cb22-108">        team,</span>
-<span id="cb22-109">        pts,</span>
-<span id="cb22-110">        path</span>
-<span id="cb22-111">      ),</span>
-<span id="cb22-112">    <span class="at" style="color: #657422;
+<span id="cb22-109">        team,</span>
+<span id="cb22-110">        pts,</span>
+<span id="cb22-111">        path</span>
+<span id="cb22-112">      ),</span>
+<span id="cb22-113">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">by =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">join_by</span>(team)</span>
-<span id="cb22-113">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-114">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-114">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-115">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(</span>
-<span id="cb22-115">    <span class="at" style="color: #657422;
+<span id="cb22-116">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">label =</span> glue<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26353,74 +26460,454 @@ background-color: null;
 font-style: inherit;">glue</span>(<span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">"&lt;span style='font-size:12px;color:{WHITISH_FOREGROUND_COLOR}'&gt;{team}&lt;/span&gt; &lt;span style='font-size:9px;color:{COMPLEMENTARY_FOREGROUND_COLOR}'&gt;{pts} pts&lt;/span&gt; &lt;img src='{path}' width='14' height='14'/&gt;"</span>)</span>
-<span id="cb22-116">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-117">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-117">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-118">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">select</span>(<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">-</span>path)</span>
-<span id="cb22-118"></span>
-<span id="cb22-119">team_label_order <span class="ot" style="color: #003B4F;
+<span id="cb22-119"></span>
+<span id="cb22-120">raw_table <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> worldfootballR<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fb_season_team_stats</span>(</span>
+<span id="cb22-121">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">country =</span> COUNTRY,</span>
+<span id="cb22-122">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">gender =</span> GENDER,</span>
+<span id="cb22-123">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">tier =</span> TIER,</span>
+<span id="cb22-124">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">season_end_year =</span> SEASON_END_YEAR,</span>
+<span id="cb22-125">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stat_type =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'league_table'</span></span>
+<span id="cb22-126">) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-127">  tibble<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as_tibble</span>()</span>
+<span id="cb22-128"></span>
+<span id="cb22-129">init_table <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> raw_table <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-130">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">transmute</span>(</span>
+<span id="cb22-131">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">team_short =</span> Squad,</span>
+<span id="cb22-132">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xgd_p90_total =</span> xGD<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">.90</span>,</span>
+<span id="cb22-133">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># rank = Rk</span></span>
+<span id="cb22-134">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rank =</span> dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">row_number</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">desc</span>(Pts <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1000</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> GD))</span>
+<span id="cb22-135">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-136">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(</span>
+<span id="cb22-137">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">team_short =</span> stringr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">str_replace_all</span>(</span>
+<span id="cb22-138">      team_short,</span>
+<span id="cb22-139">      <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## Nashville, Revs, and New York teams ordered differently by default</span></span>
+<span id="cb22-140">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(</span>
+<span id="cb22-141">        <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'^NYC'</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'New York City '</span>,</span>
+<span id="cb22-142">        <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'^NY'</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'New York'</span>,</span>
+<span id="cb22-143">        <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'^NE '</span> <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">=</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'New England '</span></span>
+<span id="cb22-144">      )</span>
+<span id="cb22-145">    )</span>
+<span id="cb22-146">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-147">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">arrange</span>(team_short) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-148">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">bind_cols</span>(</span>
+<span id="cb22-149">    team_logos <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-150">      dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">select</span>(team) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-151">      dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">arrange</span>(team)</span>
+<span id="cb22-152">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-153">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">arrange</span>(rank)</span>
+<span id="cb22-154"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## One-off</span></span>
+<span id="cb22-155">team_label_order <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">rev</span>(init_table<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">$</span>team), <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">''</span>)</span>
+<span id="cb22-156"></span>
+<span id="cb22-157">table <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> init_table <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-158">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(</span>
+<span id="cb22-159">    dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">across</span>(</span>
+<span id="cb22-160">      team,</span>
+<span id="cb22-161">      \(.x) <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">factor</span>(.x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">levels =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">setdiff</span>(team_label_order, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">''</span>))</span>
+<span id="cb22-162">    )</span>
+<span id="cb22-163">  )</span>
+<span id="cb22-164"></span>
+<span id="cb22-165"></span>
+<span id="cb22-166">team_label_order <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> agg_gamestate_xgd_with_logos <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-120">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-167">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">filter</span>(</span>
-<span id="cb22-121">    pre_shot_gamestate <span class="sc" style="color: #5E5E5E;
+<span id="cb22-168">    pre_shot_gamestate <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">==</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'Leading'</span></span>
-<span id="cb22-122">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-169">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-123">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-170">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">arrange</span>(prop_duration) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-124">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-171">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">pull</span>(team)</span>
-<span id="cb22-125"></span>
-<span id="cb22-126">prepped_agg_gamestate_xgd <span class="ot" style="color: #003B4F;
+<span id="cb22-172">team_label_order <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(team_label_order, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">''</span>)</span>
+<span id="cb22-173"></span>
+<span id="cb22-174">init_table <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> raw_table <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-175">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">transmute</span>(</span>
+<span id="cb22-176">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">team_short =</span> Squad, <span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## different than other fbref labels</span></span>
+<span id="cb22-177">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">xgd_p90_total =</span> xGD<span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">.90</span>,</span>
+<span id="cb22-178">    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># rank = Rk</span></span>
+<span id="cb22-179">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">rank =</span> dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">row_number</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">desc</span>(Pts <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1000</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span> GD))</span>
+<span id="cb22-180">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-181">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">arrange</span>(team_short) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-182">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">bind_cols</span>(</span>
+<span id="cb22-183">    team_logos <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-184">      dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">select</span>(team)</span>
+<span id="cb22-185">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-186">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">arrange</span>(rank)</span>
+<span id="cb22-187"></span>
+<span id="cb22-188">team_label_order <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> agg_gamestate_xgd_with_logos <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-127">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-189">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">filter</span>(</span>
+<span id="cb22-190">    pre_shot_gamestate <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Leading'</span></span>
+<span id="cb22-191">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-192">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">arrange</span>(prop_duration) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-193">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pull</span>(team)</span>
+<span id="cb22-194"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## Add extra level for top row for "Overall p90" label</span></span>
+<span id="cb22-195">TOTAL_GAMESTATE_LABEL <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'Overall'</span></span>
+<span id="cb22-196">team_label_order <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(team_label_order, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">''</span>)</span>
+<span id="cb22-197"></span>
+<span id="cb22-198"><span class="do" style="color: #5E5E5E;
+background-color: null;
+font-style: italic;">## Could also order by table points</span></span>
+<span id="cb22-199"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># team_label_order &lt;- c(rev(init_table$team), '')</span></span>
+<span id="cb22-200"></span>
+<span id="cb22-201">table <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> init_table <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-202">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(</span>
-<span id="cb22-128">    dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb22-203">    dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">across</span>(</span>
-<span id="cb22-129">      team,</span>
-<span id="cb22-130">      \(.x) <span class="fu" style="color: #4758AB;
+<span id="cb22-204">      team,</span>
+<span id="cb22-205">      \(.x) <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">factor</span>(.x, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">levels =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">setdiff</span>(team_label_order, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">''</span>))</span>
+<span id="cb22-206">    )</span>
+<span id="cb22-207">  )</span>
+<span id="cb22-208"></span>
+<span id="cb22-209">prepped_agg_gamestate_xgd <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> agg_gamestate_xgd_with_logos <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-210">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">bind_rows</span>(</span>
+<span id="cb22-211">    tibble<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">tibble</span>(</span>
+<span id="cb22-212">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">team =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">''</span>,</span>
+<span id="cb22-213">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">pre_shot_gamestate =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">factor</span>(ORDERED_GAMESTATE_LABELS, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">levels =</span> ORDERED_GAMESTATE_LABELS)</span>
+<span id="cb22-214">    )</span>
+<span id="cb22-215">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-216">  dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mutate</span>(</span>
+<span id="cb22-217">    dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">across</span>(</span>
+<span id="cb22-218">      team,</span>
+<span id="cb22-219">      \(.x) <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">factor</span>(.x, <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">levels =</span> team_label_order)</span>
-<span id="cb22-131">    )</span>
-<span id="cb22-132">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-220">    )</span>
+<span id="cb22-221">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-133">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-222">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
@@ -26428,40 +26915,40 @@ font-style: inherit;">arrange</span>(team, <span class="fu" style="color: #4758A
 background-color: null;
 font-style: inherit;">desc</span>(pre_shot_gamestate)) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-134">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-223">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">group_by</span>(team) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-135">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-224">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(</span>
-<span id="cb22-136">    <span class="at" style="color: #657422;
+<span id="cb22-225">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">cumu_prop_duration =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">cumsum</span>(prop_duration)</span>
-<span id="cb22-137">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-226">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-138">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-227">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ungroup</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-139">  dplyr<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-228">  dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">mutate</span>(</span>
-<span id="cb22-140">    <span class="at" style="color: #657422;
+<span id="cb22-229">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">half_cumu_prop_duration =</span> cumu_prop_duration <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26469,71 +26956,110 @@ font-style: inherit;">-</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.5</span> <span class="sc" style="color: #5E5E5E;
 background-color: null;
+font-style: inherit;">*</span> prop_duration,</span>
+<span id="cb22-230">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">half_cumu_prop_duration =</span> dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">case_when</span>(</span>
+<span id="cb22-231">      prop_duration <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">&gt;=</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.08</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> half_cumu_prop_duration,</span>
+<span id="cb22-232">      cumu_prop_duration <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">*</span> prop_duration,</span>
+<span id="cb22-233">      <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">~</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
 font-style: inherit;">*</span> prop_duration</span>
-<span id="cb22-141">  )</span>
-<span id="cb22-142"></span>
-<span id="cb22-143">xgd_p90_plot <span class="ot" style="color: #003B4F;
+<span id="cb22-234">    )</span>
+<span id="cb22-235">  )</span>
+<span id="cb22-236"></span>
+<span id="cb22-237">xgd_p90_plot <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> prepped_agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;
 background-color: null;
-font-style: inherit;">|&gt;</span> </span>
-<span id="cb22-144">  ggplot2<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">|&gt;</span></span>
+<span id="cb22-238">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ggplot</span>() <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-145">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-239">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">aes</span>(</span>
-<span id="cb22-146">    <span class="at" style="color: #657422;
+<span id="cb22-240">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">x =</span> prop_duration,</span>
-<span id="cb22-147">    <span class="at" style="color: #657422;
+<span id="cb22-241">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">y =</span> team</span>
-<span id="cb22-148">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-242">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-149">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-243">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">scale_y_discrete</span>(</span>
-<span id="cb22-150">    <span class="at" style="color: #657422;
+<span id="cb22-244">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">name =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">''</span>,</span>
-<span id="cb22-151">    <span class="at" style="color: #657422;
+<span id="cb22-245">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">labels =</span> prepped_agg_gamestate_xgd <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span></span>
-<span id="cb22-152">      dplyr<span class="sc" style="color: #5E5E5E;
+<span id="cb22-246">      dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">distinct</span>(team, label) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">|&gt;</span></span>
-<span id="cb22-153">      tibble<span class="sc" style="color: #5E5E5E;
+<span id="cb22-247">      tibble<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">deframe</span>()</span>
-<span id="cb22-154">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-248">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-155">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-249">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">theme</span>(</span>
-<span id="cb22-156">    <span class="at" style="color: #657422;
+<span id="cb22-250">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">axis.text.y =</span> ggtext<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26558,45 +27084,183 @@ background-color: null;
 font-style: inherit;">0</span>), <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'pt'</span>)),</span>
-<span id="cb22-157">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-251">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-158">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-252">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">geom_col</span>(</span>
-<span id="cb22-159">    <span class="at" style="color: #657422;
+<span id="cb22-253">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">show.legend =</span> <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">FALSE</span>,</span>
-<span id="cb22-160">    <span class="at" style="color: #657422;
+<span id="cb22-254">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">alpha =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.8</span>,</span>
-<span id="cb22-161">    ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-255">    ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">aes</span>(</span>
-<span id="cb22-162">      <span class="at" style="color: #657422;
+<span id="cb22-256">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">fill =</span> pre_shot_gamestate</span>
-<span id="cb22-163">    )</span>
-<span id="cb22-164">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-257">    )</span>
+<span id="cb22-258">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-165">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-259">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">geom_text</span>(</span>
-<span id="cb22-166">    <span class="at" style="color: #657422;
+<span id="cb22-260">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">family =</span> FONT,</span>
-<span id="cb22-167">    <span class="at" style="color: #657422;
+<span id="cb22-261">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">size =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">9</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> ggplot2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span>.pt,</span>
+<span id="cb22-262">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">fontface =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'plain'</span>,</span>
+<span id="cb22-263">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">color =</span> COMPLEMENTARY_FOREGROUND_COLOR,</span>
+<span id="cb22-264">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">data =</span> table <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> dplyr<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">arrange</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">desc</span>(team)) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">|&gt;</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">head</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>),</span>
+<span id="cb22-265">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">vjust =</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">-</span><span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>,</span>
+<span id="cb22-266">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">lineheight =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>,</span>
+<span id="cb22-267">    ggplot2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(</span>
+<span id="cb22-268">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.05</span>,</span>
+<span id="cb22-269">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> team,</span>
+<span id="cb22-270">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">label =</span> TOTAL_GAMESTATE_LABEL</span>
+<span id="cb22-271">    )</span>
+<span id="cb22-272">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb22-273">  ggplot2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_text</span>(</span>
+<span id="cb22-274">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">family =</span> FONT,</span>
+<span id="cb22-275">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">size =</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">10</span> <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">/</span> ggplot2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span>.pt,</span>
+<span id="cb22-276">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">fontface =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'plain'</span>,</span>
+<span id="cb22-277">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">color =</span> COMPLEMENTARY_FOREGROUND_COLOR,</span>
+<span id="cb22-278">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">data =</span> table,</span>
+<span id="cb22-279">    ggplot2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">aes</span>(</span>
+<span id="cb22-280">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">x =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.05</span>,</span>
+<span id="cb22-281">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">y =</span> team,</span>
+<span id="cb22-282">      <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">label =</span> scales<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">number</span>(</span>
+<span id="cb22-283">        xgd_p90_total,</span>
+<span id="cb22-284">        <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">accuracy =</span> <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.01</span>,</span>
+<span id="cb22-285">        <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">style_positive =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'plus'</span></span>
+<span id="cb22-286">      )</span>
+<span id="cb22-287">    )</span>
+<span id="cb22-288">  ) <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">+</span></span>
+<span id="cb22-289">  ggplot2<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">geom_text</span>(</span>
+<span id="cb22-290">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">family =</span> FONT,</span>
+<span id="cb22-291">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">size =</span> <span class="dv" style="color: #AD0000;
 background-color: null;
@@ -26605,15 +27269,15 @@ background-color: null;
 font-style: inherit;">/</span> ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span>.pt,</span>
-<span id="cb22-168">    <span class="at" style="color: #657422;
+<span id="cb22-292">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">fontface =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'bold'</span>,</span>
-<span id="cb22-169">    <span class="at" style="color: #657422;
+<span id="cb22-293">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">color =</span> WHITISH_FOREGROUND_COLOR,</span>
-<span id="cb22-170">    <span class="at" style="color: #657422;
+<span id="cb22-294">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">data =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26624,18 +27288,18 @@ background-color: null;
 font-style: inherit;">&gt;=</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0</span>),</span>
-<span id="cb22-171">    ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-295">    ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">aes</span>(</span>
-<span id="cb22-172">      <span class="at" style="color: #657422;
+<span id="cb22-296">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">x =</span> half_cumu_prop_duration,</span>
-<span id="cb22-173">      <span class="at" style="color: #657422;
+<span id="cb22-297">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">y =</span> team,</span>
-<span id="cb22-174">      <span class="at" style="color: #657422;
+<span id="cb22-298">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">label =</span> scales<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26650,19 +27314,19 @@ background-color: null;
 font-style: inherit;">style_positive =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'plus'</span>)</span>
-<span id="cb22-175">    )</span>
-<span id="cb22-176">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-299">    )</span>
+<span id="cb22-300">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-177">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-301">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">geom_text</span>(</span>
-<span id="cb22-178">    <span class="at" style="color: #657422;
+<span id="cb22-302">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">family =</span> FONT,</span>
-<span id="cb22-179">    <span class="at" style="color: #657422;
+<span id="cb22-303">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">size =</span> <span class="dv" style="color: #AD0000;
 background-color: null;
@@ -26671,15 +27335,15 @@ background-color: null;
 font-style: inherit;">/</span> ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span>.pt,</span>
-<span id="cb22-180">    <span class="at" style="color: #657422;
+<span id="cb22-304">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">fontface =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'bold.italic'</span>,</span>
-<span id="cb22-181">    <span class="at" style="color: #657422;
+<span id="cb22-305">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">color =</span> BLACKISH_BACKGROUND_COLOR,</span>
-<span id="cb22-182">    <span class="at" style="color: #657422;
+<span id="cb22-306">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">data =</span> dplyr<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26690,18 +27354,18 @@ background-color: null;
 font-style: inherit;">&lt;</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0</span>),</span>
-<span id="cb22-183">    ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-307">    ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">aes</span>(</span>
-<span id="cb22-184">      <span class="at" style="color: #657422;
+<span id="cb22-308">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">x =</span> half_cumu_prop_duration,</span>
-<span id="cb22-185">      <span class="at" style="color: #657422;
+<span id="cb22-309">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">y =</span> team,</span>
-<span id="cb22-186">      <span class="at" style="color: #657422;
+<span id="cb22-310">      <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">label =</span> scales<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26712,16 +27376,16 @@ background-color: null;
 font-style: inherit;">accuracy =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.01</span>)</span>
-<span id="cb22-187">    )</span>
-<span id="cb22-188">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-311">    )</span>
+<span id="cb22-312">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-189">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-313">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">scale_x_continuous</span>(</span>
-<span id="cb22-190">    <span class="at" style="color: #657422;
+<span id="cb22-314">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">labels =</span> scales<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26732,7 +27396,31 @@ background-color: null;
 font-style: inherit;">accuracy =</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">1</span>),</span>
-<span id="cb22-191">    <span class="at" style="color: #657422;
+<span id="cb22-315">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">breaks =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.25</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.5</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0.75</span>, <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>),</span>
+<span id="cb22-316">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">limits =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>, <span class="fl" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1.15</span>),</span>
+<span id="cb22-317">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">expand =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -26741,53 +27429,53 @@ background-color: null;
 font-style: inherit;">0.01</span>, <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.01</span>)</span>
-<span id="cb22-192">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-318">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-193">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-319">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">scale_fill_manual</span>(</span>
-<span id="cb22-194">    <span class="at" style="color: #657422;
+<span id="cb22-320">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">values =</span> GAMESTATE_PAL</span>
-<span id="cb22-195">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-321">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-196">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-322">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">theme</span>(</span>
-<span id="cb22-197">    <span class="at" style="color: #657422;
+<span id="cb22-323">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">panel.grid.major.y =</span> ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">element_blank</span>(),</span>
-<span id="cb22-198">    <span class="at" style="color: #657422;
+<span id="cb22-324">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">panel.grid.major.x =</span> ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">element_blank</span>(),</span>
-<span id="cb22-199">    <span class="at" style="color: #657422;
+<span id="cb22-325">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">legend.position =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'top'</span></span>
-<span id="cb22-200">  ) <span class="sc" style="color: #5E5E5E;
+<span id="cb22-326">  ) <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">+</span></span>
-<span id="cb22-201">  ggplot2<span class="sc" style="color: #5E5E5E;
+<span id="cb22-327">  ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">labs</span>(</span>
-<span id="cb22-202">    <span class="at" style="color: #657422;
+<span id="cb22-328">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">title =</span> glue<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26795,92 +27483,94 @@ font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">glue</span>(<span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">"xGD per 90 when &lt;span style='color:{GAMESTATE_PAL[['Leading']]}'&gt;Leading&lt;/span&gt;, &lt;span style='color:{GAMESTATE_PAL[['Tied']]}'&gt;Tied&lt;/span&gt;, and &lt;span style='color:{GAMESTATE_PAL[['Trailing']]}'&gt;Trailing&lt;/spna&gt;"</span>),</span>
-<span id="cb22-203">    <span class="at" style="color: #657422;
+font-style: inherit;">"xGD per 90 when &lt;span style='color:{GAMESTATE_PAL[['Leading']]}'&gt;Leading&lt;/span&gt;, &lt;span style='color:{GAMESTATE_PAL[['Tied']]}'&gt;Tied&lt;/span&gt;, and &lt;span style='color:{GAMESTATE_PAL[['Trailing']]}'&gt;Trailing&lt;/span&gt;"</span>),</span>
+<span id="cb22-329">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">subtitle =</span> SUBTITLE_LABEL,</span>
-<span id="cb22-204">    <span class="at" style="color: #657422;
+<span id="cb22-330">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">y =</span> <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">NULL</span>,</span>
-<span id="cb22-205">    <span class="at" style="color: #657422;
+<span id="cb22-331">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">tag =</span> TAG_LABEL,</span>
-<span id="cb22-206">    <span class="at" style="color: #657422;
+<span id="cb22-332">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">caption =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">paste0</span>(CAPTION_LABEL, <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'&lt;br/&gt;**xGD**: Expected goals for minus expected goals conceded'</span>),</span>
-<span id="cb22-207">    <span class="at" style="color: #657422;
+<span id="cb22-333">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">x =</span> <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'% of Match Time'</span></span>
-<span id="cb22-208">  )</span>
-<span id="cb22-209">xgd_p90_plot</span>
-<span id="cb22-210"></span>
-<span id="cb22-211">xgd_p90_plot_path <span class="ot" style="color: #003B4F;
+<span id="cb22-334">  )</span>
+<span id="cb22-335">xgd_p90_plot</span>
+<span id="cb22-336"></span>
+<span id="cb22-337">xgd_p90_plot_path <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">file.path</span>(PROJ_DIR, <span class="st" style="color: #20794D;
+font-style: inherit;">file.path</span>(PROJ_DIR, <span class="fu" style="color: #4758AB;
 background-color: null;
-font-style: inherit;">'2023-mls-xgd-p90.png'</span>)</span>
-<span id="cb22-212">ggplot2<span class="sc" style="color: #5E5E5E;
+font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">'%s-mls-xgd-p90.png'</span>, SEASON_END_YEAR))</span>
+<span id="cb22-338">ggplot2<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">ggsave</span>(</span>
-<span id="cb22-213">  xgd_p90_plot,</span>
-<span id="cb22-214">  <span class="at" style="color: #657422;
+<span id="cb22-339">  xgd_p90_plot,</span>
+<span id="cb22-340">  <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">filename =</span> xgd_p90_plot_path,</span>
-<span id="cb22-215">  <span class="at" style="color: #657422;
+<span id="cb22-341">  <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">width =</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">8</span>,</span>
-<span id="cb22-216">  <span class="at" style="color: #657422;
+<span id="cb22-342">  <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">height =</span> <span class="dv" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">8</span></span>
-<span id="cb22-217">)</span>
-<span id="cb22-218"></span>
-<span id="cb22-219"><span class="do" style="color: #5E5E5E;
+<span id="cb22-343">)</span>
+<span id="cb22-344"></span>
+<span id="cb22-345"><span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## https://themockup.blog/posts/2019-01-09-add-a-logo-to-your-plot/</span></span>
-<span id="cb22-220">add_logo <span class="ot" style="color: #003B4F;
+<span id="cb22-346">add_logo <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">function</span>(</span>
-<span id="cb22-221">    plot_path,</span>
-<span id="cb22-222">    logo_path,</span>
-<span id="cb22-223">    <span class="at" style="color: #657422;
+<span id="cb22-347">    plot_path,</span>
+<span id="cb22-348">    logo_path,</span>
+<span id="cb22-349">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">logo_scale =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.1</span>,</span>
-<span id="cb22-224">    <span class="at" style="color: #657422;
+<span id="cb22-350">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">idx_x =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.01</span>, <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## right-hand side</span></span>
-<span id="cb22-225">    <span class="at" style="color: #657422;
+<span id="cb22-351">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">idx_y =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.99</span>, <span class="do" style="color: #5E5E5E;
 background-color: null;
 font-style: italic;">## top of plot</span></span>
-<span id="cb22-226">    <span class="at" style="color: #657422;
+<span id="cb22-352">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">adjust_x =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -26893,7 +27583,7 @@ background-color: null;
 font-style: inherit;">TRUE</span>, <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">FALSE</span>),</span>
-<span id="cb22-227">    <span class="at" style="color: #657422;
+<span id="cb22-353">    <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">adjust_y =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -26906,23 +27596,23 @@ background-color: null;
 font-style: inherit;">TRUE</span>, <span class="cn" style="color: #8f5902;
 background-color: null;
 font-style: inherit;">FALSE</span>)</span>
-<span id="cb22-228">) {</span>
-<span id="cb22-229">  plot <span class="ot" style="color: #003B4F;
+<span id="cb22-354">) {</span>
+<span id="cb22-355">  plot <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">image_read</span>(plot_path)</span>
-<span id="cb22-230">  logo_raw <span class="ot" style="color: #003B4F;
+<span id="cb22-356">  logo_raw <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">image_read</span>(logo_path)</span>
-<span id="cb22-231">  </span>
-<span id="cb22-232">  plot_height <span class="ot" style="color: #003B4F;
+<span id="cb22-357">  </span>
+<span id="cb22-358">  plot_height <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26931,7 +27621,7 @@ background-color: null;
 font-style: inherit;">image_info</span>(plot)<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">$</span>height</span>
-<span id="cb22-233">  plot_width <span class="ot" style="color: #003B4F;
+<span id="cb22-359">  plot_width <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -26940,84 +27630,84 @@ background-color: null;
 font-style: inherit;">image_info</span>(plot)<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">$</span>width</span>
-<span id="cb22-234">  </span>
-<span id="cb22-235">  logo <span class="ot" style="color: #003B4F;
+<span id="cb22-360">  </span>
+<span id="cb22-361">  logo <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">image_scale</span>(</span>
-<span id="cb22-236">    logo_raw,</span>
-<span id="cb22-237">    <span class="fu" style="color: #4758AB;
+<span id="cb22-362">    logo_raw,</span>
+<span id="cb22-363">    <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">as.character</span>(<span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">round</span>(plot_width <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">*</span> logo_scale))</span>
-<span id="cb22-238">  )</span>
-<span id="cb22-239">  </span>
-<span id="cb22-240">  info <span class="ot" style="color: #003B4F;
+<span id="cb22-364">  )</span>
+<span id="cb22-365">  </span>
+<span id="cb22-366">  info <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">image_info</span>(logo)</span>
-<span id="cb22-241">  logo_width <span class="ot" style="color: #003B4F;
+<span id="cb22-367">  logo_width <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> info<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">$</span>width</span>
-<span id="cb22-242">  logo_height <span class="ot" style="color: #003B4F;
+<span id="cb22-368">  logo_height <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> info<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">$</span>height</span>
-<span id="cb22-243">  </span>
-<span id="cb22-244">  x_pos <span class="ot" style="color: #003B4F;
+<span id="cb22-369">  </span>
+<span id="cb22-370">  x_pos <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> plot_width <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">-</span> idx_x <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">*</span> plot_width</span>
-<span id="cb22-245">  y_pos <span class="ot" style="color: #003B4F;
+<span id="cb22-371">  y_pos <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> plot_height <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">-</span> idx_y <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">*</span> plot_height</span>
-<span id="cb22-246">  </span>
-<span id="cb22-247">  <span class="cf" style="color: #003B4F;
+<span id="cb22-372">  </span>
+<span id="cb22-373">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">isTRUE</span>(adjust_x)) {</span>
-<span id="cb22-248">    x_pos <span class="ot" style="color: #003B4F;
+<span id="cb22-374">    x_pos <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> x_pos <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">-</span> logo_width</span>
-<span id="cb22-249">  }</span>
-<span id="cb22-250">  </span>
-<span id="cb22-251">  <span class="cf" style="color: #003B4F;
+<span id="cb22-375">  }</span>
+<span id="cb22-376">  </span>
+<span id="cb22-377">  <span class="cf" style="color: #003B4F;
 background-color: null;
 font-weight: bold;
 font-style: inherit;">if</span> (<span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">isTRUE</span>(adjust_y)) {</span>
-<span id="cb22-252">    y_pos <span class="ot" style="color: #003B4F;
+<span id="cb22-378">    y_pos <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> y_pos <span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">-</span> logo_height</span>
-<span id="cb22-253">  }</span>
-<span id="cb22-254">  </span>
-<span id="cb22-255">  offset <span class="ot" style="color: #003B4F;
+<span id="cb22-379">  }</span>
+<span id="cb22-380">  </span>
+<span id="cb22-381">  offset <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
@@ -27026,8 +27716,8 @@ background-color: null;
 font-style: inherit;">'+'</span>, x_pos, <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'+'</span>, y_pos)</span>
-<span id="cb22-256">  </span>
-<span id="cb22-257">  new_plot <span class="ot" style="color: #003B4F;
+<span id="cb22-382">  </span>
+<span id="cb22-383">  new_plot <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> magick<span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -27036,48 +27726,48 @@ background-color: null;
 font-style: inherit;">image_composite</span>(plot, logo, <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">offset =</span> offset)</span>
-<span id="cb22-258">  ext <span class="ot" style="color: #003B4F;
+<span id="cb22-384">  ext <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> tools<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">file_ext</span>(plot_path)</span>
-<span id="cb22-259">  rgx_ext <span class="ot" style="color: #003B4F;
+<span id="cb22-385">  rgx_ext <span class="ot" style="color: #003B4F;
 background-color: null;
 font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">sprintf</span>(<span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'[.]%s$'</span>, ext)</span>
-<span id="cb22-260">  </span>
-<span id="cb22-261">  magick<span class="sc" style="color: #5E5E5E;
+<span id="cb22-386">  </span>
+<span id="cb22-387">  magick<span class="sc" style="color: #5E5E5E;
 background-color: null;
 font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">image_write</span>(</span>
-<span id="cb22-262">    new_plot,</span>
-<span id="cb22-263">    plot_path</span>
-<span id="cb22-264">  )</span>
-<span id="cb22-265">}</span>
-<span id="cb22-266"></span>
-<span id="cb22-267"><span class="fu" style="color: #4758AB;
+<span id="cb22-388">    new_plot,</span>
+<span id="cb22-389">    plot_path</span>
+<span id="cb22-390">  )</span>
+<span id="cb22-391">}</span>
+<span id="cb22-392"></span>
+<span id="cb22-393"><span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">add_logo</span>(</span>
-<span id="cb22-268">  xgd_p90_plot_path,</span>
-<span id="cb22-269">  <span class="at" style="color: #657422;
+<span id="cb22-394">  xgd_p90_plot_path,</span>
+<span id="cb22-395">  <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">logo_path =</span> <span class="fu" style="color: #4758AB;
 background-color: null;
 font-style: inherit;">file.path</span>(PROJ_DIR, <span class="st" style="color: #20794D;
 background-color: null;
 font-style: inherit;">'mls-logo-black-and-white.png'</span>),</span>
-<span id="cb22-270">  <span class="at" style="color: #657422;
+<span id="cb22-396">  <span class="at" style="color: #657422;
 background-color: null;
 font-style: inherit;">logo_scale =</span> <span class="fl" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">0.06</span></span>
-<span id="cb22-271">)</span></code></pre></div>
+<span id="cb22-397">)</span></code></pre></div>
 </details>
 </div>
 <p><img src="https://tonyelhabr.rbind.io/posts/fbref-gamestate-expected-goal-difference/2023-mls-xgd-p90.png" class="img-fluid"></p>
