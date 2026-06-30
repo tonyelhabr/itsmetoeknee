@@ -9,13 +9,14 @@
 <link>https://tonyelhabr.rbind.io/posts.html</link>
 <atom:link href="https://tonyelhabr.rbind.io/posts.xml" rel="self" type="application/rss+xml"/>
 <description></description>
-<generator>quarto-1.5.57</generator>
+<generator>quarto-1.7.32</generator>
 <lastBuildDate>Wed, 19 Jun 2024 05:00:00 GMT</lastBuildDate>
 <item>
   <title>Expected goals, gamestate, and predictiveness</title>
   <dc:creator>Tony ElHabr</dc:creator>
   <link>https://tonyelhabr.rbind.io/posts/xg-predictor-future-results/</link>
   <description><![CDATA[ 
+
 
 
 
@@ -7346,9 +7347,7 @@ xG+xAG usage
 <div class="list quarto-listing-default">
 
 </div>
-<div class="listing-no-matching d-none">
-No matching items
-</div>
+<div class="listing-no-matching d-none">No matching items</div>
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
@@ -7379,6 +7378,8 @@ No matching items
 
 
 
+
+
 <section id="introduction" class="level1">
 <h1>Introduction</h1>
 <p>Towards the end of each soccer season, we naturally start to look back at player stats, often looking to see who has performed worse compared to their past seasons. We may have different motivations for doing so–we may be trying to attribute team under-performance to individuals, we may be hypothesizing who is likely to be transferred, etc.</p>
@@ -7392,7 +7393,7 @@ No matching items
 <h2 class="anchored" data-anchor-id="data">Data</h2>
 <p>I’ll be using public data from <a href="https://fbref.com/">FBref</a> for the 2018/19 - 2023/24 seasons of the <a href="https://fbref.com/en/comps/Big5/Big-5-European-Leagues-Stats">the Big Five European soccer leagues</a>, updated through May 7. Fake data is nice for examples, but ultimately we want to test our methods on real data. Our intuition about the results can be a useful caliber of the sensibility of our results.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Get shot data</summary>
 <div class="sourceCode cell-code" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1">raw_shots <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -7720,7 +7721,7 @@ font-style: inherit;">#&gt; # ℹ 15,307 more rows</span></span></code></pre></d
 </div>
 <p>For illustrative purposes, we’ll focus on one player in particular–<a href="https://fbref.com/en/players/ee38d9c5/James-Maddison">James Maddison</a>. Maddison has had a sub-par 2023/2024 season by his own standards, underperforming his xG for the first time since he started playing in the <a href="https://fbref.com/en/comps/9/Premier-League-Stats">Premier League</a> in 2018/19.</p>
 <div class="cell">
-<details open="">
+<details open="" class="code-fold">
 <summary>Maddison’s season-by-season data</summary>
 <div class="sourceCode cell-code" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1">player_season_np_shots <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -7763,7 +7764,7 @@ font-style: inherit;">#&gt; 6 ee38d9c5  James Maddison            2024    55    
 </details>
 </div>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>More variables useful for the rest of the post</summary>
 <div class="sourceCode cell-code" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1">TARGET_SEASON_END_YEAR <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -7948,7 +7949,7 @@ font-style: inherit;">0</span></span>
 </ol>
 <p>With the data prepped in the correct manner, this is straightforward to calculate.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Approach 1 implementation</summary>
 <div class="sourceCode cell-code" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><span class="do" style="color: #5E5E5E;
 background-color: null;
@@ -8009,7 +8010,7 @@ font-style: inherit;">'James Maddison'</span>)</span></code></pre></div>
 </details>
 </div>
 <div class="cell">
-<details open="">
+<details open="" class="code-fold">
 <summary>Approach 1 output for Maddison</summary>
 <div class="sourceCode cell-code" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1">maddison_prp_approach1 <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -8035,7 +8036,7 @@ font-style: inherit;">#&gt; 1 James Maddison     1.38     0.797 0.0233</span></s
 <p>This approach finds Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?PR_p"> of 0.797 to be about a 2nd percentile outcome. Among the 602 players evaluated, Maddison’s 2023/24 <img src="https://latex.codecogs.com/png.latex?PR_p"> ranks as the 15th lowest.</p>
 <p>For context, here’s a look at the 10 players who underperformed the most in the 2023/24 season.</p>
 <div class="cell">
-<details open="">
+<details open="" class="code-fold">
 <summary>Approach 1 output, top 10 underperforming players</summary>
 <div class="sourceCode cell-code" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1">all_prp_approach1 <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -8111,7 +8112,7 @@ font-style: inherit;">#&gt; 10 Benjamin Bourigeaud    1.12      0.503 0.0150</sp
 </ol>
 <p>Here’s how that looks in code.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Approach 2 implementation</summary>
 <div class="sourceCode cell-code" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1">R <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -8389,7 +8390,7 @@ font-style: inherit;">arrange</span>(player)</span></code></pre></div>
 </details>
 </div>
 <div class="cell">
-<details open="">
+<details open="" class="code-fold">
 <summary>Approach 2 output for Maddison</summary>
 <div class="sourceCode cell-code" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1">maddison_prp_approach2 <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -8418,7 +8419,7 @@ font-style: inherit;">#&gt; 1 James Maddison     1.38     0.797 0.109</span></sp
 <p>How can we feel confident about this approach? Well, in the first approach, we implicitly assumed that the performance ratio percentiles should be uniform across all players, hence the percentile ranking. We should see if the same bears out with this second approach.</p>
 <p>The plot below shows a histogram of the performance ratio percentile across all players, where each player’s estimated performance ratio percentile is grouped into a decile.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Approach 2 implementation for all players</summary>
 <div class="sourceCode cell-code" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1">all_resampled_pr <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -8527,7 +8528,7 @@ font-style: inherit;">arrange</span>(prp)</span></code></pre></div>
 <p>Indeed, the histogram shows a fairly uniform distribution, with a bit of irregularity at the upper end.</p>
 <p>Looking at who is in the lower end of the leftmost decile, we see some of the same names–Immobile and <a href="https://fbref.com/en/players/6bde367b/Teji-Savanier">Savanier</a>–among the ten underperformers. Withholding judgment on the superiority of any methodology, we can find some solace in seeing some of the same names among the most unlikely underperformers here as we did with approach 1.</p>
 <div class="cell">
-<details open="">
+<details open="" class="code-fold">
 <summary>Approach 2 output, top 10 underperforming players</summary>
 <div class="sourceCode cell-code" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1">all_prp_approach2 <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -8603,7 +8604,7 @@ font-style: inherit;">#&gt; 10 M'Bala Nzola                  1.10     0.274 0.02
 </ol>
 <p>While that may sound daunting, I promise that it’s not.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Approach 3 implementation</summary>
 <div class="sourceCode cell-code" id="cb11" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1">SHOT_TO_SHAPE_MAPPING <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -9011,7 +9012,7 @@ font-style: inherit;">unnest_wider</span>(params)</span></code></pre></div>
 </details>
 </div>
 <div class="cell">
-<details open="">
+<details open="" class="code-fold">
 <summary>Approach 3 output for Maddison</summary>
 <div class="sourceCode cell-code" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1">maddison_prp_approach3 <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -9039,7 +9040,7 @@ font-style: inherit;">#&gt; 1 James Maddison     1.38     0.797 0.0469</span></s
 <p><img src="https://tonyelhabr.rbind.io/posts/xg-likelihood/maddison_prp_approach3.png" class="img-fluid"></p>
 <p>As with approach 2, we should check to see what the distribution of performance ratio percentiles looks like–we should expect to see a somewhat uniform distribution.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Approach 3 for all players</summary>
 <div class="sourceCode cell-code" id="cb13" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1">all_gamma_pr <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -9169,7 +9170,7 @@ font-style: inherit;">arrange</span>(prp)</span></code></pre></div>
 <p>This histogram has a bit more distortion than our resampling approach, so perhaps it’s a little less calibrated.</p>
 <p>Looking at the top 10 strongest underperformers, 2 of the names here–<a href="https://fbref.com/en/players/64f69877/Kevin-Volland">Volland</a> <a href="https://fbref.com/en/players/0a447501/Antonio-Sanabria">Sanabria</a>–are shared with approach 2’s top 10, and 7 are shared with approach 1’s top 10.</p>
 <div class="cell">
-<details open="">
+<details open="" class="code-fold">
 <summary>Approach 3 output, top 10 underperforming players</summary>
 <div class="sourceCode cell-code" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1">all_prp_approach3 <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -9242,7 +9243,7 @@ font-style: inherit;">#&gt; 10 Jordan Veretout      1.16     0.360 0.0105</span>
 <section id="conclusion" class="level1">
 <h1>Conclusion</h1>
 <p>Here’s a summary of the biggest pros and cons of each approach, along with the result for Maddison.</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 3%">
 <col style="width: 22%">
@@ -9303,7 +9304,7 @@ font-style: inherit;">#&gt; 10 Jordan Veretout      1.16     0.360 0.0105</span>
 <h3 class="anchored" data-anchor-id="approach-0-t-test">Approach 0: <img src="https://latex.codecogs.com/png.latex?t">-test</h3>
 <p>If you have some background in statistics, applying a <a href="https://en.wikipedia.org/wiki/Student%27s_t-test"><img src="https://latex.codecogs.com/png.latex?t">-test</a> (using shot-weighted averages and standard deviations) may be an approach that comes to mind.</p>
 <div class="cell">
-<details>
+<details class="code-fold">
 <summary>Approach 0</summary>
 <div class="sourceCode cell-code" id="cb15" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1">prp_approach0 <span class="ot" style="color: #003B4F;
 background-color: null;
@@ -9456,7 +9457,7 @@ font-style: inherit;">arrange</span>(player)</span></code></pre></div>
 </details>
 </div>
 <div class="cell">
-<details open="">
+<details open="" class="code-fold">
 <summary>Approach 0 output</summary>
 <div class="sourceCode cell-code" id="cb16" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1">prp_approach0 <span class="sc" style="color: #5E5E5E;
 background-color: null;
@@ -9503,9 +9504,7 @@ font-style: inherit;">#&gt; 1 James Maddison     1.38     0.797 0.0543</span></s
 <div class="list quarto-listing-default">
 
 </div>
-<div class="listing-no-matching d-none">
-No matching items
-</div>
+<div class="listing-no-matching d-none">No matching items</div>
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
@@ -9530,6 +9529,8 @@ No matching items
 
 
 
+
+
 <section id="introduction" class="level1">
 <h1>Introduction</h1>
 <p>I’ve written a lot about expected goals (xG) in soccer, but I haven’t yet talked much about <a href="https://statsbomb.com/soccer-metrics/possession-value-models-explained/">possession value (PV) models</a><sup>1</sup>, another big topic in soccer analytics. What are they? Well, every PV model is different, but they all generally try to assign value to every on-ball action on the pitch. Such a model can help inform decisions about how to improve player and team performance.</p>
@@ -9547,7 +9548,7 @@ No matching items
 <p>In the interactive 8x12 pitch below, the blue cell illustrates where a pass is made, and the colored cells illustrate the average PV associated with all historicalLy successful passes made to that area. Hovering over a cell shows the PV value above the pitch as well.<sup>4</sup></p>
 <p>Overall, I’d say that this illustration matches intuition–forward completed passes into the final third should be assigned a non-trivial positive value.</p>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb1" data-startfrom="1018" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1017;"><span id="cb1-1018">{</span>
 <span id="cb1-1019">  <span class="kw" style="color: #003B4F;
@@ -10122,17 +10123,21 @@ background-color: null;
 font-style: inherit;">;</span></span>
 <span id="cb1-1075">}</span></code></pre></div>
 </details>
-<div id="fig-ojs-cell-1" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure">
+<div id="fig-ojs-cell-1" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ojs-cell-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div id="ojs-cell-1" data-nodetype="expression">
 
 </div>
-<figcaption class="figure-caption">Figure&nbsp;1: A heatmap showing the average possession value (PV) of historically completed passes from the center spot (annotated in blue) to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with a complete pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which successful passes from the center spot have never been made.</figcaption>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ojs-cell-1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: A heatmap showing the average possession value (PV) of historically completed passes from the center spot (annotated in blue) to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with a complete pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which successful passes from the center spot have never been made.
+</figcaption>
 </figure>
 </div>
 </div>
-<div class="cell">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb2" data-startfrom="1081" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1080;"><span id="cb2-1081">{</span>
 <span id="cb2-1082">  <span class="kw" style="color: #003B4F;
@@ -10585,7 +10590,7 @@ font-style: inherit;">;</span></span>
 <p>Note that the gradient in the pitch above is for PV, not for the relative frequency of completed passes from the center spot, which is instead shown as overlayed text. While passes into the box from the center spot have really strong positive PV, they’re uncommon because defenders are generally looking to stop those kinds of threatening passes.</p>
 <p>The gradient in the plot below illustrates the relative frequency of successful passes from the center spot directly.</p>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb3" data-startfrom="1134" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1133;"><span id="cb3-1134">{</span>
 <span id="cb3-1135">  <span class="kw" style="color: #003B4F;
@@ -10662,17 +10667,21 @@ background-color: null;
 font-style: inherit;">;</span></span>
 <span id="cb3-1140">}</span></code></pre></div>
 </details>
-<div id="fig-ojs-cell-3" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure">
+<div id="fig-ojs-cell-3" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ojs-cell-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div id="ojs-cell-3" data-nodetype="expression">
 
 </div>
-<figcaption class="figure-caption">Figure&nbsp;2: A heatmap where the gradient and text illustrate the relative frequency of historically successful passes from the center spot (annotated in blue) to all areas on the pitch. Black cells represent areas to which successful passes from the center spot have never been made.</figcaption>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ojs-cell-3-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: A heatmap where the gradient and text illustrate the relative frequency of historically successful passes from the center spot (annotated in blue) to all areas on the pitch. Black cells represent areas to which successful passes from the center spot have never been made.
+</figcaption>
 </figure>
 </div>
 </div>
-<div class="cell">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb4" data-startfrom="1146" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1145;"><span id="cb4-1146">{</span>
 <span id="cb4-1147">  <span class="kw" style="color: #003B4F;
@@ -11104,7 +11113,7 @@ font-style: inherit;">;</span></span>
 <h3 class="anchored" data-anchor-id="from-anywhere-on-the-pitch-to-anywhere-on-the-pitch">From Anywhere on the Pitch, To Anywhere on the Pitch</h3>
 <p>Now, to give the full picture, the interactive pitch below dynamically updates to show the average PV values associated with a pass starting from <strong>any</strong> cell that you hover over. The minimum and maximum PV achieved with a successful pass from the hovered spot are shown in the text above the pitch.</p>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb5" data-startfrom="1198" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1197;"><span id="cb5-1198">{</span>
 <span id="cb5-1199">  <span class="kw" style="color: #003B4F;
@@ -11681,17 +11690,21 @@ font-style: inherit;">;</span></span>
 <span id="cb5-1256"></span>
 <span id="cb5-1257">}</span></code></pre></div>
 </details>
-<div id="fig-ojs-cell-5" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure">
+<div id="fig-ojs-cell-5" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ojs-cell-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div id="ojs-cell-5" data-nodetype="expression">
 
 </div>
-<figcaption class="figure-caption">Figure&nbsp;3: A heatmap showing the average possession value (PV) of historically completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.</figcaption>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ojs-cell-5-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: A heatmap showing the average possession value (PV) of historically completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.
+</figcaption>
 </figure>
 </div>
 </div>
-<div class="cell">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb6" data-startfrom="1263" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1262;"><span id="cb6-1263">{  </span>
 <span id="cb6-1264">  <span class="kw" style="color: #003B4F;
@@ -12285,7 +12298,7 @@ font-style: inherit;">;</span></span>
 <h3 class="anchored" data-anchor-id="from-one-spot-to-anywhere-on-the-pitch-1">From One Spot, To Anywhere on the Pitch</h3>
 <p>Let’s start with an example again, looking at PV for unsuccessful passes from the center spot.</p>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb7" data-startfrom="1337" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1336;"><span id="cb7-1337">{</span>
 <span id="cb7-1338">  <span class="kw" style="color: #003B4F;
@@ -12860,17 +12873,21 @@ background-color: null;
 font-style: inherit;">;</span></span>
 <span id="cb7-1394">}</span></code></pre></div>
 </details>
-<div id="fig-ojs-cell-7" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure">
+<div id="fig-ojs-cell-7" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ojs-cell-7-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div id="ojs-cell-7" data-nodetype="expression">
 
 </div>
-<figcaption class="figure-caption">Figure&nbsp;4: A heatmap showing the average possession value (PV) of historically incomplete passes from the center spot (annotated in blue) to all areas of the pitch. The relative frequency of unsuccessful passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with an incomplete pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which unsuccessful passes from the center spot have never been made.</figcaption>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ojs-cell-7-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: A heatmap showing the average possession value (PV) of historically incomplete passes from the center spot (annotated in blue) to all areas of the pitch. The relative frequency of unsuccessful passes from the center spot to each other cell is shown as a percentage. The exact PV value associated with an incomplete pass ending at the hover point can be viewed above the pitch. Black cells represent areas to which unsuccessful passes from the center spot have never been made.
+</figcaption>
 </figure>
 </div>
 </div>
-<div class="cell">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb8" data-startfrom="1400" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1399;"><span id="cb8-1400">{</span>
 <span id="cb8-1401">  <span class="kw" style="color: #003B4F;
@@ -13327,7 +13344,7 @@ font-style: inherit;">;</span></span>
 <h3 class="anchored" data-anchor-id="from-anywhere-on-the-pitch-to-anywhere-on-the-pitch-1">From Anywhere on the Pitch, To Anywhere on the Pitch</h3>
 <p>Now let’s scale up our pass PV grid to all incomplete passes. As with the dynamic successful pass heatmap, hovering over a cell will show PV associated with unsuccessful passes from that point on the pitch.</p>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb9" data-startfrom="1459" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1458;"><span id="cb9-1459">{</span>
 <span id="cb9-1460">  <span class="kw" style="color: #003B4F;
@@ -13902,17 +13919,21 @@ background-color: null;
 font-style: inherit;">;</span></span>
 <span id="cb9-1516">}</span></code></pre></div>
 </details>
-<div id="fig-ojs-cell-9" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure">
+<div id="fig-ojs-cell-9" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ojs-cell-9-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div id="ojs-cell-9" data-nodetype="expression">
 
 </div>
-<figcaption class="figure-caption">Figure&nbsp;5: A heatmap showing the average possession value (PV) of historically incomplete pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with an incomplete pass from the hover point are shown above the pitch. Black cells represent areas to which unsuccessful passes from the hover spot have never been made.</figcaption>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ojs-cell-9-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: A heatmap showing the average possession value (PV) of historically incomplete pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the center spot to each other cell is shown as a percentage. The highest and lowest PV values across all end points associated with an incomplete pass from the hover point are shown above the pitch. Black cells represent areas to which unsuccessful passes from the hover spot have never been made.
+</figcaption>
 </figure>
 </div>
 </div>
-<div class="cell">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb10" data-startfrom="1522" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1521;"><span id="cb10-1522">{  </span>
 <span id="cb10-1523">  <span class="kw" style="color: #003B4F;
@@ -14538,7 +14559,7 @@ font-style: inherit;">;</span></span>
 <h3 class="anchored" data-anchor-id="complete-passes">Complete Passes</h3>
 <p>Assuming the reader is comfortable with the plotting style and notations before, we now skip to re-creating the dynamic completed pass pitch.</p>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb11" data-startfrom="1638" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1637;"><span id="cb11-1638">{</span>
 <span id="cb11-1639">  <span class="kw" style="color: #003B4F;
@@ -15115,17 +15136,21 @@ font-style: inherit;">;</span></span>
 <span id="cb11-1696"></span>
 <span id="cb11-1697">}</span></code></pre></div>
 </details>
-<div id="fig-ojs-cell-11" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure">
+<div id="fig-ojs-cell-11" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ojs-cell-11-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div id="ojs-cell-11" data-nodetype="expression">
 
 </div>
-<figcaption class="figure-caption">Figure&nbsp;6: A heatmap showing the average VAEP of historically completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest VAEP values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.</figcaption>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ojs-cell-11-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: A heatmap showing the average VAEP of historically completed pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest VAEP values across all end points associated with a completed pass from the hover point are shown above the pitch. Black cells represent areas to which successful passes from the hover spot have never been made.
+</figcaption>
 </figure>
 </div>
 </div>
-<div class="cell">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb12" data-startfrom="1703" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1702;"><span id="cb12-1703">{  </span>
 <span id="cb12-1704">  <span class="kw" style="color: #003B4F;
@@ -15715,7 +15740,7 @@ font-style: inherit;">;</span></span>
 <h3 class="anchored" data-anchor-id="incomplete-passes-1">Incomplete Passes</h3>
 <p>And now we re-create the dynamic pitch for incomplete passes, but showing VAEP instead of goal probability.</p>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb13" data-startfrom="1773" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1772;"><span id="cb13-1773">{</span>
 <span id="cb13-1774">  <span class="kw" style="color: #003B4F;
@@ -16290,17 +16315,21 @@ background-color: null;
 font-style: inherit;">;</span></span>
 <span id="cb13-1830">}</span></code></pre></div>
 </details>
-<div id="fig-ojs-cell-13" class="quarto-figure quarto-figure-center anchored">
-<figure class="figure">
+<div id="fig-ojs-cell-13" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ojs-cell-13-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div id="ojs-cell-13" data-nodetype="expression">
 
 </div>
-<figcaption class="figure-caption">Figure&nbsp;7: A heatmap showing the average VAEP of historically incomplete pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest VAEP values across all end points associated with an incomplete pass from the hover point are shown above the pitch. Black cells represent areas to which unsuccessful passes from the hover spot have never been made.</figcaption>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ojs-cell-13-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: A heatmap showing the average VAEP of historically incomplete pass from the hover spot to all areas on the pitch. The relative frequency of successful passes from the hover spot to each other cell is shown as a percentage. The highest and lowest VAEP values across all end points associated with an incomplete pass from the hover point are shown above the pitch. Black cells represent areas to which unsuccessful passes from the hover spot have never been made.
+</figcaption>
 </figure>
 </div>
 </div>
-<div class="cell">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb14" data-startfrom="1836" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1835;"><span id="cb14-1836">{  </span>
 <span id="cb14-1837">  <span class="kw" style="color: #003B4F;
@@ -16887,8 +16916,8 @@ font-style: inherit;">;</span></span>
 </div>
 </div>
 <p>Compared to the pre-Appendix dynamic pitch for incomplete passes, this one shows a lot more negative values. In fact, there is only a very small subset of end points–those near the penalty spot–where an incomplete pass can have positive VAEP, no matter the starting point. So, when accounting for the value of the prior action with VAEP, it appears that incomplete passes only have positive impact in a handful of situations.</p>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb15" data-startfrom="1898" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1897;"><span id="cb15-1898">pitch <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -16963,8 +16992,8 @@ font-style: inherit;">;</span></span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb16" data-startfrom="1909" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1908;"><span id="cb16-1909">d3 <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -16980,8 +17009,8 @@ font-style: inherit;">"d3@v5"</span>)</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb17" data-startfrom="1914" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1913;"><span id="cb17-1914">d3_soccer <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -16989,7 +17018,7 @@ font-style: inherit;">=</span> <span class="pp" style="color: #AD0000;
 background-color: null;
 font-style: inherit;">require</span>(<span class="st" style="color: #20794D;
 background-color: null;
-font-style: inherit;">"d3-soccer@0.1.0"</span>)</span></code></pre></div>
+font-style: inherit;">"d3-soccer@0.3.0"</span>)</span></code></pre></div>
 </details>
 <div class="cell-output cell-output-display hidden">
 <div id="ojs-cell-17" data-nodetype="declaration">
@@ -16997,8 +17026,8 @@ font-style: inherit;">"d3-soccer@0.1.0"</span>)</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb18" data-startfrom="1920" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1919;"><span id="cb18-1920">complete_empirical_prop_data  <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17018,8 +17047,8 @@ font-style: inherit;">json</span>()</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb19" data-startfrom="1926" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1925;"><span id="cb19-1926">complete_empirical_pv_data  <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17040,7 +17069,7 @@ font-style: inherit;">json</span>()</span></code></pre></div>
 </div>
 </div>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb20" data-startfrom="1932" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1931;"><span id="cb20-1932">complete_empirical_nested_pv_data <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17060,8 +17089,8 @@ font-style: inherit;">json</span>()</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb21" data-startfrom="1938" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1937;"><span id="cb21-1938">incomplete_empirical_pv_data  <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17082,7 +17111,7 @@ font-style: inherit;">json</span>()</span></code></pre></div>
 </div>
 </div>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb22" data-startfrom="1944" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1943;"><span id="cb22-1944">incomplete_empirical_nested_pv_data <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17103,7 +17132,7 @@ font-style: inherit;">json</span>()</span></code></pre></div>
 </div>
 </div>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb23" data-startfrom="1950" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1949;"><span id="cb23-1950">complete_empirical_nested_vaep_data <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17124,7 +17153,7 @@ font-style: inherit;">json</span>()</span></code></pre></div>
 </div>
 </div>
 <div class="cell" data-include="true">
-<details class="hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb24" data-startfrom="1956" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1955;"><span id="cb24-1956">incomplete_empirical_nested_vaep_data <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17144,8 +17173,8 @@ font-style: inherit;">json</span>()</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb25" data-startfrom="1962" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1961;"><span id="cb25-1962">colorScaleCompleteRange <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17169,8 +17198,8 @@ font-style: inherit;">0.025</span>]</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb26" data-startfrom="1968" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1967;"><span id="cb26-1968">colorScaleIncompleteRange <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17194,8 +17223,8 @@ font-style: inherit;">0.025</span>]</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb27" data-startfrom="1974" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1973;"><span id="cb27-1974">colorScaleComplete <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17238,8 +17267,8 @@ font-style: inherit;">true</span>)</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb28" data-startfrom="1982" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1981;"><span id="cb28-1982">colorScaleIncomplete <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17282,8 +17311,8 @@ font-style: inherit;">true</span>)</span></code></pre></div>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb29" data-startfrom="1990" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 1989;"><span id="cb29-1990">swatchParams <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17326,8 +17355,8 @@ font-style: inherit;">7</span></span>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb30" data-startfrom="2002" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 2001;"><span id="cb30-2002">passStartParams <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17361,8 +17390,8 @@ font-style: inherit;">34</span></span>
 </div>
 </div>
 </div>
-<div class="cell" data-include="false">
-<details class="hidden">
+<div class="cell hidden">
+<details class="code-fold hidden">
 <summary>Code</summary>
 <div class="sourceCode cell-code hidden" id="cb31" data-startfrom="2013" data-source-offset="0" style="background: #f1f3f5;"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 2012;"><span id="cb31-2013">cellParams <span class="op" style="color: #5E5E5E;
 background-color: null;
@@ -17408,9 +17437,7 @@ font-style: inherit;">8.5</span></span>
 <div class="list quarto-listing-default">
 
 </div>
-<div class="listing-no-matching d-none">
-No matching items
-</div>
+<div class="listing-no-matching d-none">No matching items</div>
 </div><div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
